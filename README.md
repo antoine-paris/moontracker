@@ -1,69 +1,64 @@
-# React + TypeScript + Vite
+# MoonTracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+MoonTracker is an interactive web application for visualizing the Moon and Sun's positions, phases, and orientation in the sky from various locations. Built with React, TypeScript, and Vite, it leverages astronomical calculations to provide a dynamic and educational experience.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Lunar Phase Visualization:** See the current phase of the Moon, including realistic rendering using NASA imagery and custom SVG masks for crescent, gibbous, and half-moon shapes.
+- **Sun and Moon Position Tracking:** View the altitude and azimuth of the Sun and Moon for any date, time, and location. The app projects their positions onto a simulated sky stage.
+- **Location Selection:** Choose from a list of world capitals to instantly update the sky view and lunar data.
+- **Follow Modes:** Center the view on the Sun, Moon, or cardinal directions (N, E, S, O) for different perspectives.
+- **Animation Controls:** Animate the passage of time to watch the Sun and Moon move across the sky. Adjust the speed and pause/play the animation.
+- **Phase Geometry:** The Moon's illuminated limb is calculated and oriented correctly, including the parallactic angle and bright limb direction.
+- **Earthshine Simulation:** Optionally display the faint glow of earthshine on the Moon's dark side.
+- **Cardinal Overlays:** Show cardinal points (N, E, S, O) on the Sun and Moon for orientation.
+- **Responsive UI:** Works on desktop and mobile, with a modern, dark-themed interface.
+- **Telemetry Cards:** Display real-time data for the Sun and Moon, including altitude, azimuth, phase percentage, and orientation.
 
-## Expanding the ESLint configuration
+## Technical Details
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Astronomical Calculations:** Uses [SunCalc](https://github.com/mourner/suncalc) for Sun/Moon positions and illumination. Custom math for projection, phase geometry, and orientation.
+- **SVG Rendering:** The Moon is rendered using SVG with dynamic masks for accurate phase shapes. NASA imagery is used for realism.
+- **State Management:** React hooks manage UI state, animation, and astronomical data.
+- **Performance:** Vite enables fast development and hot module replacement (HMR).
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Getting Started
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+1. Clone the repository:
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+   ```sh
+   git clone https://github.com/yourusername/moontracker.git
+   cd moontracker
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2. Install dependencies:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+   ```sh
+   npm install
+   ```
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+3. Start the development server:
+
+   ```sh
+   npm run dev
+   ```
+
+4. Open [http://localhost:5173](http://localhost:5173) in your browser.
+
+## Technologies Used
+
+- [React](https://react.dev/)
+- [TypeScript](https://www.typescriptlang.org/)
+- [Vite](https://vitejs.dev/)
+- [SunCalc](https://github.com/mourner/suncalc)
+
+## Contributing
+
+Contributions are welcome! Please open issues or submit pull requests for improvements and new features.
+
+## License
+
+This project is licensed under the MIT License.
+
+---
+
