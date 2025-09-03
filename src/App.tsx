@@ -214,11 +214,15 @@ function projectToScreen(
   refAzDeg: number,
   width: number,
   height: number,
-  refAltDeg: number = 0
+  refAltDeg: number = 0,
+  radiusPx: number = 0
 ) {
   const dx = angularDiff(azDeg, refAzDeg); // [-180, +180]
-  const visibleX = Math.abs(dx) <= FOV_HALF;
-  const visibleY = Math.abs(altDeg - refAltDeg) <= FOV_HALF;
+  // Convert pixel radius to angular margin in both axes
+  const marginXDeg = width > 0 ? (radiusPx / (width / 2)) * FOV_HALF : 0;
+  const marginYDeg = height > 0 ? (radiusPx / (height / 2)) * FOV_HALF : 0;
+  const visibleX = Math.abs(dx) <= (FOV_HALF + marginXDeg);
+  const visibleY = Math.abs(altDeg - refAltDeg) <= (FOV_HALF + marginYDeg);
   const x = width / 2 + (dx / FOV_HALF) * (width / 2);
   const y = height / 2 - ((altDeg - refAltDeg) / FOV_HALF) * (height / 2);
   return { x, y, visibleX, visibleY };
@@ -323,8 +327,8 @@ export default function App() {
   const refAlt = useMemo(() => (follow === 'SOLEIL' ? astro.sun.alt : follow === 'LUNE' ? astro.moon.alt : 0), [follow, astro]);
 
   // Screen positions
-  const sunScreen = useMemo(() => projectToScreen(astro.sun.az, astro.sun.alt, refAz, stageSize.w, stageSize.h, refAlt), [astro.sun, refAz, refAlt, stageSize]);
-  const moonScreen = useMemo(() => projectToScreen(astro.moon.az, astro.moon.alt, refAz, stageSize.w, stageSize.h, refAlt), [astro.moon, refAz, refAlt, stageSize]);
+  const sunScreen = useMemo(() => projectToScreen(astro.sun.az, astro.sun.alt, refAz, stageSize.w, stageSize.h, refAlt, MOON_RENDER_DIAMETER / 2), [astro.sun, refAz, refAlt, stageSize]);
+  const moonScreen = useMemo(() => projectToScreen(astro.moon.az, astro.moon.alt, refAz, stageSize.w, stageSize.h, refAlt, MOON_RENDER_DIAMETER / 2), [astro.moon, refAz, refAlt, stageSize]);
 
   // Orientation & phase
   const rotationToHorizonDegMoon = useMemo(() => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat), [astro.moon, location.lat]);
@@ -503,8 +507,8 @@ export default function App() {
       <div className="flex h-full">
         {/* Left column: locations */}
         <aside
-          className="hidden md:block shrink-0 border-r border-white/10 bg-black/30 overflow-hidden"
-          style={{ width: showLocations ? 256 : 48, transition: 'width 250ms ease' }}
+          className="hidden md:block shrink-0 border-r border-white/10 bg-black overflow-hidden relative"
+          style={{ width: showLocations ? 256 : 48, transition: 'width 250ms ease', zIndex: Z.ui + 5 }}
         >
           {showLocations ? (
             <div className="p-4">
