@@ -1,0 +1,149 @@
+Option 1 — Vite + React + TypeScript + Tailwind (recommandé)
+0) Prérequis
+
+Node.js LTS (>= 18). Vérifie : node -v
+
+VS Code installé
+
+1) Créer le projet
+
+Dans VS Code → Terminal intégré :
+
+npm create vite@latest moontracker -- --template react-ts
+cd moontracker
+npm install
+
+2) Installer les dépendances
+
+Ton code utilise Tailwind et suncalc :
+
+npm i suncalc
+npm i -D tailwindcss postcss autoprefixer
+npx tailwindcss init -p
+
+3) Configurer Tailwind
+
+Édite tailwind.config.js :
+
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
+  theme: { extend: {} },
+  plugins: [],
+};
+
+
+Ajoute les directives Tailwind dans src/index.css (ou src/main.css selon le template) :
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Optionnel mais utile pour h-screen plein viewport */
+html, body, #root { height: 100%; }
+
+4) Intégrer ton code
+
+Remplace le contenu de src/App.tsx par ton composant (le code que tu as collé dans le canvas).
+
+Il est déjà en TSX et utilise Tailwind, c’est parfait.
+
+Ton import SunCalc est compatible ESM/CJS :
+
+import * as SunCalcNS from "suncalc";
+const SunCalc = (SunCalcNS as any).default ?? (SunCalcNS as any);
+
+
+Pour le typage, installe (si dispo) :
+
+npm i -D @types/suncalc
+
+
+Si jamais les types n’existent pas dans ton environnement, crée src/declarations.d.ts :
+
+declare module "suncalc";
+
+5) Lancer en dev
+npm run dev
+
+
+Ouvre l’URL indiquée (généralement http://localhost:5173).
+Tu devrais voir l’UI noire avec les contrôles (lieux, date/heure, animation) et la Lune/Soleil.
+
+Option 2 — Next.js + TypeScript + Tailwind
+
+À choisir si tu préfères le routeur/app, le SSR et un projet prêt pour la prod.
+
+1) Créer le projet
+npx create-next-app@latest moon-viewer --ts --tailwind
+cd moon-viewer
+
+2) Installer suncalc
+npm i suncalc
+# (optionnel) types
+npm i -D @types/suncalc
+
+3) Coller le code dans une page cliente
+
+Ton composant utilise des hooks (useState, useEffect), donc mets-le dans un composant client :
+
+app/page.tsx :
+
+'use client';
+import React from 'react';
+import App from '@/components/App'; // on va créer ce fichier
+
+export default function Page() {
+  return <App />;
+}
+
+
+app/globals.css contient déjà Tailwind (créé par le starter).
+
+Crée src/components/App.tsx et colle ton code (exactement celui du canvas).
+Ça tournera côté client, évitant les problèmes window/document.
+
+4) Dev server
+npm run dev
+
+
+Ouvre http://localhost:3000.
+
+⚠️ Si tu utilises next/image, il faudrait autoriser le domaine NASA dans next.config.js.
+Ici, ton image est utilisée dans un <svg><image href="..."/></svg>, donc pas besoin de config spéciale.
+
+Extensions & réglages utiles dans VS Code
+
+ESLint (plugin VS Code + npm i -D eslint si tu veux une config)
+
+Prettier – Code formatter ("editor.formatOnSave": true)
+
+Tailwind CSS IntelliSense (classes Tailwind avec autocomplétion + lint)
+
+Error Lens (affiche les erreurs inline)
+
+TypeScript and JavaScript Language Features (fourni par VS Code)
+
+Icon Theme (facultatif, juste pour le confort)
+
+Extrait de settings.json pratique :
+
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "files.eol": "\n"
+}
+
+Petits pièges / tips
+
+h-screen : ajoute html, body, #root { height: 100% } (déjà montré) pour que le plein écran fonctionne.
+
+Fuseau horaire : l’<input type="datetime-local"> travaille en local (chez toi Europe/Paris). C’est normal.
+
+Next.js : garde bien 'use client' sur la page/composant qui utilise des hooks.
+
+Types SunCalc : si tu vois des warnings de type, installe @types/suncalc ou ajoute une déclaration locale.
+
+Perf : tu as déjà des useMemo/useEffect; évite de recréer des gros objets en boucle inutilement (tu es clean là-dessus).
