@@ -27,7 +27,7 @@ MoonTracker is an interactive web application for visualizing the Moon and Sun's
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/yourusername/moontracker.git
+   git clone https://github.com/antoine-paris/moontracker.git
    cd moontracker
    ```
 
