@@ -187,6 +187,23 @@ function formatDateTimeInZone(d: Date, timeZone: string): string {
 
 // --- Sidereal time & alt/az -> RA/Dec helpers (Option B) ----------------------
 function julianDay(date: Date): number { return date.getTime() / 86400000 + 2440587.5; }
+// Apparent diameter & distance helpers
+const AU_KM = 149_597_870.7;
+const RSUN_KM = 696_340;
+const RMOON_KM = 1_737.4;
+
+function moonApparentDiameterDeg(distanceKm: number): number {
+  return 2 * toDeg(Math.atan(RMOON_KM / Math.max(1, distanceKm)));
+}
+function sunDistanceAU(date: Date): number {
+  const D = julianDay(date) - 2451545.0; // days since J2000.0
+  const g = (Math.PI / 180) * (357.529 + 0.98560028 * D); // mean anomaly (rad)
+  return 1.00014 - 0.01671 * Math.cos(g) - 0.00014 * Math.cos(2 * g);
+}
+function sunApparentDiameterDeg(date: Date): number {
+  const rAU = sunDistanceAU(date);
+  return 2 * toDeg(Math.atan(RSUN_KM / (AU_KM * Math.max(1e-9, rAU))));
+}
 function gmstDeg(date: Date): number {
   const JD = julianDay(date);
   const D = JD - 2451545.0; // days since J2000.0
@@ -259,6 +276,7 @@ export default function App() {
   // Controls
   const [location, setLocation] = useState<LocationOption>(LOCATIONS[2]); // default Paris
   const [when, setWhen] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
+  const [whenInput, setWhenInput] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
   const [follow, setFollow] = useState<FollowMode>('LUNE');
   const [showSun, setShowSun] = useState(true);
   const [showMoon, setShowMoon] = useState(true);
@@ -284,11 +302,7 @@ export default function App() {
   const rafIdRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
   const whenMsRef = useRef<number>(Date.parse(when));
-  const handleWhenChange = (val: string) => {
-    setIsAnimating(false); // pause quand on modifie la date
-    setWhen(val);
-    whenMsRef.current = Date.parse(val);
-  };
+  // handleWhenChange supprimé: la saisie est gérée via whenInput + validation au blur
 
   // Resize (use ResizeObserver so stage fills space during sidebar animation)
   useEffect(() => {
@@ -313,6 +327,8 @@ export default function App() {
 
   // Keep ref in sync when paused
   useEffect(() => { if (!isAnimating) { whenMsRef.current = Date.parse(when); } }, [when, isAnimating]);
+  // Keep input field in sync with committed valid date
+  useEffect(() => { setWhenInput(when); }, [when]);
 
   // Parsed date
   const date = useMemo(() => new Date(when), [when]);
@@ -328,7 +344,15 @@ export default function App() {
     const moonAlt = toDeg(moon.altitude);
     const moonAz = azFromSunCalc(moon.azimuth);
     const parallacticDeg = toDeg(moon.parallacticAngle ?? 0);
-    return { sun: { alt: sunAlt, az: sunAz }, moon: { alt: moonAlt, az: moonAz, parallacticDeg }, illum };
+    const sunDistAU = sunDistanceAU(date);
+    const sunDiamDeg = sunApparentDiameterDeg(date);
+    const moonDistKm = moon.distance;
+    const moonDiamDeg = moonApparentDiameterDeg(moonDistKm);
+    return {
+      sun: { alt: sunAlt, az: sunAz, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
+      moon: { alt: moonAlt, az: moonAz, parallacticDeg, distKm: moonDistKm, appDiamDeg: moonDiamDeg },
+      illum
+    };
   }, [date, location]);
 
   // Reference azimuth & altitude (follow mode)
@@ -618,12 +642,29 @@ export default function App() {
                       <input
                         type="datetime-local"
                         step={1}
-                        value={when}
-                        onChange={(e) => handleWhenChange(e.target.value)}
+                        value={whenInput}
+                        onChange={(e) => { setIsAnimating(false); setWhenInput(e.target.value); }}
+                        onBlur={() => {
+                          const ms = Date.parse(whenInput);
+                          if (Number.isFinite(ms)) {
+                            const norm = toDatetimeLocalInputValue(new Date(ms));
+                            setWhen(norm);
+                            whenMsRef.current = ms;
+                          } else {
+                            setWhenInput(when);
+                          }
+                        }}
                         className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-white/40"
                       />
                       <button
-                        onClick={() => { handleWhenChange(toDatetimeLocalInputValue(new Date())); setSpeedMinPerSec(1/60); setIsAnimating(true); }}
+                        onClick={() => {
+                          const nowStr = toDatetimeLocalInputValue(new Date());
+                          setWhen(nowStr);
+                          setWhenInput(nowStr);
+                          whenMsRef.current = Date.parse(nowStr);
+                          setSpeedMinPerSec(1/60);
+                          setIsAnimating(true);
+                        }}
                         className="px-3 py-2 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
                       >
                         Maintenant
@@ -663,9 +704,11 @@ export default function App() {
                           title="-1 h"
                           onClick={() => {
                             const next = Date.parse(when) - 3600000;
-                            setWhen(toDatetimeLocalInputValue(new Date(next)));
-                            whenMsRef.current = next;
-                          }}
+                            const nextStr = toDatetimeLocalInputValue(new Date(next));
+                            setWhen(nextStr);
+                            setWhenInput(nextStr);
+                             whenMsRef.current = next;
+                           }}
                         >
                           {"\u21B6"}
                         </div>
@@ -674,9 +717,11 @@ export default function App() {
                           title="+1 h"
                           onClick={() => {
                             const next = Date.parse(when) + 3600000;
-                            setWhen(toDatetimeLocalInputValue(new Date(next)));
-                            whenMsRef.current = next;
-                          }}
+                            const nextStr = toDatetimeLocalInputValue(new Date(next));
+                            setWhen(nextStr);
+                            setWhenInput(nextStr);
+                             whenMsRef.current = next;
+                           }}
                         >
                           {"\u21B7"}
                         </div>
@@ -903,6 +948,8 @@ export default function App() {
                 <div className="flex items-center justify-between"><div className="text-sm font-semibold text-sky-300">Lune</div><div className="text-xs text-white/60">{compass16(astro.moon.az)}</div></div>
                 <div className="mt-1 text-sm text-white/85">Altitude : <span className="font-mono">{formatDeg(astro.moon.alt)}</span></div>
                 <div className="text-sm text-white/85">Azimut : <span className="font-mono">{formatDeg(astro.moon.az)}</span></div>
+                <div className="text-sm text-white/85">Diamètre apparent : <span className="font-mono">{astro.moon.appDiamDeg.toFixed(2)}°</span></div>
+                <div className="text-sm text-white/85">Distance : <span className="font-mono">{Math.round(astro.moon.distKm).toLocaleString('fr-FR')} km</span></div>
                 <div className="text-xs text-white/55 mt-1">Orientation (parallactique) : <span className="font-mono">{rotationToHorizonDegMoon.toFixed(1)}°</span></div>
                 <div className="text-xs text-white/55">Phase : {(phaseFraction * 100).toFixed(1)}% éclairée — Angle du limbe : {brightLimbAngleDeg.toFixed(1)}°</div>
               </div>
@@ -910,6 +957,8 @@ export default function App() {
                 <div className="flex items-center justify-between"><div className="text-sm font-semibold text-amber-300">Soleil</div><div className="text-xs text-white/60">{compass16(astro.sun.az)}</div></div>
                 <div className="mt-1 text-sm text-white/85">Altitude : <span className="font-mono">{formatDeg(astro.sun.alt)}</span></div>
                 <div className="text-sm text-white/85">Azimut : <span className="font-mono">{formatDeg(astro.sun.az)}</span></div>
+                <div className="text-sm text-white/85">Diamètre apparent : <span className="font-mono">{astro.sun.appDiamDeg.toFixed(2)}°</span></div>
+                <div className="text-sm text-white/85">Distance : <span className="font-mono">{Math.round(astro.sun.distAU * AU_KM).toLocaleString('fr-FR')} km ({Math.round(astro.sun.distAU * 100)}% UA)</span></div>
               </div>
             </div>
           </div>
