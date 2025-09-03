@@ -173,6 +173,17 @@ function formatTimeInZone(d: Date, timeZone: string): string {
     return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
   }
 }
+// Format date et heure en zone: JJ/MM/AAAA HH:MM
+function formatDateTimeInZone(d: Date, timeZone: string): string {
+  try {
+    const fmt = new Intl.DateTimeFormat('fr-FR', { timeZone, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
+    return fmt.format(d).replace(',', '');
+  } catch {
+    const dd = d.toLocaleDateString('fr-FR');
+    const tt = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+    return `${dd} ${tt}`;
+  }
+}
 
 // --- Sidereal time & alt/az -> RA/Dec helpers (Option B) ----------------------
 function julianDay(date: Date): number { return date.getTime() / 86400000 + 2440587.5; }
@@ -259,10 +270,17 @@ export default function App() {
   const [debugMask, setDebugMask] = useState(false);
   // Toggle for locations sidebar
   const [showLocations, setShowLocations] = useState(true);
+  // Toggle UI tool/info panels (top and bottom)
+  const [showPanels, setShowPanels] = useState(true);
+  // City label derived from location label (format "Pays — Ville")
+  const cityName = useMemo(() => {
+    const parts = location.label.split('—');
+    return (parts[1] ?? parts[0]).trim();
+  }, [location]);
 
   // Animation
-  const [isAnimating, setIsAnimating] = useState(false);
-  const [speedMinPerSec, setSpeedMinPerSec] = useState<number>(0); // -360..+360 (0 par défaut)
+  const [isAnimating, setIsAnimating] = useState(true);
+  const [speedMinPerSec, setSpeedMinPerSec] = useState<number>(1/60); // Temps réel par défaut (1 s/s)
   const rafIdRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
   const whenMsRef = useRef<number>(Date.parse(when));
@@ -557,8 +575,21 @@ export default function App() {
 
         {/* Main stage */}
         <main className="relative flex-1">
+          {/* Global toggle button (top-right) */}
+          <button
+            onClick={() => setShowPanels(v => !v)}
+            className="absolute top-2 right-2 px-4 py-2 rounded-lg border border-white/20 text-white/80 hover:border-white/40 text-2xl leading-none"
+            style={{ zIndex: Z.ui + 20 }}
+            aria-label="Basculer l'interface"
+            title="Basculer l'interface"
+          >
+            {"\u2922"}
+          </button>
           {/* Top UI bar */}
-          <div className="absolute top-0 left-0 right-0 p-2 sm:p-3" style={{ zIndex: Z.ui }}>
+          <div
+            className="absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
+            style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
+          >
             <div className="mx-2 sm:mx-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
               {/* SUIVI */}
               <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
@@ -583,10 +614,28 @@ export default function App() {
                 <div className="grid grid-cols-1 gap-3">
                   <div>
                     <label className="text-xs uppercase tracking-wider text-white/60">Date & heure</label>
-                    <input type="datetime-local" step={1} value={when} onChange={(e) => handleWhenChange(e.target.value)} className="mt-1 w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-white/40" />
+                    <div className="mt-1 flex items-center gap-2">
+                      <input
+                        type="datetime-local"
+                        step={1}
+                        value={when}
+                        onChange={(e) => handleWhenChange(e.target.value)}
+                        className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-white/40"
+                      />
+                      <button
+                        onClick={() => { handleWhenChange(toDatetimeLocalInputValue(new Date())); setSpeedMinPerSec(1/60); setIsAnimating(true); }}
+                        className="px-3 py-2 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
+                      >
+                        Maintenant
+                      </button>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-xs uppercase tracking-wider text-white/60">Animation (min/s)</label>
+                    <label className="text-xs uppercase tracking-wider text-white/60">
+                      {Math.abs(speedMinPerSec - 1/60) < 1e-6
+                        ? "ANIMATION (Temps réel)"
+                        : `ANIMATION (${Math.round(speedMinPerSec).toLocaleString('fr-FR')} min/s)`}
+                    </label>
                     <div className="mt-1 flex items-center gap-2">
                       <button onClick={() => setIsAnimating(v => !v)} className={`px-3 py-2 rounded-lg border text-sm ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}>{isAnimating ? "Pause" : "Lecture"}</button>
                       <div className="relative flex-1">
@@ -594,16 +643,43 @@ export default function App() {
                           type="range"
                           min={-360}
                           max={360}
-                          step={1}
+                          step={0.001}
                           value={speedMinPerSec}
-                          onChange={(e) => setSpeedMinPerSec(clamp(parseInt(e.target.value || "0", 10), -360, 360))}
-                          className="w-full"
+                          onChange={(e) => setSpeedMinPerSec(clamp(parseFloat(e.target.value || "0"), -360, 360))}
+                           className="w-full"
                         />
                         {/* Center tick for 0 */}
                         <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                           <div className="w-px h-3 bg-white/40" />
                         </div>
-                        <div className="pointer-events-none absolute left-1/2 top-full -translate-x-1/2 mt-0.5 text-[10px] text-white/60">0</div>
+                        <div
+                          className="absolute left-1/2 top-full -translate-x-1/2 mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer"
+                          onClick={() => { setSpeedMinPerSec(1/60); setIsAnimating(true); }}
+                        >
+                          Temps réel
+                        </div>
+                        <div
+                          className="absolute left-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
+                          title="-1 h"
+                          onClick={() => {
+                            const next = Date.parse(when) - 3600000;
+                            setWhen(toDatetimeLocalInputValue(new Date(next)));
+                            whenMsRef.current = next;
+                          }}
+                        >
+                          {"\u21B6"}
+                        </div>
+                        <div
+                          className="absolute right-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
+                          title="+1 h"
+                          onClick={() => {
+                            const next = Date.parse(when) + 3600000;
+                            setWhen(toDatetimeLocalInputValue(new Date(next)));
+                            whenMsRef.current = next;
+                          }}
+                        >
+                          {"\u21B7"}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -629,6 +705,15 @@ export default function App() {
 
           {/* Stage canvas */}
           <div ref={stageRef} className="absolute inset-0">
+            {/* Overlay info when tools are hidden */}
+            {!showPanels && (
+              <div
+                className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+                style={{ zIndex: Z.ui }}
+              >
+                {`${cityName}, ${formatDateTimeInZone(date, location.timeZone)}`}
+              </div>
+            )}
             {/* Horizon line */}
             <div className="absolute left-0 right-0" style={{ top: horizonY, height: 0, borderTop: "1px solid rgba(255,255,255,0.35)", zIndex: Z.horizon }} />
             {/* +90 / -90 lines */}
@@ -809,7 +894,10 @@ export default function App() {
           </div>
 
           {/* Bottom telemetry cards */}
-          <div className="absolute bottom-0 left-0 right-0 p-2 sm:p-3" style={{ zIndex: Z.ui }}>
+          <div
+            className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
+            style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
+          >
             <div className="mx-2 sm:mx-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <div className="rounded-2xl border border-white/10 bg-black/50 backdrop-blur px-4 py-3">
                 <div className="flex items-center justify-between"><div className="text-sm font-semibold text-sky-300">Lune</div><div className="text-xs text-white/60">{compass16(astro.moon.az)}</div></div>
