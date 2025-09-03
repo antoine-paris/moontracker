@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // SunCalc interop ESM/CJS
 import * as SunCalcNS from "suncalc";
-const SunCalc = (SunCalcNS as any).default ?? (SunCalcNS as any);
+const SunCalc: typeof import("suncalc") = (SunCalcNS as { default?: typeof import("suncalc") }).default ?? SunCalcNS;
 
 // --- Types & constants -------------------------------------------------------
 export type FollowMode = 'SOLEIL' | 'LUNE' | 'N' | 'E' | 'S' | 'O';
@@ -11,17 +11,18 @@ type LocationOption = {
   label: string; // Pays — Capitale
   lat: number;
   lng: number;
+  timeZone: string;
 };
 
 const LOCATIONS: LocationOption[] = [
-  { id: "no", label: "Norvège — Oslo", lat: 59.9139, lng: 10.7522 },
-  { id: "dk", label: "Danemark — Copenhague", lat: 55.6761, lng: 12.5683 },
-  { id: "fr", label: "France — Paris", lat: 48.8566, lng: 2.3522 },
-  { id: "dz", label: "Algérie — Alger", lat: 36.7538, lng: 3.0588 },
-  { id: "ml", label: "Mali — Bamako", lat: 12.6392, lng: -8.0029 },
-  { id: "gh", label: "Ghana — Accra", lat: 5.6037, lng: -0.1870 },
-  { id: "ga", label: "Gabon — Libreville", lat: 0.4162, lng: 9.4673 },
-  { id: "za", label: "Afrique du Sud — Pretoria", lat: -25.7479, lng: 28.2293 },
+  { id: "no", label: "Norvège — Oslo", lat: 59.9139, lng: 10.7522, timeZone: "Europe/Oslo" },
+  { id: "dk", label: "Danemark — Copenhague", lat: 55.6761, lng: 12.5683, timeZone: "Europe/Copenhagen" },
+  { id: "fr", label: "France — Paris", lat: 48.8566, lng: 2.3522, timeZone: "Europe/Paris" },
+  { id: "dz", label: "Algérie — Alger", lat: 36.7538, lng: 3.0588, timeZone: "Africa/Algiers" },
+  { id: "ml", label: "Mali — Bamako", lat: 12.6392, lng: -8.0029, timeZone: "Africa/Bamako" },
+  { id: "gh", label: "Ghana — Accra", lat: 5.6037, lng: -0.1870, timeZone: "Africa/Accra" },
+  { id: "ga", label: "Gabon — Libreville", lat: 0.4162, lng: 9.4673, timeZone: "Africa/Libreville" },
+  { id: "za", label: "Afrique du Sud — Pretoria", lat: -25.7479, lng: 28.2293, timeZone: "Africa/Johannesburg" },
 ];
 
 // NASA image specs
@@ -164,6 +165,14 @@ function toDatetimeLocalInputValue(d: Date) {
   const ss = pad(d.getSeconds());
   return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
 }
+// Format time HH:MM in a specific IANA timezone based on the current date used for rendering
+function formatTimeInZone(d: Date, timeZone: string): string {
+  try {
+    return new Intl.DateTimeFormat('fr-FR', { timeZone, hour: '2-digit', minute: '2-digit', hour12: false }).format(d);
+  } catch {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+}
 
 // --- Sidereal time & alt/az -> RA/Dec helpers (Option B) ----------------------
 function julianDay(date: Date): number { return date.getTime() / 86400000 + 2440587.5; }
@@ -279,13 +288,13 @@ export default function App() {
   const astro = useMemo(() => {
     const { lat, lng } = location;
     const sun = SunCalc.getPosition(date, lat, lng);
-    const moon = SunCalc.getMoonPosition(date, lat, lng);
+    const moon = SunCalc.getMoonPosition(date, lat, lng) as import("suncalc").GetMoonPositionResult & { parallacticAngle?: number };
     const illum = SunCalc.getMoonIllumination(date);
     const sunAlt = toDeg(sun.altitude);
     const sunAz = azFromSunCalc(sun.azimuth);
     const moonAlt = toDeg(moon.altitude);
     const moonAz = azFromSunCalc(moon.azimuth);
-    const parallacticDeg = toDeg((moon as any).parallacticAngle ?? 0);
+    const parallacticDeg = toDeg(moon.parallacticAngle ?? 0);
     return { sun: { alt: sunAlt, az: sunAz }, moon: { alt: moonAlt, az: moonAz, parallacticDeg }, illum };
   }, [date, location]);
 
@@ -413,7 +422,7 @@ export default function App() {
     };
     rafIdRef.current = requestAnimationFrame(tick);
     return () => { if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; lastTsRef.current = null; };
-  }, [isAnimating, speedMinPerSec]);
+  }, [isAnimating, speedMinPerSec, when]);
 
   // --- Dev-time test cases ---------------------------------------------------
   useEffect(() => {
@@ -495,7 +504,9 @@ export default function App() {
                     }`}
                   >
                     <div className="font-medium">{loc.label}</div>
-                    <div className="text-xs text-white/50">{loc.lat.toFixed(3)}°, {loc.lng.toFixed(3)}°</div>
+                    <div className="text-xs text-white/50">
+                      {loc.lat.toFixed(3)}°, {loc.lng.toFixed(3)}° · {formatTimeInZone(date, loc.timeZone)}
+                    </div>
                   </button>
                 </li>
               ))}
