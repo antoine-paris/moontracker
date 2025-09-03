@@ -253,6 +253,8 @@ export default function App() {
   const [showSunCard, setShowSunCard] = useState(false);
   const [showMoonCard, setShowMoonCard] = useState(false);
   const [debugMask, setDebugMask] = useState(false);
+  // Toggle for locations sidebar
+  const [showLocations, setShowLocations] = useState(true);
 
   // Animation
   const [isAnimating, setIsAnimating] = useState(false);
@@ -266,16 +268,25 @@ export default function App() {
     whenMsRef.current = Date.parse(val);
   };
 
-  // Resize
+  // Resize (use ResizeObserver so stage fills space during sidebar animation)
   useEffect(() => {
-    const onResize = () => {
+    const update = () => {
       if (!stageRef.current) return;
       const rect = stageRef.current.getBoundingClientRect();
       setStageSize({ w: rect.width, h: rect.height });
     };
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    update();
+
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined' && stageRef.current) {
+      ro = new ResizeObserver(() => update());
+      ro.observe(stageRef.current);
+    }
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      if (ro) ro.disconnect();
+    };
   }, []);
 
   // Keep ref in sync when paused
@@ -491,27 +502,53 @@ export default function App() {
     <div className="w-full h-screen bg-black text-white overflow-hidden">
       <div className="flex h-full">
         {/* Left column: locations */}
-        <aside className="hidden md:block w-64 shrink-0 border-r border-white/10 bg-black/30">
-          <div className="p-4">
-            <h2 className="text-sm uppercase tracking-widest text-white/60">Lieux d'observation</h2>
-            <ul className="mt-3 space-y-2">
-              {LOCATIONS.map((loc) => (
-                <li key={loc.id}>
-                  <button
-                    onClick={() => setLocation(loc)}
-                    className={`w-full text-left px-3 py-2 rounded-xl border transition ${
-                      location.id === loc.id ? "border-white/40 bg-white/5" : "border-white/10 hover:border-white/20 hover:bg-white/5"
-                    }`}
-                  >
-                    <div className="font-medium">{loc.label}</div>
-                    <div className="text-xs text-white/50">
-                      {loc.lat.toFixed(3)}°, {loc.lng.toFixed(3)}° · {formatTimeInZone(date, loc.timeZone)}
-                    </div>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+        <aside
+          className="hidden md:block shrink-0 border-r border-white/10 bg-black/30 overflow-hidden"
+          style={{ width: showLocations ? 256 : 48, transition: 'width 250ms ease' }}
+        >
+          {showLocations ? (
+            <div className="p-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm uppercase tracking-widest text-white/60">Lieux d'observation</h2>
+                <button
+                  onClick={() => setShowLocations(false)}
+                  className="ml-2 px-2 py-1 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
+                  aria-label="Masquer les lieux"
+                  title="Masquer les lieux"
+                >
+                  {"<<"}
+                </button>
+              </div>
+              <ul className="mt-3 space-y-2">
+                {LOCATIONS.map((loc) => (
+                  <li key={loc.id}>
+                    <button
+                      onClick={() => setLocation(loc)}
+                      className={`w-full text-left px-3 py-2 rounded-xl border transition ${
+                        location.id === loc.id ? "border-white/40 bg-white/5" : "border-white/10 hover:border-white/20 hover:bg-white/5"
+                      }`}
+                    >
+                      <div className="font-medium">{loc.label}</div>
+                      <div className="text-xs text-white/50">
+                        {loc.lat.toFixed(3)}°, {loc.lng.toFixed(3)}° · {formatTimeInZone(date, loc.timeZone)}
+                      </div>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <button
+                onClick={() => setShowLocations(true)}
+                className="px-2 py-1 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
+                aria-label="Afficher les lieux"
+                title="Afficher les lieux"
+              >
+                {">>"}
+              </button>
+            </div>
+          )}
         </aside>
 
         {/* Main stage */}
