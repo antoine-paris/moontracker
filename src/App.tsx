@@ -42,8 +42,50 @@ const ROSE_16 = [
   "N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSO","SO","OSO","O","ONO","NO","NNO",
 ];
 
-// Field of View 220° (±110°)
-const FOV_HALF = 110;
+// Appareils et modules (Zoom)
+type ZoomModule = {
+  id: string;
+  label: string;
+  kind: 'prime' | 'zoom' | 'module';
+  focalMm?: number; // objectifs (rectilinéaire)
+  f35?: number;     // équivalent 35 mm (smartphones)
+  projection?: 'rectilinear' | 'fisheye';
+};
+type Device = {
+  id: string;
+  label: string;
+  type: 'camera' | 'phone';
+  sensorW?: number; // mm (appareils photo)
+  sensorH?: number; // mm (appareils photo)
+  aspect?: number;  // ratio W/H (smartphones)
+  zooms: ZoomModule[];
+};
+
+// Démo de données
+const DEVICES: Device[] = [
+  {
+    id: 'ff',
+    label: 'Boîtier 24×36 (Full Frame)',
+    type: 'camera',
+    sensorW: 36, sensorH: 24, aspect: 3/2,
+    zooms: [
+      { id: '35', label: '35 mm', kind: 'prime', focalMm: 35, projection: 'rectilinear' },
+      { id: '50', label: '50 mm', kind: 'prime', focalMm: 50, projection: 'rectilinear' },
+      { id: '70-200@70', label: 'Zoom 70–200 @70 mm', kind: 'zoom', focalMm: 70, projection: 'rectilinear' },
+    ],
+  },
+  {
+    id: 'iph15pro',
+    label: 'iPhone 15 Pro',
+    type: 'phone',
+    aspect: 4/3,
+    zooms: [
+      { id: 'uw',   label: 'Ultra grand-angle (13 mm eq)', kind: 'module', f35: 13 },
+      { id: 'main', label: 'Principal (24 mm eq)',         kind: 'module', f35: 24 },
+      { id: 'tele', label: 'Télé (77 mm eq)',              kind: 'module', f35: 77 },
+    ],
+  },
+];
 
 // --- Terminator LUT (1% steps for 1..49) ------------------------------------
 // User-supplied table for the concave/crescent side (1..49%).
@@ -185,6 +227,32 @@ function formatDateTimeInZone(d: Date, timeZone: string): string {
   }
 }
 
+// FOV helpers
+function fovRect(sensorWmm: number, sensorHmm: number, focalMm: number) {
+  const h = 2 * Math.atan(sensorWmm / (2 * focalMm));
+  const v = 2 * Math.atan(sensorHmm / (2 * focalMm));
+  return { h: toDeg(h), v: toDeg(v) };
+}
+function fovFromF35(f35: number, aspect = 4 / 3) {
+  const diagFF = Math.hypot(36, 24); // 43.266 mm
+  const FOVd = 2 * Math.atan(diagFF / (2 * f35));
+  const alpha = FOVd / 2;
+  const a = aspect;
+  const k = Math.tan(alpha) / Math.sqrt(a * a + 1);
+  const hf = 2 * Math.atan(a * k);
+  const vf = 2 * Math.atan(k);
+  return { h: toDeg(hf), v: toDeg(vf) };
+}
+// Inverse: compute 35mm-equivalent focal from FOV and aspect
+function f35FromFov(hDeg: number, vDeg: number, aspect = 4 / 3) {
+  const vf = toRad(Math.max(1e-6, Math.min(179.999, vDeg)));
+  const k = Math.tan(vf / 2);
+  const alpha = Math.atan(k * Math.sqrt(aspect * aspect + 1));
+  const FOVd = 2 * alpha;
+  const diagFF = Math.hypot(36, 24); // 43.266 mm
+  return diagFF / (2 * Math.tan(FOVd / 2));
+}
+
 // --- Sidereal time & alt/az -> RA/Dec helpers (Option B) ----------------------
 function julianDay(date: Date): number { return date.getTime() / 86400000 + 2440587.5; }
 // Apparent diameter & distance helpers
@@ -243,16 +311,20 @@ function projectToScreen(
   width: number,
   height: number,
   refAltDeg: number = 0,
-  radiusPx: number = 0
+  radiusPx: number = 0,
+  fovXDeg: number = 220,
+  fovYDeg: number = 220,
 ) {
+  const fovHalfX = Math.max(5, fovXDeg / 2);
+  const fovHalfY = Math.max(5, fovYDeg / 2);
   const dx = angularDiff(azDeg, refAzDeg); // [-180, +180]
   // Convert pixel radius to angular margin in both axes
-  const marginXDeg = width > 0 ? (radiusPx / (width / 2)) * FOV_HALF : 0;
-  const marginYDeg = height > 0 ? (radiusPx / (height / 2)) * FOV_HALF : 0;
-  const visibleX = Math.abs(dx) <= (FOV_HALF + marginXDeg);
-  const visibleY = Math.abs(altDeg - refAltDeg) <= (FOV_HALF + marginYDeg);
-  const x = width / 2 + (dx / FOV_HALF) * (width / 2);
-  const y = height / 2 - ((altDeg - refAltDeg) / FOV_HALF) * (height / 2);
+  const marginXDeg = width > 0 ? (radiusPx / (width / 2)) * fovHalfX : 0;
+  const marginYDeg = height > 0 ? (radiusPx / (height / 2)) * fovHalfY : 0;
+  const visibleX = Math.abs(dx) <= (fovHalfX + marginXDeg);
+  const visibleY = Math.abs(altDeg - refAltDeg) <= (fovHalfY + marginYDeg);
+  const x = width / 2 + (dx / fovHalfX) * (width / 2);
+  const y = height / 2 - ((altDeg - refAltDeg) / fovHalfY) * (height / 2);
   return { x, y, visibleX, visibleY };
 }
 
@@ -278,6 +350,27 @@ export default function App() {
   const [when, setWhen] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
   const [whenInput, setWhenInput] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
   const [follow, setFollow] = useState<FollowMode>('LUNE');
+  const [fovXDeg, setFovXDeg] = useState<number>(220);
+  const [fovYDeg, setFovYDeg] = useState<number>(220);
+  const [linkFov, setLinkFov] = useState<boolean>(true);
+  // Appareil/Zoom sélection
+  const CUSTOM_DEVICE_ID = 'custom';
+  const [deviceId, setDeviceId] = useState<string>(() => DEVICES[0].id);
+  const devices = useMemo(() => [{ id: CUSTOM_DEVICE_ID, label: 'Personalisé', type: 'phone', aspect: 4/3, zooms: [] } as Device, ...DEVICES], []);
+  const device = useMemo(() => devices.find(d => d.id === deviceId)!, [devices, deviceId]);
+  const [zoomId, setZoomId] = useState<string>(() => DEVICES[0].zooms[0].id);
+  const zoom = useMemo(() => device.zooms.find(z => z.id === zoomId) ?? device.zooms[0], [device, zoomId]);
+  // Zooms visibles (si custom, afficher une focale théorique calculée depuis les sliders)
+  const zoomOptions = useMemo(() => {
+    if (deviceId === CUSTOM_DEVICE_ID) {
+      const ar = stageSize.w > 0 && stageSize.h > 0 ? (stageSize.w / stageSize.h) : 4 / 3;
+      const f35eq = f35FromFov(fovXDeg, fovYDeg, ar);
+      const label = `Focale théorique (~${Math.round(f35eq)} mm eq 35mm)`;
+      return [{ id: 'custom-theo', label, kind: 'module', f35: f35eq } as ZoomModule];
+    }
+    return device.zooms;
+  }, [deviceId, device, fovXDeg, fovYDeg, stageSize]);
+  useEffect(() => { if (deviceId === CUSTOM_DEVICE_ID) setZoomId('custom-theo'); }, [deviceId]);
   const [showSun, setShowSun] = useState(true);
   const [showMoon, setShowMoon] = useState(true);
   const [showPhase, setShowPhase] = useState(true);
@@ -286,6 +379,8 @@ export default function App() {
   const [showSunCard, setShowSunCard] = useState(false);
   const [showMoonCard, setShowMoonCard] = useState(false);
   const [debugMask, setDebugMask] = useState(false);
+  // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
+  const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
   const [showLocations, setShowLocations] = useState(true);
   // Toggle UI tool/info panels (top and bottom)
@@ -330,6 +425,73 @@ export default function App() {
   // Keep input field in sync with committed valid date
   useEffect(() => { setWhenInput(when); }, [when]);
 
+  // Assurer qu'un zoom valide est sélectionné quand l'appareil change
+  useEffect(() => {
+    if (!device.zooms.find(z => z.id === zoomId)) {
+      const first = device.zooms[0]?.id;
+      if (first) setZoomId(first);
+    }
+  }, [device, zoomId]);
+
+  // Appliquer le FOV de l'appareil/module sélectionné (hors mode Personnalisé)
+  useEffect(() => {
+    if (!device || deviceId === CUSTOM_DEVICE_ID || !zoom) return;
+    let fov: { h: number; v: number } | null = null;
+    if (zoom.focalMm && device.sensorW && device.sensorH) {
+      fov = fovRect(device.sensorW, device.sensorH, zoom.focalMm);
+    } else if (zoom.f35) {
+      fov = fovFromF35(zoom.f35, device.aspect ?? 4 / 3);
+    }
+    if (fov) {
+      const h = clamp(fov.h, 10, 220);
+      const v = clamp(fov.v, 10, 220);
+      setFovXDeg(h);
+      if (linkFov) {
+        // Ratio basé sur le viewport cible sans le référencer directement
+        const ar = showCameraFrame
+          ? (device.sensorW && device.sensorH
+              ? device.sensorW / device.sensorH
+              : (device.aspect ?? (stageSize.w / Math.max(1, stageSize.h))))
+          : (stageSize.w / Math.max(1, stageSize.h));
+        const ratio = 1 / Math.max(1e-9, ar);
+        setFovYDeg(clamp(h * ratio, 10, 220));
+      } else {
+        setFovYDeg(v);
+      }
+    }
+  }, [deviceId, device, zoom, linkFov, showCameraFrame, stageSize]);
+
+  // Aspect de l'appareil sélectionné
+  const deviceAspect = useMemo(() => {
+    if (device.sensorW && device.sensorH) return device.sensorW / device.sensorH;
+    if (device.aspect) return device.aspect;
+    return stageSize.w / stageSize.h;
+  }, [device, stageSize]);
+
+  // Viewport centré au ratio de l'appareil avec marge noire minimale de 20 px
+  const viewport = useMemo(() => {
+    if (!showCameraFrame) return { x: 0, y: 0, w: stageSize.w, h: stageSize.h };
+    const minMargin = 20;
+    const availW = Math.max(0, stageSize.w - 2 * minMargin);
+    const availH = Math.max(0, stageSize.h - 2 * minMargin);
+    if (availW <= 0 || availH <= 0) return { x: 0, y: 0, w: stageSize.w, h: stageSize.h };
+    const ar = Math.max(0.1, deviceAspect || (stageSize.w / stageSize.h));
+    let w = availW;
+    let h = Math.round(w / ar);
+    if (h > availH) { h = availH; w = Math.round(h * ar); }
+    const x = Math.round((stageSize.w - w) / 2);
+    const y = Math.round((stageSize.h - h) / 2);
+    return { x, y, w, h };
+  }, [showCameraFrame, stageSize, deviceAspect]);
+
+  // Maintenir FOVY aligné au ratio du viewport quand ⚭ est actif (init + resize + modif FOVX)
+  useEffect(() => {
+    if (!linkFov) return;
+    const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
+    const targetY = clamp(fovXDeg * ratio, 10, 220);
+    if (Math.abs(targetY - fovYDeg) > 0.1) setFovYDeg(targetY);
+  }, [linkFov, viewport, fovXDeg, fovYDeg]);
+
   // Parsed date
   const date = useMemo(() => new Date(when), [when]);
 
@@ -369,8 +531,14 @@ export default function App() {
   const refAlt = useMemo(() => (follow === 'SOLEIL' ? astro.sun.alt : follow === 'LUNE' ? astro.moon.alt : 0), [follow, astro]);
 
   // Screen positions
-  const sunScreen = useMemo(() => projectToScreen(astro.sun.az, astro.sun.alt, refAz, stageSize.w, stageSize.h, refAlt, MOON_RENDER_DIAMETER / 2), [astro.sun, refAz, refAlt, stageSize]);
-  const moonScreen = useMemo(() => projectToScreen(astro.moon.az, astro.moon.alt, refAz, stageSize.w, stageSize.h, refAlt, MOON_RENDER_DIAMETER / 2), [astro.moon, refAz, refAlt, stageSize]);
+  const sunScreen = useMemo(() => {
+    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, MOON_RENDER_DIAMETER / 2, fovXDeg, fovYDeg);
+    return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
+  }, [astro.sun, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  const moonScreen = useMemo(() => {
+    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, MOON_RENDER_DIAMETER / 2, fovXDeg, fovYDeg);
+    return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
+  }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Orientation & phase
   const rotationToHorizonDegMoon = useMemo(() => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat), [astro.moon, location.lat]);
@@ -411,6 +579,11 @@ export default function App() {
 
   // Chord position (signed, linear near 0.5)
   const chordX = 312 - k * R_SVG; // bright = right side of the line
+  // Valeurs clampées pour les masques à la demi-phase
+  const chordXClamped = Math.max(0, Math.min(624, chordX));
+  const leftWidth = chordXClamped; // zone gauche [0..chord]
+  const rightX = chordXClamped;    // départ zone droite
+  const rightWidth = 624 - chordXClamped; // largeur zone droite
 
   // IDs for SVG defs
   const ids = useMemo(() => {
@@ -427,24 +600,34 @@ export default function App() {
     } as const;
   }, []);
 
+  // Identifiants de masque pré-calculés (évite une expression JSX imbriquée complexe)
+  const darkMaskId = nearHalf ? ids.darkChord : (phaseFraction > 0.5 ? ids.darkGibb : ids.darkCres);
+  const litMaskId = nearHalf ? ids.litChord : (phaseFraction > 0.5 ? ids.litGibb : ids.litCres);
+
+  // URLs pour les attributs SVG (évite les templates imbriqués dans le JSX)
+  const earthFillUrl = useMemo(() => `url(#${ids.earth})`, [ids]);
+  const clipUrl = useMemo(() => `url(#${ids.clip})`, [ids]);
+  const darkMaskUrl = useMemo(() => `url(#${darkMaskId})`, [darkMaskId]);
+  const litMaskUrl = useMemo(() => `url(#${litMaskId})`, [litMaskId]);
+
   // Horizon & helper lines
-  const topLineY = useMemo(() => projectToScreen(refAz, 90, refAz, stageSize.w, stageSize.h, refAlt).y, [refAz, refAlt, stageSize]);
-  const bottomLineY = useMemo(() => projectToScreen(refAz, -90, refAz, stageSize.w, stageSize.h, refAlt).y, [refAz, refAlt, stageSize]);
-  const horizonY = useMemo(() => projectToScreen(refAz, 0, refAz, stageSize.w, stageSize.h, refAlt).y, [refAz, refAlt, stageSize]);
+  const topLineY = useMemo(() => viewport.y + projectToScreen(refAz, 90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  const bottomLineY = useMemo(() => viewport.y + projectToScreen(refAz, -90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  const horizonY = useMemo(() => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Markers on horizon for bodies
   const horizonMarkers = useMemo(() => {
     const items: { x: number; label: string; color: string }[] = [];
     if (showSun) {
-      const { x, visibleX } = projectToScreen(astro.sun.az, 0, refAz, stageSize.w, stageSize.h, refAlt);
-      if (visibleX) items.push({ x, label: "Soleil", color: "#f59e0b" });
+      const { x, visibleX } = projectToScreen(astro.sun.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+      if (visibleX) items.push({ x: viewport.x + x, label: "Soleil", color: "#f59e0b" });
     }
     if (showMoon) {
-      const { x, visibleX } = projectToScreen(astro.moon.az, 0, refAz, stageSize.w, stageSize.h, refAlt);
-      if (visibleX) items.push({ x, label: "Lune", color: "#93c5fd" });
+      const { x, visibleX } = projectToScreen(astro.moon.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+      if (visibleX) items.push({ x: viewport.x + x, label: "Lune", color: "#93c5fd" });
     }
     return items;
-  }, [showSun, showMoon, astro, refAz, refAlt, stageSize]);
+  }, [showSun, showMoon, astro, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Visible cardinal points on horizon (global N/E/S/O)
   const visibleCardinals = useMemo(() => {
@@ -454,11 +637,11 @@ export default function App() {
       { label: 'S' as const, az: 180 },
       { label: 'O' as const, az: 270 },
     ].map(c => {
-      const p = projectToScreen(c.az, 0, refAz, stageSize.w, stageSize.h, refAlt);
-      return { ...c, x: p.x, visible: p.visibleX };
+      const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+      return { ...c, x: viewport.x + p.x, visible: p.visibleX };
     }).filter(c => c.visible);
     return list.sort((a,b) => a.x - b.x);
-  }, [refAz, refAlt, stageSize]);
+  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Animation loop
   useEffect(() => {
@@ -626,10 +809,93 @@ export default function App() {
                     >{opt}</button>
                   ))}
                 </div>
-                <div className="mt-2 text-xs text-white/50">
-                  {follow === 'SOLEIL' && "Le Soleil est centré ; l'horizon se translate verticalement."}
-                  {follow === 'LUNE' && "La Lune est centrée ; horizon horizontal et rotation locale conservée."}
-                  {(['N','E','S','O'] as FollowMode[]).includes(follow) && `Référence fixe : ${follow}`}
+                <div className="mt-3">
+                  <div className="text-xs uppercase tracking-wider text-white/60">Champ de vision</div>
+                  {/* Sélection Appareil + Objectif */}
+                  <div className="mt-1 flex items-center gap-2">
+                    <select
+                      value={deviceId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        setDeviceId(id);
+                        if (id === CUSTOM_DEVICE_ID) {
+                          setZoomId('custom-theo');
+                        } else {
+                          const d = devices.find(x => x.id === id);
+                          if (d?.zooms?.length) setZoomId(d.zooms[0].id);
+                        }
+                      }}
+                      className="min-w-[10rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
+                    >
+                      {devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
+                    </select>
+                    <select
+                      value={zoomId}
+                      disabled={deviceId === CUSTOM_DEVICE_ID}
+                      onChange={(e) => setZoomId(e.target.value)}
+                      className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm disabled:opacity-60"
+                    >
+                      {zoomOptions.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <span className="text-sm">{"\u2195"}</span>
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <input
+                        type="range"
+                        min={10}
+                        max={220}
+                        step={1}
+                        value={fovYDeg}
+                        onChange={(e) => {
+                          const v = clamp(parseFloat(e.target.value || '220'), 10, 220);
+                          if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
+                          setFovYDeg(v);
+                          if (linkFov) {
+                            const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
+                            setFovXDeg(clamp(v / Math.max(1e-9, ratio), 10, 220));
+                          }
+                        }}
+                        className="w-full"
+                      />
+                      <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${Math.round(fovYDeg)}°/${Math.round(viewport.h)}px`}</div>
+                    </div>
+                    <span className="text-sm">{"\u2194"}</span>
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <input
+                        type="range"
+                        min={10}
+                        max={220}
+                        step={1}
+                        value={fovXDeg}
+                        onChange={(e) => {
+                          const v = clamp(parseFloat(e.target.value || '220'), 10, 220);
+                          if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
+                          setFovXDeg(v);
+                          if (linkFov) {
+                            const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
+                            setFovYDeg(clamp(v * ratio, 10, 220));
+                          }
+                        }}
+                        className="w-full"
+                      />
+                      <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${Math.round(fovXDeg)}°/${Math.round(viewport.w)}px`}</div>
+                    </div>
+                     <label className="inline-flex items-center gap-2 text-xs text-white/70 ml-2 flex-shrink-0">
+                        <input
+                          type="checkbox"
+                          checked={linkFov}
+                          onChange={(e) => {
+                            setLinkFov(e.target.checked);
+                            if (e.target.checked) {
+                              const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
+                              setFovYDeg(clamp(fovXDeg * ratio, 10, 220));
+                            }
+                          }}
+                        />
+                        {"\u26AD"}
+                      </label>
+                   </div>
                 </div>
               </div>
 
@@ -743,6 +1009,7 @@ export default function App() {
                   <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span></label>
                   <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal Lune</span></label>
                   <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug masque</span></label>
+                  {/* Cadre de l'appareil photo automatique (activé si appareil ≠ Personnalisé) */}
                 </div>
               </div>
             </div>
@@ -760,12 +1027,31 @@ export default function App() {
               </div>
             )}
             {/* Horizon line */}
-            <div className="absolute left-0 right-0" style={{ top: horizonY, height: 0, borderTop: "1px solid rgba(255,255,255,0.35)", zIndex: Z.horizon }} />
+            <div className="absolute" style={{ left: viewport.x, width: viewport.w, top: horizonY, height: 0, borderTop: "1px solid rgba(255,255,255,0.35)", zIndex: Z.horizon }} />
             {/* +90 / -90 lines */}
-            <div className="absolute left-0 right-0" style={{ top: topLineY, height: 0, borderTop: "1px dashed rgba(255,255,255,0.3)", zIndex: Z.horizon }} />
+            <div className="absolute" style={{ left: viewport.x, width: viewport.w, top: topLineY, height: 0, borderTop: "1px dashed rgba(255,255,255,0.3)", zIndex: Z.horizon }} />
             <div className="absolute text-[10px] text-white/70 bg-black/60 px-1.5 py-0.5 rounded border border-white/10" style={{ left: 8, top: topLineY - 12, zIndex: Z.horizon }}>haut</div>
-            <div className="absolute left-0 right-0" style={{ top: bottomLineY, height: 0, borderTop: "1px dashed rgba(255,255,255,0.3)", zIndex: Z.horizon }} />
+            <div className="absolute" style={{ left: viewport.x, width: viewport.w, top: bottomLineY, height: 0, borderTop: "1px dashed rgba(255,255,255,0.3)", zIndex: Z.horizon }} />
             <div className="absolute text-[10px] text-white/70 bg-black/60 px-1.5 py-0.5 rounded border border-white/10" style={{ left: 8, top: bottomLineY - 12, zIndex: Z.horizon }}>bas</div>
+
+            {/* Masque noir opaque autour du viewport (au-dessus de la scène, sous l'UI) */}
+            {showCameraFrame && (
+              <>
+                {/* Haut */}
+                <div className="absolute pointer-events-none" style={{ left: 0, top: 0, width: stageSize.w, height: viewport.y, background: '#000', zIndex: Z.ui - 2 }} />
+                {/* Bas */}
+                <div className="absolute pointer-events-none" style={{ left: 0, top: viewport.y + viewport.h, width: stageSize.w, height: Math.max(0, stageSize.h - (viewport.y + viewport.h)), background: '#000', zIndex: Z.ui - 2 }} />
+                {/* Gauche */}
+                <div className="absolute pointer-events-none" style={{ left: 0, top: viewport.y, width: viewport.x, height: viewport.h, background: '#000', zIndex: Z.ui - 2 }} />
+                {/* Droite */}
+                <div className="absolute pointer-events-none" style={{ left: viewport.x + viewport.w, top: viewport.y, width: Math.max(0, stageSize.w - (viewport.x + viewport.w)), height: viewport.h, background: '#000', zIndex: Z.ui - 2 }} />
+              </>
+            )}
+
+            {/* Cadre appareil: bordure rouge pointillée */}
+            {showCameraFrame && (
+              <div className="absolute pointer-events-none" style={{ left: viewport.x, top: viewport.y, width: viewport.w, height: viewport.h, border: '1px dashed rgba(248,113,113,0.95)', zIndex: Z.ui - 1 }} />
+            )}
 
             {/* Global cardinal points on the horizon */}
             {visibleCardinals.map((c, i) => (
@@ -810,7 +1096,10 @@ export default function App() {
               <div style={{ position: "absolute", left: moonScreen.x, top: moonScreen.y, transform: `translate(-50%, -50%) rotate(${rotationToHorizonDegMoon}deg)`, zIndex: Z.moon, width: MOON_RENDER_DIAMETER, height: MOON_RENDER_DIAMETER }}>
                 <svg width={MOON_RENDER_DIAMETER} height={MOON_RENDER_DIAMETER} viewBox="0 0 624 624" style={{ position: "absolute", inset: 0, margin: "auto", display: "block" }}>
                   <defs>
-                    <clipPath id={ids.clip}><circle cx="312" cy="312" r="312" /></clipPath>
+                    <clipPath id={ids.clip}>
+                      <circle cx="312" cy="312" r="312" />
+                    </clipPath>
+
                     {/* Lit masks */}
                     <mask id={ids.litCres} maskUnits="userSpaceOnUse">
                       <g transform={`rotate(${maskAngleDeg},312,312)`}>
@@ -818,17 +1107,20 @@ export default function App() {
                         <circle cx={cCx} cy="312" r={rSVG} fill="black" />
                       </g>
                     </mask>
+
                     <mask id={ids.litGibb} maskUnits="userSpaceOnUse">
                       <g transform={`rotate(${maskAngleDeg},312,312)`}>
                         <rect x="0" y="0" width="624" height="624" fill="black" />
                         <circle cx={cGx} cy="312" r={rSVG} fill="white" />
                       </g>
                     </mask>
+
                     <mask id={ids.litChord} maskUnits="userSpaceOnUse">
                       <g transform={`rotate(${maskAngleDeg},312,312)`}>
-                        <rect x={Math.max(0, Math.min(624, chordX))} y="0" width={Math.max(0, Math.min(624, 624 - chordX))} height="624" fill="white" />
+                        <rect x={rightX} y="0" width={rightWidth} height="624" fill="white" />
                       </g>
                     </mask>
+
                     {/* Dark masks for earthshine */}
                     <mask id={ids.darkCres} maskUnits="userSpaceOnUse">
                       <g transform={`rotate(${maskAngleDeg},312,312)`}>
@@ -836,17 +1128,20 @@ export default function App() {
                         <circle cx={cCx} cy="312" r={rSVG} fill="white" />
                       </g>
                     </mask>
+
                     <mask id={ids.darkGibb} maskUnits="userSpaceOnUse">
                       <g transform={`rotate(${maskAngleDeg},312,312)`}>
                         <circle cx="312" cy="312" r="312" fill="white" />
                         <circle cx={cGx} cy="312" r={rSVG} fill="black" />
                       </g>
                     </mask>
+
                     <mask id={ids.darkChord} maskUnits="userSpaceOnUse">
                       <g transform={`rotate(${maskAngleDeg},312,312)`}>
-                        <rect x="0" y="0" width={Math.max(0, Math.min(624, chordX))} height="624" fill="white" />
+                        <rect x="0" y="0" width={leftWidth} height="624" fill="white" />
                       </g>
                     </mask>
+
                     {/* Earthshine gradient (a bit brighter center) */}
                     <radialGradient id={ids.earth} cx="50%" cy="50%" r="60%">
                       <stop offset="0%" stopColor="white" stopOpacity="0.12" />
@@ -859,27 +1154,21 @@ export default function App() {
 
                   {/* Optional earthshine */}
                   {showPhase && earthshine && (
-                    <circle
-                      cx="312" cy="312" r="312"
-                      fill={`url(#${ids.earth})`}
-                      clipPath={`url(#${ids.clip})`}
-                      mask={`url(#${ids[ nearHalf ? 'darkChord' : (phaseFraction > 0.5 ? 'darkGibb' : 'darkCres') ]})`}
-                    />
+                    <circle cx="312" cy="312" r="312" fill={earthFillUrl} clipPath={clipUrl} mask={darkMaskUrl} />
                   )}
 
-                  {/* NASA image masked by lit region */}
-                  {showPhase ? (
-                    <image
-                      href={NASA_IMG}
-                      x={-53} y={-53} width={730} height={730}
-                      clipPath={`url(#${ids.clip})`}
-                      mask={`url(#${ids[ nearHalf ? 'litChord' : (phaseFraction > 0.5 ? 'litGibb' : 'litCres') ]})`}
-                      preserveAspectRatio="xMidYMid slice"
-                      style={{ filter: "brightness(0.9)" }}
-                    />
-                  ) : (
-                    <image href={NASA_IMG} x={-53} y={-53} width={730} height={730} clipPath={`url(#${ids.clip})`} preserveAspectRatio="xMidYMid slice" style={{ filter: "brightness(0.9)" }} />
-                  )}
+                  {/* NASA image with conditional mask */}
+                  <image
+                    href={NASA_IMG}
+                    x={-53}
+                    y={-53}
+                    width={730}
+                    height={730}
+                    clipPath={clipUrl}
+                    mask={showPhase ? litMaskUrl : undefined}
+                    preserveAspectRatio="xMidYMid slice"
+                    style={{ filter: "brightness(0.9)" }}
+                  />
                 </svg>
 
                 {debugMask && (
@@ -916,7 +1205,7 @@ export default function App() {
                         </g>
                       )}
                     </g>
-                  </svg>
+                                   </svg>
                 )}
 
                 {showMoonCard && (
