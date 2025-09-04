@@ -1,3 +1,39 @@
+// Génération du tableau TERMINATOR_LUT_CRES par calcul numérique
+// Chaque entrée correspond à une fraction f (%) de l'aire du petit disque,
+// et donne rR = X (grand rayon) et dR = Y (distance des centres).
+
+/*
+function E_from_Y(Y: number): number {
+    return Math.PI / 2 - (1 + Y * Y) * (Math.PI / 2 - Math.atan(Y)) + Y;
+}
+function e_from_Y(Y: number): number { return E_from_Y(Y) / Math.PI; }
+function X_from_Y(Y: number): number { return Math.sqrt(1 + Y * Y); }
+
+
+function solveY_from_e(e_target: number): number {
+    let lo = 0;
+    let hi = 1;
+    while (e_from_Y(hi) < e_target - 1e-14) {
+        hi *= 2;
+        if (hi > 1e6) break;
+    }
+    for (let i = 0; i < 100; i++) {
+        const mid = 0.5 * (lo + hi);
+        const val = e_from_Y(mid);
+        if (val < e_target) lo = mid; else hi = mid;
+    }
+    return 0.5 * (lo + hi);
+}
+export const TERMINATOR_LUT_CRES: Array<{ f: number; rR: number; dR: number }> = [];
+    for (let f = 1; f <= 49; f++) {
+        const e_target = f / 100;
+        const Y = solveY_from_e(e_target);
+        const X = X_from_Y(Y);
+        TERMINATOR_LUT_CRES.push({ f, rR: X, dR: Y });
+    }
+*/
+
+// Précalculé avec le code commenté ci-dessus des raisons de performance
 export const TERMINATOR_LUT_CRES: Array<{ f: number; rR: number; dR: number }> = [
   { f: 1, rR: 1.0001264814647446, dR: 0.015905311284288598 },
   { f: 2, rR: 1.0005189337402591, dR: 0.032220129930605704 },
