@@ -2,6 +2,8 @@ import React from "react";
 import type { FollowMode } from "../../types";
 import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
+import { degToSlider, sliderToDeg, FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
+import { zonedLocalToUtcMs } from "../../utils/tz";
 
 export type Viewport = { x: number; y: number; w: number; h: number };
 
@@ -50,6 +52,9 @@ type Props = {
   setShowMoonCard: (v: boolean) => void;
   debugMask: boolean;
   setDebugMask: (v: boolean) => void;
+  timeZone: string;
+  enlargeObjects: boolean;
+  setEnlargeObjects: (v: boolean) => void;
 };
 
 export default function TopBar(props: Props) {
@@ -61,7 +66,36 @@ export default function TopBar(props: Props) {
     when, whenInput, setWhenInput, setWhen, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
     showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase, earthshine, setEarthshine,
     showSunCard, setShowSunCard, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
+    timeZone,
+    enlargeObjects, setEnlargeObjects,
   } = props;
+
+  const SLIDER_STEPS = 1000;
+  const [sx, setSx] = React.useState(() => degToSlider(fovXDeg, SLIDER_STEPS));
+  const [sy, setSy] = React.useState(() => degToSlider(fovYDeg, SLIDER_STEPS));
+  React.useEffect(() => { setSx(degToSlider(fovXDeg, SLIDER_STEPS)); }, [fovXDeg]);
+  React.useEffect(() => { setSy(degToSlider(fovYDeg, SLIDER_STEPS)); }, [fovYDeg]);
+
+  const updateXFromSlider = (val: number) => {
+    setSx(val);
+    const deg = clamp(sliderToDeg(val, SLIDER_STEPS), FOV_DEG_MIN, FOV_DEG_MAX);
+    if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
+    setFovXDeg(deg);
+    if (linkFov) {
+      const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
+      setFovYDeg(clamp(deg * ratio, FOV_DEG_MIN, FOV_DEG_MAX));
+    }
+  };
+  const updateYFromSlider = (val: number) => {
+    setSy(val);
+    const deg = clamp(sliderToDeg(val, SLIDER_STEPS), FOV_DEG_MIN, FOV_DEG_MAX);
+    if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
+    setFovYDeg(deg);
+    if (linkFov) {
+      const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
+      setFovXDeg(clamp(deg / Math.max(1e-9, ratio), FOV_DEG_MIN, FOV_DEG_MAX));
+    }
+  };
 
   return (
     <div className="mx-2 sm:mx-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
@@ -108,45 +142,13 @@ export default function TopBar(props: Props) {
           <div className="mt-2 flex items-center gap-2">
             <span className="text-sm">{"\u2195"}</span>
             <div className="flex flex-col items-center flex-1 min-w-0">
-              <input
-                type="range"
-                min={10}
-                max={220}
-                step={1}
-                value={fovYDeg}
-                onChange={(e) => {
-                  const v = clamp(parseFloat(e.target.value || '220'), 10, 220);
-                  if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
-                  setFovYDeg(v);
-                  if (linkFov) {
-                    const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
-                    setFovXDeg(clamp(v / Math.max(1e-9, ratio), 10, 220));
-                  }
-                }}
-                className="w-full"
-              />
-              <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${Math.round(fovYDeg)}°/${Math.round(viewport.h)}px`}</div>
+              <input type="range" min={0} max={SLIDER_STEPS} step={1} value={sy} onChange={(e) => updateYFromSlider(Number(e.target.value))} className="w-full" />
+              <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${(fovYDeg >= 1 ? fovYDeg.toFixed(1) : fovYDeg.toFixed(2))}°/${Math.round(viewport.h)}px`}</div>
             </div>
             <span className="text-sm">{"\u2194"}</span>
             <div className="flex flex-col items-center flex-1 min-w-0">
-              <input
-                type="range"
-                min={10}
-                max={220}
-                step={1}
-                value={fovXDeg}
-                onChange={(e) => {
-                  const v = clamp(parseFloat(e.target.value || '220'), 10, 220);
-                  if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
-                  setFovXDeg(v);
-                  if (linkFov) {
-                    const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
-                    setFovYDeg(clamp(v * ratio, 10, 220));
-                  }
-                }}
-                className="w-full"
-              />
-              <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${Math.round(fovXDeg)}°/${Math.round(viewport.w)}px`}</div>
+              <input type="range" min={0} max={SLIDER_STEPS} step={1} value={sx} onChange={(e) => updateXFromSlider(Number(e.target.value))} className="w-full" />
+              <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${(fovXDeg >= 1 ? fovXDeg.toFixed(1) : fovXDeg.toFixed(2))}°/${Math.round(viewport.w)}px`}</div>
             </div>
              <label className="inline-flex items-center gap-2 text-xs text-white/70 ml-2 flex-shrink-0">
                 <input
@@ -156,7 +158,7 @@ export default function TopBar(props: Props) {
                     setLinkFov(e.target.checked);
                     if (e.target.checked) {
                       const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
-                      setFovYDeg(clamp(fovXDeg * ratio, 10, 220));
+                      setFovYDeg(clamp(fovXDeg * ratio, FOV_DEG_MIN, FOV_DEG_MAX));
                     }
                   }}
                 />
@@ -178,7 +180,7 @@ export default function TopBar(props: Props) {
                 value={whenInput}
                 onChange={(e) => { setIsAnimating(false); setWhenInput(e.target.value); }}
                 onBlur={() => {
-                  const ms = Date.parse(whenInput);
+                  const ms = zonedLocalToUtcMs(whenInput, timeZone);
                   if (Number.isFinite(ms)) {
                     const d = new Date(ms);
                     const pad = (n: number) => String(n).padStart(2, "0");
@@ -199,13 +201,16 @@ export default function TopBar(props: Props) {
               />
               <button
                 onClick={() => {
-                  const nowStr = (() => { const d = new Date(); const pad = (n: number) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`; })();
+                  const ms = Date.now();
+                  const d = new Date(ms);
+                  const pad = (n: number) => String(n).padStart(2, "0");
+                  const nowStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
                   setWhen(nowStr);
                   setWhenInput(nowStr);
-                  onCommitWhenMs(Date.parse(nowStr));
-                  setSpeedMinPerSec(1/60);
-                  setIsAnimating(true);
-                }}
+                  onCommitWhenMs(ms);
+                   setSpeedMinPerSec(1/60);
+                   setIsAnimating(true);
+                 }}
                 className="px-3 py-2 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
               >
                 Maintenant
@@ -244,13 +249,14 @@ export default function TopBar(props: Props) {
                   className="absolute left-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
                   title="-1 h"
                   onClick={() => {
-                    const next = Date.parse(when) - 3600000;
-                    const d = new Date(next); const pad = (n: number) => String(n).padStart(2, "0");
-                    const nextStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                    setWhen(nextStr);
-                    setWhenInput(nextStr);
-                    onCommitWhenMs(next);
-                   }}
+                    const msLocal = zonedLocalToUtcMs(when, timeZone);
+                    const next = msLocal - 3600000;
+                     const d = new Date(next); const pad = (n: number) => String(n).padStart(2, "0");
+                     const nextStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${d.getHours().toString().padStart(2,"0")}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                     setWhen(nextStr);
+                     setWhenInput(nextStr);
+                     onCommitWhenMs(next);
+                    }}
                 >
                   {"\u21B6"}
                 </div>
@@ -258,13 +264,14 @@ export default function TopBar(props: Props) {
                   className="absolute right-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
                   title="+1 h"
                   onClick={() => {
-                    const next = Date.parse(when) + 3600000;
-                    const d = new Date(next); const pad = (n: number) => String(n).padStart(2, "0");
-                    const nextStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                    setWhen(nextStr);
-                    setWhenInput(nextStr);
-                    onCommitWhenMs(next);
-                   }}
+                    const msLocal = zonedLocalToUtcMs(when, timeZone);
+                    const next = msLocal + 3600000;
+                     const d = new Date(next); const pad = (n: number) => String(n).padStart(2, "0");
+                     const nextStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${d.getHours().toString().padStart(2,"0")}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+                     setWhen(nextStr);
+                     setWhenInput(nextStr);
+                     onCommitWhenMs(next);
+                    }}
                 >
                   {"\u21B7"}
                 </div>
@@ -286,6 +293,8 @@ export default function TopBar(props: Props) {
           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span></label>
           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal Lune</span></label>
           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug masque</span></label>
+          <span className="w-px h-5 bg-white/10 mx-1" />
+          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span></label>
         </div>
       </div>
     </div>

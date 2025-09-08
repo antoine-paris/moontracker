@@ -25,4 +25,14 @@ export const DEVICES: Device[] = [
       { id: 'tele', label: 'Télé (77 mm eq)',              kind: 'module', f35: 77 },
     ],
   },
+  {
+    id: 'oeil',
+    label: 'Oeuil',
+    type: 'phone',
+    aspect: 3/2, // champ binoculaire humain ~200°×130° ⇒ ~3:2
+    zooms: [
+      { id: 'human', label: 'Humain (1×)', kind: 'module', f35: 50 },    // 50mm eq ≈ vision « normale »
+      { id: 'eagle', label: 'Aigle (8×)',  kind: 'module', f35: 400 },   // ~8× acuité ⇒ 8× la focale de référence
+    ],
+  },
 ];

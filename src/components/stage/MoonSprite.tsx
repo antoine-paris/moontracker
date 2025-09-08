@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { Z, MOON_RENDER_DIAMETER, NASA_IMG } from "../../render/constants";
+import { Z, NASA_IMG } from "../../render/constants";
 import { sampleTerminatorLUT } from "../../astro/lut";
 
 type Props = {
@@ -13,10 +13,12 @@ type Props = {
   phaseFraction: number;
   brightLimbAngleDeg: number;
   maskAngleDeg: number;
+  wPx: number;
+  hPx: number;
 };
 
 export default function MoonSprite(props: Props) {
-  const { x, y, visibleX, visibleY, rotationDeg, showPhase, earthshine, debugMask, showCard, phaseFraction, brightLimbAngleDeg, maskAngleDeg } = props;
+  const { x, y, visibleX, visibleY, rotationDeg, showPhase, earthshine, debugMask, showCard, phaseFraction, brightLimbAngleDeg, maskAngleDeg, wPx, hPx } = props;
 
   const R_SVG = 312;
   const k = 2 * phaseFraction - 1;
@@ -46,8 +48,8 @@ export default function MoonSprite(props: Props) {
   if (!visibleX || !visibleY) return null;
 
   return (
-    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`, zIndex: Z.moon, width: MOON_RENDER_DIAMETER, height: MOON_RENDER_DIAMETER }}>
-      <svg width={MOON_RENDER_DIAMETER} height={MOON_RENDER_DIAMETER} viewBox="0 0 624 624" style={{ position: "absolute", inset: 0, margin: "auto", display: "block" }}>
+    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`, zIndex: Z.moon, width: wPx, height: hPx }}>
+      <svg width={wPx} height={hPx} viewBox="0 0 624 624" style={{ position: "absolute", inset: 0, margin: "auto", display: "block" }}>
         <defs>
           <clipPath id={ids.clip}>
             <circle cx="312" cy="312" r="312" />
@@ -108,7 +110,7 @@ export default function MoonSprite(props: Props) {
       </svg>
 
       {debugMask && (
-        <svg width={MOON_RENDER_DIAMETER} height={MOON_RENDER_DIAMETER} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <svg width={wPx} height={hPx} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <circle cx="312" cy="312" r="312" fill="none" stroke="#ffffff66" strokeWidth="1" strokeDasharray="3,4" />
           <g opacity={0.9}>
             <circle cx="312" cy="312" r="5" fill="none" stroke="#ffffff" strokeWidth="1" />
@@ -136,7 +138,7 @@ export default function MoonSprite(props: Props) {
       )}
 
       {showCard && (
-        <svg width={MOON_RENDER_DIAMETER} height={MOON_RENDER_DIAMETER} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <svg width={wPx} height={hPx} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <g>
             <line x1="312" y1="36" x2="312" y2="86" stroke="#93c5fd" strokeOpacity="0.9" strokeWidth="2" />
             <text x="312" y="60" textAnchor="middle" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">N</text>

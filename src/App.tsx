@@ -18,10 +18,10 @@ import { Z, MOON_RENDER_DIAMETER, ROSE_16 } from "./render/constants";
 
 // Utilitaires & formatage
 import { toDeg, toRad, norm360, angularDiff, clamp } from "./utils/math";
-import { toDatetimeLocalInputValue, formatTimeInZone, formatDateTimeInZone } from "./utils/format";
+import { toDatetimeLocalInputValue, formatTimeInZone, formatDateTimeInZone, formatDeg } from "./utils/format";
 
 // Optique / FOV
-import { fovRect, fovFromF35, f35FromFov } from "./optics/fov";
+import { fovRect, fovFromF35, f35FromFov, FOV_DEG_MIN, FOV_DEG_MAX } from "./optics/fov";
 
 // Astro
 import { moonApparentDiameterDeg } from "./astro/moon";
@@ -29,6 +29,7 @@ import { sunDistanceAU, sunApparentDiameterDeg } from "./astro/sun";
 import { lstDeg } from "./astro/time";
 import { altazToRaDec, parallacticAngleDeg, azFromSunCalc } from "./astro/coords";
 import { sampleTerminatorLUT } from "./astro/lut";
+import { sepDeg, eclipseKind } from "./astro/eclipse";
 
 // Projection
 import { projectToScreen } from "./render/projection";
@@ -48,6 +49,7 @@ export default function App() {
   // Controls
   const [location, setLocation] = useState<LocationOption>(LOCATIONS[2]); // default Paris
   const [when, setWhen] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
+  const [whenMs, setWhenMs] = useState<number>(() => Date.parse(when));
   const [whenInput, setWhenInput] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
   const [follow, setFollow] = useState<FollowMode>('LUNE');
   const [fovXDeg, setFovXDeg] = useState<number>(220);
@@ -78,6 +80,7 @@ export default function App() {
   const [showSunCard, setShowSunCard] = useState(false);
   const [showMoonCard, setShowMoonCard] = useState(false);
   const [debugMask, setDebugMask] = useState(false);
+  const [enlargeObjects, setEnlargeObjects] = useState(true);
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -95,7 +98,7 @@ export default function App() {
   const [speedMinPerSec, setSpeedMinPerSec] = useState<number>(1/60); // Temps réel par défaut (1 s/s)
   const rafIdRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
-  const whenMsRef = useRef<number>(Date.parse(when));
+  const whenMsRef = useRef<number>(whenMs);
   // handleWhenChange supprimé: la saisie est gérée via whenInput + validation au blur
 
   // Resize (use ResizeObserver so stage fills space during sidebar animation)
@@ -119,10 +122,13 @@ export default function App() {
     };
   }, []);
 
-  // Keep ref in sync when paused
-  useEffect(() => { if (!isAnimating) { whenMsRef.current = Date.parse(when); } }, [when, isAnimating]);
-  // Keep input field in sync with committed valid date
-  useEffect(() => { setWhenInput(when); }, [when]);
+  // Synchroniser la ref hors animation et garder l’UI en phase avec whenMs
+  useEffect(() => { if (!isAnimating) { whenMsRef.current = whenMs; } }, [whenMs, isAnimating]);
+  useEffect(() => {
+    const s = toDatetimeLocalInputValue(new Date(whenMs));
+    setWhen(s);
+    setWhenInput(s);
+  }, [whenMs]);
 
   // Assurer qu'un zoom valide est sélectionné quand l'appareil change
   useEffect(() => {
@@ -142,8 +148,8 @@ export default function App() {
       fov = fovFromF35(zoom.f35, device.aspect ?? 4 / 3);
     }
     if (fov) {
-      const h = clamp(fov.h, 10, 220);
-      const v = clamp(fov.v, 10, 220);
+      const h = clamp(fov.h, FOV_DEG_MIN, FOV_DEG_MAX);
+      const v = clamp(fov.v, FOV_DEG_MIN, FOV_DEG_MAX);
       setFovXDeg(h);
       if (linkFov) {
         // Ratio basé sur le viewport cible sans le référencer directement
@@ -153,7 +159,7 @@ export default function App() {
               : (device.aspect ?? (stageSize.w / Math.max(1, stageSize.h))))
           : (stageSize.w / Math.max(1, stageSize.h));
         const ratio = 1 / Math.max(1e-9, ar);
-        setFovYDeg(clamp(h * ratio, 10, 220));
+        setFovYDeg(clamp(h * ratio, FOV_DEG_MIN, FOV_DEG_MAX));
       } else {
         setFovYDeg(v);
       }
@@ -187,12 +193,12 @@ export default function App() {
   useEffect(() => {
     if (!linkFov) return;
     const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
-    const targetY = clamp(fovXDeg * ratio, 10, 220);
+    const targetY = clamp(fovXDeg * ratio, FOV_DEG_MIN, FOV_DEG_MAX);
     if (Math.abs(targetY - fovYDeg) > 0.1) setFovYDeg(targetY);
   }, [linkFov, viewport, fovXDeg, fovYDeg]);
 
   // Parsed date
-  const date = useMemo(() => new Date(when), [when]);
+  const date = useMemo(() => new Date(whenMs), [whenMs]);
 
   // Astronomical positions
   const astro = useMemo(() => {
@@ -230,14 +236,31 @@ export default function App() {
   const refAlt = useMemo(() => (follow === 'SOLEIL' ? astro.sun.alt : follow === 'LUNE' ? astro.moon.alt : 0), [follow, astro]);
 
   // Screen positions
+  const bodySizes = useMemo(() => {
+    // Obtenir l’échelle locale px/deg au centre (rayon nul, pour ne pas influencer la visibilite)
+    const centerSun = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const centerMoon = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const pxPerDegXSun = centerSun.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
+    const pxPerDegYSun = centerSun.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
+    const pxPerDegXMoon = centerMoon.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
+    const pxPerDegYMoon = centerMoon.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
+    const sunW = enlargeObjects ? MOON_RENDER_DIAMETER : astro.sun.appDiamDeg * pxPerDegXSun;
+    const sunH = enlargeObjects ? MOON_RENDER_DIAMETER : astro.sun.appDiamDeg * pxPerDegYSun;
+    const moonW = enlargeObjects ? MOON_RENDER_DIAMETER : astro.moon.appDiamDeg * pxPerDegXMoon;
+    const moonH = enlargeObjects ? MOON_RENDER_DIAMETER : astro.moon.appDiamDeg * pxPerDegYMoon;
+    const sunR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(sunW, sunH)) / 2;
+    const moonR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(moonW, moonH)) / 2;
+    return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
+  }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAz, refAlt, enlargeObjects]);
+
   const sunScreen = useMemo(() => {
-    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, MOON_RENDER_DIAMETER / 2, fovXDeg, fovYDeg);
+    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.sun.r, fovXDeg, fovYDeg);
     return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
-  }, [astro.sun, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  }, [astro.sun, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.sun]);
   const moonScreen = useMemo(() => {
-    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, MOON_RENDER_DIAMETER / 2, fovXDeg, fovYDeg);
+    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.moon.r, fovXDeg, fovYDeg);
     return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
-  }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.moon]);
 
   // Orientation & phase
   const rotationToHorizonDegMoon = useMemo(() => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat), [astro.moon, location.lat]);
@@ -264,6 +287,15 @@ export default function App() {
   }, [maskAngleBase, brightLimbAngleDeg]);
 
   const phaseFraction = astro.illum.fraction ?? 0; // [0..1]
+
+  // Diagnostic d’éclipse locale
+  const eclipse = useMemo(() => {
+    const sep = sepDeg(astro.sun.alt, astro.sun.az, astro.moon.alt, astro.moon.az);
+    const rS = (astro.sun.appDiamDeg ?? 0) / 2;
+    const rM = (astro.moon.appDiamDeg ?? 0) / 2;
+    const kind = eclipseKind(sep, rS, rM);
+    return { sep, rS, rM, kind } as const;
+  }, [astro.sun, astro.moon]);
 
   // Phase/mask geometry désormais gérée par MoonSprite
 
@@ -306,20 +338,20 @@ export default function App() {
       if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null; lastTsRef.current = null; return;
     }
-    whenMsRef.current = Date.parse(when); lastTsRef.current = null;
+    whenMsRef.current = whenMs; lastTsRef.current = null;
     const tick = (ts: number) => {
       if (lastTsRef.current == null) { lastTsRef.current = ts; }
       else {
         const dtSec = (ts - lastTsRef.current) / 1000; lastTsRef.current = ts;
         const rate = clamp(speedMinPerSec, -360, 360);
         whenMsRef.current += dtSec * rate * 60 * 1000;
-        setWhen(toDatetimeLocalInputValue(new Date(whenMsRef.current)));
+        setWhenMs(whenMsRef.current);
       }
       rafIdRef.current = requestAnimationFrame(tick);
     };
     rafIdRef.current = requestAnimationFrame(tick);
     return () => { if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; lastTsRef.current = null; };
-  }, [isAnimating, speedMinPerSec, when]);
+  }, [isAnimating, speedMinPerSec, whenMs]);
 
   // --- Dev-time test cases ---------------------------------------------------
   useEffect(() => {
@@ -475,7 +507,7 @@ export default function App() {
               whenInput={whenInput}
               setWhenInput={setWhenInput}
               setWhen={setWhen}
-              onCommitWhenMs={(ms) => { whenMsRef.current = ms; }}
+              onCommitWhenMs={(ms) => { whenMsRef.current = ms; setWhenMs(ms); }}
               setIsAnimating={setIsAnimating}
               isAnimating={isAnimating}
               speedMinPerSec={speedMinPerSec}
@@ -494,7 +526,10 @@ export default function App() {
               setShowMoonCard={setShowMoonCard}
               debugMask={debugMask}
               setDebugMask={setDebugMask}
-            />
+              timeZone={location.timeZone}
+              enlargeObjects={enlargeObjects}
+              setEnlargeObjects={setEnlargeObjects}
+             />
           </div>
 
           {/* Stage canvas */}
@@ -508,6 +543,55 @@ export default function App() {
                 {`${cityName}, ${formatDateTimeInZone(date, location.timeZone)}`}
               </div>
             )}
+            {/* Overlays additionnels en mode interface cachée */}
+            {!showPanels && (
+              <>
+                {/* Bas centré: Azimut observateur (refAz) */}
+                <div
+                  className="absolute left-1/2 bottom-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+                  style={{ zIndex: Z.ui }}
+                >
+                  {`Azimut : ${Number(refAz).toFixed(1)}° - ${compass16(refAz)}`}
+                </div>
+
+                {/* Bas droite: Lune ou sous l'horizon (marge demi-diamètre) */}
+                <div
+                  className="absolute right-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+                  style={{ zIndex: Z.ui }}
+                >
+                  {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
+                    ? "Lune sous l'horizon"
+                    : `Lune Alt. ${formatDeg(astro.moon.alt, 0)} Az ${formatDeg(astro.moon.az, 1)} (${compass16(astro.moon.az)})`}
+                </div>
+
+                {/* Bas gauche: Soleil ou sous l'horizon (marge demi-diamètre) */}
+                <div
+                  className="absolute left-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+                  style={{ zIndex: Z.ui }}
+                >
+                  {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
+                    ? "Soleil sous l'horizon"
+                    : `Soleil Alt. ${formatDeg(astro.sun.alt, 0)} Az ${formatDeg(astro.sun.az, 1)} (${compass16(astro.sun.az)})`}
+                </div>
+
+                {/* Haut gauche: Appareil et zoom */}
+                <div
+                  className="absolute top-2 left-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+                  style={{ zIndex: Z.ui }}
+                >
+                  {`${device.label} — ${(deviceId === CUSTOM_DEVICE_ID ? (zoomOptions[0]?.label ?? '') : (zoom?.label ?? ''))}`}
+                </div>
+
+                {/* Droite centrée: Altitude observateur (refAlt) */}
+                <div
+                  className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+                  style={{ zIndex: Z.ui }}
+                >
+                  {`Altitude : ${formatDeg(refAlt, 0)}`}
+                </div>
+              </>
+            )}
+
             <HorizonOverlay viewport={viewport} horizonY={horizonY} topLineY={topLineY} bottomLineY={bottomLineY} />
 
             <StageCanvas viewport={viewport} stageSize={stageSize} showCameraFrame={showCameraFrame} />
@@ -521,7 +605,7 @@ export default function App() {
             ))}
 
             {showSun && (
-              <SunSprite x={sunScreen.x} y={sunScreen.y} visibleX={sunScreen.visibleX} visibleY={sunScreen.visibleY} rotationDeg={rotationToHorizonDegSun} showCard={showSunCard} />
+              <SunSprite x={sunScreen.x} y={sunScreen.y} visibleX={sunScreen.visibleX} visibleY={sunScreen.visibleY} rotationDeg={rotationToHorizonDegSun} showCard={showSunCard} wPx={bodySizes.sun.w} hPx={bodySizes.sun.h} />
             )}
 
             {showMoon && (
@@ -536,6 +620,8 @@ export default function App() {
                 phaseFraction={phaseFraction}
                 brightLimbAngleDeg={brightLimbAngleDeg}
                 maskAngleDeg={maskAngleDeg}
+                wPx={bodySizes.moon.w}
+                hPx={bodySizes.moon.h}
               />
             )}
           </div>
@@ -551,6 +637,12 @@ export default function App() {
                phaseFraction={phaseFraction}
                brightLimbAngleDeg={brightLimbAngleDeg}
              />
+            <div className="mt-2 text-xs text-white/70 flex flex-wrap gap-3">
+              <div>Séparation: {eclipse.sep.toFixed(2)}°</div>
+              <div>R☉: {eclipse.rS.toFixed(2)}°</div>
+              <div>R☽: {eclipse.rM.toFixed(2)}°</div>
+              <div>Type local: {eclipse.kind}</div>
+            </div>
           </div>
         </main>
       </div>

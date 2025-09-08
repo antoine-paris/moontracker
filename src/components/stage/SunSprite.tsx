@@ -1,29 +1,67 @@
 import React from "react";
-import { Z, MOON_RENDER_DIAMETER } from "../../render/constants";
+import { Z } from "../../render/constants";
 
 type Props = {
-  x: number; y: number;
-  visibleX: boolean; visibleY: boolean;
+  x: number;
+  y: number;
+  visibleX: boolean;
+  visibleY: boolean;
   rotationDeg: number;
   showCard: boolean;
+  wPx: number;
+  hPx: number;
 };
 
-export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showCard }: Props) {
+export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showCard, wPx, hPx }: Props) {
   if (!visibleX || !visibleY) return null;
   return (
-    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`, zIndex: Z.sun, width: MOON_RENDER_DIAMETER, height: MOON_RENDER_DIAMETER }}>
-      <div className="rounded-full" style={{ width: MOON_RENDER_DIAMETER, height: MOON_RENDER_DIAMETER, background: "radial-gradient(circle at 30% 30%, rgba(255,255,200,1) 0%, rgba(255,200,80,0.95) 35%, rgba(255,160,30,0.85) 55%, rgba(255,120,10,0.7) 75%, rgba(255,100,0,0.5) 100%)", boxShadow: "0 0 40px 10px rgba(255,180,40,0.35), 0 0 80px 20px rgba(255,180,40,0.15)" }} />
+    <div
+      style={{
+        position: "absolute",
+        left: x,
+        top: y,
+        transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`,
+        zIndex: Z.sun,
+        width: wPx,
+        height: hPx,
+      }}
+    >
+      <div
+        className="rounded-full"
+        style={{
+          width: wPx,
+          height: hPx,
+          background:
+            "radial-gradient(circle at 30% 30%, rgba(255,255,200,1) 0%, rgba(255,200,80,0.95) 35%, rgba(255,160,30,0.85) 55%, rgba(255,120,10,0.7) 75%, rgba(255,100,0,0.5) 100%)",
+          boxShadow:
+            "0 0 40px 10px rgba(255,180,40,0.35), 0 0 80px 20px rgba(255,180,40,0.15)",
+          borderRadius: "9999px",
+        }}
+      />
       {showCard && (
-        <svg width={MOON_RENDER_DIAMETER} height={MOON_RENDER_DIAMETER} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
+        <svg
+          width={wPx}
+          height={hPx}
+          viewBox="0 0 624 624"
+          style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+        >
           <g>
             <line x1="312" y1="36" x2="312" y2="86" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="312" y="60" textAnchor="middle" fontSize="64" fill="white" stroke="black" strokeWidth="4">N</text>
+            <text x="312" y="60" textAnchor="middle" fontSize="64" fill="white" stroke="black" strokeWidth="4">
+              N
+            </text>
             <line x1="538" y1="312" x2="588" y2="312" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="564" y="318" textAnchor="start" fontSize="64" fill="white" stroke="black" strokeWidth="4">E</text>
+            <text x="564" y="318" textAnchor="start" fontSize="64" fill="white" stroke="black" strokeWidth="4">
+              E
+            </text>
             <line x1="312" y1="538" x2="312" y2="588" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="312" y="572" textAnchor="middle" fontSize="64" fill="white" stroke="black" strokeWidth="4">S</text>
+            <text x="312" y="572" textAnchor="middle" fontSize="64" fill="white" stroke="black" strokeWidth="4">
+              S
+            </text>
             <line x1="36" y1="312" x2="86" y2="312" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="60" y="318" textAnchor="end" fontSize="64" fill="white" stroke="black" strokeWidth="4">O</text>
+            <text x="60" y="318" textAnchor="end" fontSize="64" fill="white" stroke="black" strokeWidth="4">
+              O
+            </text>
           </g>
         </svg>
       )}

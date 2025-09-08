@@ -1,4 +1,21 @@
-import { toDeg, toRad } from "../utils/math";
+import { toDeg, toRad, clamp } from "../utils/math";
+
+export const FOV_DEG_MIN = 0.1;
+export const FOV_DEG_MAX = 360;
+const LOG10_MIN = Math.log10(FOV_DEG_MIN);
+const LOG10_MAX = Math.log10(FOV_DEG_MAX);
+
+export function degToSlider(deg: number, steps = 1000) {
+  const d = clamp(deg, FOV_DEG_MIN, FOV_DEG_MAX);
+  const t = (Math.log10(d) - LOG10_MIN) / (LOG10_MAX - LOG10_MIN);
+  return Math.round(clamp(t, 0, 1) * steps);
+}
+
+export function sliderToDeg(value: number, steps = 1000) {
+  const t = clamp(value / steps, 0, 1);
+  const log10 = LOG10_MIN + t * (LOG10_MAX - LOG10_MIN);
+  return Math.pow(10, log10);
+}
 
 export function fovRect(sensorWmm: number, sensorHmm: number, focalMm: number) {
   const h = 2 * Math.atan(sensorWmm / (2 * focalMm));

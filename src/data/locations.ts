@@ -15,4 +15,6 @@ export const LOCATIONS: LocationOption[] = [
   { id: "gh", label: "Ghana — Accra", lat: 5.6037, lng: -0.1870, timeZone: "Africa/Accra" },
   { id: "ga", label: "Gabon — Libreville", lat: 0.4162, lng: 9.4673, timeZone: "Africa/Libreville" },
   { id: "za", label: "Afrique du Sud — Pretoria", lat: -25.7479, lng: 28.2293, timeZone: "Africa/Johannesburg" },
+  { id: "burgos", label: "Espagne — Burgos", lat: 42.3439, lng: -3.6969, timeZone: "Europe/Madrid" },
+  { id: "wellington", label: "Nouvelle-Zélande — Wellington", lat: -41.2866, lng: 174.7756, timeZone: "Pacific/Auckland" },
 ];
