@@ -1,3 +1,5 @@
+![Preview](preview.jpg)
+
 # MoonTracker
 
 MoonTracker is an interactive web app to visualize the positions, phases, and orientations of the Moon and the Sun in the sky from various locations. Built with React, TypeScript, and Vite, it leverages accurate astronomical computations to provide a dynamic, educational experience.
