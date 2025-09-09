@@ -12,6 +12,7 @@ export const DEVICES: Device[] = [
       { id: '35', label: '35 mm', kind: 'prime', focalMm: 35, projection: 'rectilinear' },
       { id: '50', label: '50 mm', kind: 'prime', focalMm: 50, projection: 'rectilinear' },
       { id: '70-200@70', label: 'Zoom 70–200 @70 mm', kind: 'zoom', focalMm: 70, projection: 'rectilinear' },
+      { id: 'ff-70-200-200', label: 'Zoom 70–200 @ 200 mm', kind: 'module', focalMm: 200 },
     ],
   },
   {
