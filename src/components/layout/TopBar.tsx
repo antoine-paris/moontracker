@@ -31,7 +31,6 @@ type Props = {
   when: string;
   whenInput: string;
   setWhenInput: (v: string) => void;
-  setWhen: (v: string) => void;
   onCommitWhenMs: (ms: number) => void;
   setIsAnimating: (v: boolean) => void;
   isAnimating: boolean;
@@ -55,6 +54,7 @@ type Props = {
   timeZone: string;
   enlargeObjects: boolean;
   setEnlargeObjects: (v: boolean) => void;
+  currentUtcMs: number;
 };
 
 export default function TopBar(props: Props) {
@@ -62,13 +62,24 @@ export default function TopBar(props: Props) {
     follow, setFollow,
     devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
     fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
-    viewport,
-    when, whenInput, setWhenInput, setWhen, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
+    viewport, when, whenInput, setWhenInput, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
     showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase, earthshine, setEarthshine,
     showSunCard, setShowSunCard, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
     timeZone,
     enlargeObjects, setEnlargeObjects,
+    currentUtcMs,
   } = props;
+  const utcInfo = React.useMemo(() => {
+    const d = new Date(currentUtcMs);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const yyyy = d.getUTCFullYear();
+    const mm = pad(d.getUTCMonth() + 1);
+    const dd = pad(d.getUTCDate());
+    const hh = pad(d.getUTCHours());
+    const mi = pad(d.getUTCMinutes());
+    const ss = pad(d.getUTCSeconds());
+    return `UTC: ${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
+  }, [currentUtcMs]);
 
   const SLIDER_STEPS = 1000;
   const [sx, setSx] = React.useState(() => degToSlider(fovXDeg, SLIDER_STEPS));
@@ -182,40 +193,25 @@ export default function TopBar(props: Props) {
                 onBlur={() => {
                   const ms = zonedLocalToUtcMs(whenInput, timeZone);
                   if (Number.isFinite(ms)) {
-                    const d = new Date(ms);
-                    const pad = (n: number) => String(n).padStart(2, "0");
-                    const yyyy = d.getFullYear();
-                    const mm = pad(d.getMonth() + 1);
-                    const dd = pad(d.getDate());
-                    const hh = pad(d.getHours());
-                    const mi = pad(d.getMinutes());
-                    const ss = pad(d.getSeconds());
-                    const norm = `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
-                    setWhen(norm);
                     onCommitWhenMs(ms);
-                  } else {
-                    setWhenInput(when);
-                  }
-                }}
+                   } else {
+                     setWhenInput(when);
+                   }
+                 }}
                 className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-white/40"
               />
               <button
                 onClick={() => {
-                  const ms = Date.now();
-                  const d = new Date(ms);
-                  const pad = (n: number) => String(n).padStart(2, "0");
-                  const nowStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                  setWhen(nowStr);
-                  setWhenInput(nowStr);
-                  onCommitWhenMs(ms);
+                  onCommitWhenMs(Date.now());
                    setSpeedMinPerSec(1/60);
                    setIsAnimating(true);
-                 }}
+                }}
                 className="px-3 py-2 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
               >
                 Maintenant
               </button>
             </div>
+            <div className="mt-1 text-[10px] text-white/60">{utcInfo}</div>
           </div>
           <div>
             <label className="text-xs uppercase tracking-wider text-white/60">
@@ -249,13 +245,7 @@ export default function TopBar(props: Props) {
                   className="absolute left-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
                   title="-1 h"
                   onClick={() => {
-                    const msLocal = zonedLocalToUtcMs(when, timeZone);
-                    const next = msLocal - 3600000;
-                     const d = new Date(next); const pad = (n: number) => String(n).padStart(2, "0");
-                     const nextStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${d.getHours().toString().padStart(2,"0")}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                     setWhen(nextStr);
-                     setWhenInput(nextStr);
-                     onCommitWhenMs(next);
+                    onCommitWhenMs(currentUtcMs - 3600000);
                     }}
                 >
                   {"\u21B6"}
@@ -264,13 +254,7 @@ export default function TopBar(props: Props) {
                   className="absolute right-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
                   title="+1 h"
                   onClick={() => {
-                    const msLocal = zonedLocalToUtcMs(when, timeZone);
-                    const next = msLocal + 3600000;
-                     const d = new Date(next); const pad = (n: number) => String(n).padStart(2, "0");
-                     const nextStr = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${d.getHours().toString().padStart(2,"0")}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-                     setWhen(nextStr);
-                     setWhenInput(nextStr);
-                     onCommitWhenMs(next);
+                    onCommitWhenMs(currentUtcMs + 3600000);
                     }}
                 >
                   {"\u21B7"}

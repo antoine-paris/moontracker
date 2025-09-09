@@ -31,3 +31,20 @@ export function zonedLocalToUtcMs(isoLocal: string, timeZone: string): number {
   }
   return result;
 }
+
+export function utcMsToZonedLocalString(ms: number, timeZone: string): string {
+  const fmt = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+  });
+  const parts = fmt.formatToParts(new Date(ms));
+  const get = (type: string) => parts.find(p => p.type === type)?.value ?? '';
+  const yyyy = get('year');
+  const mm = get('month');
+  const dd = get('day');
+  const hh = get('hour');
+  const mi = get('minute');
+  const ss = get('second');
+  return `${yyyy}-${mm}-${dd}T${hh}:${mi}:${ss}`;
+}

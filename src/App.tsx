@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-// SunCalc interop ESM/CJS
-import * as SunCalcNS from "suncalc";
-const SunCalc: typeof import("suncalc") = (SunCalcNS as { default?: typeof import("suncalc") }).default ?? SunCalcNS;
+// SunCalc wrapper centralisé
+import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination } from "./astro/suncalcInterop";
 
 // Types
 import type { FollowMode } from "./types";
@@ -19,6 +18,7 @@ import { Z, MOON_RENDER_DIAMETER, ROSE_16 } from "./render/constants";
 // Utilitaires & formatage
 import { toDeg, toRad, norm360, angularDiff, clamp } from "./utils/math";
 import { toDatetimeLocalInputValue, formatTimeInZone, formatDateTimeInZone, formatDeg } from "./utils/format";
+import { utcMsToZonedLocalString } from "./utils/tz";
 
 // Optique / FOV
 import { fovRect, fovFromF35, f35FromFov, FOV_DEG_MIN, FOV_DEG_MAX } from "./optics/fov";
@@ -27,7 +27,7 @@ import { fovRect, fovFromF35, f35FromFov, FOV_DEG_MIN, FOV_DEG_MAX } from "./opt
 import { moonApparentDiameterDeg } from "./astro/moon";
 import { sunDistanceAU, sunApparentDiameterDeg } from "./astro/sun";
 import { lstDeg } from "./astro/time";
-import { altazToRaDec, parallacticAngleDeg, azFromSunCalc } from "./astro/coords";
+import { altazToRaDec, parallacticAngleDeg } from "./astro/coords";
 import { sampleTerminatorLUT } from "./astro/lut";
 import { sepDeg, eclipseKind } from "./astro/eclipse";
 
@@ -125,10 +125,10 @@ export default function App() {
   // Synchroniser la ref hors animation et garder l’UI en phase avec whenMs
   useEffect(() => { if (!isAnimating) { whenMsRef.current = whenMs; } }, [whenMs, isAnimating]);
   useEffect(() => {
-    const s = toDatetimeLocalInputValue(new Date(whenMs));
+    const s = utcMsToZonedLocalString(whenMs, location.timeZone);
     setWhen(s);
     setWhenInput(s);
-  }, [whenMs]);
+  }, [whenMs, location.timeZone]);
 
   // Assurer qu'un zoom valide est sélectionné quand l'appareil change
   useEffect(() => {
@@ -203,21 +203,15 @@ export default function App() {
   // Astronomical positions
   const astro = useMemo(() => {
     const { lat, lng } = location;
-    const sun = SunCalc.getPosition(date, lat, lng);
-    const moon = SunCalc.getMoonPosition(date, lat, lng) as import("suncalc").GetMoonPositionResult & { parallacticAngle?: number };
-    const illum = SunCalc.getMoonIllumination(date);
-    const sunAlt = toDeg(sun.altitude);
-    const sunAz = azFromSunCalc(sun.azimuth);
-    const moonAlt = toDeg(moon.altitude);
-    const moonAz = azFromSunCalc(moon.azimuth);
-    const parallacticDeg = toDeg(moon.parallacticAngle ?? 0);
+    const sun = getSunAltAzDeg(date, lat, lng);
+    const moon = getMoonAltAzDeg(date, lat, lng);
+    const illum = getMoonIllumination(date);
     const sunDistAU = sunDistanceAU(date);
     const sunDiamDeg = sunApparentDiameterDeg(date);
-    const moonDistKm = moon.distance;
-    const moonDiamDeg = moonApparentDiameterDeg(moonDistKm);
+    const moonDiamDeg = moonApparentDiameterDeg(moon.distanceKm);
     return {
-      sun: { alt: sunAlt, az: sunAz, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
-      moon: { alt: moonAlt, az: moonAz, parallacticDeg, distKm: moonDistKm, appDiamDeg: moonDiamDeg },
+      sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
+      moon: { alt: moon.altDeg, az: moon.azDeg, parallacticDeg: moon.parallacticAngleDeg ?? 0, distKm: moon.distanceKm, appDiamDeg: moonDiamDeg },
       illum
     };
   }, [date, location]);
@@ -338,7 +332,8 @@ export default function App() {
       if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null; lastTsRef.current = null; return;
     }
-    whenMsRef.current = whenMs; lastTsRef.current = null;
+    // Ne pas réinitialiser whenMsRef ici, on continue depuis la valeur courante
+    lastTsRef.current = null;
     const tick = (ts: number) => {
       if (lastTsRef.current == null) { lastTsRef.current = ts; }
       else {
@@ -351,7 +346,7 @@ export default function App() {
     };
     rafIdRef.current = requestAnimationFrame(tick);
     return () => { if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; lastTsRef.current = null; };
-  }, [isAnimating, speedMinPerSec, whenMs]);
+  }, [isAnimating, speedMinPerSec]);
 
   // --- Dev-time test cases ---------------------------------------------------
   useEffect(() => {
@@ -376,8 +371,8 @@ export default function App() {
     const rate = 60, dt = 2; const expectedMs = rate * dt * 60 * 1000;
     console.assert(expectedMs === 7200000, "2s @60 min/s = 2h");
 
-    const f1 = SunCalc.getMoonIllumination(new Date('2024-04-22T20:00:00Z')).fraction;
-    const f2 = SunCalc.getMoonIllumination(new Date('2024-04-23T20:00:00Z')).fraction;
+    const f1 = getMoonIllumination(new Date('2024-04-22T20:00:00Z')).fraction;
+    const f2 = getMoonIllumination(new Date('2024-04-23T20:00:00Z')).fraction;
     console.assert(Math.abs(f2 - f1) > 0, "Illumination fraction should change day-to-day");
 
     const isChord = (f: number) => f >= 0.495 && f <= 0.505;
@@ -506,7 +501,6 @@ export default function App() {
               when={when}
               whenInput={whenInput}
               setWhenInput={setWhenInput}
-              setWhen={setWhen}
               onCommitWhenMs={(ms) => { whenMsRef.current = ms; setWhenMs(ms); }}
               setIsAnimating={setIsAnimating}
               isAnimating={isAnimating}
@@ -529,6 +523,7 @@ export default function App() {
               timeZone={location.timeZone}
               enlargeObjects={enlargeObjects}
               setEnlargeObjects={setEnlargeObjects}
+              currentUtcMs={whenMs}
              />
           </div>
 
