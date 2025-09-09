@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-// SunCalc wrapper centralisé
-import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination } from "./astro/suncalcInterop";
+// Astronomy-Engine wrapper centralisé
+import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination } from "./astro/aeInterop";
 
 // Types
 import type { FollowMode } from "./types";
@@ -206,12 +206,12 @@ export default function App() {
     const sun = getSunAltAzDeg(date, lat, lng);
     const moon = getMoonAltAzDeg(date, lat, lng);
     const illum = getMoonIllumination(date);
-    const sunDistAU = sunDistanceAU(date);
-    const sunDiamDeg = sunApparentDiameterDeg(date);
+    const sunDistAU = sun.distAU; // meilleur via AE
+    const sunDiamDeg = sunApparentDiameterDeg(date, sunDistAU);
     const moonDiamDeg = moonApparentDiameterDeg(moon.distanceKm);
     return {
       sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
-      moon: { alt: moon.altDeg, az: moon.azDeg, parallacticDeg: moon.parallacticAngleDeg ?? 0, distKm: moon.distanceKm, appDiamDeg: moonDiamDeg },
+      moon: { alt: moon.altDeg, az: moon.azDeg, parallacticDeg: 0, distKm: moon.distanceKm, appDiamDeg: moonDiamDeg },
       illum
     };
   }, [date, location]);

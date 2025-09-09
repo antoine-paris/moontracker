@@ -1,64 +1,99 @@
 # MoonTracker
 
-MoonTracker is an interactive web application for visualizing the Moon and Sun's positions, phases, and orientation in the sky from various locations. Built with React, TypeScript, and Vite, it leverages astronomical calculations to provide a dynamic and educational experience.
+MoonTracker is an interactive web app to visualize the positions, phases, and orientations of the Moon and the Sun in the sky from various locations. Built with React, TypeScript, and Vite, it leverages accurate astronomical computations to provide a dynamic, educational experience.
 
 ## Features
 
-- **Lunar Phase Visualization:** See the current phase of the Moon, including realistic rendering using NASA imagery and custom SVG masks for crescent, gibbous, and half-moon shapes.
-- **Sun and Moon Position Tracking:** View the altitude and azimuth of the Sun and Moon for any date, time, and location. The app projects their positions onto a simulated sky stage.
-- **Location Selection:** Choose from a list of world capitals to instantly update the sky view and lunar data.
-- **Follow Modes:** Center the view on the Sun, Moon, or cardinal directions (N, E, S, O) for different perspectives.
-- **Animation Controls:** Animate the passage of time to watch the Sun and Moon move across the sky. Adjust the speed and pause/play the animation.
-- **Phase Geometry:** The Moon's illuminated limb is calculated and oriented correctly, including the parallactic angle and bright limb direction.
-- **Earthshine Simulation:** Optionally display the faint glow of earthshine on the Moon's dark side.
-- **Cardinal Overlays:** Show cardinal points (N, E, S, O) on the Sun and Moon for orientation.
-- **Responsive UI:** Works on desktop and mobile, with a modern, dark-themed interface.
-- **Telemetry Cards:** Display real-time data for the Sun and Moon, including altitude, azimuth, phase percentage, and orientation.
+- Moon phases: current phase with realistic rendering (NASA imagery + SVG masks for crescents, gibbous, and half-moon shapes).
+- Sun & Moon tracking: altitude and azimuth for any date/time/location, projected onto a simulated sky stage.
+- Location selection: choose from a list of world cities to instantly update the sky view and data.
+- Follow modes: center the view on the Sun, the Moon, or the cardinal directions (N, E, S, W).
+- Animation controls: animate time to watch the Sun and Moon move; adjust speed and pause/resume.
+- Phase geometry: illuminated limb orientation computed correctly, including parallactic angle and bright limb direction.
+- Earthshine simulation: optional faint glow on the dark side of the Moon.
+- Cardinal overlays: show N/E/S/W markers on the Sun and Moon for orientation.
+- Responsive UI: desktop and mobile friendly, dark themed.
+- Telemetry cards: live numerical data for Sun and Moon (altitude, azimuth, phase fraction, orientation).
 
-## Technical Details
+## Technical details
 
-- **Astronomical Calculations:** Uses [SunCalc](https://github.com/mourner/suncalc) for Sun/Moon positions and illumination. Custom math for projection, phase geometry, and orientation.
-- **SVG Rendering:** The Moon is rendered using SVG with dynamic masks for accurate phase shapes. NASA imagery is used for realism.
-- **State Management:** React hooks manage UI state, animation, and astronomical data.
-- **Performance:** Vite enables fast development and hot module replacement (HMR).
+- Astronomy engine: the app uses astronomy-engine via a thin wrapper to obtain topocentric ephemerides with high accuracy.
+  - Wrapper: `src/astro/aeInterop.ts`
+    - `getSunAltAzDeg(date, lat, lng)` → `{ altDeg, azDeg, distAU }`
+    - `getMoonAltAzDeg(date, lat, lng)` → `{ altDeg, azDeg, distanceKm }`
+    - `getMoonIllumination(date)` → `{ fraction, phase, angleDeg }`
+- Distances and apparent diameters:
+  - Sun: `src/astro/sun.ts`
+    - `sunDistanceAU(date)` uses `Equator(Body.Sun)` (distance in AU)
+    - `sunApparentDiameterDeg(date, distAU?)` → `2·atan2(Rsun, distKm)`
+  - Moon: `src/astro/moon.ts`
+    - `moonApparentDiameterDeg(distanceKm)` → `2·atan2(Rmoon, distanceKm)`
+- Time reference: UTC
+  - A single UTC timestamp (`whenMs`) drives all animation and astronomy. The UI shows local time derived from `whenMs` for the selected location.
+  - Time zone conversions: `src/utils/tz.ts`
+    - `zonedLocalToUtcMs("YYYY-MM-DDTHH:mm:ss", timeZone)` → UTC ms
+    - `utcMsToZonedLocalString(msUTC, timeZone)` → local string "YYYY-MM-DDTHH:mm:ss"
+  - This avoids DST glitches (e.g., fall-back 03:00 → 02:00 loops).
+- Projection & rendering
+  - `src/render/projection.ts` uses equirectangular projection for wide FOV and gnomonic for FOV ≤ 30°.
+  - Returns local px/deg scales to render realistic sizes at narrow FOV.
+  - Optional “Enlarge objects” mode; otherwise apparent sizes are used.
+- Eclipse diagnostics
+  - `src/astro/eclipse.ts`
+    - `sepDeg(alt1, az1, alt2, az2)` → angular separation (deg)
+    - `eclipseKind(sep, rSun, rMoon)` → `none | partial | annular | total`
+  - Displayed in the bottom panel for quick validation.
 
-## Getting Started
+## Getting started
 
-1. Clone the repository:
+1) Clone the repo
 
-   ```sh
-   git clone https://github.com/antoine-paris/moontracker.git
-   cd moontracker
-   ```
+```sh
+git clone https://github.com/antoine-paris/moontracker.git
+cd moontracker
+```
 
-2. Install dependencies:
+2) Install dependencies
 
-   ```sh
-   npm install
-   ```
+```sh
+npm install
+```
 
-3. Start the development server:
+3) Start the dev server
 
-   ```sh
-   npm run dev
-   ```
+```sh
+npm run dev
+```
 
-4. Open [http://localhost:5173](http://localhost:5173) in your browser.
+4) Open http://localhost:5173 in your browser
 
-## Technologies Used
+## Technologies used
 
-- [React](https://react.dev/)
-- [TypeScript](https://www.typescriptlang.org/)
-- [Vite](https://vitejs.dev/)
-- [SunCalc](https://github.com/mourner/suncalc)
+- React
+- TypeScript
+- Vite
+- TailwindCSS
+- astronomy-engine
+
+## Key files
+
+- `src/App.tsx` — UI orchestration, animation timing (UTC), viewport, local↔UTC conversions.
+- `src/components/layout/TopBar.tsx` — local date input, UTC info display.
+- `src/components/stage/*` — sprites and overlays.
+- `src/astro/*` — astronomy wrappers and helpers.
+
+## Scripts
+
+- `dev`: vite
+- `build`: `tsc -b && vite build`
+- `preview`: vite preview
+- `lint`: eslint .
 
 ## Contributing
 
-Contributions are welcome! Please open issues or submit pull requests for improvements and new features.
+Contributions are welcome. Please open issues or PRs for enhancements and new features.
 
 ## License
 
-This project is licensed under the MIT License.
-
----
+MIT License.
 
