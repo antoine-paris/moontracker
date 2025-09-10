@@ -15,6 +15,12 @@ const GLB_CALIB = {
 // Facteurs (en multiples du rayon) pour dimensionner la boîte autour des marqueurs
 const AXIS_LEN_FACTOR = 0.5;   // longueur du trait nord = 0.5R
 const N_SIZE_FACTOR = 0.18;    // hauteur du "N" = 0.18R
+// Paramètres par défaut (verrouillés) des indicateurs cardinaux
+const RING_RADIUS_FACTOR = 1.04;     // rayon des anneaux (équateur/méridien) vs rayon lunaire
+const RING_TUBE_FACTOR = 0.01;       // épaisseur du torus (tube) vs rayon lunaire
+const AXIS_THICKNESS_FACTOR = 0.01;  // épaisseur du cylindre de l’axe nord vs rayon
+const CENTER_DOT_FACTOR = 0.04;      // rayon du point central vs rayon
+const N_MARGIN_FACTOR = 0.08;        // marge verticale du label "N" au-dessus de l’axe (en R)
 
 // Types et helpers (réécrits pour correction de syntaxe)
 export type Props = {
@@ -130,7 +136,7 @@ function Model({ limbAngleDeg, targetPx, modelUrl, rotOffsetDegX = 0, rotOffsetD
     q.setFromEuler(e);
     return q;
   }, [rotX, rotY, rotZ]);
-  const axisLen = useMemo(() => radius * 0.5, [radius]);
+  const axisLen = useMemo(() => radius * AXIS_LEN_FACTOR, [radius]);
   // Axes locaux sélénographiques dans l’espace du modèle (après calibration GLB):
   const northLocal = useMemo(() => GLB_CALIB.northLocal.clone(), []); // Nord lunaire local (dépend GLB)
   const viewLocal = useMemo(() => GLB_CALIB.viewForwardLocal.clone(), []); // Avant caméra local (dépend GLB)
@@ -169,9 +175,9 @@ function Model({ limbAngleDeg, targetPx, modelUrl, rotOffsetDegX = 0, rotOffsetD
     return nv.multiplyScalar(radius + axisLen / 2);
   }, [diskNorthLocal, radius, axisLen]);
   const labelPos = useMemo(() => {
-    const nv = diskNorthLocal.clone();
-    return nv.multiplyScalar(radius + axisLen + radius * 0.08);
-  }, [diskNorthLocal, radius, axisLen]);
+     const nv = diskNorthLocal.clone();
+    return nv.multiplyScalar(radius + axisLen + radius * N_MARGIN_FACTOR);
+   }, [diskNorthLocal, radius, axisLen]);
    return (
      <group scale={[scale, scale, scale]} quaternion={quaternion}>
        {debugMask && <axesHelper args={[targetPx * 0.6]} />}
@@ -179,31 +185,35 @@ function Model({ limbAngleDeg, targetPx, modelUrl, rotOffsetDegX = 0, rotOffsetD
          <group>
             {/* Équateur: anneau dont la normale suit Nord local */}
             <group quaternion={qEquatorTorus} renderOrder={10}>
-              <mesh renderOrder={10}>
-                <torusGeometry args={[radius * 1.04, radius * 0.01, 16, 128]} />
-                <meshBasicMaterial color="#22c55e" transparent opacity={0.95} depthTest={false} depthWrite={false} />
-              </mesh>
-            </group>
+               <mesh renderOrder={10}>
+-                <torusGeometry args={[radius * 1.04, radius * 0.01, 16, 128]} />
++                <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+                 <meshBasicMaterial color="#22c55e" transparent opacity={0.95} depthTest={false} depthWrite={false} />
+               </mesh>
+             </group>
             {/* Méridien central: plan contenant Nord et la direction de vue (normal = Nord×Vue) */}
-            <group quaternion={qMeridianTorus} renderOrder={10}>
-              <mesh renderOrder={10}>
-                <torusGeometry args={[radius * 1.04, radius * 0.01, 16, 128]} />
-                <meshBasicMaterial color="#ef4444" transparent opacity={0.95} depthTest={false} depthWrite={false} />
-              </mesh>
-            </group>
+             <group quaternion={qMeridianTorus} renderOrder={10}>
+               <mesh renderOrder={10}>
+-                <torusGeometry args={[radius * 1.04, radius * 0.01, 16, 128]} />
++                <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+                 <meshBasicMaterial color="#ef4444" transparent opacity={0.95} depthTest={false} depthWrite={false} />
+               </mesh>
+             </group>
             {/* Point central bleu */}
-            <mesh renderOrder={11}>
-              <sphereGeometry args={[radius * 0.04, 16, 16]} />
-              <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
-            </mesh>
+             <mesh renderOrder={11}>
+-              <sphereGeometry args={[radius * 0.04, 16, 16]} />
++              <sphereGeometry args={[radius * CENTER_DOT_FACTOR, 16, 16]} />
+               <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
+             </mesh>
             {/* Axe nord (violet) orienté sur Nord local */}
-            <group renderOrder={11}>
-              <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisDisk} renderOrder={11}>
-                <cylinderGeometry args={[radius * 0.01, radius * 0.01, axisLen, 16]} />
-                <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-              </mesh>
-              <Text position={[labelPos.x, labelPos.y, labelPos.z]} fontSize={radius * 0.18} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12} rotation={[0, Math.PI / 2, 0]}>N</Text>
-            </group>
+             <group renderOrder={11}>
+               <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisDisk} renderOrder={11}>
+-                <cylinderGeometry args={[radius * 0.01, radius * 0.01, axisLen, 16]} />
++                <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+                 <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+               </mesh>
+               <Text position={[labelPos.x, labelPos.y, labelPos.z]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12} rotation={[0, Math.PI / 2, 0]}>N</Text>
+             </group>
           </group>
         )}
        {/* On re-scale uniquement le modèle GLB pour conserver son diamètre apparent */}
