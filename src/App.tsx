@@ -39,6 +39,7 @@ import HorizonOverlay from "./components/stage/HorizonOverlay";
 import CardinalMarkers, { type CardinalItem } from "./components/stage/CardinalMarkers";
 import SunSprite from "./components/stage/SunSprite";
 import MoonSprite from "./components/stage/MoonSprite";
+import Moon3D from "./components/stage/Moon3D";
 import StageCanvas from "./components/stage/StageCanvas";
 
 // --- Main Component ----------------------------------------------------------
@@ -76,6 +77,13 @@ export default function App() {
   const [showMoon, setShowMoon] = useState(true);
   const [showPhase, setShowPhase] = useState(true);
   const [earthshine, setEarthshine] = useState(false);
+  const [showMoon3D, setShowMoon3D] = useState(false);
+  const [rotOffsetDegX, setRotOffsetDegX] = useState(0);
+  const [rotOffsetDegY, setRotOffsetDegY] = useState(0);
+  const [rotOffsetDegZ, setRotOffsetDegZ] = useState(0);
+  const [camRotDegX, setCamRotDegX] = useState(0);
+  const [camRotDegY, setCamRotDegY] = useState(0);
+  const [camRotDegZ, setCamRotDegZ] = useState(0);
   // Overlays N/E/S/O sur les corps
   const [showSunCard, setShowSunCard] = useState(false);
   const [showMoonCard, setShowMoonCard] = useState(false);
@@ -99,6 +107,8 @@ export default function App() {
   const rafIdRef = useRef<number | null>(null);
   const lastTsRef = useRef<number | null>(null);
   const whenMsRef = useRef<number>(whenMs);
+  const runningRef = useRef<boolean>(false);
+
   // handleWhenChange supprimé: la saisie est gérée via whenInput + validation au blur
 
   // Resize (use ResizeObserver so stage fills space during sidebar animation)
@@ -330,11 +340,15 @@ export default function App() {
   useEffect(() => {
     if (!isAnimating) {
       if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null; lastTsRef.current = null; return;
+      rafIdRef.current = null; lastTsRef.current = null; 
+      runningRef.current = false;
+      return;
     }
     // Ne pas réinitialiser whenMsRef ici, on continue depuis la valeur courante
     lastTsRef.current = null;
+    runningRef.current = true;
     const tick = (ts: number) => {
+      if (!runningRef.current) return;
       if (lastTsRef.current == null) { lastTsRef.current = ts; }
       else {
         const dtSec = (ts - lastTsRef.current) / 1000; lastTsRef.current = ts;
@@ -342,10 +356,15 @@ export default function App() {
         whenMsRef.current += dtSec * rate * 60 * 1000;
         setWhenMs(whenMsRef.current);
       }
-      rafIdRef.current = requestAnimationFrame(tick);
+      if (runningRef.current) rafIdRef.current = requestAnimationFrame(tick);
     };
     rafIdRef.current = requestAnimationFrame(tick);
-    return () => { if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current); rafIdRef.current = null; lastTsRef.current = null; };
+    return () => { 
+      runningRef.current = false;
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current); 
+      rafIdRef.current = null; 
+      lastTsRef.current = null; 
+    };
   }, [isAnimating, speedMinPerSec]);
 
   // --- Dev-time test cases ---------------------------------------------------
@@ -512,6 +531,20 @@ export default function App() {
               setShowMoon={setShowMoon}
               showPhase={showPhase}
               setShowPhase={setShowPhase}
+              showMoon3D={showMoon3D}
+              setShowMoon3D={setShowMoon3D}
+              rotOffsetDegX={rotOffsetDegX}
+              setRotOffsetDegX={setRotOffsetDegX}
+              rotOffsetDegY={rotOffsetDegY}
+              setRotOffsetDegY={setRotOffsetDegY}
+              rotOffsetDegZ={rotOffsetDegZ}
+              setRotOffsetDegZ={setRotOffsetDegZ}
+              camRotDegX={camRotDegX}
+              setCamRotDegX={setCamRotDegX}
+              camRotDegY={camRotDegY}
+              setCamRotDegY={setCamRotDegY}
+              camRotDegZ={camRotDegZ}
+              setCamRotDegZ={setCamRotDegZ}
               earthshine={earthshine}
               setEarthshine={setEarthshine}
               showSunCard={showSunCard}
@@ -524,7 +557,7 @@ export default function App() {
               enlargeObjects={enlargeObjects}
               setEnlargeObjects={setEnlargeObjects}
               currentUtcMs={whenMs}
-             />
+            />
           </div>
 
           {/* Stage canvas */}
@@ -603,7 +636,7 @@ export default function App() {
               <SunSprite x={sunScreen.x} y={sunScreen.y} visibleX={sunScreen.visibleX} visibleY={sunScreen.visibleY} rotationDeg={rotationToHorizonDegSun} showCard={showSunCard} wPx={bodySizes.sun.w} hPx={bodySizes.sun.h} />
             )}
 
-            {showMoon && (
+            {showMoon && !showMoon3D && (
               <MoonSprite
                 x={moonScreen.x} y={moonScreen.y}
                 visibleX={moonScreen.visibleX} visibleY={moonScreen.visibleY}
@@ -617,6 +650,29 @@ export default function App() {
                 maskAngleDeg={maskAngleDeg}
                 wPx={bodySizes.moon.w}
                 hPx={bodySizes.moon.h}
+              />
+            )}
+
+            {showMoon && showMoon3D && moonScreen.visibleX && moonScreen.visibleY && (
+              <Moon3D
+                x={moonScreen.x}
+                y={moonScreen.y}
+                wPx={bodySizes.moon.w}
+                hPx={bodySizes.moon.h}
+                moonAltDeg={astro.moon.alt}
+                moonAzDeg={astro.moon.az}
+                sunAltDeg={astro.sun.alt}
+                sunAzDeg={astro.sun.az}
+                limbAngleDeg={rotationToHorizonDegMoon * -1}
+                debugMask={debugMask}
+                rotOffsetDegX={rotOffsetDegX}
+                rotOffsetDegY={rotOffsetDegY}
+                rotOffsetDegZ={rotOffsetDegZ}
+                camRotDegX={camRotDegX}
+                camRotDegY={camRotDegY}
+                camRotDegZ={camRotDegZ}
+                showPhase={showPhase}
+                showMoonCard={showMoonCard}
               />
             )}
           </div>

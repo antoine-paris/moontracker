@@ -43,6 +43,20 @@ type Props = {
   setShowMoon: (v: boolean) => void;
   showPhase: boolean;
   setShowPhase: (v: boolean) => void;
+  showMoon3D: boolean;
+  setShowMoon3D: (v: boolean) => void;
+  rotOffsetDegX: number;
+  setRotOffsetDegX: (v: number) => void;
+  rotOffsetDegY: number;
+  setRotOffsetDegY: (v: number) => void;
+  rotOffsetDegZ: number;
+  setRotOffsetDegZ: (v: number) => void;
+  camRotDegX: number;
+  setCamRotDegX: (v: number) => void;
+  camRotDegY: number;
+  setCamRotDegY: (v: number) => void;
+  camRotDegZ: number;
+  setCamRotDegZ: (v: number) => void;
   earthshine: boolean;
   setEarthshine: (v: boolean) => void;
   showSunCard: boolean;
@@ -63,7 +77,10 @@ export default function TopBar(props: Props) {
     devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
     fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
     viewport, when, whenInput, setWhenInput, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
-    showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase, earthshine, setEarthshine,
+    showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase, showMoon3D, setShowMoon3D,
+    rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
+    camRotDegX, setCamRotDegX, camRotDegY, setCamRotDegY, camRotDegZ, setCamRotDegZ,
+    earthshine, setEarthshine,
     showSunCard, setShowSunCard, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
     timeZone,
     enlargeObjects, setEnlargeObjects,
@@ -270,16 +287,76 @@ export default function TopBar(props: Props) {
         <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Objets à afficher</div>
         <div className="flex flex-wrap gap-3">
           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} /><span className="text-amber-300">Soleil</span></label>
-          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune</span></label>
-          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} /><span>Phase de la Lune</span></label>
-          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={earthshine} disabled={!showPhase} onChange={(e) => setEarthshine(e.target.checked)} /><span>Clair de Terre</span></label>
-          <span className="w-px h-5 bg-white/10 mx-1" />
-          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span></label>
-          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal Lune</span></label>
-          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug masque</span></label>
-          <span className="w-px h-5 bg-white/10 mx-1" />
-          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span></label>
-        </div>
+          <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune 2D</span></label>
+          <label className="inline-flex items-center gap-2 text-sm text-sky-300">
+            <input type="checkbox" checked={showMoon3D} onChange={e => setShowMoon3D(e.target.checked)} />
+            <span>Lune 3D</span>
+          </label>
+           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} /><span>Phase de la Lune</span></label>
+           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={earthshine} disabled={!showPhase} onChange={(e) => setEarthshine(e.target.checked)} /><span>Clair de Terre</span></label>
+           <span className="w-px h-5 bg-white/10 mx-1" />
+           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span></label>
+           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal Lune</span></label>
+           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug</span></label>
+           <span className="w-px h-5 bg-white/10 mx-1" />
+           <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span></label>
+         </div>
+        {showMoon3D && debugMask && (
+          <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
+             <label className="flex items-center gap-2">
+               <span>Rot X</span>
+               <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={rotOffsetDegX}
+                 onChange={e => {
+                   const v = Number(e.target.value);
+                   if (Number.isFinite(v)) setRotOffsetDegX(clamp(v, -180, 180));
+                 }} />
+             </label>
+             <label className="flex items-center gap-2">
+               <span>Rot Y</span>
+               <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={rotOffsetDegY}
+                 onChange={e => {
+                   const v = Number(e.target.value);
+                   if (Number.isFinite(v)) setRotOffsetDegY(clamp(v, -180, 180));
+                 }} />
+             </label>
+             <label className="flex items-center gap-2">
+               <span>Rot Z</span>
+               <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={rotOffsetDegZ}
+                 onChange={e => {
+                   const v = Number(e.target.value);
+                   if (Number.isFinite(v)) setRotOffsetDegZ(clamp(v, -180, 180));
+                 }} />
+             </label>
+           </div>
+         )}
+        {showMoon3D && debugMask && (
+           <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
+             <label className="flex items-center gap-2">
+               <span>Cam X</span>
+               <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={camRotDegX}
+                 onChange={e => {
+                   const v = Number(e.target.value);
+                   if (Number.isFinite(v)) setCamRotDegX(clamp(v, -180, 180));
+                 }} />
+             </label>
+             <label className="flex items-center gap-2">
+               <span>Cam Y</span>
+               <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={camRotDegY}
+                 onChange={e => {
+                   const v = Number(e.target.value);
+                   if (Number.isFinite(v)) setCamRotDegY(clamp(v, -180, 180));
+                 }} />
+             </label>
+             <label className="flex items-center gap-2">
+               <span>Cam Z</span>
+               <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={camRotDegZ}
+                 onChange={e => {
+                   const v = Number(e.target.value);
+                   if (Number.isFinite(v)) setCamRotDegZ(clamp(v, -180, 180));
+                 }} />
+             </label>
+           </div>
+         )}
       </div>
     </div>
   );
