@@ -175,24 +175,25 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), meridianNormalLocal);
    return q;
  }, [meridianNormalLocal]);
- // Nord visible sur le disque: direction tangentielle d = (meridianNormal × north)
- const diskNorthLocal = useMemo(() => {
-   const m = meridianNormalLocal.clone();
-   if (m.lengthSq() < 1e-9) m.set(1, 0, 0);
-   const d = new THREE.Vector3().crossVectors(m, northLocal);
-   if (d.lengthSq() < 1e-9) return new THREE.Vector3(0, 1, 0);
-   return d.normalize();
- }, [meridianNormalLocal, northLocal]);
- // Base caméra normalisée pour base d’axes écran
- const viewNorm = useMemo(() => viewLocal.clone().normalize(), [viewLocal]);
- // Est/Ouest: Est = view × NordDisque (droite), Ouest = -Est
- const diskEastLocal = useMemo(() => {
-   const e = new THREE.Vector3().crossVectors(viewNorm, diskNorthLocal);
-   if (e.lengthSq() < 1e-9) return new THREE.Vector3(1, 0, 0);
-   return e.normalize();
- }, [viewNorm, diskNorthLocal]);
- const diskSouthLocal = useMemo(() => diskNorthLocal.clone().multiplyScalar(-1), [diskNorthLocal]);
- const diskWestLocal  = useMemo(() => diskEastLocal.clone().multiplyScalar(-1), [diskEastLocal]);
+
+  // Nord visible sur le disque: direction tangentielle d = (meridianNormal × north)
+   const diskNorthLocal = useMemo(() => {
+     const m = meridianNormalLocal.clone();
+     if (m.lengthSq() < 1e-9) m.set(1, 0, 0);
+     const d = new THREE.Vector3().crossVectors(m, northLocal);
+     if (d.lengthSq() < 1e-9) return new THREE.Vector3(0, 1, 0);
+     return d.normalize();
+   }, [meridianNormalLocal, northLocal]);
+   // Base caméra normalisée pour base d’axes écran
+   const viewNorm = useMemo(() => viewLocal.clone().normalize(), [viewLocal]);
+   // Est/Ouest: Est = view × NordDisque (droite), Ouest = -Est
+   const diskEastLocal = useMemo(() => {
+     const e = new THREE.Vector3().crossVectors(viewNorm, diskNorthLocal);
+     if (e.lengthSq() < 1e-9) return new THREE.Vector3(1, 0, 0);
+     return e.normalize();
+   }, [viewNorm, diskNorthLocal]);
+   const diskSouthLocal = useMemo(() => diskNorthLocal.clone().multiplyScalar(-1), [diskNorthLocal]);
+   const diskWestLocal  = useMemo(() => diskEastLocal.clone().multiplyScalar(-1), [diskEastLocal]);
  
  // Rotation +90° autour de Y appliquée à E/O (hérite des offsets via la rotation du groupe)
  const rotY90 = useMemo(() => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2), []);
@@ -219,21 +220,14 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), diskWestLocalR);
    return q;
  }, [diskWestLocalR]);
- // Traits proche/loin Terre fixes: croisement méridien 0 / équateur (repère GLB)
+ // Trait proche Terre fixe: croisement méridien 0 / équateur (repère GLB)
  const lon0EquatorLocal = useMemo(() => new THREE.Vector3(1, 0, 0), []); // ajuster si 0° diffère dans le GLB
  const qAxisNear = useMemo(() => {
    const q = new THREE.Quaternion();
    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), lon0EquatorLocal);
    return q;
  }, [lon0EquatorLocal]);
- const qAxisFar = useMemo(() => {
-   const q = new THREE.Quaternion();
-   const d = lon0EquatorLocal.clone().multiplyScalar(-1);
-   q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
-   return q;
- }, [lon0EquatorLocal]);
  const axisPosNear = useMemo(() => lon0EquatorLocal.clone().multiplyScalar(radius + axisLenNF / 2 + radius * AXIS_GAP_FACTOR), [lon0EquatorLocal, radius, axisLenNF]);
- const axisPosFar  = useMemo(() => lon0EquatorLocal.clone().multiplyScalar(-(radius + axisLenNF / 2 + radius * AXIS_GAP_FACTOR)), [lon0EquatorLocal, radius, axisLenNF]);
  // Positions exactes de l’axe et du label le long de northLocal (pôle nord réel)
  const axisPos = useMemo(() => {
    const nv = diskNorthLocal.clone();
@@ -253,20 +247,42 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
    return (
      <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
        {debugMask && <axesHelper args={[targetPx * 0.6]} />}
+       {/* Rendre la Lune en premier pour remplir le depth buffer */}
+       <primitive object={centeredScene} />
        {showMoonCard && (
          <group>
-           {/* Équateur: anneau dont la normale suit Nord local */}
+           {/* Équateur: torus plein avant */}
            <group quaternion={qEquatorTorus} renderOrder={10}>
              <mesh renderOrder={10}>
                <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
-               <meshBasicMaterial color="#22c55e" transparent opacity={0.95} depthTest={false} depthWrite={false} />
+               <meshBasicMaterial
+                 color="#22c55e"
+                 transparent
+                 opacity={0.95}
+                 depthTest
+                 depthWrite={false}
+                 side={THREE.DoubleSide}
+                 polygonOffset
+                 polygonOffsetFactor={-1}
+                 polygonOffsetUnits={-1}
+               />
              </mesh>
            </group>
-           {/* Méridien central: plan contenant Nord et la direction de vue (normal = Nord×Vue) */}
+           {/* Méridien central: torus plein avant */}
            <group quaternion={qMeridianTorus} renderOrder={10}>
              <mesh renderOrder={10}>
                <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
-               <meshBasicMaterial color="#ef4444" transparent opacity={0.95} depthTest={false} depthWrite={false} />
+               <meshBasicMaterial
+                 color="#ef4444"
+                 transparent
+                 opacity={0.95}
+                 depthTest
+                 depthWrite={false}
+                 side={THREE.DoubleSide}
+                 polygonOffset
+                 polygonOffsetFactor={-1}
+                 polygonOffsetUnits={-1}
+               />
              </mesh>
            </group>
            {/* Point central bleu */}
@@ -310,14 +326,9 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
              <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
                <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
              </Billboard>
-+            {/* Proche Terre (sans étiquette) */}
-+            <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>
-+              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
-+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-+            </mesh>
-+            {/* Loin Terre (sans étiquette) */}
-+            <mesh position={[axisPosFar.x, axisPosFar.y, axisPosFar.z]} quaternion={qAxisFar} renderOrder={11}>
-+              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
+             {/* Proche Terre (sans étiquette) */}
+             <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>
+               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
                <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
              </mesh>
            </group>
