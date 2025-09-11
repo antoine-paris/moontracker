@@ -29,9 +29,12 @@ type Props = {
   rotationToHorizonDegMoon: number;
   phaseFraction: number;
   brightLimbAngleDeg: number;
+  // New: to control display of earthshine percentage
+  earthshine: boolean;
+  showMoon3D: boolean;
 };
 
-export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phaseFraction, brightLimbAngleDeg }: Props) {
+export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phaseFraction, brightLimbAngleDeg, earthshine, showMoon3D }: Props) {
   const libG = astro.moon.libration;
   const libT = astro.moon.librationTopo;
   const libQuadrant = libT ? (() => { const lnorm = ((libT.lonDeg + 180) % 360) - 180; const ns = libT.latDeg >= 0 ? 'N' : 'S'; const ew = lnorm >= 0 ? 'E' : 'O'; return ns + ew; })() : '—';
@@ -53,6 +56,10 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
   ) : (
     <span className="italic">Indisponible — données non fournies</span>
   );
+
+  // New: Earth illumination seen from the Moon (Earth phase) — show only when earthshine + Moon 3D
+  const earthshinePct = Math.round(Math.max(0, Math.min(1, 1 - (phaseFraction ?? 0))) * 100);
+
   return (
     <div className="mx-2 sm:mx-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
       <div className="rounded-2xl border border-white/10 bg-black/50 backdrop-blur px-4 py-3">
@@ -75,6 +82,10 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
         )}
         <div className="text-sm text-white/85 mt-1">Orientation (parallactique) : <span className="font-mono">{rotationToHorizonDegMoon.toFixed(1)}°</span></div>
         <div className="text-sm text-white/85">Phase : {(phaseFraction * 100).toFixed(1)}% éclairée — Angle du limbe : {brightLimbAngleDeg.toFixed(1)}°</div>
+        {/* New: Earthshine percentage (only when both toggles are on) */}
+        {earthshine && showMoon3D && (
+          <div className="text-sm text-white/85">Clair de terre : <span className="font-mono">{earthshinePct}%</span></div>
+        )}
       </div>
       <div className="rounded-2xl border border-white/10 bg-black/50 backdrop-blur px-4 py-3">
         <div className="flex items-center justify-between">

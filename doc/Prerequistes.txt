@@ -15,9 +15,9 @@ npm install
 
 2) Installer les dépendances
 
-Ton code utilise Tailwind et suncalc :
+Le code utilise Tailwind et astronomy-engine :
 
-npm i suncalc
+npm i astronomy-engine
 npm i -D tailwindcss postcss autoprefixer
 npx tailwindcss init -p
 
@@ -33,7 +33,7 @@ export default {
 };
 
 
-Ajoute les directives Tailwind dans src/index.css (ou src/main.css selon le template) :
+Ajoute les directives Tailwind dans src/App.css (fichier global importé par main.tsx) :
 
 @tailwind base;
 @tailwind components;
@@ -44,24 +44,7 @@ html, body, #root { height: 100%; }
 
 4) Intégrer ton code
 
-Remplace le contenu de src/App.tsx par ton composant (le code que tu as collé dans le canvas).
-
-Il est déjà en TSX et utilise Tailwind, c’est parfait.
-
-Ton import SunCalc est compatible ESM/CJS :
-
-import * as SunCalcNS from "suncalc";
-const SunCalc = (SunCalcNS as any).default ?? (SunCalcNS as any);
-
-
-Pour le typage, installe (si dispo) :
-
-npm i -D @types/suncalc
-
-
-Si jamais les types n’existent pas dans ton environnement, crée src/declarations.d.ts :
-
-declare module "suncalc";
+Remplace/complète src/App.tsx avec le composant principal. Assure-toi que src/main.tsx importe "./App.css".
 
 5) Lancer en dev
 npm run dev
@@ -78,10 +61,8 @@ Option 2 — Next.js + TypeScript + Tailwind
 npx create-next-app@latest moon-viewer --ts --tailwind
 cd moon-viewer
 
-2) Installer suncalc
-npm i suncalc
-# (optionnel) types
-npm i -D @types/suncalc
+2) Installer astronomy-engine
+npm i astronomy-engine
 
 3) Coller le code dans une page cliente
 
@@ -100,17 +81,13 @@ export default function Page() {
 
 app/globals.css contient déjà Tailwind (créé par le starter).
 
-Crée src/components/App.tsx et colle ton code (exactement celui du canvas).
-Ça tournera côté client, évitant les problèmes window/document.
+Crée src/components/App.tsx et colle ton code. Ça tournera côté client.
 
 4) Dev server
 npm run dev
 
 
 Ouvre http://localhost:3000.
-
-⚠️ Si tu utilises next/image, il faudrait autoriser le domaine NASA dans next.config.js.
-Ici, ton image est utilisée dans un <svg><image href="..."/></svg>, donc pas besoin de config spéciale.
 
 Extensions & réglages utiles dans VS Code
 
@@ -143,7 +120,3 @@ h-screen : ajoute html, body, #root { height: 100% } (déjà montré) pour que l
 Fuseau horaire : l’<input type="datetime-local"> travaille en local (chez toi Europe/Paris). C’est normal.
 
 Next.js : garde bien 'use client' sur la page/composant qui utilise des hooks.
-
-Types SunCalc : si tu vois des warnings de type, installe @types/suncalc ou ajoute une déclaration locale.
-
-Perf : tu as déjà des useMemo/useEffect; évite de recréer des gros objets en boucle inutilement (tu es clean là-dessus).

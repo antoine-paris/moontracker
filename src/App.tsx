@@ -696,6 +696,8 @@ export default function App() {
                 // New: drive light from Moon card data
                 illumFraction={phaseFraction}
                 brightLimbAngleDeg={brightLimbAngleDeg}
+                // New: enable earthshine-based fill light (camera source)
+                earthshine={earthshine}
               />
             )}
           </div>
@@ -710,6 +712,9 @@ export default function App() {
                rotationToHorizonDegMoon={rotationToHorizonDegMoon}
                phaseFraction={phaseFraction}
                brightLimbAngleDeg={brightLimbAngleDeg}
+               // New: show earthshine percent only when both toggles are active
+               earthshine={earthshine}
+               showMoon3D={showMoon3D}
              />
             <div className="mt-2 text-xs text-white/70 flex flex-wrap gap-3">
               <div>Séparation: {eclipse.sep.toFixed(2)}°</div>

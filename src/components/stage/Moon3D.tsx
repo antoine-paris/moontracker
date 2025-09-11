@@ -25,6 +25,12 @@ const LABEL_MARGIN_SCALE = 0.25;     // marge réduite proportionnellement au ra
 const AXIS_GAP_FACTOR = 0.15;        // écarte les traits cardinaux du limbe (en R)
 const LABEL_GAP_FACTOR = 0.22;       // écarte les lettres NOSE au-delà du trait (en R)
 
+// Ajout: gain d'intensité du "clair de terre" (modifiable ici)
+const EARTHSHINE_INTENSITY_GAIN = 1.0;
+
+// Ajout: intensité de la lumière "Soleil" (directionalLight)
+const SUNLIGHT_INTENSITY = 10.0;
+
 // Types et helpers (internes au fichier)
 type Props = {
   x: number; // screen x of moon center (absolute in stage)
@@ -52,6 +58,8 @@ type Props = {
   brightLimbAngleDeg?: number | string;   // 0°=North, 90°=East (number or numeric string)
   // Visual marker for the subsolar point
   showSubsolarCone?: boolean;
+  // New: enable camera-based bluish fill when Earthshine is toggled
+  earthshine?: boolean;
 };
 
 type Vec3 = [number, number, number];
@@ -297,8 +305,10 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
        {debugMask && <axesHelper args={[targetPx * 0.6]} />}
+
        {/* Rendre la Lune en premier pour remplir le depth buffer */}
        <primitive object={centeredScene} />
+
        {showMoonCard && (
          <group>
            {/* Équateur: torus plein avant */}
@@ -402,7 +412,21 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
    );
  }
 
-export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg, librationTopo, modelUrl = '/src/assets/nasa-gov-4720.glb', debugMask = false, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0, showPhase = true, showMoonCard = false, illumFraction, brightLimbAngleDeg, showSubsolarCone = true }: Props) {
+export default function Moon3D({
+  x, y, wPx, hPx,
+  moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg,
+  librationTopo,
+  modelUrl = '/src/assets/nasa-gov-4720.glb',
+  debugMask = false,
+  rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
+  camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0,
+  showPhase = true,
+  showMoonCard = false,
+  illumFraction,
+  brightLimbAngleDeg,
+  showSubsolarCone = true,
+  earthshine = false, // New
+}: Props) {
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 
   const vMoon = useMemo(() => altAzToVec(moonAltDeg, moonAzDeg), [moonAltDeg, moonAzDeg]);
@@ -519,14 +543,35 @@ export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDe
  
    // (rotations de libration déjà calculées plus haut)
  
-   return (
-     <div className="absolute pointer-events-none" style={{ left, top, width: Math.max(1, canvasPx), height: Math.max(1, canvasPx), zIndex: Z.ui - 1, overflow: 'hidden' }}>
-       <Canvas orthographic dpr={[1, 2]} gl={{ alpha: true }} onCreated={({ gl }) => {
-         gl.setClearColor(new THREE.Color(0x000000), 0);
-         gl.physicallyCorrectLights = true;
-         gl.toneMappingExposure = 2.2;
-       }}>
-         <OrthographicCamera
+   // New: Earthshine fraction and camera-fill intensity
+  const earthshineFrac = React.useMemo(() => {
+    const f = toFiniteNumber(illumFraction);
+    if (typeof f !== 'number') return 0;
+    return Math.max(0, Math.min(1, 1 - f));
+  }, [illumFraction]);
+
+  const earthFillIntensity = React.useMemo(() => {
+    if (!earthshine) return 0;
+    // subtle boost when Earth is fuller; capped for realism
+    return Math.pow(earthshineFrac, 0.8) * EARTHSHINE_INTENSITY_GAIN;
+  }, [earthshine, earthshineFrac]);
+
+  // NEW: position du clair de terre — proche de la surface, aligné avec l'axe avant caméra
+  const earthFillPos = React.useMemo((): Vec3 => {
+    const rWorld = targetPx / 2; // rayon monde du disque (avec cette caméra ortho)
+    const fwd = new THREE.Vector3(0, 0, -1).applyEuler(camEuler).normalize(); // avant caméra en monde
+    const pos = fwd.multiplyScalar(-rWorld * 1.02); // vers l'observateur (légèrement hors surface)
+    return [pos.x, pos.y, pos.z];
+  }, [camEuler, targetPx]);
+
+  return (
+    <div className="absolute pointer-events-none" style={{ left, top, width: Math.max(1, canvasPx), height: Math.max(1, canvasPx), zIndex: Z.ui - 1, overflow: 'hidden' }}>
+      <Canvas orthographic dpr={[1, 2]} gl={{ alpha: true }} onCreated={({ gl }) => {
+        gl.setClearColor(new THREE.Color(0x000000), 0);
+        gl.physicallyCorrectLights = true;
+        gl.toneMappingExposure = 2.2;
+      }}>
+        <OrthographicCamera
            makeDefault
            left={-canvasPx / 2}
            right={canvasPx / 2}
@@ -561,8 +606,16 @@ export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDe
          ) : (
            <>
              <hemisphereLight args={[0x888888, 0x111111, 1.2]} />
-             <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={8.0} />
+             <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={SUNLIGHT_INTENSITY} />
              <ambientLight intensity={0.8} />
+             {earthFillIntensity > 0 && (
+               // Remplacement: directionalLight pour le "clair de terre" (pas d'atténuation 1/r²)
+               <directionalLight
+                 position={earthFillPos}      // placé côté observateur
+                 color="#7f9df6ff"              // léger bleu
+                 intensity={earthFillIntensity}
+               />
+             )}
            </>
          )}
         <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="#b0b0b0" /></mesh>}>

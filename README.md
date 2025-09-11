@@ -131,7 +131,7 @@ npm run dev
 ## Scripts
 
 - dev: vite
-- build: tsc - b && vite build
+- build: tsc -b && vite build
 - preview: vite preview
 - lint: eslint .
 
