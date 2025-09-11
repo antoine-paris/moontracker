@@ -36,6 +36,7 @@ type Props = {
   sunAltDeg: number;
   sunAzDeg: number;
   limbAngleDeg: number; // orientation of the lunar north toward the top
+  librationTopo?: { latDeg: number; lonDeg: number; paDeg: number };
   modelUrl?: string; // defaults to '/src/assets/nasa-gov-4720.glb'
   debugMask?: boolean; // enable full lighting rig for orientation debugging
   rotOffsetDegX?: number;
@@ -108,7 +109,7 @@ function mul(R: number[][], v: Vec3): Vec3 {
   ];
 }
 
-function Model({ limbAngleDeg, targetPx, modelUrl, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, debugMask = false, showMoonCard = false }: { limbAngleDeg: number; targetPx: number; modelUrl: string; rotOffsetDegX?: number; rotOffsetDegY?: number; rotOffsetDegZ?: number; debugMask?: boolean; showMoonCard?: boolean; }) {
+function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, debugMask = false, showMoonCard = false }: { limbAngleDeg: number; targetPx: number; modelUrl: string; librationTopo?: { latDeg: number; lonDeg: number; paDeg: number }; rotOffsetDegX?: number; rotOffsetDegY?: number; rotOffsetDegZ?: number; debugMask?: boolean; showMoonCard?: boolean; }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   useGLTF.preload(modelUrl);
   const { scene } = useGLTF(modelUrl);
@@ -128,26 +129,41 @@ function Model({ limbAngleDeg, targetPx, modelUrl, rotOffsetDegX = 0, rotOffsetD
      const r = Math.max(1e-6, maxDim) / 2; // rayon écran avant scale
      return { centeredScene: clone, scale: s, radius: r };
    }, [scene, targetPx]);
-  // Orientation absolue appliquée au group parent (axesHelper suit la même rotation)
-  const baseX = GLB_CALIB.rotationBaseDeg.x, baseY = GLB_CALIB.rotationBaseDeg.y, baseZ = GLB_CALIB.rotationBaseDeg.z;
-  const rotX = ((baseX + rotOffsetDegX) * Math.PI) / 180;
-  const rotY = ((baseY + rotOffsetDegY) * Math.PI) / 180;
-  const rotZ = (((baseZ + limbAngleDeg + rotOffsetDegZ)) * Math.PI) / 180;
-  const quaternion = useMemo(() => {
-    const e = new THREE.Euler(rotX, rotY, rotZ, 'ZXY'); // ordre choisi pour limiter le lock à Y=±90°
-    const q = new THREE.Quaternion();
-    q.setFromEuler(e);
-    return q;
-  }, [rotX, rotY, rotZ]);
-  const axisLen = useMemo(() => radius * AXIS_LEN_FACTOR, [radius]);
-  // Axes locaux sélénographiques dans l’espace du modèle (après calibration GLB):
-  const northLocal = useMemo(() => GLB_CALIB.northLocal.clone(), []); // Nord lunaire local (dépend GLB)
-  const viewLocal = useMemo(() => GLB_CALIB.viewForwardLocal.clone(), []); // Avant caméra local (dépend GLB)
-  const meridianNormalLocal = useMemo(() => {
-     const n = new THREE.Vector3().crossVectors(northLocal, viewLocal);
-     if (n.lengthSq() < 1e-9) return new THREE.Vector3(1, 0, 0); // fallback si colinéaires
-     return n.normalize();
-   }, [northLocal, viewLocal]);
+   // Orientation absolue appliquée au group parent (axesHelper suit la même rotation)
+   const baseX = GLB_CALIB.rotationBaseDeg.x, baseY = GLB_CALIB.rotationBaseDeg.y, baseZ = GLB_CALIB.rotationBaseDeg.z;
+   const rotX = ((baseX + rotOffsetDegX) * Math.PI) / 180;
+   const rotY = ((baseY + rotOffsetDegY) * Math.PI) / 180;
+   const rotZ = (((baseZ + limbAngleDeg + rotOffsetDegZ)) * Math.PI) / 180;
+   const quaternion = useMemo(() => {
+     const e = new THREE.Euler(rotX, rotY, rotZ, 'ZXY'); // ordre choisi pour limiter le lock à Y=±90°
+     const q = new THREE.Quaternion();
+     q.setFromEuler(e);
+     return q;
+   }, [rotX, rotY, rotZ]);
+
+  // Libration topocentrique: Ry(-lon), puis Rx(+lat) — (composition: qTotal = qx * qy applique Ry puis Rx)
+  const quaternionLib = useMemo(() => {
+    if (!librationTopo) return new THREE.Quaternion();
+    const norm180 = (d: number) => ((d + 180) % 360 + 360) % 360 - 180;
+    const lon = norm180(librationTopo.lonDeg) * Math.PI / 180;
+    const lat = (librationTopo.latDeg) * Math.PI / 180;
+    const qy = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), lon);
+    const qx = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1),  lat);
+    return qx.multiply(qy);
+  }, [librationTopo]);
+  // Composition finale: base/orientation existante puis petite rotation interne de libration
+  const quaternionFinal = useMemo(() => quaternion.clone().multiply(quaternionLib), [quaternion, quaternionLib]);
+   const axisLen = useMemo(() => radius * AXIS_LEN_FACTOR, [radius]);
+   // Longueur spécifique des traits Near/Far (x4)
+   const axisLenNF = useMemo(() => axisLen * 6, [axisLen]);
+   // Axes locaux sélénographiques dans l’espace du modèle (après calibration GLB):
+   const northLocal = useMemo(() => GLB_CALIB.northLocal.clone(), []); // Nord lunaire local (dépend GLB)
+   const viewLocal = useMemo(() => GLB_CALIB.viewForwardLocal.clone(), []); // Avant caméra local (dépend GLB)
+   const meridianNormalLocal = useMemo(() => {
+      const n = new THREE.Vector3().crossVectors(northLocal, viewLocal);
+      if (n.lengthSq() < 1e-9) return new THREE.Vector3(1, 0, 0); // fallback si colinéaires
+      return n.normalize();
+    }, [northLocal, viewLocal]);
  // Orientation des tores (leur plan par défaut est XZ, normal +Y)
  const qEquatorTorus = useMemo(() => {
    const q = new THREE.Quaternion();
@@ -203,6 +219,21 @@ function Model({ limbAngleDeg, targetPx, modelUrl, rotOffsetDegX = 0, rotOffsetD
    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), diskWestLocalR);
    return q;
  }, [diskWestLocalR]);
+ // Traits proche/loin Terre fixes: croisement méridien 0 / équateur (repère GLB)
+ const lon0EquatorLocal = useMemo(() => new THREE.Vector3(1, 0, 0), []); // ajuster si 0° diffère dans le GLB
+ const qAxisNear = useMemo(() => {
+   const q = new THREE.Quaternion();
+   q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), lon0EquatorLocal);
+   return q;
+ }, [lon0EquatorLocal]);
+ const qAxisFar = useMemo(() => {
+   const q = new THREE.Quaternion();
+   const d = lon0EquatorLocal.clone().multiplyScalar(-1);
+   q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), d);
+   return q;
+ }, [lon0EquatorLocal]);
+ const axisPosNear = useMemo(() => lon0EquatorLocal.clone().multiplyScalar(radius + axisLenNF / 2 + radius * AXIS_GAP_FACTOR), [lon0EquatorLocal, radius, axisLenNF]);
+ const axisPosFar  = useMemo(() => lon0EquatorLocal.clone().multiplyScalar(-(radius + axisLenNF / 2 + radius * AXIS_GAP_FACTOR)), [lon0EquatorLocal, radius, axisLenNF]);
  // Positions exactes de l’axe et du label le long de northLocal (pôle nord réel)
  const axisPos = useMemo(() => {
    const nv = diskNorthLocal.clone();
@@ -220,78 +251,85 @@ function Model({ limbAngleDeg, targetPx, modelUrl, rotOffsetDegX = 0, rotOffsetD
  const axisPosO = useMemo(() => diskWestLocalR.clone().multiplyScalar(radius + axisLen / 2 + radius * AXIS_GAP_FACTOR), [diskWestLocalR, radius, axisLen]);
  const labelPosO = useMemo(() => diskWestLocalR.clone().multiplyScalar(radius + axisLen + radius * N_MARGIN_FACTOR * LABEL_MARGIN_SCALE + radius * LABEL_GAP_FACTOR), [diskWestLocalR, radius, axisLen]);
    return (
-     <group scale={[scale, scale, scale]} quaternion={quaternion}>
+     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
        {debugMask && <axesHelper args={[targetPx * 0.6]} />}
        {showMoonCard && (
          <group>
-            {/* Équateur: anneau dont la normale suit Nord local */}
-            <group quaternion={qEquatorTorus} renderOrder={10}>
-               <mesh renderOrder={10}>
--                <torusGeometry args={[radius * 1.04, radius * 0.01, 16, 128]} />
-+                <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
-                 <meshBasicMaterial color="#22c55e" transparent opacity={0.95} depthTest={false} depthWrite={false} />
-               </mesh>
-             </group>
-            {/* Méridien central: plan contenant Nord et la direction de vue (normal = Nord×Vue) */}
-             <group quaternion={qMeridianTorus} renderOrder={10}>
-               <mesh renderOrder={10}>
--                <torusGeometry args={[radius * 1.04, radius * 0.01, 16, 128]} />
-+                <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
-                 <meshBasicMaterial color="#ef4444" transparent opacity={0.95} depthTest={false} depthWrite={false} />
-               </mesh>
-             </group>
-            {/* Point central bleu */}
-             <mesh renderOrder={11}>
--              <sphereGeometry args={[radius * 0.04, 16, 16]} />
-+              <sphereGeometry args={[radius * CENTER_DOT_FACTOR, 16, 16]} />
-               <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
+           {/* Équateur: anneau dont la normale suit Nord local */}
+           <group quaternion={qEquatorTorus} renderOrder={10}>
+             <mesh renderOrder={10}>
+               <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+               <meshBasicMaterial color="#22c55e" transparent opacity={0.95} depthTest={false} depthWrite={false} />
              </mesh>
-            {/* Axe nord (violet) orienté sur Nord local */}
-             <group renderOrder={11}>
-              <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisN} renderOrder={11}>
-                <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-                <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-              </mesh>
-+              <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
-+                <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
-+              </Billboard>
-            </group>
-            {/* Axes Est, Sud, Ouest (même style) */}
-            <group renderOrder={11}>
-              {/* Est */}
-              <mesh position={[axisPosE.x, axisPosE.y, axisPosE.z]} quaternion={qAxisDiskE} renderOrder={11}>
-                <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-                <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-              </mesh>
-+              <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
-+                <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
-+              </Billboard>
-              {/* Sud */}
-              <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
-                <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-                <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-              </mesh>
-+              <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
-+                <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
-+              </Billboard>
-              {/* Ouest */}
-              <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
-                <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-                <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-              </mesh>
-+              <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
-+                <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
-+              </Billboard>
-            </group>
+           </group>
+           {/* Méridien central: plan contenant Nord et la direction de vue (normal = Nord×Vue) */}
+           <group quaternion={qMeridianTorus} renderOrder={10}>
+             <mesh renderOrder={10}>
+               <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+               <meshBasicMaterial color="#ef4444" transparent opacity={0.95} depthTest={false} depthWrite={false} />
+             </mesh>
+           </group>
+           {/* Point central bleu */}
+           <mesh renderOrder={11}>
+             <sphereGeometry args={[radius * CENTER_DOT_FACTOR, 16, 16]} />
+             <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
+           </mesh>
+           {/* Axe nord (violet) orienté sur Nord local */}
+           <group renderOrder={11}>
+             <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisN} renderOrder={11}>
+               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+             </mesh>
+             <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
+               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
+             </Billboard>
+           </group>
+           {/* Axes Est, Sud, Ouest (même style) */}
+           <group renderOrder={11}>
+             {/* Est */}
+             <mesh position={[axisPosE.x, axisPosE.y, axisPosE.z]} quaternion={qAxisDiskE} renderOrder={11}>
+               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+             </mesh>
+             <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
+               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
+             </Billboard>
+             {/* Sud */}
+             <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
+               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+             </mesh>
+             <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
+               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
+             </Billboard>
+             {/* Ouest */}
+             <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
+               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+             </mesh>
+             <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
+               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
+             </Billboard>
++            {/* Proche Terre (sans étiquette) */}
++            <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>
++              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
++              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
++            </mesh>
++            {/* Loin Terre (sans étiquette) */}
++            <mesh position={[axisPosFar.x, axisPosFar.y, axisPosFar.z]} quaternion={qAxisFar} renderOrder={11}>
++              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
+               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+             </mesh>
+           </group>
          </group>
-        )}
+       )}
        {/* On re-scale uniquement le modèle GLB pour conserver son diamètre apparent */}
        <primitive object={centeredScene} />
-      </group>
-    );
+     </group>
+   );
  }
 
-export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg, modelUrl = '/src/assets/nasa-gov-4720.glb', debugMask = false, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0, showPhase = true, showMoonCard = false }: Props) {
+export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg, librationTopo, modelUrl = '/src/assets/nasa-gov-4720.glb', debugMask = false, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0, showPhase = true, showMoonCard = false }: Props) {
    const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 
    const vMoon = useMemo(() => altAzToVec(moonAltDeg, moonAzDeg), [moonAltDeg, moonAzDeg]);
@@ -310,8 +348,32 @@ export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDe
      'XYZ'
    ), [camRotDegX, camRotDegY, camRotDegZ]);
 
+   // Rotations (en degrés) dues à la libration appliquées au modèle: Ry(-lon), Rx(+lat), Rz=0
+   const libLonDegNorm = (() => {
+     if (!librationTopo) return 0;
+     const d = ((librationTopo.lonDeg + 180) % 360 + 360) % 360 - 180;
+     return d;
+   })();
+   const libRotXDeg = librationTopo ? librationTopo.latDeg : 0;
+   const libRotYDeg = librationTopo ? -libLonDegNorm : 0;
+   const libRotZDeg = 0;
+   const tiltHint = librationTopo
+     ? (libRotXDeg > 0
+         ? 'pôle Nord légèrement “penché” vers l’observateur'
+         : libRotXDeg < 0
+           ? 'pôle Sud légèrement “penché” vers l’observateur'
+           : 'sans bascule nord/sud notable')
+     : '—';
+   const eastHint = librationTopo
+     ? (libLonDegNorm > 0
+         ? 'on fait tourner le globe pour amener l’Est vers nous'
+         : libLonDegNorm < 0
+           ? 'on fait tourner le globe pour amener l’Ouest vers nous'
+           : 'sans biais est/ouest notable')
+     : '—';
+ 
    if (tooSmall) return null;
-
+ 
    // Diamètre souhaité du disque lunaire (pixels)
    const moonPx = Math.floor(Math.min(wPx, hPx));
    // Taille du Canvas: disque + marge pour les marqueurs aux deux extrémités
@@ -328,7 +390,9 @@ export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDe
    const left = Math.round(x - canvasPx / 2);
    const top  = Math.round(y - canvasPx / 2);
    const targetPx = moonPx; // utilisé par Model pour caler le diamètre du disque
-
+ 
+   // (rotations de libration déjà calculées plus haut)
+ 
    return (
      <div className="absolute pointer-events-none" style={{ left, top, width: Math.max(1, canvasPx), height: Math.max(1, canvasPx), zIndex: Z.ui - 1, overflow: 'hidden' }}>
        <Canvas orthographic dpr={[1, 2]} gl={{ alpha: true }} onCreated={({ gl }) => {
@@ -376,9 +440,16 @@ export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDe
            </>
          )}
         <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="#b0b0b0" /></mesh>}>
-           <Model limbAngleDeg={limbAngleDeg} targetPx={targetPx} modelUrl={modelUrl} rotOffsetDegX={rotOffsetDegX} rotOffsetDegY={rotOffsetDegY} rotOffsetDegZ={rotOffsetDegZ} debugMask={debugMask} showMoonCard={showMoonCard} />
+           <Model limbAngleDeg={limbAngleDeg} targetPx={targetPx} modelUrl={modelUrl} librationTopo={librationTopo} rotOffsetDegX={rotOffsetDegX} rotOffsetDegY={rotOffsetDegY} rotOffsetDegZ={rotOffsetDegZ} debugMask={debugMask} showMoonCard={showMoonCard} />
          </Suspense>
        </Canvas>
+       {debugMask ? (
+         <div style={{ position: 'absolute', left: 8, top: 8, color: '#fff', background: 'rgba(0,0,0,0.55)', padding: '6px 8px', fontSize: 12, lineHeight: 1.3, borderRadius: 4 }}>
+           <div>Libration RX: {libRotXDeg.toFixed(1)}° — {tiltHint}</div>
+           <div>Libration RY: {libRotYDeg.toFixed(1)}° — {eastHint}</div>
+           <div>Libration RZ: {libRotZDeg.toFixed(1)}°</div>
+         </div>
+       ) : null}
      </div>
    );
  }

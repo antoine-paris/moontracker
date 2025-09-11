@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // Astronomy-Engine wrapper centralisé
-import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination } from "./astro/aeInterop";
+import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm } from "./astro/aeInterop";
 
 // Types
 import type { FollowMode } from "./types";
@@ -212,19 +212,38 @@ export default function App() {
 
   // Astronomical positions
   const astro = useMemo(() => {
-    const { lat, lng } = location;
-    const sun = getSunAltAzDeg(date, lat, lng);
-    const moon = getMoonAltAzDeg(date, lat, lng);
-    const illum = getMoonIllumination(date);
-    const sunDistAU = sun.distAU; // meilleur via AE
-    const sunDiamDeg = sunApparentDiameterDeg(date, sunDistAU);
-    const moonDiamDeg = moonApparentDiameterDeg(moon.distanceKm);
-    return {
-      sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
-      moon: { alt: moon.altDeg, az: moon.azDeg, parallacticDeg: 0, distKm: moon.distanceKm, appDiamDeg: moonDiamDeg },
-      illum
-    };
-  }, [date, location]);
+     const { lat, lng } = location;
+     const sun = getSunAltAzDeg(date, lat, lng);
+     const moon = getMoonAltAzDeg(date, lat, lng);
+     const illum = getMoonIllumination(date);
+     const sunDistAU = sun.distAU; // meilleur via AE
+     const sunDiamDeg = sunApparentDiameterDeg(date, sunDistAU);
+     // Parallaxe horizontale et distance topocentrique
+     const moonParallaxDeg = moonHorizontalParallaxDeg(moon.distanceKm);
+     const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg ?? moon.alt);
+     const moonDiamDeg = moonApparentDiameterDeg(moonTopoKm);
+    // Libration (Meeus): géocentrique + topocentrique (apparente)
+    let moonLibrationGeo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
+    let moonLibrationTopo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
+    let moonLibrationError: string | undefined;
+    try { moonLibrationGeo = getMoonLibration(date); } catch (e) { moonLibrationError = (e as Error)?.message ?? 'calcul non disponible'; }
+    try { moonLibrationTopo = getMoonLibration(date, { lat, lng }); } catch { /* ignore */ }
+     return {
+       sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
+       moon: {
+        alt: moon.altDeg,
+        az: moon.azDeg,
+        parallacticDeg: moonParallaxDeg,
+        distKm: moon.distanceKm,
+        topoDistKm: moonTopoKm,
+        appDiamDeg: moonDiamDeg,
+        libration: moonLibrationGeo,
+        librationTopo: moonLibrationTopo,
+        librationError: moonLibrationError,
+      },
+       illum
+     };
+   }, [date, location]);
 
   // Reference azimuth & altitude (follow mode)
   const refAz = useMemo(() => {
@@ -664,6 +683,7 @@ export default function App() {
                 sunAltDeg={astro.sun.alt}
                 sunAzDeg={astro.sun.az}
                 limbAngleDeg={rotationToHorizonDegMoon * -1}
+                librationTopo={astro.moon.librationTopo}
                 debugMask={debugMask}
                 rotOffsetDegX={rotOffsetDegX}
                 rotOffsetDegY={rotOffsetDegY}
@@ -683,7 +703,7 @@ export default function App() {
             style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
           >
             <BottomTelemetry
-              astro={astro as TelemetryAstro}
+              astro={astro}
                rotationToHorizonDegMoon={rotationToHorizonDegMoon}
                phaseFraction={phaseFraction}
                brightLimbAngleDeg={brightLimbAngleDeg}
