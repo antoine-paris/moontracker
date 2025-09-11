@@ -47,9 +47,26 @@ type Props = {
   camRotDegZ?: number;
   showPhase?: boolean;
   showMoonCard?: boolean;
+  // New optional inputs to drive Sun direction from Moon card data
+  illumFraction?: number | string;        // [0..1] illuminated fraction (number or numeric string)
+  brightLimbAngleDeg?: number | string;   // 0°=North, 90°=East (number or numeric string)
+  // Visual marker for the subsolar point
+  showSubsolarCone?: boolean;
 };
 
 type Vec3 = [number, number, number];
+
+// Coerce possibly string inputs (like "74.2°" or "0.339") to finite numbers
+function toFiniteNumber(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+  if (typeof v === 'string') {
+    const cleaned = v.replace(/[^0-9+\-.eE]/g, '');
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
 
 function altAzToVec(altDeg: number, azDeg: number): Vec3 {
   const d2r = Math.PI / 180;
@@ -109,7 +126,7 @@ function mul(R: number[][], v: Vec3): Vec3 {
   ];
 }
 
-function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, debugMask = false, showMoonCard = false }: { limbAngleDeg: number; targetPx: number; modelUrl: string; librationTopo?: { latDeg: number; lonDeg: number; paDeg: number }; rotOffsetDegX?: number; rotOffsetDegY?: number; rotOffsetDegZ?: number; debugMask?: boolean; showMoonCard?: boolean; }) {
+function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, debugMask = false, showMoonCard = false, sunDirWorld, showSubsolarCone = true }: { limbAngleDeg: number; targetPx: number; modelUrl: string; librationTopo?: { latDeg: number; lonDeg: number; paDeg: number }; rotOffsetDegX?: number; rotOffsetDegY?: number; rotOffsetDegZ?: number; debugMask?: boolean; showMoonCard?: boolean; sunDirWorld?: [number, number, number]; showSubsolarCone?: boolean; }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   useGLTF.preload(modelUrl);
   const { scene } = useGLTF(modelUrl);
@@ -153,10 +170,10 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
   }, [librationTopo]);
   // Composition finale: base/orientation existante puis petite rotation interne de libration
   const quaternionFinal = useMemo(() => quaternion.clone().multiply(quaternionLib), [quaternion, quaternionLib]);
-   const axisLen = useMemo(() => radius * AXIS_LEN_FACTOR, [radius]);
-   // Longueur spécifique des traits Near/Far (x4)
-   const axisLenNF = useMemo(() => axisLen * 6, [axisLen]);
-   // Axes locaux sélénographiques dans l’espace du modèle (après calibration GLB):
+  const axisLen = useMemo(() => radius * AXIS_LEN_FACTOR, [radius]);
+  // Longueur spécifique des traits Near/Far (x4)
+  const axisLenNF = useMemo(() => axisLen * 6, [axisLen]);
+  // Axes locaux sélénographiques dans l’espace du modèle (après calibration GLB):
    const northLocal = useMemo(() => GLB_CALIB.northLocal.clone(), []); // Nord lunaire local (dépend GLB)
    const viewLocal = useMemo(() => GLB_CALIB.viewForwardLocal.clone(), []); // Avant caméra local (dépend GLB)
    const meridianNormalLocal = useMemo(() => {
@@ -244,8 +261,41 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
  const labelPosS = useMemo(() => diskSouthLocal.clone().multiplyScalar(radius + axisLen + radius * N_MARGIN_FACTOR * LABEL_MARGIN_SCALE + radius * LABEL_GAP_FACTOR), [diskSouthLocal, radius, axisLen]);
  const axisPosO = useMemo(() => diskWestLocalR.clone().multiplyScalar(radius + axisLen / 2 + radius * AXIS_GAP_FACTOR), [diskWestLocalR, radius, axisLen]);
  const labelPosO = useMemo(() => diskWestLocalR.clone().multiplyScalar(radius + axisLen + radius * N_MARGIN_FACTOR * LABEL_MARGIN_SCALE + radius * LABEL_GAP_FACTOR), [diskWestLocalR, radius, axisLen]);
-   return (
-     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
+   // Compute subsolar cone placement using the same Sun direction as the light
+  const subsolar = useMemo(() => {
+    if (!sunDirWorld) return null;
+    const sWorld = new THREE.Vector3(sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]);
+    if (!isFinite(sWorld.x) || !isFinite(sWorld.y) || !isFinite(sWorld.z)) return null;
+    if (sWorld.lengthSq() < 1e-9) return null;
+    const qInv = quaternionFinal.clone().invert();
+    const sLocal = sWorld.clone().applyQuaternion(qInv).normalize();
+    const inward = sLocal.clone().negate().normalize();
+    const h = Math.max(1e-3, radius * 0.35);
+    const baseRadius = Math.max(1e-3, radius * 0.06);
+    const center = sLocal.clone().multiplyScalar(radius + h * 0.5);
+    const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), inward);
+    return { center, rotation, h, baseRadius } as const;
+  }, [sunDirWorld, quaternionFinal, radius]);
+
+  // Anti-solar (lunar midnight) cone: opposite to subsolar, same sizing/orientation logic
+  const antisolar = useMemo(() => {
+    if (!sunDirWorld) return null;
+    const sWorld = new THREE.Vector3(sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]);
+    if (!isFinite(sWorld.x) || !isFinite(sWorld.y) || !isFinite(sWorld.z)) return null;
+    if (sWorld.lengthSq() < 1e-9) return null;
+    const qInv = quaternionFinal.clone().invert();
+    const sLocal = sWorld.clone().applyQuaternion(qInv).normalize();
+    const aLocal = sLocal.clone().negate();
+    const inward = aLocal.clone().negate().normalize(); // points toward center (i.e., +sLocal)
+    const h = Math.max(1e-3, radius * 0.35);
+    const baseRadius = Math.max(1e-3, radius * 0.06);
+    const center = aLocal.clone().multiplyScalar(radius + h * 0.5);
+    const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), inward);
+    return { center, rotation, h, baseRadius } as const;
+  }, [sunDirWorld, quaternionFinal, radius]);
+
+  return (
+    <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
        {debugMask && <axesHelper args={[targetPx * 0.6]} />}
        {/* Rendre la Lune en premier pour remplir le depth buffer */}
        <primitive object={centeredScene} />
@@ -336,30 +386,96 @@ function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX 
        )}
        {/* On re-scale uniquement le modèle GLB pour conserver son diamètre apparent */}
        <primitive object={centeredScene} />
+       {showSubsolarCone && showMoonCard && subsolar && (
+        <mesh position={[subsolar.center.x, subsolar.center.y, subsolar.center.z]} quaternion={subsolar.rotation} renderOrder={12}>
+          <coneGeometry args={[subsolar.baseRadius, subsolar.h, 24]} />
+          <meshStandardMaterial color="#facc15" emissive="#fbbf24" emissiveIntensity={1.2} transparent opacity={0.95} depthTest depthWrite={false} />
+        </mesh>
+      )}
+      {showSubsolarCone && showMoonCard && antisolar && (
+        <mesh position={[antisolar.center.x, antisolar.center.y, antisolar.center.z]} quaternion={antisolar.rotation} renderOrder={12}>
+          <coneGeometry args={[antisolar.baseRadius, antisolar.h, 24]} />
+          <meshStandardMaterial color="#1e3a8a" emissive="#1e40af" emissiveIntensity={0.6} transparent opacity={0.95} depthTest depthWrite={false} />
+        </mesh>
+      )}
      </group>
    );
  }
 
-export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg, librationTopo, modelUrl = '/src/assets/nasa-gov-4720.glb', debugMask = false, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0, showPhase = true, showMoonCard = false }: Props) {
-   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
+export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg, librationTopo, modelUrl = '/src/assets/nasa-gov-4720.glb', debugMask = false, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0, showPhase = true, showMoonCard = false, illumFraction, brightLimbAngleDeg, showSubsolarCone = true }: Props) {
+  const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 
-   const vMoon = useMemo(() => altAzToVec(moonAltDeg, moonAzDeg), [moonAltDeg, moonAzDeg]);
-   const vSun  = useMemo(() => altAzToVec(sunAltDeg,  sunAzDeg ), [sunAltDeg,  sunAzDeg ]);
-   // Aligner la direction Lune vers la caméra (cam regarde -Z)
-   const R = useMemo(() => rotateAToB(vMoon, [0,0,-1]), [vMoon]);
-   const lightCam = useMemo(() => mul(R, vSun), [R, vSun]);
-   // Base light position (opposée à la direction soleil caméra)
-   const baseLightPos = useMemo(() => ([-lightCam[0], -lightCam[1], -lightCam[2]] as Vec3), [lightCam]);
+  const vMoon = useMemo(() => altAzToVec(moonAltDeg, moonAzDeg), [moonAltDeg, moonAzDeg]);
+  const vSun  = useMemo(() => altAzToVec(sunAltDeg,  sunAzDeg ), [sunAltDeg,  sunAzDeg ]);
+  // Aligner la direction Lune vers la caméra (cam regarde -Z)
+  const R = useMemo(() => rotateAToB(vMoon, [0,0,-1]), [vMoon]);
 
-   // Rotations caméra (en radians) et euler
-   const camEuler = useMemo(() => new THREE.Euler(
-     (camRotDegX * Math.PI) / 180,
-     (camRotDegY * Math.PI) / 180,
-     (camRotDegZ * Math.PI) / 180,
-     'XYZ'
-   ), [camRotDegX, camRotDegY, camRotDegZ]);
+  // Compute Sun direction in camera space from Moon card data when available.
+  // If illumFraction and a limb angle are provided, derive s_cam from:
+  //   f = (1 + cos(gamma)) / 2, gamma = arccos(2f - 1)
+  //   azimuth in image plane = bright limb angle (0=N, 90°=E).
+  // Otherwise fall back to alt/az-based mapping (mul(R, vSun)).
+  const lightCam = useMemo((): Vec3 => {
+    const fNum = toFiniteNumber(illumFraction);
+    const paCandidate = brightLimbAngleDeg != null ? brightLimbAngleDeg : librationTopo?.paDeg;
+    const paNum = toFiniteNumber(paCandidate);
 
-   // Rotations (en degrés) dues à la libration appliquées au modèle: Ry(-lon), Rx(+lat), Rz=0
+    const hasF = typeof fNum === 'number';
+    const hasPa = typeof paNum === 'number';
+
+    if (hasF && hasPa) {
+      const f = Math.min(1, Math.max(0, fNum as number));
+      const c = Math.max(-1, Math.min(1, 2 * f - 1));
+      const gamma = Math.acos(c); // 0=Full, π=New
+      // Correct the bright limb azimuth by the parallactic rotation already applied to the GLB
+      const qPar = Number.isFinite(limbAngleDeg) ? (limbAngleDeg as number) : 0;
+      const a = (((paNum as number) - qPar) * Math.PI) / 180; // image-plane azimuth adjusted by parallactic angle
+      // Image plane unit vector: +Y=N (0°), +X=E (90°)
+      const px = Math.sin(a);
+      const py = Math.cos(a);
+      // Sun direction in camera frame (pointing from Moon to Sun)
+      const sx = Math.sin(gamma) * px;
+      const sy = Math.sin(gamma) * py;
+      const sz = Math.cos(gamma); // +Z for Full, -Z for New
+      return [sx, sy, sz];
+    }
+
+    if (illumFraction != null || brightLimbAngleDeg != null || librationTopo?.paDeg != null) {
+      console.warn('[Moon3D] Fallback to alt/az. Provided:', {
+        illumFraction,
+        brightLimbAngleDeg,
+        paDeg: librationTopo?.paDeg,
+        parsed: { fNum, paNum }
+      });
+    }
+    // Fallback: compute from Sun alt/az
+    return mul(R, vSun);
+  }, [illumFraction, brightLimbAngleDeg, librationTopo?.paDeg, limbAngleDeg, R, vSun]);
+
+  // Base light position (opposée à la direction soleil caméra),
+  // transformed to world space by the inverse camera rotation so the direction stays correct if the camera rotates
+  const camEuler = useMemo(() => new THREE.Euler(
+    (camRotDegX * Math.PI) / 180,
+    (camRotDegY * Math.PI) / 180,
+    (camRotDegZ * Math.PI) / 180,
+    'XYZ'
+  ), [camRotDegX, camRotDegY, camRotDegZ]);
+
+  const baseLightPos = useMemo(() => {
+    const q = new THREE.Quaternion().setFromEuler(camEuler).invert();
+    const v = new THREE.Vector3(lightCam[0], lightCam[1], lightCam[2]).applyQuaternion(q);
+    return [-v.x, -v.y, -v.z] as Vec3;
+  }, [lightCam, camEuler]);
+
+  // Sun direction in world space (from Moon toward Sun), synced with the light source
+  const sunDirWorld = useMemo((): Vec3 => {
+    const d = new THREE.Vector3(-baseLightPos[0], -baseLightPos[1], -baseLightPos[2]);
+    if (d.lengthSq() < 1e-9) return [0, 0, -1];
+    d.normalize();
+    return [d.x, d.y, d.z];
+  }, [baseLightPos]);
+
+     // Rotations (en degrés) dues à la libration appliquées au modèle: Ry(-lon), Rx(+lat), Rz=0
    const libLonDegNorm = (() => {
      if (!librationTopo) return 0;
      const d = ((librationTopo.lonDeg + 180) % 360 + 360) % 360 - 180;
@@ -382,8 +498,7 @@ export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDe
            ? 'on fait tourner le globe pour amener l’Ouest vers nous'
            : 'sans biais est/ouest notable')
      : '—';
- 
-   if (tooSmall) return null;
+  if (tooSmall) return null;
  
    // Diamètre souhaité du disque lunaire (pixels)
    const moonPx = Math.floor(Math.min(wPx, hPx));
@@ -446,12 +561,12 @@ export default function Moon3D({ x, y, wPx, hPx, moonAltDeg, moonAzDeg, sunAltDe
          ) : (
            <>
              <hemisphereLight args={[0x888888, 0x111111, 1.2]} />
-             <directionalLight position={[baseLightPos[0], baseLightPos[1], baseLightPos[2]]} intensity={4.0} />
+             <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={8.0} />
              <ambientLight intensity={0.8} />
            </>
          )}
         <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="#b0b0b0" /></mesh>}>
-           <Model limbAngleDeg={limbAngleDeg} targetPx={targetPx} modelUrl={modelUrl} librationTopo={librationTopo} rotOffsetDegX={rotOffsetDegX} rotOffsetDegY={rotOffsetDegY} rotOffsetDegZ={rotOffsetDegZ} debugMask={debugMask} showMoonCard={showMoonCard} />
+           <Model limbAngleDeg={limbAngleDeg} targetPx={targetPx} modelUrl={modelUrl} librationTopo={librationTopo} rotOffsetDegX={rotOffsetDegX} rotOffsetDegY={rotOffsetDegY} rotOffsetDegZ={rotOffsetDegZ} debugMask={debugMask} showMoonCard={showMoonCard} sunDirWorld={sunDirWorld} showSubsolarCone={showSubsolarCone} />
          </Suspense>
        </Canvas>
        {debugMask ? (

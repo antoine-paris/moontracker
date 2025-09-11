@@ -693,6 +693,9 @@ export default function App() {
                 camRotDegZ={camRotDegZ}
                 showPhase={showPhase}
                 showMoonCard={showMoonCard}
+                // New: drive light from Moon card data
+                illumFraction={phaseFraction}
+                brightLimbAngleDeg={brightLimbAngleDeg}
               />
             )}
           </div>
