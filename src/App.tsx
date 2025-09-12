@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // Astronomy-Engine wrapper centralisé
-import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon } from "./astro/aeInterop";
+import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg } from "./astro/aeInterop";
 
 // Types
 import type { FollowMode } from "./types";
@@ -213,8 +213,10 @@ export default function App() {
   // Astronomical positions
   const astro = useMemo(() => {
      const { lat, lng } = location;
-     const sun = getSunAltAzDeg(date, lat, lng);
-     const moon = getMoonAltAzDeg(date, lat, lng);
+     // Use combined alt/az fetch to reuse MakeTime/Observer
+     const both = getSunAndMoonAltAzDeg(date, lat, lng);
+     const sun = both.sun;
+     const moon = both.moon;
      const illum = getMoonIllumination(date);
      const sunDistAU = sun.distAU; // meilleur via AE
      const sunDiamDeg = sunApparentDiameterDeg(date, sunDistAU);
@@ -222,12 +224,12 @@ export default function App() {
      const moonParallaxDeg = moonHorizontalParallaxDeg(moon.distanceKm);
      const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg ?? moon.alt);
      const moonDiamDeg = moonApparentDiameterDeg(moonTopoKm);
-    // Libration (Meeus): géocentrique + topocentrique (apparente)
-    let moonLibrationGeo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
-    let moonLibrationTopo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
-    let moonLibrationError: string | undefined;
-    try { moonLibrationGeo = getMoonLibration(date); } catch (e) { moonLibrationError = (e as Error)?.message ?? 'calcul non disponible'; }
-    try { moonLibrationTopo = getMoonLibration(date, { lat, lng }); } catch { /* ignore */ }
+     // Libration (Meeus): géocentrique + topocentrique (apparente)
+     let moonLibrationGeo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
+     let moonLibrationTopo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
+     let moonLibrationError: string | undefined;
+     try { moonLibrationGeo = getMoonLibration(date); } catch (e) { moonLibrationError = (e as Error)?.message ?? 'calcul non disponible'; }
+     try { moonLibrationTopo = getMoonLibration(date, { lat, lng }); } catch { /* ignore */ }
      return {
        sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
        moon: {
@@ -288,13 +290,15 @@ export default function App() {
   // Orientation & phase
   const rotationToHorizonDegMoon = useMemo(() => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat), [astro.moon, location.lat]);
   const rotationToHorizonDegSun = useMemo(() => -parallacticAngleDeg(astro.sun.az, astro.sun.alt, location.lat), [astro.sun, location.lat]);
-  // Angle du limbe éclairé: utiliser le bearing (0=N, 90=E) du Soleil dans le repère lunaire
-  const brightLimbAngleDeg = useMemo(() => {
-    const { bearingDeg } = sunOnMoon(date);
-    return bearingDeg;
-  }, [date]);
+
+  // Compute Sun direction on Moon once, reuse both bearing and declination
+  const sunOnMoonInfo = useMemo(() => sunOnMoon(date), [date]);
+
+  // Angle du limbe éclairé
+  const brightLimbAngleDeg = useMemo(() => sunOnMoonInfo.bearingDeg, [sunOnMoonInfo]);
+
   // New: Sun declination relative to the lunar equator (deg, signed)
-  const sunDeclinationDeg = useMemo(() => sunOnMoon(date).declinationDeg, [date]);
+  const sunDeclinationDeg = useMemo(() => sunOnMoonInfo.declinationDeg, [sunOnMoonInfo]);
 
   // Auto-polarity to ensure lit side points toward the Sun
   const maskAngleBase = useMemo(() => norm360(brightLimbAngleDeg - 90), [brightLimbAngleDeg]);

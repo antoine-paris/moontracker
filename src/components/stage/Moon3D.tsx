@@ -40,7 +40,7 @@ const processedCache = new Map<string, ProcessedModel>();
 
 function processSceneOnce(original: THREE.Object3D, reliefScale: number): ProcessedModel {
   const rScale = Math.max(0, reliefScale ?? RELIEF_SCALE_DEFAULT);
-  console.log('Processing model with reliefScale =', rScale);
+  // removed noisy console.log
   // Deep clone
   const clone = original.clone(true);
 
@@ -571,7 +571,7 @@ export default function Moon3D({
   x, y, wPx, hPx,
   moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg,
   librationTopo,
-  modelUrl = '/src/assets/nasa-gov-4720-4k.glb',
+  modelUrl = '/src/assets/nasa-gov-4720-1k.glb',
   debugMask = false,
   rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
   camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0,

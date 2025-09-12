@@ -107,6 +107,20 @@ export function getMoonAltAzDeg(date: Date, lat: number, lng: number): MoonAltAz
   return { altDeg: hz.altitude, azDeg: hz.azimuth, distanceKm: eq.dist * AU_KM };
 }
 
+// New: compute Sun and Moon alt/az in one pass (reuses MakeTime/Observer)
+export function getSunAndMoonAltAzDeg(date: Date, lat: number, lng: number): { sun: SunAltAz; moon: MoonAltAz } {
+  const time = MakeTime(date);
+  const obs = new Observer(lat, lng, 0);
+  const eqSun = Equator(Body.Sun, time, obs, true, true);
+  const eqMoon = Equator(Body.Moon, time, obs, true, true);
+  const sunHz = Horizon(time, obs, eqSun.ra, eqSun.dec, 'normal');
+  const moonHz = Horizon(time, obs, eqMoon.ra, eqMoon.dec, 'normal');
+  return {
+    sun: { altDeg: sunHz.altitude, azDeg: sunHz.azimuth, distAU: eqSun.dist },
+    moon: { altDeg: moonHz.altitude, azDeg: moonHz.azimuth, distanceKm: eqMoon.dist * AU_KM }
+  };
+}
+
 export function getMoonIllumination(date: Date): MoonIllum {
   const time = MakeTime(date);
   const ill = Illumination(Body.Moon, time);
@@ -118,7 +132,6 @@ export function getMoonIllumination(date: Date): MoonIllum {
 
 // Libration lunaire: latitude/longitude de libration et angle de position de l’axe (Meeus)
 export function getMoonLibration(date: Date, obs?: { lat: number; lng: number }): MoonLibration {
-  // RA/Dec of-date: géocentriques si obs absent, sinon topocentriques
   const time = MakeTime(date);
   let raDeg: number;
   let decDeg: number;
@@ -127,16 +140,10 @@ export function getMoonLibration(date: Date, obs?: { lat: number; lng: number })
     raDeg = eqTopo.ra * 15;
     decDeg = eqTopo.dec;
   } else {
-    try {
-      const eqGeo = Equator(Body.Moon, time, undefined as unknown as Observer, true, true);
-      raDeg = eqGeo.ra * 15;
-      decDeg = eqGeo.dec;
-    } catch {
-      // Fallback: observateur à (0,0) si géocentrique direct indisponible
-      const eq0 = Equator(Body.Moon, time, new Observer(0, 0, 0), true, true);
-      raDeg = eq0.ra * 15;
-      decDeg = eq0.dec;
-    }
+    // proper geocentric call—no cast/try/catch
+    const eqGeo = Equator(Body.Moon, time, undefined, true, true);
+    raDeg = eqGeo.ra * 15;
+    decDeg = eqGeo.dec;
   }
   const T = julianCenturiesTT(date);
   const epsDeg = meanObliquityDeg(T);
@@ -152,7 +159,7 @@ export function getMoonLibration(date: Date, obs?: { lat: number; lng: number })
  * - declinationDeg: +north / -south of the lunar equator (≈ ±1.54° range)
  */
 export function sunOnMoon(date: Date): { bearingDeg: number; declinationDeg: number } {
- // ---- Sun as seen from the Moon, in EQJ (J2000 equator) ----
+  // ---- Sun as seen from the Moon, in EQJ (J2000 equator) ----
   const t = new AstroTime(date);
   const sun = GeoVector(Body.Sun, t, true);
   const moon = GeoVector(Body.Moon, t, true);
@@ -214,11 +221,11 @@ export function sunOnMoon(date: Date): { bearingDeg: number; declinationDeg: num
   const R3a = rotZ(RA + Math.PI / 2);
   const R1b = rotX(Math.PI / 2 - DEC);
   const R3c = rotZ(W);
-  const Reqj_from_body = mul(mul(R3a, R1b), R3c);
-  const Rbody_from_eqj = transpose(Reqj_from_body);
+  const Reqj_from_body = matMul(matMul(R3a, R1b), R3c);
+  const Rbody_from_eqj = matTranspose(Reqj_from_body);
 
   // ---- Bearing: from +Z (north) toward +Y (east) in Moon-fixed ----
-  const vb = mvec(Rbody_from_eqj, v);
+  const vb = matVec(Rbody_from_eqj, v);
   let bearingDeg = Math.atan2(vb.y, vb.z) * RAD2DEG;
   if (bearingDeg < 0) bearingDeg += 360;
 
@@ -230,33 +237,34 @@ export function sunOnMoon(date: Date): { bearingDeg: number; declinationDeg: num
   const declinationDeg = Math.asin((v.x * zx + v.y * zy + v.z * zz) / sNorm) * RAD2DEG;
 
   return { bearingDeg, declinationDeg };
-  // --- tiny linear algebra + utils ---
-  function deg2rad(d: number) { return d * Math.PI / 180; }
-    function rotZ(a: number) {
-    const c = Math.cos(a), s = Math.sin(a);
-    return [[ c,-s,0],[ s, c,0],[0,0,1]] as const;
-  }
-  function rotX(a: number) {
-    const c = Math.cos(a), s = Math.sin(a);
-    return [[1,0,0],[0, c,-s],[0, s, c]] as const;
-  }
-  function mul(A: number[][], B: number[][]) {
-    return A.map((r,i)=>r.map((_,j)=>A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j]));
-  }
-  function transpose(A: number[][]) {
+}
+
+// --- helpers hoisted to avoid re-allocation on every call ---
+function deg2rad(d: number) { return d * Math.PI / 180; }
+function rotZ(a: number) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return [[ c,-s,0],[ s, c,0],[0,0,1]] as number[][];
+}
+function rotX(a: number) {
+  const c = Math.cos(a), s = Math.sin(a);
+  return [[1,0,0],[0, c,-s],[0, s, c]] as number[][];
+}
+function matMul(A: number[][], B: number[][]) {
+  return A.map((r,i)=>r.map((_,j)=>A[i][0]*B[0][j] + A[i][1]*B[1][j] + A[i][2]*B[2][j]));
+}
+function matTranspose(A: number[][]) {
   return [
     [A[0][0], A[1][0], A[2][0]],
     [A[0][1], A[1][1], A[2][1]],
     [A[0][2], A[1][2], A[2][2]],
   ];
 }
-  function mvec(A: number[][], v: {x:number;y:number;z:number}) {
-    return {
-      x: A[0][0]*v.x + A[0][1]*v.y + A[0][2]*v.z,
-      y: A[1][0]*v.x + A[1][1]*v.y + A[1][2]*v.z,
-      z: A[2][0]*v.x + A[2][1]*v.y + A[2][2]*v.z,
-    };
-  }
+function matVec(A: number[][], v: {x:number;y:number;z:number}) {
+  return {
+    x: A[0][0]*v.x + A[0][1]*v.y + A[0][2]*v.z,
+    y: A[1][0]*v.x + A[1][1]*v.y + A[1][2]*v.z,
+    z: A[2][0]*v.x + A[2][1]*v.y + A[2][2]*v.z,
+  };
 }
 
 

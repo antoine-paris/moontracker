@@ -87,27 +87,27 @@ export const TERMINATOR_LUT_CRES: Array<{ f: number; rR: number; dR: number }> =
 ];
 
 export function interpCres(pct: number) {
+  // direct indexing: LUT is sorted with f from 1..49
   const p = Math.min(49, Math.max(1, pct));
-  const i0 = Math.floor(p);
-  const i1 = Math.ceil(p);
+  const i0 = Math.floor(p) - 1; // 0-based
+  const i1 = Math.ceil(p) - 1;
   if (i0 === i1) {
-    const row = TERMINATOR_LUT_CRES.find(x => x.f === i0)!;
+    const row = TERMINATOR_LUT_CRES[i0];
     return { rR: row.rR, dR: row.dR };
   }
-  const a = TERMINATOR_LUT_CRES.find(x => x.f === i0)!;
-  const b = TERMINATOR_LUT_CRES.find(x => x.f === i1)!;
-  const t = (p - i0) / (i1 - i0);
-  return { rR: a.rR + (b.rR - a.rR) * t, dR: a.dR + (b.dR - a.dR) * t };
+  const a = TERMINATOR_LUT_CRES[i0];
+  const b = TERMINATOR_LUT_CRES[i1];
+  const t = p - Math.floor(p);
+  return {
+    rR: a.rR + (b.rR - a.rR) * t,
+    dR: a.dR + (b.dR - a.dR) * t
+  };
 }
 
 export function sampleTerminatorLUT(frac: number) {
   const pct = Math.max(0, Math.min(100, frac * 100));
-  if (pct <= 50) {
-    const p = pct < 1 ? 1 : pct > 49 ? 49 : pct;
-    return interpCres(p);
-  } else {
-    const p = 100 - pct; // 0..49
-    const pm = p < 1 ? 1 : p > 49 ? 49 : p;
-    return interpCres(pm);
-  }
+  // symmetry around 50%: always map into [1..49]
+  const p = pct <= 50 ? pct : 100 - pct;
+  return interpCres(Math.min(49, Math.max(1, p)));
 }
+
