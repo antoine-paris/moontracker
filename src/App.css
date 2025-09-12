@@ -6,3 +6,8 @@
 html, body, #root {
   height: 100%;
 }
+
+.app-brand { display: flex; align-items: center; gap: 8px; }
+.app-brand-logo { width: 96px; height: 96px; border-radius: 12px; }
+.app-brand-name { font-weight: 700; font-size: 1.125rem; white-space: nowrap; }
+body.sidebar-collapsed .app-brand-name { display: none; }

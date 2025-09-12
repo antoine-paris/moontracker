@@ -41,6 +41,8 @@ import SunSprite from "./components/stage/SunSprite";
 import MoonSprite from "./components/stage/MoonSprite";
 import Moon3D from "./components/stage/Moon3D";
 import StageCanvas from "./components/stage/StageCanvas";
+// Import du logo (Vite)
+import appLogo from "./assets/applogos/android-chrome-192x192.png";
 
 // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -454,21 +456,25 @@ export default function App() {
         {/* Left column: locations */}
         <aside
           className="hidden md:block shrink-0 border-r border-white/10 bg-black overflow-hidden relative"
-          style={{ width: showLocations ? 256 : 48, transition: 'width 250ms ease', zIndex: Z.ui + 5 }}
+          style={{ width: showLocations ? 256 : 64, transition: 'width 250ms ease', zIndex: Z.ui + 10 }}
         >
-          {showLocations ? (
-            <div className="p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-sm uppercase tracking-widest text-white/60">Lieux d'observation</h2>
-                <button
-                  onClick={() => setShowLocations(false)}
-                  className="ml-2 px-2 py-1 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
-                  aria-label="Masquer les lieux"
-                  title="Masquer les lieux"
-                >
-                  {"<<"}
-                </button>
-              </div>
+          {/* Header persistant: logo + nom (masqué en réduit) + toggle */}
+          <div className="h-14 flex items-center gap-2 px-2 border-b border-white/10">
+            <img src={appLogo} alt="MoonTracker" className="h-7 w-7 rounded-md" />
+            <span className={`font-semibold ${showLocations ? "block" : "hidden"}`}>MoonTracker</span>
+            <button
+              onClick={() => setShowLocations(v => !v)}
+              className="ml-auto px-2 py-1 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
+              aria-label={showLocations ? "Réduire la sidebar" : "Développer la sidebar"}
+              title={showLocations ? "Réduire" : "Développer"}
+            >
+              {showLocations ? "<<" : ">>"}
+            </button>
+          </div>
+
+          {/* Contenu détaillé uniquement quand ouverte */}
+          {showLocations && (
+            <div className="p-4 h-[calc(100%-3.5rem)] overflow-auto">
               <ul className="mt-3 space-y-2">
                 {LOCATIONS.map((loc) => (
                   <li key={loc.id}>
@@ -486,17 +492,6 @@ export default function App() {
                   </li>
                 ))}
               </ul>
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <button
-                onClick={() => setShowLocations(true)}
-                className="px-2 py-1 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
-                aria-label="Afficher les lieux"
-                title="Afficher les lieux"
-              >
-                {">>"}
-              </button>
             </div>
           )}
         </aside>
@@ -731,4 +726,8 @@ export default function App() {
 }
 
 
+
+
 function compass16(az: number): string { const idx = Math.round(norm360(az) / 22.5) % 16; return ROSE_16[idx] as string; }
+
+
