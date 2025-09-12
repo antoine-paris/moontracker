@@ -141,7 +141,7 @@ export function getMoonLibration(date: Date, obs?: { lat: number; lng: number })
     decDeg = eqTopo.dec;
   } else {
     // proper geocentric call—no cast/try/catch
-    const eqGeo = Equator(Body.Moon, time, undefined, true, true);
+    const eqGeo = Equator(Body.Moon, time, new Observer(0, 0, 0), true, true);
     raDeg = eqGeo.ra * 15;
     decDeg = eqGeo.dec;
   }
