@@ -31,6 +31,154 @@ const EARTHSHINE_INTENSITY_GAIN = 1.0;
 // Ajout: intensité de la lumière "Soleil" (directionalLight)
 const SUNLIGHT_INTENSITY = 10.0;
 
+// NEW: default scaling for texture-driven relief (displacement/bump/normal)
+const RELIEF_SCALE_DEFAULT = 0.4;
+
+// NEW: one-time processed model cache (per url+reliefScale)
+type ProcessedModel = { scene: THREE.Object3D; maxDim: number; radius: number };
+const processedCache = new Map<string, ProcessedModel>();
+
+function processSceneOnce(original: THREE.Object3D, reliefScale: number): ProcessedModel {
+  const rScale = Math.max(0, reliefScale ?? RELIEF_SCALE_DEFAULT);
+  console.log('Processing model with reliefScale =', rScale);
+  // Deep clone
+  const clone = original.clone(true);
+
+  // Center clone to origin
+  const box0 = new THREE.Box3().setFromObject(clone);
+  const center0 = new THREE.Vector3();
+  const size0 = new THREE.Vector3();
+  box0.getCenter(center0);
+  box0.getSize(size0);
+  clone.position.x += -center0.x;
+  clone.position.y += -center0.y;
+  clone.position.z += -center0.z;
+
+  // IMPORTANT: clone geometries so we don't mutate GLTF shared BufferGeometries
+  clone.traverse((obj: any) => {
+    if (obj && obj.isMesh && obj.geometry?.isBufferGeometry) {
+      obj.geometry = (obj.geometry as THREE.BufferGeometry).clone();
+      // ensure position attribute is a unique buffer as well
+      const posAttr = obj.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
+      if (posAttr && (posAttr as any).clone) {
+        obj.geometry.setAttribute('position', (posAttr as any).clone());
+      }
+    }
+  });
+
+  // Material relief scaling (one time)
+  clone.traverse((obj: any) => {
+    if (obj && obj.isMesh) {
+      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+      mats.forEach((m: any) => {
+        if (!m) return;
+        if (typeof m.displacementScale === 'number') m.displacementScale *= rScale;
+        if (typeof m.bumpScale === 'number') m.bumpScale *= rScale;
+        if (m.normalScale && m.normalScale.isVector2) m.normalScale.multiplyScalar(rScale);
+        m.needsUpdate = true;
+      });
+    }
+  });
+
+  // Geometry-based relief scaling (works for baked relief)
+  if (Number.isFinite(rScale) && Math.abs(rScale - 1) > 1e-6) {
+    clone.updateMatrixWorld(true);
+    let minR = Infinity, maxR = 0;
+    const v = new THREE.Vector3();
+
+    // Pass 1: compute reference radii
+    clone.traverse((obj: any) => {
+      if (obj && obj.isMesh && obj.geometry?.attributes?.position) {
+        const pos = obj.geometry.attributes.position as THREE.BufferAttribute;
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i);
+          obj.localToWorld(v);
+          const r = v.length();
+          if (r < minR) minR = r;
+          if (r > maxR) maxR = r;
+        }
+      }
+    });
+
+    if (isFinite(minR) && isFinite(maxR) && maxR > 0) {
+      const r0 = (minR + maxR) * 0.5;
+      const vLocal = new THREE.Vector3();
+      const vWorld = new THREE.Vector3();
+
+      // Pass 2: rescale along radial direction
+      clone.traverse((obj: any) => {
+        if (obj && obj.isMesh && obj.geometry?.attributes?.position) {
+          const geom = obj.geometry as THREE.BufferGeometry;
+          const pos = geom.attributes.position as THREE.BufferAttribute;
+          for (let i = 0; i < pos.count; i++) {
+            vLocal.fromBufferAttribute(pos, i);
+            vWorld.copy(vLocal);
+            obj.localToWorld(vWorld);
+            const r = vWorld.length();
+            if (r > 1e-9) {
+              vWorld.multiplyScalar(1 / r);
+              const newR = r0 + (r - r0) * rScale;
+              vWorld.multiplyScalar(newR);
+              obj.worldToLocal(vWorld);
+              pos.setXYZ(i, vWorld.x, vWorld.y, vWorld.z);
+            }
+          }
+          pos.needsUpdate = true;
+          // IMPORTANT: do NOT recompute normals if present (preserve baked shading relief)
+          if (!geom.getAttribute('normal')) {
+            geom.computeVertexNormals();
+          }
+          geom.computeBoundingSphere();
+          geom.computeBoundingBox?.();
+        }
+      });
+    }
+  }
+
+  // NEW: scale baked vertex normals around spherical normals (works when relief is in normals)
+  clone.traverse((obj: any) => {
+    if (obj && obj.isMesh && obj.geometry?.attributes?.position && obj.geometry?.attributes?.normal) {
+      const geom = obj.geometry as THREE.BufferGeometry;
+      const pos = geom.attributes.position as THREE.BufferAttribute;
+      const normal = geom.attributes.normal as THREE.BufferAttribute;
+      // copy original normals so we can write the scaled result
+      const orig = new Float32Array(normal.array); // same length
+      const p = new THREE.Vector3();
+      const nSphere = new THREE.Vector3();
+      const n0 = new THREE.Vector3();
+      const nOut = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i++) {
+        p.fromBufferAttribute(pos, i);
+        nSphere.copy(p).normalize();       // spherical normal (smooth)
+        n0.set(orig[i * 3 + 0], orig[i * 3 + 1], orig[i * 3 + 2]).normalize(); // baked normal
+        // n = normalize(nSphere + (n0 - nSphere) * rScale)
+        nOut.copy(n0).sub(nSphere).multiplyScalar(rScale).add(nSphere).normalize();
+        normal.setXYZ(i, nOut.x, nOut.y, nOut.z);
+      }
+      normal.needsUpdate = true;
+      // leave tangents as-is; they are not needed for vertex-normal based relief
+    }
+  });
+
+  // Size after processing
+  const box = new THREE.Box3().setFromObject(clone);
+  const size = new THREE.Vector3();
+  box.getSize(size);
+  const maxDim = Math.max(size.x, size.y);
+  const radius = Math.max(1e-6, maxDim) / 2;
+
+  return { scene: clone, maxDim, radius };
+}
+
+function getProcessedModel(modelUrl: string, original: THREE.Object3D, reliefScale: number): ProcessedModel {
+  const key = `${modelUrl}::${Math.max(0, reliefScale ?? RELIEF_SCALE_DEFAULT)}`;
+  const cached = processedCache.get(key);
+  if (cached) return cached;
+  const processed = processSceneOnce(original, reliefScale);
+  processedCache.set(key, processed);
+  return processed;
+}
+
 // Types et helpers (internes au fichier)
 type Props = {
   x: number; // screen x of moon center (absolute in stage)
@@ -60,6 +208,8 @@ type Props = {
   showSubsolarCone?: boolean;
   // New: enable camera-based bluish fill when Earthshine is toggled
   earthshine?: boolean;
+  // NEW: scale factor for texture-based relief (displacement/bump/normal)
+  reliefScale?: number;
 };
 
 type Vec3 = [number, number, number];
@@ -134,26 +284,31 @@ function mul(R: number[][], v: Vec3): Vec3 {
   ];
 }
 
-function Model({ limbAngleDeg, targetPx, modelUrl, librationTopo, rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0, debugMask = false, showMoonCard = false, sunDirWorld, showSubsolarCone = true }: { limbAngleDeg: number; targetPx: number; modelUrl: string; librationTopo?: { latDeg: number; lonDeg: number; paDeg: number }; rotOffsetDegX?: number; rotOffsetDegY?: number; rotOffsetDegZ?: number; debugMask?: boolean; showMoonCard?: boolean; sunDirWorld?: [number, number, number]; showSubsolarCone?: boolean; }) {
+function Model({
+  limbAngleDeg, targetPx, modelUrl, librationTopo,
+  rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
+  debugMask = false, showMoonCard = false,
+  sunDirWorld, showSubsolarCone = true,
+  // NEW
+  reliefScale = RELIEF_SCALE_DEFAULT,
+}: {
+  limbAngleDeg: number; targetPx: number; modelUrl: string;
+  librationTopo?: { latDeg: number; lonDeg: number; paDeg: number };
+  rotOffsetDegX?: number; rotOffsetDegY?: number; rotOffsetDegZ?: number;
+  debugMask?: boolean; showMoonCard?: boolean;
+  sunDirWorld?: [number, number, number]; showSubsolarCone?: boolean;
+  reliefScale?: number;
+}) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   useGLTF.preload(modelUrl);
   const { scene } = useGLTF(modelUrl);
-  // Centrer le modèle et calculer l'échelle pour remplir targetPx
+
+  // Use one-time processed clone from cache, then only compute the render scale
   const { centeredScene, scale, radius } = useMemo(() => {
-     const clone = scene.clone(true);
-     const box = new THREE.Box3().setFromObject(clone);
-     const center = new THREE.Vector3();
-     const size = new THREE.Vector3();
-     box.getCenter(center);
-     box.getSize(size);
-     clone.position.x += -center.x;
-     clone.position.y += -center.y;
-     clone.position.z += -center.z;
-     const maxDim = Math.max(size.x, size.y);
-     const s = Math.max(1, targetPx) / Math.max(1e-6, maxDim); // échelle pour que le disque fasse targetPx
-     const r = Math.max(1e-6, maxDim) / 2; // rayon écran avant scale
-     return { centeredScene: clone, scale: s, radius: r };
-   }, [scene, targetPx]);
+     const processed = getProcessedModel(modelUrl, scene, reliefScale);
+     const s = Math.max(1, targetPx) / Math.max(1e-6, processed.maxDim);
+     return { centeredScene: processed.scene, scale: s, radius: processed.radius };
+   }, [modelUrl, scene, reliefScale, targetPx]);
    // Orientation absolue appliquée au group parent (axesHelper suit la même rotation)
    const baseX = GLB_CALIB.rotationBaseDeg.x, baseY = GLB_CALIB.rotationBaseDeg.y, baseZ = GLB_CALIB.rotationBaseDeg.z;
    const rotX = ((baseX + rotOffsetDegX) * Math.PI) / 180;
@@ -416,7 +571,7 @@ export default function Moon3D({
   x, y, wPx, hPx,
   moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg,
   librationTopo,
-  modelUrl = '/src/assets/nasa-gov-4720.glb',
+  modelUrl = '/src/assets/nasa-gov-4720-4k.glb',
   debugMask = false,
   rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
   camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0,
@@ -425,7 +580,9 @@ export default function Moon3D({
   illumFraction,
   brightLimbAngleDeg,
   showSubsolarCone = true,
-  earthshine = false, // New
+  earthshine = false,
+  // NEW: allow overriding from parent
+  reliefScale = RELIEF_SCALE_DEFAULT,
 }: Props) {
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 
@@ -568,7 +725,6 @@ export default function Moon3D({
     <div className="absolute pointer-events-none" style={{ left, top, width: Math.max(1, canvasPx), height: Math.max(1, canvasPx), zIndex: Z.ui - 1, overflow: 'hidden' }}>
       <Canvas orthographic dpr={[1, 2]} gl={{ alpha: true }} onCreated={({ gl }) => {
         gl.setClearColor(new THREE.Color(0x000000), 0);
-        gl.physicallyCorrectLights = true;
         gl.toneMappingExposure = 2.2;
       }}>
         <OrthographicCamera
@@ -580,6 +736,7 @@ export default function Moon3D({
            near={-2000}
            far={2000}
            position={[0, 0, 100]}
+           // FIX: use radians via camEuler again
            rotation={[camEuler.x, camEuler.y, camEuler.z]}
          />
          {/* Lumières (plein si phase désactivée) */}
@@ -612,17 +769,31 @@ export default function Moon3D({
                // Remplacement: directionalLight pour le "clair de terre" (pas d'atténuation 1/r²)
                <directionalLight
                  position={earthFillPos}      // placé côté observateur
-                 color="#7f9df6ff"              // léger bleu
+                 color="#9999ff"              // léger bleu
                  intensity={earthFillIntensity}
                />
              )}
            </>
          )}
         <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="#b0b0b0" /></mesh>}>
-           <Model limbAngleDeg={limbAngleDeg} targetPx={targetPx} modelUrl={modelUrl} librationTopo={librationTopo} rotOffsetDegX={rotOffsetDegX} rotOffsetDegY={rotOffsetDegY} rotOffsetDegZ={rotOffsetDegZ} debugMask={debugMask} showMoonCard={showMoonCard} sunDirWorld={sunDirWorld} showSubsolarCone={showSubsolarCone} />
-         </Suspense>
-       </Canvas>
-       {debugMask ? (
+           <Model
+             limbAngleDeg={limbAngleDeg}
+             targetPx={targetPx}
+             modelUrl={modelUrl}
+             librationTopo={librationTopo}
+             rotOffsetDegX={rotOffsetDegX}
+             rotOffsetDegY={rotOffsetDegY}
+             rotOffsetDegZ={rotOffsetDegZ}
+             debugMask={debugMask}
+             showMoonCard={showMoonCard}
+             sunDirWorld={sunDirWorld}
+             showSubsolarCone={showSubsolarCone}
+             // NEW: pass through to materials
+             reliefScale={reliefScale}
+           />
+        </Suspense>
+      </Canvas>
+      {debugMask ? (
          <div style={{ position: 'absolute', left: 8, top: 8, color: '#fff', background: 'rgba(0,0,0,0.55)', padding: '6px 8px', fontSize: 12, lineHeight: 1.3, borderRadius: 4 }}>
            <div>Libration RX: {libRotXDeg.toFixed(1)}° — {tiltHint}</div>
            <div>Libration RY: {libRotYDeg.toFixed(1)}° — {eastHint}</div>

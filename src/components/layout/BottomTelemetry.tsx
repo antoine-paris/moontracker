@@ -32,9 +32,11 @@ type Props = {
   // New: to control display of earthshine percentage
   earthshine: boolean;
   showMoon3D: boolean;
+  // New: Sun declination relative to lunar equator
+  sunDeclinationDeg: number;
 };
 
-export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phaseFraction, brightLimbAngleDeg, earthshine, showMoon3D }: Props) {
+export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phaseFraction, brightLimbAngleDeg, earthshine, showMoon3D, sunDeclinationDeg }: Props) {
   const libG = astro.moon.libration;
   const libT = astro.moon.librationTopo;
   const libQuadrant = libT ? (() => { const lnorm = ((libT.lonDeg + 180) % 360) - 180; const ns = libT.latDeg >= 0 ? 'N' : 'S'; const ew = lnorm >= 0 ? 'E' : 'O'; return ns + ew; })() : '—';
@@ -59,6 +61,8 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
 
   // New: Earth illumination seen from the Moon (Earth phase) — show only when earthshine + Moon 3D
   const earthshinePct = Math.round(Math.max(0, Math.min(1, 1 - (phaseFraction ?? 0))) * 100);
+  // New: signed formatting for Sun declination on the Moon
+  const sunDeclinationSigned = `${sunDeclinationDeg >= 0 ? '+' : ''}${sunDeclinationDeg.toFixed(3)}°`;
 
   return (
     <div className="mx-2 sm:mx-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -81,7 +85,9 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
           <div className="text-sm text-white/85 mt-0.5">Libration : {libQuadrant} vers la terre</div>
         )}
         <div className="text-sm text-white/85 mt-1">Orientation (parallactique) : <span className="font-mono">{rotationToHorizonDegMoon.toFixed(1)}°</span></div>
-        <div className="text-sm text-white/85">Phase : {(phaseFraction * 100).toFixed(1)}% éclairée — Angle du limbe : {brightLimbAngleDeg.toFixed(1)}°</div>
+        <div className="text-sm text-white/85">
+          Phase : {(phaseFraction * 100).toFixed(1)}% éclairée — Angle du limbe : {brightLimbAngleDeg.toFixed(1)}° — Déc. solaire : <span className="font-mono">{sunDeclinationSigned}</span>
+        </div>
         {/* New: Earthshine percentage (only when both toggles are on) */}
         {earthshine && showMoon3D && (
           <div className="text-sm text-white/85">Clair de terre : <span className="font-mono">{earthshinePct}%</span></div>

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // Astronomy-Engine wrapper centralisé
-import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm } from "./astro/aeInterop";
+import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon } from "./astro/aeInterop";
 
 // Types
 import type { FollowMode } from "./types";
@@ -288,19 +288,14 @@ export default function App() {
   // Orientation & phase
   const rotationToHorizonDegMoon = useMemo(() => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat), [astro.moon, location.lat]);
   const rotationToHorizonDegSun = useMemo(() => -parallacticAngleDeg(astro.sun.az, astro.sun.alt, location.lat), [astro.sun, location.lat]);
-  // Angle du limbe éclairé P (Option B RA/Dec), retourné de 180° pour pointer vers le Soleil
+  // Angle du limbe éclairé: utiliser le bearing (0=N, 90=E) du Soleil dans le repère lunaire
   const brightLimbAngleDeg = useMemo(() => {
-    const LST = lstDeg(date, location.lng);
-    const sunEQ = altazToRaDec(astro.sun.az, astro.sun.alt, location.lat, LST);
-    const moonEQ = altazToRaDec(astro.moon.az, astro.moon.alt, location.lat, LST);
-    const dAlpha = toRad(angularDiff(sunEQ.raDeg, moonEQ.raDeg));
-    const decS = toRad(sunEQ.decDeg);
-    const decM = toRad(moonEQ.decDeg);
-    const num = Math.cos(decS) * Math.sin(dAlpha);
-    const den = Math.sin(decS) * Math.cos(decM) - Math.cos(decS) * Math.sin(decM) * Math.cos(dAlpha);
-    const P = Math.atan2(num, den);
-    return norm360(toDeg(P) + 180);
-  }, [date, location, astro.sun, astro.moon]);
+    const { bearingDeg } = sunOnMoon(date);
+    return bearingDeg;
+  }, [date]);
+  // New: Sun declination relative to the lunar equator (deg, signed)
+  const sunDeclinationDeg = useMemo(() => sunOnMoon(date).declinationDeg, [date]);
+
   // Auto-polarity to ensure lit side points toward the Sun
   const maskAngleBase = useMemo(() => norm360(brightLimbAngleDeg - 90), [brightLimbAngleDeg]);
   const maskAngleDeg = useMemo(() => {
@@ -712,6 +707,8 @@ export default function App() {
                rotationToHorizonDegMoon={rotationToHorizonDegMoon}
                phaseFraction={phaseFraction}
                brightLimbAngleDeg={brightLimbAngleDeg}
+               // New: pass Sun declination on Moon
+               sunDeclinationDeg={sunDeclinationDeg}
                // New: show earthshine percent only when both toggles are active
                earthshine={earthshine}
                showMoon3D={showMoon3D}
@@ -728,5 +725,6 @@ export default function App() {
     </div>
   );
 }
+
 
 function compass16(az: number): string { const idx = Math.round(norm360(az) / 22.5) % 16; return ROSE_16[idx] as string; }
