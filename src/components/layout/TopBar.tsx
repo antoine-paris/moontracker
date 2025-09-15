@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import type { FollowMode } from "../../types";
 import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
@@ -71,32 +71,57 @@ type Props = {
   currentUtcMs: number;
 };
 
-export default function TopBar(props: Props) {
-  const {
-    follow, setFollow,
-    devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
-    fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
-    viewport, when, whenInput, setWhenInput, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
-    showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase, showMoon3D, setShowMoon3D,
-    rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
-    camRotDegX, setCamRotDegX, camRotDegY, setCamRotDegY, camRotDegZ, setCamRotDegZ,
-    earthshine, setEarthshine,
-    showSunCard, setShowSunCard, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
-    timeZone,
-    enlargeObjects, setEnlargeObjects,
-    currentUtcMs,
-  } = props;
-  const utcInfo = React.useMemo(() => {
-    const d = new Date(currentUtcMs);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    const yyyy = d.getUTCFullYear();
-    const mm = pad(d.getUTCMonth() + 1);
-    const dd = pad(d.getUTCDate());
-    const hh = pad(d.getUTCHours());
-    const mi = pad(d.getUTCMinutes());
-    const ss = pad(d.getUTCSeconds());
-    return `UTC: ${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
-  }, [currentUtcMs]);
+export default function TopBar({
+  follow, setFollow,
+  devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
+  fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
+  viewport, when, whenInput, setWhenInput, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
+  showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase, showMoon3D, setShowMoon3D,
+  rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
+  camRotDegX, setCamRotDegX, camRotDegY, setCamRotDegY, camRotDegZ, setCamRotDegZ,
+  earthshine, setEarthshine,
+  showSunCard, setShowSunCard, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
+  timeZone,
+  enlargeObjects, setEnlargeObjects,
+  currentUtcMs,
+}: Props) {
+  const PRESET_SPEEDS = useMemo(() => [
+    { label: "1 min/s", value: 1 },
+    { label: "30 sec/s", value: 2 },
+    { label: "10 sec/s", value: 6 },
+    { label: "1 sec/s", value: 60 },
+    { label: "Temps réel", value: 1/60 },
+  ], []);
+
+  // Browser local time and UTC time
+  const currentDate = useMemo(() => new Date(currentUtcMs), [currentUtcMs]);
+  
+  const browserLocalTimeString = useMemo(() => {
+    // Format for datetime-local input
+    const year = currentDate.getFullYear();
+    const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+    const day = String(currentDate.getDate()).padStart(2, '0');
+    const hours = String(currentDate.getHours()).padStart(2, '0');
+    const minutes = String(currentDate.getMinutes()).padStart(2, '0');
+    const seconds = String(currentDate.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+  }, [currentDate]);
+
+  const utcTime = useMemo(() => {
+    return currentDate.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  }, [currentDate]);
+
+  // Local state for datetime input to prevent instability
+  const [localDateTimeInput, setLocalDateTimeInput] = React.useState(browserLocalTimeString);
+  const [isEditing, setIsEditing] = React.useState(false);
+  
+  // Update local input when UTC time changes externally (e.g., from animation)
+  // but only if user is not currently editing
+  React.useEffect(() => {
+    if (!isEditing) {
+      setLocalDateTimeInput(browserLocalTimeString);
+    }
+  }, [browserLocalTimeString, isEditing]);
 
   const SLIDER_STEPS = 1000;
   const [sx, setSx] = React.useState(() => degToSlider(fovXDeg, SLIDER_STEPS));
@@ -206,42 +231,60 @@ export default function TopBar(props: Props) {
           <div className="grid grid-cols-1 gap-3">
             <div>
               <label className="text-xs uppercase tracking-wider text-white/60">Date & heure</label>
-              <div className="mt-1 flex items-center gap-2">
-                <input
-                  type="datetime-local"
-                  step={1}
-                  value={whenInput}
-                  onChange={(e) => { setIsAnimating(false); setWhenInput(e.target.value); }}
-                  onBlur={() => {
-                    const ms = zonedLocalToUtcMs(whenInput, timeZone);
-                    if (Number.isFinite(ms)) {
-                      onCommitWhenMs(ms);
-                     } else {
-                       setWhenInput(when);
-                     }
-                   }}
-                  className="flex-1 bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-white/40"
-                />
-                <button
-                  onClick={() => {
-                    onCommitWhenMs(Date.now());
-                     setSpeedMinPerSec(1/60);
-                     setIsAnimating(true);
-                  }}
-                  className="px-3 py-2 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
-                >
-                  Maintenant
-                </button>
+              <div className="mt-1">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="datetime-local"
+                    step="1"
+                    value={localDateTimeInput}
+                    onChange={(e) => {
+                      setLocalDateTimeInput(e.target.value);
+                    }}
+                    onFocus={() => {
+                      setIsEditing(true);
+                    }}
+                    onBlur={(e) => {
+                      setIsEditing(false);
+                      const newDate = new Date(e.target.value);
+                      if (!isNaN(newDate.getTime())) {
+                        onCommitWhenMs(newDate.getTime());
+                      } else {
+                        // Reset to current value if invalid
+                        setLocalDateTimeInput(browserLocalTimeString);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const newDate = new Date(localDateTimeInput);
+                        if (!isNaN(newDate.getTime())) {
+                          onCommitWhenMs(newDate.getTime());
+                          e.currentTarget.blur();
+                        }
+                      } else if (e.key === 'Escape') {
+                        setLocalDateTimeInput(browserLocalTimeString);
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
+                  />
+                  <button
+                    onClick={() => {
+                      const nowMs = Date.now();
+                      onCommitWhenMs(nowMs);
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    title="Régler l'heure actuelle"
+                  >
+                    Maintenant
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-white/50">
+                  {utcTime}
+                </div>
               </div>
-              <div className="mt-1 text-[10px] text-white/60">{utcInfo}</div>
-            </div>
-            <div>
-              <label className="text-xs uppercase tracking-wider text-white/60">
-                {Math.abs(speedMinPerSec - 1/60) < 1e-6
-                  ? "ANIMATION (Temps réel)"
-                  : `ANIMATION (${Math.round(speedMinPerSec).toLocaleString('fr-FR')} min/s)`}
-              </label>
-              <div className="mt-1 flex items-center gap-2">
+              <div className="mt-2 mb-1 text-xs uppercase tracking-wider text-white/50">Animation</div>
+              <div className="flex items-center gap-2">
                 <button onClick={() => setIsAnimating(!isAnimating)} className={`px-3 py-2 rounded-lg border text-sm ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}>{isAnimating ? "Pause" : "Lecture"}</button>
                 <div className="relative flex-1">
                   <input
@@ -367,3 +410,4 @@ export default function TopBar(props: Props) {
     </>
   );
 }
+

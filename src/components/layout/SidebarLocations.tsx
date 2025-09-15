@@ -471,6 +471,25 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [collapsed, allLocations, selectedLocation, onSelectLocation, selectedLng, locations]);
 
+  // Calculate local time for a location
+  const getLocalTime = (timeZone: string): string => {
+    try {
+      const date = new Date(utcMs);
+      const formatter = new Intl.DateTimeFormat('fr-FR', {
+        timeZone: timeZone,
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+      });
+      return formatter.format(date);
+    } catch {
+      // Fallback for UTC zones or invalid timezones
+      const date = new Date(utcMs);
+      return date.toISOString().slice(11, 19);
+    }
+  };
+
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
       <div style={styles.header}>
@@ -586,7 +605,9 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
               onFocus={(e) => e.currentTarget.blur()}
             >
               <div>{'Pôle Nord'}</div>
-              <div style={styles.sub}>{`90.000°, ${selectedLng.toFixed(0)}°`}</div>
+              <div style={styles.sub}>
+                {`90.000°, ${selectedLng.toFixed(0)}° • ${getLocalTime(northPole.timeZone)}`}
+              </div>
             </button>
           </li>
 
@@ -603,7 +624,9 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
                 onFocus={(e) => e.currentTarget.blur()}
               >
                 <div>{loc.label}</div>
-                <div style={styles.sub}>{`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}</div>
+                <div style={styles.sub}>
+                  {`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}° • ${getLocalTime(loc.timeZone)}`}
+                </div>
               </button>
             </li>
           ))}
@@ -621,7 +644,9 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
               onFocus={(e) => e.currentTarget.blur()}
             >
               <div>{'Pôle Sud'}</div>
-              <div style={styles.sub}>{`-90.000°, ${selectedLng.toFixed(0)}°`}</div>
+              <div style={styles.sub}>
+                {`-90.000°, ${selectedLng.toFixed(0)}° • ${getLocalTime(southPole.timeZone)}`}
+              </div>
             </button>
           </li>
         </ul>

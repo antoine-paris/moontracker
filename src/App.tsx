@@ -61,7 +61,6 @@ export default function App() {
   const [location, setLocation] = useState<LocationOption>(LOCATIONS[2]); // default Paris
   const [when, setWhen] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
   const [whenMs, setWhenMs] = useState<number>(() => Date.parse(when));
-  const [whenInput, setWhenInput] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
   const [follow, setFollow] = useState<FollowMode>('LUNE');
   const [fovXDeg, setFovXDeg] = useState<number>(220);
   const [fovYDeg, setFovYDeg] = useState<number>(220);
@@ -142,12 +141,11 @@ export default function App() {
     };
   }, []);
 
-  // Synchroniser la ref hors animation et garder l’UI en phase avec whenMs
+  // Synchroniser la ref hors animation et garder l'UI en phase avec whenMs
   useEffect(() => { if (!isAnimating) { whenMsRef.current = whenMs; } }, [whenMs, isAnimating]);
   useEffect(() => {
     const s = utcMsToZonedLocalString(whenMs, location.timeZone);
     setWhen(s);
-    setWhenInput(s);
   }, [whenMs, location.timeZone]);
 
   // Assurer qu'un zoom valide est sélectionné quand l'appareil change
@@ -219,6 +217,23 @@ export default function App() {
 
   // Parsed date
   const date = useMemo(() => new Date(whenMs), [whenMs]);
+
+  // Browser local time and UTC time strings
+  const browserLocalTime = useMemo(() => {
+    return date.toLocaleString('fr-FR', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    });
+  }, [date]);
+
+  const utcTime = useMemo(() => {
+    return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  }, [date]);
 
   // Astronomical positions
   const astro = useMemo(() => {
@@ -508,8 +523,6 @@ export default function App() {
               setLinkFov={setLinkFov}
               viewport={viewport}
               when={when}
-              whenInput={whenInput}
-              setWhenInput={setWhenInput}
               onCommitWhenMs={(ms) => { whenMsRef.current = ms; setWhenMs(ms); }}
               setIsAnimating={setIsAnimating}
               isAnimating={isAnimating}
@@ -558,7 +571,7 @@ export default function App() {
                 className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
                 style={{ zIndex: Z.ui }}
               >
-                {`${cityName}, ${formatDateTimeInZone(date, location.timeZone)}`}
+                {`${cityName}, ${browserLocalTime} (${utcTime})`}
               </div>
             )}
             {/* Overlays additionnels en mode interface cachée */}
