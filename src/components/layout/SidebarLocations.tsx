@@ -15,6 +15,13 @@ const SUN_LIGHT_INTENSITY = 10.0;
 // New: viewer light intensity (fill light from camera position)
 const VIEWER_LIGHT_INTENSITY = 3.0;
 
+// Location marker parameters
+const LOCATION_MARKER_COLOR = '#ff0000'; // Bright red
+const LOCATION_MARKER_SIZE = 1.25; // Size relative to Earth radius (increased significantly)
+const LOCATION_MARKER_EMISSIVE_INTENSITY = 10.0; // Glow brightness (increased)
+const LOCATION_MARKER_OPACITY = 1.0; // Transparency (0-1)
+const LOCATION_MARKER_DISTANCE = 0.57; // Distance from Earth surface as fraction of radius (100% = close, 50% = 50% away)
+
 // Fix base GLB orientation (degrees)
 const MODEL_ROT_FIX_X_DEG = 0;
 const MODEL_ROT_FIX_Y_DEG = 180; // flip 180° so Lng 0/180 face correctly
@@ -42,14 +49,110 @@ function norm360(deg: number): number {
   return x;
 }
 
+// Location marker component
+function LocationMarker({ lat, lng, earthRadius = 1 }: { lat: number; lng: number; earthRadius?: number }) {
+  const markerRef = useRef<THREE.Mesh>(null);
+  const lineRef = useRef<THREE.LineSegments>(null);
+  
+  // Convert lat/lng to 3D position on sphere
+  const position = useMemo(() => {
+    // Place marker on Earth surface
+    const r = earthRadius;
+    // Convert to radians
+    const phi = THREE.MathUtils.degToRad(90 - lat); // latitude to polar angle
+    const theta = THREE.MathUtils.degToRad(lng); // longitude
+    
+    // Spherical to Cartesian coordinates
+    const x = r * Math.sin(phi) * Math.sin(theta);
+    const y = r * Math.cos(phi);
+    const z = r * Math.sin(phi) * Math.cos(theta);
+    
+    console.log(`Marker position: lat=${lat}, lng=${lng}, r=${r}, pos=(${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})`);
+    
+    return new THREE.Vector3(x, y, z);
+  }, [lat, lng, earthRadius]);
+  
+  // Calculate rotation to point the cone towards Earth center (tip pointing down)
+  const rotation = useMemo(() => {
+    // Get the direction from position to Earth center (inward)
+    const direction = position.clone().normalize().negate(); // Negate to point inward
+    
+    // Create a quaternion to rotate from default cone orientation (pointing up along Y) to our direction
+    const quaternion = new THREE.Quaternion();
+    quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction);
+    
+    // Convert to Euler angles
+    const euler = new THREE.Euler();
+    euler.setFromQuaternion(quaternion);
+    
+    return euler;
+  }, [position]);
+  
+  // Calculate cone position (above Earth surface)
+  const conePosition = useMemo(() => {
+    // Cone dimensions relative to Earth radius
+    const coneHeight = earthRadius * 0.10; // 10% of Earth radius
+    // Position the cone using the static distance variable
+    const normalizedPos = position.clone().normalize();
+    const distanceFromCenter = earthRadius * (0 + LOCATION_MARKER_DISTANCE) + coneHeight / 2;
+    
+    const finalPos = normalizedPos.multiplyScalar(distanceFromCenter);
+    console.log(`Cone position: distance=${distanceFromCenter}, pos=(${finalPos.x.toFixed(3)}, ${finalPos.y.toFixed(3)}, ${finalPos.z.toFixed(3)})`);
+    
+    return finalPos;
+  }, [position, earthRadius]);
+  
+  // Update line geometry when position changes
+  useEffect(() => {
+    if (lineRef.current) {
+      const positions = new Float32Array([0, 0, 0, position.x, position.y, position.z]);
+      lineRef.current.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+      lineRef.current.geometry.attributes.position.needsUpdate = true;
+    }
+  }, [position]);
+  
+  // Pulse animation for visibility
+  useFrame(({ clock }) => {
+    if (!markerRef.current) return;
+    const scale = 1 + Math.sin(clock.getElapsedTime() * 2) * 0.1; // Subtle pulse
+    markerRef.current.scale.set(scale, scale, scale);
+  });
+  
+  return (
+    <>
+      {/* Location marker - cone pointing towards Earth (matching Moon3D style) */}
+      <mesh ref={markerRef} position={conePosition} rotation={rotation}>
+        <coneGeometry args={[
+          earthRadius * 0.03,  // radius: 3% of Earth radius
+          earthRadius * 0.1,  // height: 5% of Earth radius
+          8                    // radial segments
+        ]} />
+        <meshStandardMaterial 
+          color="#ff0000"
+          emissive="#ff0000"
+          emissiveIntensity={0.5}
+          metalness={0.3}
+          roughness={0.4}
+        />
+      </mesh>
+      
+
+    </>
+  );
+}
+
 // Simple Earth scene that rotates only around Y (east-west)
 function EarthScene({
   glbUrl,
   selectedLng,
+  selectedLat,
+  selectedLocationLng,
   onDragLng
 }: {
   glbUrl: string;
   selectedLng: number;
+  selectedLat: number;
+  selectedLocationLng: number;
   onDragLng: (lngDegRounded: number) => void;
 }) {
   const groupRef = useRef<THREE.Group>(null);
@@ -57,14 +160,19 @@ function EarthScene({
   const dragRef = useRef<{ active: boolean; startX: number; startLng: number }>({ active: false, startX: 0, startLng: selectedLng });
 
   // Center and scale the model (best effort)
-  const { centeredScene, scale } = useMemo(() => {
+  const { centeredScene, scale, radius } = useMemo(() => {
     const scene = gltf.scene.clone(true);
     const box = new THREE.Box3().setFromObject(scene);
     const center = box.getCenter(new THREE.Vector3());
     scene.position.sub(center); // center at origin
     const size = box.getSize(new THREE.Vector3()).length();
     const s = size > 0 ? 2.0 / size : 1; // aim to fit in view
-    return { centeredScene: scene, scale: s };
+    // Calculate approximate Earth radius after scaling
+    const r = (box.max.distanceTo(box.min) / 2) * s;
+    
+    console.log('Earth model info:', { size, scale: s, estimatedRadius: r });
+    
+    return { centeredScene: scene, scale: s, radius: r };
   }, [gltf]);
 
   // Apply selected longitude to Y rotation (negative sign to match east-positive)
@@ -113,20 +221,40 @@ function EarthScene({
     THREE.MathUtils.degToRad(MODEL_ROT_FIX_Z_DEG),
   ], []);
 
+  // Debug: log Earth rotation
+  useEffect(() => {
+    console.log(`Earth rotation for lng ${selectedLng}: ${-THREE.MathUtils.degToRad(selectedLng)} rad`);
+  }, [selectedLng]);
+
+  // Debug: log when location changes
+  useEffect(() => {
+    console.log(`EarthScene location update: lat=${selectedLat}, lng=${selectedLocationLng}`);
+  }, [selectedLat, selectedLocationLng]);
+
   return (
-    <group
-      ref={groupRef}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={endDrag}
-      onPointerOut={endDrag}
-      onPointerCancel={endDrag}
-      scale={scale}
-    >
-      <group rotation={FIX_ROT}>
-        <primitive object={centeredScene} />
+    <>
+      <group
+        ref={groupRef}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerOut={endDrag}
+        onPointerCancel={endDrag}
+        scale={scale}
+      >
+        <group rotation={FIX_ROT}>
+          <primitive object={centeredScene} />
+          {/* Location marker - place it inside the fixed rotation group to rotate with Earth */}
+          {/* Add key to force re-render when location changes */}
+          <LocationMarker 
+            key={`${selectedLat}-${selectedLocationLng}`}
+            lat={selectedLat} 
+            lng={selectedLocationLng + MODEL_ROT_FIX_Y_DEG} 
+            earthRadius={1 / scale} // Adjust for Earth scaling
+          />
+        </group>
       </group>
-    </group>
+    </>
   );
 }
 
@@ -291,28 +419,9 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
       // Custom scrollbar styles
       scrollbarWidth: 'thin', // For Firefox
       scrollbarColor: 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)', // For Firefox
-      '&::-webkit-scrollbar': {
-        width: '6px',
-      },
-      '&::-webkit-scrollbar-track': {
-        background: 'rgba(255, 255, 255, 0.05)',
-        borderRadius: '3px',
-      },
-      '&::-webkit-scrollbar-thumb': {
-        background: 'rgba(255, 255, 255, 0.2)',
-        borderRadius: '3px',
-        '&:hover': {
-          background: 'rgba(255, 255, 255, 0.3)',
-        },
-      },
     } as React.CSSProperties & {
       scrollbarWidth?: string;
       scrollbarColor?: string;
-      '&::-webkit-scrollbar'?: React.CSSProperties;
-      '&::-webkit-scrollbar-track'?: React.CSSProperties;
-      '&::-webkit-scrollbar-thumb'?: React.CSSProperties & {
-        '&:hover'?: React.CSSProperties;
-      };
     },
     itemBtn: {
       width: '100%',
@@ -523,7 +632,7 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
             >
               <color attach="background" args={['#000000']} />
               <ambientLight intensity={0.6} />
-              {/* New: fill light from viewer (camera) position */}
+              {/* New: fill light driven by viewer (camera) position */}
               <pointLight position={[0, 0, 3]} intensity={VIEWER_LIGHT_INTENSITY} />
               {/* Sun light driven by UTC-selected time and selected longitude (Y) */}
               <directionalLight position={sunLightPos} intensity={SUN_LIGHT_INTENSITY} />
@@ -531,6 +640,8 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
                 <EarthScene
                   glbUrl={earthModelUrl}
                   selectedLng={selectedLng}
+                  selectedLat={selectedLocation.lat}
+                  selectedLocationLng={selectedLocation.lng} // Pass actual location longitude
                   onDragLng={setSelectedLng}
                 />
               </Suspense>
