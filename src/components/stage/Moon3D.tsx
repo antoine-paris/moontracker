@@ -571,7 +571,7 @@ export default function Moon3D({
   x, y, wPx, hPx,
   moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg,
   librationTopo,
-  modelUrl = '/src/assets/nasa-gov-4720-1k.glb',
+  modelUrl = '/src/assets/moon-nasa-gov-4720-1k.glb',
   debugMask = false,
   rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
   camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0,

@@ -9,7 +9,7 @@ import type { Device, ZoomModule } from "./optics/types";
 import type { Astro as TelemetryAstro } from "./components/layout/BottomTelemetry";
 
 // Données
-import { LOCATIONS } from "./data/locations";
+import { LOCATIONS, loadLocationsFromCsv, getAllLocations } from "./data/locations";
 import { DEVICES, CUSTOM_DEVICE_ID } from "./optics/devices";
 
 // Constantes d’affichage
@@ -42,12 +42,20 @@ import MoonSprite from "./components/stage/MoonSprite";
 import Moon3D from "./components/stage/Moon3D";
 import StageCanvas from "./components/stage/StageCanvas";
 // Import du logo (Vite)
-import appLogo from "./assets/applogos/android-chrome-192x192.png";
+import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 
 // --- Main Component ----------------------------------------------------------
 export default function App() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
+
+  // New: dynamic locations loaded from CSV
+  const [locations, setLocations] = useState<LocationOption[]>(LOCATIONS);
+
+  // Add this useEffect to load locations from CSV
+  useEffect(() => {
+    getAllLocations().then(setLocations);
+  }, []);
 
   // Controls
   const [location, setLocation] = useState<LocationOption>(LOCATIONS[2]); // default Paris
@@ -94,7 +102,7 @@ export default function App() {
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
-  const [showLocations, setShowLocations] = useState(true);
+  // const [showLocations, setShowLocations] = useState(true); // - remove
   // Toggle UI tool/info panels (top and bottom)
   const [showPanels, setShowPanels] = useState(true);
   // City label derived from location label (format "Pays — Ville")
@@ -356,6 +364,7 @@ export default function App() {
     return list.sort((a,b) => a.x - b.x);
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
+
   // Animation loop
   useEffect(() => {
     if (!isAnimating) {
@@ -454,46 +463,14 @@ export default function App() {
     <div className="w-full h-screen bg-black text-white overflow-hidden">
       <div className="flex h-full">
         {/* Left column: locations */}
-        <aside
-          className="hidden md:block shrink-0 border-r border-white/10 bg-black overflow-hidden relative"
-          style={{ width: showLocations ? 256 : 64, transition: 'width 250ms ease', zIndex: Z.ui + 10 }}
-        >
-          {/* Header persistant: logo + nom (masqué en réduit) + toggle */}
-          <div className="h-14 flex items-center gap-2 px-2 border-b border-white/10">
-            <img src={appLogo} alt="MoonTracker" className="h-7 w-7 rounded-md" />
-            <span className={`font-semibold ${showLocations ? "block" : "hidden"}`}>MoonTracker</span>
-            <button
-              onClick={() => setShowLocations(v => !v)}
-              className="ml-auto px-2 py-1 rounded-lg border border-white/15 text-sm text-white/80 hover:border-white/30"
-              aria-label={showLocations ? "Réduire la sidebar" : "Développer la sidebar"}
-              title={showLocations ? "Réduire" : "Développer"}
-            >
-              {showLocations ? "<<" : ">>"}
-            </button>
-          </div>
-
-          {/* Contenu détaillé uniquement quand ouverte */}
-          {showLocations && (
-            <div className="p-4 h-[calc(100%-3.5rem)] overflow-auto">
-              <ul className="mt-3 space-y-2">
-                {LOCATIONS.map((loc) => (
-                  <li key={loc.id}>
-                    <button
-                      onClick={() => setLocation(loc)}
-                      className={`w-full text-left px-3 py-2 rounded-xl border transition ${
-                        location.id === loc.id ? "border-white/40 bg-white/5" : "border-white/10 hover:border-white/20 hover:bg-white/5"
-                      }`}
-                    >
-                      <div className="font-medium">{loc.label}</div>
-                      <div className="text-xs text-white/50">
-                        {loc.lat.toFixed(3)}°, {loc.lng.toFixed(3)}° · {formatTimeInZone(date, loc.timeZone)}
-                      </div>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+        {/* - remove the legacy aside, replace with SidebarLocations */}
+        <aside className="shrink-0">
+          <SidebarLocations
+            locations={locations}
+            selectedLocation={location}
+            onSelectLocation={setLocation}
+            utcMs={whenMs} // + pass current UTC
+          />
         </aside>
 
         {/* Main stage */}
@@ -729,5 +706,3 @@ export default function App() {
 
 
 function compass16(az: number): string { const idx = Math.round(norm360(az) / 22.5) % 16; return ROSE_16[idx] as string; }
-
-
