@@ -70,6 +70,10 @@ type Props = {
   setEnlargeObjects: (v: boolean) => void;
   currentUtcMs: number;
   cityName: string;
+
+  // NEW: Earth toggle
+  showEarth: boolean;
+  setShowEarth: (v: boolean) => void;
 };
 
 export default function TopBar({
@@ -86,6 +90,8 @@ export default function TopBar({
   enlargeObjects, setEnlargeObjects,
   currentUtcMs,
   cityName,
+  // NEW
+  showEarth, setShowEarth,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -154,31 +160,29 @@ export default function TopBar({
     }
   }, [browserLocalTimeString, isEditing]);
 
-  const SLIDER_STEPS = 1000;
-  const [sx, setSx] = React.useState(() => degToSlider(fovXDeg, SLIDER_STEPS));
-  const [sy, setSy] = React.useState(() => degToSlider(fovYDeg, SLIDER_STEPS));
-  React.useEffect(() => { setSx(degToSlider(fovXDeg, SLIDER_STEPS)); }, [fovXDeg]);
-  React.useEffect(() => { setSy(degToSlider(fovYDeg, SLIDER_STEPS)); }, [fovYDeg]);
+  // REMOVE old FOV sliders state and logic (sx/sy, SLIDER_STEPS, updateXFromSlider/updateYFromSlider)
+  // ADD: focal-length based FOV control (24x36 eq)
+  const FF_WIDTH_MM = 36;
+  const FF_HEIGHT_MM = 24;
+  const FOCAL_MIN_MM = 1; // Changed from 10 to 1
+  const FOCAL_MAX_MM = 4100;
 
-  const updateXFromSlider = (val: number) => {
-    setSx(val);
-    const deg = clamp(sliderToDeg(val, SLIDER_STEPS), FOV_DEG_MIN, FOV_DEG_MAX);
+  const currentFocalMm = useMemo(() => {
+    // Derive current focal from fovXDeg (horizontal FOV)
+    const rad = (Math.PI / 180) * fovXDeg;
+    const tanHalf = Math.tan(rad / 2);
+    if (tanHalf <= 0) return FOCAL_MAX_MM;
+    const f = FF_WIDTH_MM / (2 * tanHalf);
+    return clamp(f, FOCAL_MIN_MM, FOCAL_MAX_MM);
+  }, [fovXDeg]);
+
+  const setFovFromFocal = (focalMm: number) => {
     if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
-    setFovXDeg(deg);
-    if (linkFov) {
-      const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
-      setFovYDeg(clamp(deg * ratio, FOV_DEG_MIN, FOV_DEG_MAX));
-    }
-  };
-  const updateYFromSlider = (val: number) => {
-    setSy(val);
-    const deg = clamp(sliderToDeg(val, SLIDER_STEPS), FOV_DEG_MIN, FOV_DEG_MAX);
-    if (deviceId !== CUSTOM_DEVICE_ID) { setDeviceId(CUSTOM_DEVICE_ID); setZoomId('custom-theo'); }
-    setFovYDeg(deg);
-    if (linkFov) {
-      const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
-      setFovXDeg(clamp(deg / Math.max(1e-9, ratio), FOV_DEG_MIN, FOV_DEG_MAX));
-    }
+    const f = clamp(focalMm, FOCAL_MIN_MM, FOCAL_MAX_MM);
+    const fx = 2 * Math.atan(FF_WIDTH_MM / (2 * f)) * 180 / Math.PI;
+    const fy = 2 * Math.atan(FF_HEIGHT_MM / (2 * f)) * 180 / Math.PI;
+    setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
+    setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
   };
 
   return (
@@ -228,32 +232,31 @@ export default function TopBar({
                 {zoomOptions.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
               </select>
             </div>
+
+            {/* REPLACED: two FOV sliders + link with a single focal-length slider */}
             <div className="mt-2 flex items-center gap-2">
-              <span className="text-sm">{"\u2195"}</span>
+              <span className="text-sm">f</span>
               <div className="flex flex-col items-center flex-1 min-w-0">
-                <input type="range" min={0} max={SLIDER_STEPS} step={1} value={sy} onChange={(e) => updateYFromSlider(Number(e.target.value))} className="w-full" />
-                <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${(fovYDeg >= 1 ? fovYDeg.toFixed(1) : fovYDeg.toFixed(2))}°/${Math.round(viewport.h)}px`}</div>
+                <input
+                  type="range"
+                  min={FOCAL_MIN_MM}
+                  max={FOCAL_MAX_MM}
+                  step={1}
+                  value={Math.round(currentFocalMm)}
+                  onChange={(e) => setFovFromFocal(Number(e.target.value))}
+                  className="w-full"
+                />
+                <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">
+                  {`${Math.round(currentFocalMm)} mm (eq. 24x36)`}
+                </div>
               </div>
-              <span className="text-sm">{"\u2194"}</span>
-              <div className="flex flex-col items-center flex-1 min-w-0">
-                <input type="range" min={0} max={SLIDER_STEPS} step={1} value={sx} onChange={(e) => updateXFromSlider(Number(e.target.value))} className="w-full" />
-                <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">{`${(fovXDeg >= 1 ? fovXDeg.toFixed(1) : fovXDeg.toFixed(2))}°/${Math.round(viewport.w)}px`}</div>
+              <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
+                <div className="text-[12px] text-white/70">
+                  {`${"\u2194"} ${(fovXDeg >= 1 ? fovXDeg.toFixed(1) : fovXDeg.toFixed(2))}°`}&nbsp;&nbsp;
+                  {`${"\u2195"} ${(fovYDeg >= 1 ? fovYDeg.toFixed(1) : fovYDeg.toFixed(2))}°`}
+                </div>
               </div>
-               <label className="inline-flex items-center gap-2 text-xs text-white/70 ml-2 flex-shrink-0">
-                  <input
-                    type="checkbox"
-                    checked={linkFov}
-                    onChange={(e) => {
-                      setLinkFov(e.target.checked);
-                      if (e.target.checked) {
-                        const ratio = (viewport.h || 1) / Math.max(1, viewport.w);
-                        setFovYDeg(clamp(fovXDeg * ratio, FOV_DEG_MIN, FOV_DEG_MAX));
-                      }
-                    }}
-                  />
-                  {"\u26AD"}
-                </label>
-             </div>
+            </div>
           </div>
         </div>
 
@@ -367,6 +370,11 @@ export default function TopBar({
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Objets à afficher</div>
           <div className="flex flex-wrap gap-3">
+            {/* NEW: Earth toggle */}
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={showEarth} onChange={(e) => setShowEarth(e.target.checked)} />
+              <span>Sol</span>
+            </label>
             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} /><span className="text-amber-300">Soleil</span></label>
             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune 2D</span></label>
             <label className="inline-flex items-center gap-2 text-sm text-sky-300">
@@ -443,4 +451,5 @@ export default function TopBar({
     </>
   );
 }
+
 

@@ -22,6 +22,7 @@ export const DEVICES: Device[] = [
     sensorW: 36, sensorH: 24, aspect: 3/2,
     zooms: [
       // Primes
+      { id: 'ff-fish-15', label: 'Fisheye 15 mm', kind: 'prime', focalMm: 15, projection: 'fisheye' },
       { id: 'ff-35', label: '35 mm', kind: 'prime', focalMm: 35, projection: 'rectilinear' },
       { id: 'ff-50', label: '50 mm', kind: 'prime', focalMm: 50, projection: 'rectilinear' },
       // 14–24

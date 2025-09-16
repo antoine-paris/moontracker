@@ -98,6 +98,8 @@ export default function App() {
   const [showMoonCard, setShowMoonCard] = useState(false);
   const [debugMask, setDebugMask] = useState(false);
   const [enlargeObjects, setEnlargeObjects] = useState(true);
+  // NEW: ground (Sol) toggle
+  const [showEarth, setShowEarth] = useState(false);
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -529,7 +531,7 @@ export default function App() {
       <div className="flex h-full">
         {/* Left column: locations */}
         {/* - remove the legacy aside, replace with SidebarLocations */}
-        <aside className="shrink-0">
+        <aside className="shrink-0 relative" style={{ zIndex: Z.ui }}>
           <SidebarLocations
             locations={locations}
             selectedLocation={location}
@@ -613,6 +615,9 @@ export default function App() {
               enlargeObjects={enlargeObjects}
               setEnlargeObjects={setEnlargeObjects}
               currentUtcMs={whenMs}
+              // NEW: pass the ground toggle to TopBar
+              showEarth={showEarth}
+              setShowEarth={setShowEarth}
               // New: pass selected city name for label
               cityName={cityName}
             />
@@ -740,6 +745,23 @@ export default function App() {
                   earthshine={earthshine}
                 />
               </div>
+            )}
+
+            {/* NEW: Ground layer (opaque), clipped from horizon to bottom.
+                Z: above Sun/Moon(+3D) and below horizon/cardinals */}
+            {showEarth && (
+              <div
+                className="absolute"
+                style={{
+                  zIndex: Z.horizon - 1,
+                  left: viewport.x,
+                  width: viewport.w,
+                  top: Math.max(viewport.y, horizonY),
+                  height: Math.max(0, viewport.y + viewport.h - Math.max(viewport.y, horizonY)),
+                  background: 'linear-gradient(to bottom, rgba(48,48,48,0.98), rgba(16,16,16,1))',
+                  pointerEvents: 'none',
+                }}
+              />
             )}
           </div>
 
