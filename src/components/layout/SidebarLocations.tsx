@@ -35,6 +35,9 @@ type Props = {
   selectedLocation: LocationOption;
   onSelectLocation: (loc: LocationOption) => void;
   utcMs: number; // + current UTC time from the app
+  // NEW: active viewing direction from App (follow mode)
+  activeAzDeg: number;
+  activeAltDeg: number;
 };
 
 function normLng(deg: number): number {
@@ -50,7 +53,20 @@ function norm360(deg: number): number {
 }
 
 // Location marker component
-function LocationMarker({ lat, lng, earthRadius = 1 }: { lat: number; lng: number; earthRadius?: number }) {
+function LocationMarker({
+  lat,
+  lng,
+  earthRadius = 1,
+  // NEW: direction to point (az/alt from App)
+  azDeg,
+  altDeg,
+}: {
+  lat: number;
+  lng: number;
+  earthRadius?: number;
+  azDeg: number;
+  altDeg: number;
+}) {
   const markerRef = useRef<THREE.Mesh>(null);
   const lineRef = useRef<THREE.LineSegments>(null);
   
@@ -118,6 +134,58 @@ function LocationMarker({ lat, lng, earthRadius = 1 }: { lat: number; lng: numbe
     markerRef.current.scale.set(scale, scale, scale);
   });
   
+  // NEW: Arrow (tube + cone) pointing toward active azimuth/altitude from this location
+  const arrowMeshes = useMemo(() => {
+    // Local frame at the site
+    const U = position.clone().normalize(); // Up (radial)
+    // Project global +Y (north pole) onto tangent plane to get local North
+    const Y = new THREE.Vector3(0, 1, 0);
+    let N = Y.clone().sub(U.clone().multiplyScalar(Y.dot(U)));
+    if (N.lengthSq() < 1e-9) {
+      // Fallback near poles: use +Z projected
+      const Zaxis = new THREE.Vector3(0, 0, 1);
+      N = Zaxis.clone().sub(U.clone().multiplyScalar(Zaxis.dot(U)));
+    }
+    N.normalize();
+    // East = N × U
+    const E = new THREE.Vector3().crossVectors(N, U).normalize();
+
+    // Build direction from azimuth (from North -> East) and altitude
+    const az = THREE.MathUtils.degToRad(azDeg);
+    const alt = THREE.MathUtils.degToRad(altDeg);
+    const cosAlt = Math.cos(alt);
+    const sinAlt = Math.sin(alt);
+    const cosAz = Math.cos(az);
+    const sinAz = Math.sin(az);
+
+    const dir = N.clone().multiplyScalar(cosAlt * cosAz)
+      .add(E.clone().multiplyScalar(cosAlt * sinAz))
+      .add(U.clone().multiplyScalar(sinAlt))
+      .normalize();
+
+    // Arrow geometry sizing
+    const coneHeight = earthRadius * 0.10; // same as marker
+    const baseRFromCenter = earthRadius * LOCATION_MARKER_DISTANCE + coneHeight;
+    const gap = earthRadius * 0.02;
+    const shaftLen = earthRadius * 0.35;
+    const headLen = earthRadius * 0.08;
+    const shaftR = earthRadius * 0.008;
+    const headR = shaftR * 2.0;
+
+    // Positions
+    const start = U.clone().multiplyScalar(baseRFromCenter + gap);
+    const shaftCenter = start.clone().add(dir.clone().multiplyScalar(shaftLen / 2));
+    const headCenter = start.clone().add(dir.clone().multiplyScalar(shaftLen + headLen / 2));
+
+    // Orientation (default Y up → dir)
+    const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+    return { shaftCenter, headCenter, shaftLen, headLen, shaftR, headR, quat };
+  }, [position, earthRadius, azDeg, altDeg]);
+
+  // NEW: color based on altitude sign (>=0 green, <0 red)
+  const arrowColor = useMemo(() => (altDeg >= 0 ? '#00ff66' : '#ff4040'), [altDeg]);
+
   return (
     <>
       {/* Location marker - cone pointing towards Earth (matching Moon3D style) */}
@@ -137,6 +205,27 @@ function LocationMarker({ lat, lng, earthRadius = 1 }: { lat: number; lng: numbe
       </mesh>
       
 
+      {/* NEW: Direction arrow (tube + cone) from top of city cone */}
+      <mesh position={arrowMeshes.shaftCenter} quaternion={arrowMeshes.quat}>
+        <cylinderGeometry args={[arrowMeshes.shaftR, arrowMeshes.shaftR, arrowMeshes.shaftLen, 12]} />
+        <meshStandardMaterial
+          color={arrowColor}
+          emissive={arrowColor}
+          emissiveIntensity={0.9}
+          metalness={0.2}
+          roughness={0.4}
+        />
+      </mesh>
+      <mesh position={arrowMeshes.headCenter} quaternion={arrowMeshes.quat}>
+        <coneGeometry args={[arrowMeshes.headR, arrowMeshes.headLen, 16]} />
+        <meshStandardMaterial
+          color={arrowColor}
+          emissive={arrowColor}
+          emissiveIntensity={1.2}
+          metalness={0.2}
+          roughness={0.4}
+        />
+      </mesh>
     </>
   );
 }
@@ -147,13 +236,18 @@ function EarthScene({
   selectedLng,
   selectedLat,
   selectedLocationLng,
-  onDragLng
+  onDragLng,
+  // NEW: direction to pass down to marker
+  activeAzDeg,
+  activeAltDeg,
 }: {
   glbUrl: string;
   selectedLng: number;
   selectedLat: number;
   selectedLocationLng: number;
   onDragLng: (lngDegRounded: number) => void;
+  activeAzDeg: number;
+  activeAltDeg: number;
 }) {
   const groupRef = useRef<THREE.Group>(null);
   const gltf = useLoader(GLTFLoader, glbUrl);
@@ -244,13 +338,14 @@ function EarthScene({
       >
         <group rotation={FIX_ROT}>
           <primitive object={centeredScene} />
-          {/* Location marker - place it inside the fixed rotation group to rotate with Earth */}
-          {/* Add key to force re-render when location changes */}
-          <LocationMarker 
-            key={`${selectedLat}-${selectedLocationLng}`}
-            lat={selectedLat} 
-            lng={selectedLocationLng + MODEL_ROT_FIX_Y_DEG} 
-            earthRadius={1 / scale} // Adjust for Earth scaling
+          {/* Location marker + arrow tied to location and active az/alt */}
+          <LocationMarker
+            key={`${selectedLat}-${selectedLocationLng}-${activeAzDeg.toFixed(2)}-${activeAltDeg.toFixed(2)}`}
+            lat={selectedLat}
+            lng={selectedLocationLng + MODEL_ROT_FIX_Y_DEG}
+            earthRadius={1 / scale}
+            azDeg={activeAzDeg}
+            altDeg={activeAltDeg}
           />
         </group>
       </group>
@@ -258,7 +353,15 @@ function EarthScene({
   );
 }
 
-export default function SidebarLocations({ locations, selectedLocation, onSelectLocation, utcMs }: Props) {
+export default function SidebarLocations({
+  locations,
+  selectedLocation,
+  onSelectLocation,
+  utcMs,
+  // NEW
+  activeAzDeg,
+  activeAltDeg,
+}: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedLng, setSelectedLng] = useState<number>(() => Math.round(normLng(selectedLocation.lng)));
   const [search, setSearch] = useState('');
@@ -580,25 +683,6 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [collapsed, allLocations, selectedLocation, onSelectLocation, selectedLng, locations]);
 
-  // Calculate local time for a location
-  const getLocalTime = (timeZone: string): string => {
-    try {
-      const date = new Date(utcMs);
-      const formatter = new Intl.DateTimeFormat('fr-FR', {
-        timeZone: timeZone,
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false
-      });
-      return formatter.format(date);
-    } catch {
-      // Fallback for UTC zones or invalid timezones
-      const date = new Date(utcMs);
-      return date.toISOString().slice(11, 19);
-    }
-  };
-
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
       <div style={styles.header}>
@@ -641,8 +725,11 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
                   glbUrl={earthModelUrl}
                   selectedLng={selectedLng}
                   selectedLat={selectedLocation.lat}
-                  selectedLocationLng={selectedLocation.lng} // Pass actual location longitude
+                  selectedLocationLng={selectedLocation.lng}
                   onDragLng={setSelectedLng}
+                  // NEW: drive arrow direction
+                  activeAzDeg={activeAzDeg}
+                  activeAltDeg={activeAltDeg}
                 />
               </Suspense>
             </Canvas>
@@ -717,7 +804,7 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
             >
               <div>{'Pôle Nord'}</div>
               <div style={styles.sub}>
-                {`90.000°, ${selectedLng.toFixed(0)}° • ${getLocalTime(northPole.timeZone)}`}
+                {`90.000°, ${selectedLng.toFixed(0)}°`}
               </div>
             </button>
           </li>
@@ -736,7 +823,7 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
               >
                 <div>{loc.label}</div>
                 <div style={styles.sub}>
-                  {`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}° • ${getLocalTime(loc.timeZone)}`}
+                  {`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}
                 </div>
               </button>
             </li>
@@ -756,7 +843,7 @@ export default function SidebarLocations({ locations, selectedLocation, onSelect
             >
               <div>{'Pôle Sud'}</div>
               <div style={styles.sub}>
-                {`-90.000°, ${selectedLng.toFixed(0)}° • ${getLocalTime(southPole.timeZone)}`}
+                {`-90.000°, ${selectedLng.toFixed(0)}°`}
               </div>
             </button>
           </li>

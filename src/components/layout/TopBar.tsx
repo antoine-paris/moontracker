@@ -69,6 +69,7 @@ type Props = {
   enlargeObjects: boolean;
   setEnlargeObjects: (v: boolean) => void;
   currentUtcMs: number;
+  cityName: string;
 };
 
 export default function TopBar({
@@ -84,6 +85,7 @@ export default function TopBar({
   timeZone,
   enlargeObjects, setEnlargeObjects,
   currentUtcMs,
+  cityName,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -110,6 +112,35 @@ export default function TopBar({
   const utcTime = useMemo(() => {
     return currentDate.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
   }, [currentDate]);
+
+  // New: City-local time based on selected location's time zone
+  const cityLocalTimeString = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat('fr-FR', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZoneName: 'short',
+      }).format(currentDate);
+    } catch {
+      // Fallback: omit timeZoneName if Intl fails
+      return new Intl.DateTimeFormat('fr-FR', {
+        timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).format(currentDate);
+    }
+  }, [currentDate, timeZone]);
 
   // Local state for datetime input to prevent instability
   const [localDateTimeInput, setLocalDateTimeInput] = React.useState(browserLocalTimeString);
@@ -279,8 +310,10 @@ export default function TopBar({
                     Maintenant
                   </button>
                 </div>
-                <div className="mt-1 text-xs text-white/50">
-                  {utcTime}
+                {/* Replace single UTC line with both UTC and city-local */}
+                <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3">
+                  <div>{utcTime}</div>
+                  <div title={timeZone}>{`|   ${cityName} ${cityLocalTimeString}`}</div>
                 </div>
               </div>
               <div className="mt-2 mb-1 text-xs uppercase tracking-wider text-white/50">Animation</div>

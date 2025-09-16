@@ -235,6 +235,34 @@ export default function App() {
     return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
   }, [date]);
 
+  // New: city-local time (selected location timezone)
+  const cityLocalTimeString = useMemo(() => {
+    try {
+      return new Intl.DateTimeFormat('fr-FR', {
+        timeZone: location.timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+        timeZoneName: 'short',
+      }).format(date);
+    } catch {
+      return new Intl.DateTimeFormat('fr-FR', {
+        timeZone: location.timeZone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false,
+      }).format(date);
+    }
+  }, [date, location.timeZone]);
+
   // Astronomical positions
   const astro = useMemo(() => {
      const { lat, lng } = location;
@@ -367,16 +395,38 @@ export default function App() {
 
   // Visible cardinal points on horizon (global N/E/S/O)
   const visibleCardinals = useMemo(() => {
-    const list = [
+    const base = [
       { label: 'N' as const, az: 0 },
       { label: 'E' as const, az: 90 },
       { label: 'S' as const, az: 180 },
       { label: 'O' as const, az: 270 },
-    ].map(c => {
-      const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
-      return { ...c, x: viewport.x + p.x, visible: p.visibleX };
-    }).filter(c => c.visible);
-    return list.sort((a,b) => a.x - b.x);
+    ];
+
+    // Project and keep only those horizontally visible
+    const projected = base
+      .map(c => {
+        const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+        const x = viewport.x + p.x;
+        const delta = Math.abs(angularDiff(c.az, refAz)); // proximity to center
+        return { ...c, x, visible: p.visibleX, delta };
+      })
+      .filter(c => c.visible);
+
+    // Deduplicate cardinals that collapse to the same column (e.g., 0° vs 180°)
+    const EPS = 1; // px tolerance
+    const dedup: typeof projected = [];
+    for (const it of projected) {
+      const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
+      if (idx === -1) {
+        dedup.push(it);
+      } else if (it.delta < dedup[idx].delta) {
+        dedup[idx] = it; // keep the one closer to center
+      }
+    }
+
+    return dedup
+      .sort((a, b) => a.x - b.x)
+      .map(({ label, az, x }) => ({ label, az, x, visible: true }));
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
 
@@ -485,6 +535,9 @@ export default function App() {
             selectedLocation={location}
             onSelectLocation={setLocation}
             utcMs={whenMs} // + pass current UTC
+            // NEW: pass active azimuth/altitude (from follow mode)
+            activeAzDeg={refAz}
+            activeAltDeg={refAlt}
           />
         </aside>
 
@@ -560,6 +613,8 @@ export default function App() {
               enlargeObjects={enlargeObjects}
               setEnlargeObjects={setEnlargeObjects}
               currentUtcMs={whenMs}
+              // New: pass selected city name for label
+              cityName={cityName}
             />
           </div>
 
@@ -571,7 +626,7 @@ export default function App() {
                 className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
                 style={{ zIndex: Z.ui }}
               >
-                {`${cityName}, ${browserLocalTime} (${utcTime})`}
+                {`${cityName}, ${cityLocalTimeString} (${utcTime})`}
               </div>
             )}
             {/* Overlays additionnels en mode interface cachée */}
@@ -657,32 +712,34 @@ export default function App() {
             )}
 
             {showMoon && showMoon3D && moonScreen.visibleX && moonScreen.visibleY && (
-              <Moon3D
-                x={moonScreen.x}
-                y={moonScreen.y}
-                wPx={bodySizes.moon.w}
-                hPx={bodySizes.moon.h}
-                moonAltDeg={astro.moon.alt}
-                moonAzDeg={astro.moon.az}
-                sunAltDeg={astro.sun.alt}
-                sunAzDeg={astro.sun.az}
-                limbAngleDeg={rotationToHorizonDegMoon * -1}
-                librationTopo={astro.moon.librationTopo}
-                debugMask={debugMask}
-                rotOffsetDegX={rotOffsetDegX}
-                rotOffsetDegY={rotOffsetDegY}
-                rotOffsetDegZ={rotOffsetDegZ}
-                camRotDegX={camRotDegX}
-                camRotDegY={camRotDegY}
-                camRotDegZ={camRotDegZ}
-                showPhase={showPhase}
-                showMoonCard={showMoonCard}
-                // New: drive light from Moon card data
-                illumFraction={phaseFraction}
-                brightLimbAngleDeg={brightLimbAngleDeg}
-                // New: enable earthshine-based fill light (camera source)
-                earthshine={earthshine}
-              />
+              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }}>
+                <Moon3D
+                  x={moonScreen.x}
+                  y={moonScreen.y}
+                  wPx={bodySizes.moon.w}
+                  hPx={bodySizes.moon.h}
+                  moonAltDeg={astro.moon.alt}
+                  moonAzDeg={astro.moon.az}
+                  sunAltDeg={astro.sun.alt}
+                  sunAzDeg={astro.sun.az}
+                  limbAngleDeg={rotationToHorizonDegMoon * -1}
+                  librationTopo={astro.moon.librationTopo}
+                  debugMask={debugMask}
+                  rotOffsetDegX={rotOffsetDegX}
+                  rotOffsetDegY={rotOffsetDegY}
+                  rotOffsetDegZ={rotOffsetDegZ}
+                  camRotDegX={camRotDegX}
+                  camRotDegY={camRotDegY}
+                  camRotDegZ={camRotDegZ}
+                  showPhase={showPhase}
+                  showMoonCard={showMoonCard}
+                  // New: drive light from Moon card data
+                  illumFraction={phaseFraction}
+                  brightLimbAngleDeg={brightLimbAngleDeg}
+                  // New: enable earthshine-based fill light (camera source)
+                  earthshine={earthshine}
+                />
+              </div>
             )}
           </div>
 
