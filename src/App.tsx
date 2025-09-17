@@ -780,7 +780,7 @@ export default function App() {
                 key={`sec-${i}`}
                 style={{ position: "absolute", left: c.x, top: horizonY, zIndex: Z.horizon }}
               >
-                <div className="-translate-x-1/2 -translate-y-[14px] text-[10px] leading-none text-white/60 select-none">
+                <div className="-translate-x-1/2 translate-y-[12px] text-[10px] leading-none text-white/60 select-none">
                   {c.label}
                 </div>
               </div>
@@ -956,28 +956,21 @@ export default function App() {
           >
             <BottomTelemetry
               astro={astro}
-               rotationToHorizonDegMoon={rotationToHorizonDegMoon}
-               phaseFraction={phaseFraction}
-               brightLimbAngleDeg={brightLimbAngleDeg}
-               // New: pass Sun declination on Moon
-               sunDeclinationDeg={sunDeclinationDeg}
-               // New: show earthshine percent only when both toggles are active
-               earthshine={earthshine}
-               showMoon3D={showMoon3D}
-             />
-            <div className="mt-2 text-xs text-white/70 flex flex-wrap gap-3">
-              <div>Séparation: {eclipse.sep.toFixed(2)}°</div>
-              <div>R☉: {eclipse.rS.toFixed(2)}°</div>
-              <div>R☽: {eclipse.rM.toFixed(2)}°</div>
-              <div>Type local: {eclipse.kind}</div>
-            </div>
+              rotationToHorizonDegMoon={rotationToHorizonDegMoon}
+              phaseFraction={phaseFraction}
+              brightLimbAngleDeg={brightLimbAngleDeg}
+              sunDeclinationDeg={sunDeclinationDeg}
+              earthshine={earthshine}
+              showMoon3D={showMoon3D}
+              // New: pass eclipse info to the Sun card
+              eclipse={eclipse}
+            />
           </div>
         </main>
       </div>
     </div>
   );
 }
-
 
 
 

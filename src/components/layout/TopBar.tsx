@@ -165,12 +165,71 @@ export default function TopBar({
     }
   }, [browserLocalTimeString, isEditing]);
 
-  // REMOVE old FOV sliders state and logic (sx/sy, SLIDER_STEPS, updateXFromSlider/updateYFromSlider)
   // ADD: focal-length based FOV control (24x36 eq)
   const FF_WIDTH_MM = 36;
   const FF_HEIGHT_MM = 24;
   const FOCAL_MIN_MM = 1; // Changed from 10 to 1
   const FOCAL_MAX_MM = 4100;
+
+  // STATIC slider config (sensibilité). Ajustez ces valeurs au besoin.
+  const FOCAL_SLIDER_RES = 1000; // résolution du slider (0..1000)
+  const FOCAL_SENSITIVITY = [
+    { to: 10,   weight: 0.25, gamma: 0.85 }, // plus de précision sous 10 mm
+    { to: 100,  weight: 0.25, gamma: 1.00 }, // standard 10-100 mm
+    { to: 1000, weight: 0.25, gamma: 1.10 }, // moins sensible 100-1000 mm
+    { to: FOCAL_MAX_MM, weight: 0.25, gamma: 1.20 }, // encore moins sensible au-delà
+  ] as const;
+
+  // Pré-calcul des segments de sensibilité
+  const focalSliderSegments = useMemo(() => {
+    const sumW = FOCAL_SENSITIVITY.reduce((a, s) => a + s.weight, 0) || 1;
+    const norm = FOCAL_SENSITIVITY.map(s => ({ ...s, weight: s.weight / sumW }));
+    const segs: {
+      min: number; max: number; weight: number; gamma: number;
+      cumStart: number; cumEnd: number; logMin: number; logMax: number;
+    }[] = [];
+    let prev = FOCAL_MIN_MM;
+    let acc = 0;
+    for (const s of norm) {
+      const seg = {
+        min: prev,
+        max: s.to,
+        weight: s.weight,
+        gamma: s.gamma,
+        cumStart: acc,
+        cumEnd: acc + s.weight,
+        logMin: Math.log(prev),
+        logMax: Math.log(s.to),
+      };
+      segs.push(seg);
+      acc += s.weight;
+      prev = s.to;
+    }
+    // Corriger les bordures flottantes
+    if (segs.length) segs[segs.length - 1].cumEnd = 1;
+    return segs;
+  }, []); // statique
+
+  // Mapping slider -> focale (mm)
+  const sliderToFocalMm = (sliderVal: number) => {
+    const s = clamp(sliderVal / FOCAL_SLIDER_RES, 0, 1);
+    const seg = focalSliderSegments.find(x => s <= x.cumEnd) ?? focalSliderSegments[focalSliderSegments.length - 1];
+    const local = seg.weight > 0 ? clamp((s - seg.cumStart) / seg.weight, 0, 1) : 0;
+    const t = Math.pow(local, seg.gamma);
+    const ln = seg.logMin + t * (seg.logMax - seg.logMin);
+    const mm = Math.exp(ln);
+    return clamp(mm, FOCAL_MIN_MM, FOCAL_MAX_MM);
+  };
+
+  // Mapping focale (mm) -> slider
+  const focalMmToSlider = (mm: number) => {
+    const f = clamp(mm, FOCAL_MIN_MM, FOCAL_MAX_MM);
+    const seg = focalSliderSegments.find(x => f <= x.max + 1e-9) ?? focalSliderSegments[focalSliderSegments.length - 1];
+    const t = (Math.log(f) - seg.logMin) / Math.max(1e-9, (seg.logMax - seg.logMin));
+    const local = Math.pow(clamp(t, 0, 1), 1 / Math.max(1e-9, seg.gamma));
+    const s = seg.cumStart + local * seg.weight;
+    return Math.round(clamp(s, 0, 1) * FOCAL_SLIDER_RES);
+  };
 
   const currentFocalMm = useMemo(() => {
     // Derive current focal from fovXDeg (horizontal FOV)
@@ -228,14 +287,21 @@ export default function TopBar({
               >
                 {devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
-              <select
-                value={zoomId}
-                disabled={deviceId === CUSTOM_DEVICE_ID}
-                onChange={(e) => setZoomId(e.target.value)}
-                className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm disabled:opacity-60"
-              >
-                {zoomOptions.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
-              </select>
+
+              {/* When custom device is selected, replace the zoom select with a clean, live-updating label (no “Focale théorique”) */}
+              {deviceId === CUSTOM_DEVICE_ID ? (
+                <div className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm text-white/80">
+                  {`${Math.round(currentFocalMm)} mm (eq. 24x36)`}
+                </div>
+              ) : (
+                <select
+                  value={zoomId}
+                  onChange={(e) => setZoomId(e.target.value)}
+                  className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
+                >
+                  {zoomOptions.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
+                </select>
+              )}
             </div>
 
             {/* REPLACED: two FOV sliders + link with a single focal-length slider */}
@@ -244,11 +310,11 @@ export default function TopBar({
               <div className="flex flex-col items-center flex-1 min-w-0">
                 <input
                   type="range"
-                  min={FOCAL_MIN_MM}
-                  max={FOCAL_MAX_MM}
+                  min={0}
+                  max={FOCAL_SLIDER_RES}
                   step={1}
-                  value={Math.round(currentFocalMm)}
-                  onChange={(e) => setFovFromFocal(Number(e.target.value))}
+                  value={focalMmToSlider(currentFocalMm)}
+                  onChange={(e) => setFovFromFocal(sliderToFocalMm(Number(e.target.value)))}
                   className="w-full"
                 />
                 <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">
