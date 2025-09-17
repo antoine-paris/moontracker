@@ -431,6 +431,31 @@ export default function App() {
       .map(({ label, az, x }) => ({ label, az, x, visible: true }));
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
+  // NEW: 16-wind secondary markers (exclude N/E/S/O), smaller labels on horizon
+  const visibleSecondaryCardinals = useMemo(() => {
+    const primaries = new Set(['N', 'E', 'S', 'O']);
+    // Build 16 points every 22.5°
+    const items = [];
+    for (let i = 0; i < 16; i++) {
+      const az = i * 22.5;
+      const label = compass16(az);
+      if (primaries.has(label)) continue; // skip primary, already rendered
+      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+      if (!p.visibleX) continue;
+      const x = viewport.x + p.x;
+      const delta = Math.abs(angularDiff(az, refAz));
+      items.push({ label, az, x, delta });
+    }
+    // Deduplicate columns that collapse visually; keep the one closest to center
+    const EPS = 6; // px tolerance
+    const dedup: typeof items = [];
+    for (const it of items) {
+      const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
+      if (idx === -1) dedup.push(it);
+      else if (it.delta < dedup[idx].delta) dedup[idx] = it;
+    }
+    return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
+  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Animation loop
   useEffect(() => {
@@ -688,6 +713,18 @@ export default function App() {
             <StageCanvas viewport={viewport} stageSize={stageSize} showCameraFrame={showCameraFrame} />
 
             <CardinalMarkers horizonY={horizonY} items={visibleCardinals as CardinalItem[]} />
+
+            {/* NEW: secondary 16-wind labels (NNE, NE, ENE, ..., ONO, NNO) */}
+            {visibleSecondaryCardinals.map((c, i) => (
+              <div
+                key={`sec-${i}`}
+                style={{ position: "absolute", left: c.x, top: horizonY, zIndex: Z.horizon }}
+              >
+                <div className="-translate-x-1/2 -translate-y-[14px] text-[10px] leading-none text-white/60 select-none">
+                  {c.label}
+                </div>
+              </div>
+            ))}
 
             {horizonMarkers.map((m, i) => (
               <div key={i} style={{ position: "absolute", left: m.x, top: horizonY, zIndex: Z.horizon }}>

@@ -75,7 +75,7 @@ function LocationMarker({
     // Place marker on Earth surface
     const r = earthRadius;
     // Convert to radians
-    const phi = THREE.MathUtils.degToRad(90 - lat); // latitude to polar angle
+    const phi = THREE.MathUtils.degToRad(89 - lat); // latitude to polar angle
     const theta = THREE.MathUtils.degToRad(lng); // longitude
     
     // Spherical to Cartesian coordinates
@@ -547,19 +547,28 @@ export default function SidebarLocations({
     },
   };
 
-  // Filter cities by rounded longitude == selectedLng, allow future search integration
+  // NEW: simple helper to know if we are searching
+  const isSearching = useMemo(() => search.trim().length > 0, [search]);
+
+  // UPDATED: Filter
+  // - If searching: search across ALL locations by label (ignore longitude)
+  // - If not searching: keep original filtering by rounded longitude
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
-    const match = (l: LocationOption) =>
-      Math.round(normLng(l.lng)) === selectedLng &&
-      (s.length === 0 || l.label.toLowerCase().includes(s));
-    return locations.filter(match).sort((a, b) => b.lat - a.lat); // north -> south
+    if (s.length > 0) {
+      return locations
+        .filter(l => l.label.toLowerCase().includes(s))
+        .sort((a, b) => b.lat - a.lat); // keep north -> south for consistency
+    }
+    return locations
+      .filter(l => Math.round(normLng(l.lng)) === selectedLng)
+      .sort((a, b) => b.lat - a.lat);
   }, [locations, selectedLng, search]);
 
   const northPole: LocationOption = useMemo(() => ({
     id: `np@${selectedLng}`,
     label: 'Pôle Nord',
-    lat: 90,
+    lat: 89,
     lng: selectedLng,
     timeZone: 'Etc/UTC',
   }), [selectedLng]);
@@ -567,7 +576,7 @@ export default function SidebarLocations({
   const southPole: LocationOption = useMemo(() => ({
     id: `sp@${selectedLng}`,
     label: 'Pôle Sud',
-    lat: -90,
+    lat: -89,
     lng: selectedLng,
     timeZone: 'Etc/UTC',
   }), [selectedLng]);
@@ -600,35 +609,38 @@ export default function SidebarLocations({
   };
   useEffect(() => () => clearPress(), []);
 
-  // Create combined list of all locations (north pole + filtered + south pole)
-  const allLocations = useMemo(() => [
-    northPole,
-    ...filtered,
-    southPole
-  ], [northPole, filtered, southPole]);
+  // UPDATED: Build list
+  // - When searching: no poles, only search results
+  // - When not searching: poles + filtered cities (current design)
+  const allLocations = useMemo(() => {
+    if (isSearching) return [...filtered];
+    return [northPole, ...filtered, southPole];
+  }, [northPole, filtered, southPole, isSearching]);
 
-  // Handle keyboard navigation
+  // UPDATED: Keyboard navigation also updates selectedLng and clears search when applicable
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (collapsed) return;
-      
+
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
-        
+
         const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
         let newIndex: number;
-        
         if (e.key === 'ArrowDown') {
           newIndex = currentIndex < allLocations.length - 1 ? currentIndex + 1 : 0;
         } else {
           newIndex = currentIndex > 0 ? currentIndex - 1 : allLocations.length - 1;
         }
-        
-        onSelectLocation(allLocations[newIndex]);
-        
-        // Scroll the selected item into view and focus it
+
+        const newLoc = allLocations[newIndex];
+        // NEW: sync longitude to selected city and clear search to return to longitude-based list
+        setSelectedLng(Math.round(normLng(newLoc.lng)));
+        onSelectLocation(newLoc);
+        if (isSearching) setSearch('');
+
         setTimeout(() => {
-          const selectedButton = listRef.current?.querySelector(`button[data-location-id="${allLocations[newIndex].id}"]`) as HTMLButtonElement;
+          const selectedButton = listRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
           selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           selectedButton?.focus();
         }, 0);
@@ -651,12 +663,12 @@ export default function SidebarLocations({
           if (citiesAtNewLng.length === 0) {
             // No cities at this longitude, select based on latitude
             if (currentLat >= 45) {
-              closestLocation = { id: `np@${newLng}`, label: 'Pôle Nord', lat: 90, lng: newLng, timeZone: 'Etc/UTC' };
+              closestLocation = { id: `np@${newLng}`, label: 'Pôle Nord', lat: 89, lng: newLng, timeZone: 'Etc/UTC' };
             } else if (currentLat <= -45) {
-              closestLocation = { id: `sp@${newLng}`, label: 'Pôle Sud', lat: -90, lng: newLng, timeZone: 'Etc/UTC' };
+              closestLocation = { id: `sp@${newLng}`, label: 'Pôle Sud', lat: -89, lng: newLng, timeZone: 'Etc/UTC' };
             } else {
               // Select north pole by default for mid-latitudes when no cities
-              closestLocation = { id: `np@${newLng}`, label: 'Pôle Nord', lat: 90, lng: newLng, timeZone: 'Etc/UTC' };
+              closestLocation = { id: `np@${newLng}`, label: 'Pôle Nord', lat: 89, lng: newLng, timeZone: 'Etc/UTC' };
             }
           } else {
             // Find closest city by latitude
@@ -681,7 +693,7 @@ export default function SidebarLocations({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collapsed, allLocations, selectedLocation, onSelectLocation, selectedLng, locations]);
+  }, [collapsed, allLocations, selectedLocation, onSelectLocation, selectedLng, locations, isSearching]);
 
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
@@ -736,7 +748,7 @@ export default function SidebarLocations({
           )}
         </div>
 
-        {/* Search city (placeholder for later) */}
+        {/* Search city (global search) */}
         <input
           type="text"
           placeholder="Rechercher une ville..."
@@ -772,7 +784,7 @@ export default function SidebarLocations({
           </button>
         </div>
 
-        {/* List: North Pole + matching cities north->south + South Pole */}
+        {/* List */}
         <ul style={styles.list} className="cities-list" ref={listRef}>
           <style>{`
             .cities-list::-webkit-scrollbar {
@@ -790,24 +802,37 @@ export default function SidebarLocations({
               background: rgba(255, 255, 255, 0.3);
             }
           `}</style>
-          <li>
-            <button
-              style={{
-                ...styles.itemBtn,
-                background: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                borderColor: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
-              }}
-              onClick={() => onSelectLocation(northPole)}
-              title={`90° LAT ${selectedLng}° LNG`}
-              data-location-id={northPole.id}
-              onFocus={(e) => e.currentTarget.blur()}
-            >
-              <div>{'Pôle Nord'}</div>
-              <div style={styles.sub}>
-                {`90.000°, ${selectedLng.toFixed(0)}°`}
-              </div>
-            </button>
-          </li>
+
+          {/* Show poles only when NOT searching */}
+          {!isSearching && (
+            <li>
+              <button
+                style={{
+                  ...styles.itemBtn,
+                  background: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  borderColor: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
+                }}
+                onClick={() => {
+                  onSelectLocation(northPole);
+                  setSelectedLng(Math.round(normLng(northPole.lng)));
+                  setSearch('');
+                  setTimeout(() => {
+                    const selectedButton = listRef.current?.querySelector(`button[data-location-id="${northPole.id}"]`) as HTMLButtonElement;
+                    selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    selectedButton?.focus();
+                  }, 0);
+                }}
+                title={`89° LAT ${selectedLng}° LNG`}
+                data-location-id={northPole.id}
+                onFocus={(e) => e.currentTarget.blur()}
+              >
+                <div>{'Pôle Nord'}</div>
+                <div style={styles.sub}>
+                  {`89.000°, ${selectedLng.toFixed(0)}°`}
+                </div>
+              </button>
+            </li>
+          )}
 
           {filtered.map(loc => (
             <li key={loc.id}>
@@ -817,7 +842,18 @@ export default function SidebarLocations({
                   background: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                   borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
                 }}
-                onClick={() => onSelectLocation(loc)}
+                onClick={() => {
+                  // NEW: Set longitude to city's and clear search, then select and scroll
+                  const newLng = Math.round(normLng(loc.lng));
+                  setSelectedLng(newLng);
+                  onSelectLocation(loc);
+                  setSearch('');
+                  setTimeout(() => {
+                    const selectedButton = listRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
+                    selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    selectedButton?.focus();
+                  }, 0);
+                }}
                 data-location-id={loc.id}
                 onFocus={(e) => e.currentTarget.blur()}
               >
@@ -829,24 +865,35 @@ export default function SidebarLocations({
             </li>
           ))}
 
-          <li>
-            <button
-              style={{
-                ...styles.itemBtn,
-                background: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                borderColor: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
-              }}
-              onClick={() => onSelectLocation(southPole)}
-              title={`-90° LAT ${selectedLng}° LNG`}
-              data-location-id={southPole.id}
-              onFocus={(e) => e.currentTarget.blur()}
-            >
-              <div>{'Pôle Sud'}</div>
-              <div style={styles.sub}>
-                {`-90.000°, ${selectedLng.toFixed(0)}°`}
-              </div>
-            </button>
-          </li>
+          {!isSearching && (
+            <li>
+              <button
+                style={{
+                  ...styles.itemBtn,
+                  background: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                  borderColor: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
+                }}
+                onClick={() => {
+                  onSelectLocation(southPole);
+                  setSelectedLng(Math.round(normLng(southPole.lng)));
+                  setSearch('');
+                  setTimeout(() => {
+                    const selectedButton = listRef.current?.querySelector(`button[data-location-id="${southPole.id}"]`) as HTMLButtonElement;
+                    selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    selectedButton?.focus();
+                  }, 0);
+                }}
+                title={`-89° LAT ${selectedLng}° LNG`}
+                data-location-id={southPole.id}
+                onFocus={(e) => e.currentTarget.blur()}
+              >
+                <div>{'Pôle Sud'}</div>
+                <div style={styles.sub}>
+                  {`-89.000°, ${selectedLng.toFixed(0)}°`}
+                </div>
+              </button>
+            </li>
+          )}
         </ul>
       </div>
     </aside>
