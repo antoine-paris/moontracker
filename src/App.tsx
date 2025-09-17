@@ -114,6 +114,18 @@ export default function App() {
     return (parts[1] ?? parts[0]).trim();
   }, [location]);
 
+  // NEW: view deltas (added by directional keypad)
+  const [deltaAzDeg, setDeltaAzDeg] = useState(0);
+  const [deltaAltDeg, setDeltaAltDeg] = useState(0);
+  const stepAzDeg = useMemo(() => 0.05 * fovXDeg, [fovXDeg]);
+  const stepAltDeg = useMemo(() => 0.05 * fovYDeg, [fovYDeg]);
+
+  // Reset keypad deltas whenever follow target changes
+  useEffect(() => {
+    setDeltaAzDeg(0);
+    setDeltaAltDeg(0);
+  }, [follow]);
+
   // Animation
   const [isAnimating, setIsAnimating] = useState(true);
   const [speedMinPerSec, setSpeedMinPerSec] = useState<number>(1/60); // Temps réel par défaut (1 s/s)
@@ -344,7 +356,7 @@ export default function App() {
   }, [astro.sun.alt]);
 
   // Reference azimuth & altitude (follow mode)
-  const refAz = useMemo(() => {
+  const baseRefAz = useMemo(() => {
     switch (follow) {
       case 'SOLEIL': return astro.sun.az;
       case 'LUNE': return astro.moon.az;
@@ -354,7 +366,11 @@ export default function App() {
       case 'O': return 270;
     }
   }, [follow, astro]);
-  const refAlt = useMemo(() => (follow === 'SOLEIL' ? astro.sun.alt : follow === 'LUNE' ? astro.moon.alt : 0), [follow, astro]);
+  const baseRefAlt = useMemo(() => (follow === 'SOLEIL' ? astro.sun.alt : follow === 'LUNE' ? astro.moon.alt : 0), [follow, astro]);
+
+  // Final ref with keypad deltas applied
+  const refAz = useMemo(() => norm360(baseRefAz + deltaAzDeg), [baseRefAz, deltaAzDeg]);
+  const refAlt = useMemo(() => clamp(baseRefAlt + deltaAltDeg, -89.9, 89.9), [baseRefAlt, deltaAltDeg]);
 
   // Screen positions
   const bodySizes = useMemo(() => {
@@ -596,14 +612,13 @@ export default function App() {
     <div className="w-full h-screen bg-black text-white overflow-hidden">
       <div className="flex h-full">
         {/* Left column: locations */}
-        {/* - remove the legacy aside, replace with SidebarLocations */}
         <aside className="shrink-0 relative" style={{ zIndex: Z.ui }}>
           <SidebarLocations
             locations={locations}
             selectedLocation={location}
             onSelectLocation={setLocation}
-            utcMs={whenMs} // + pass current UTC
-            // NEW: pass active azimuth/altitude (from follow mode)
+            utcMs={whenMs}
+            // Include deltas in active pointing
             activeAzDeg={refAz}
             activeAltDeg={refAlt}
           />
@@ -772,19 +787,7 @@ export default function App() {
               />
             )}
 
-            <CardinalMarkers horizonY={horizonY} items={visibleCardinals as CardinalItem[]} />
-
-            {/* NEW: secondary 16-wind labels (NNE, NE, ENE, ..., ONO, NNO) */}
-            {visibleSecondaryCardinals.map((c, i) => (
-              <div
-                key={`sec-${i}`}
-                style={{ position: "absolute", left: c.x, top: horizonY, zIndex: Z.horizon }}
-              >
-                <div className="-translate-x-1/2 translate-y-[12px] text-[10px] leading-none text-white/60 select-none">
-                  {c.label}
-                </div>
-              </div>
-            ))}
+            <CardinalMarkers horizonY={horizonY} items={visibleCardinals as CardinalItem[]} secondaryItems={visibleSecondaryCardinals} />
 
             {horizonMarkers.map((m, i) => (
               <div key={i} style={{ position: "absolute", left: m.x, top: horizonY, zIndex: Z.horizon }}>
@@ -966,11 +969,81 @@ export default function App() {
               eclipse={eclipse}
             />
           </div>
+
+          {/* NEW: Directional keypad (right side, vertically centered) */}
+          <div
+            className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2"
+            style={{ zIndex: Z.ui + 20 }}
+          >
+            <button
+              className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+              title={`Monter de ${stepAltDeg.toFixed(1)}°`}
+              aria-label="Monter"
+              onClick={() => {
+                setDeltaAltDeg(prev => {
+                  const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+                  return tgt - baseRefAlt;
+                });
+              }}
+            >
+              ↑
+            </button>
+            <div className="flex items-center gap-2">
+              <button
+                className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+                title={`Gauche de ${stepAzDeg.toFixed(1)}°`}
+                aria-label="Gauche"
+                onClick={() => {
+                  setDeltaAzDeg(prev => {
+                    const nd = prev - stepAzDeg;
+                    return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
+                  });
+                }}
+              >
+                ←
+              </button>
+              <button
+                className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+                title="Recentrer"
+                aria-label="Recentrer"
+                onClick={() => { setDeltaAzDeg(0); setDeltaAltDeg(0); }}
+              >
+                •
+              </button>
+              <button
+                className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+                title={`Droite de ${stepAzDeg.toFixed(1)}°`}
+                aria-label="Droite"
+                onClick={() => {
+                  setDeltaAzDeg(prev => {
+                    const nd = prev + stepAzDeg;
+                    return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
+                  });
+                }}
+              >
+                →
+              </button>
+            </div>
+            <button
+              className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+              title={`Descendre de ${stepAltDeg.toFixed(1)}°`}
+              aria-label="Descendre"
+              onClick={() => {
+                setDeltaAltDeg(prev => {
+                  const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+                  return tgt - baseRefAlt;
+                });
+              }}
+            >
+              ↓
+            </button>
+          </div>
         </main>
       </div>
     </div>
   );
 }
+
 
 
 
