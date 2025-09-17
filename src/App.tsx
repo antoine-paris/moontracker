@@ -100,6 +100,8 @@ export default function App() {
   const [enlargeObjects, setEnlargeObjects] = useState(true);
   // NEW: ground (Sol) toggle
   const [showEarth, setShowEarth] = useState(false);
+  // NEW: Atmosphere toggle
+  const [showAtmosphere, setShowAtmosphere] = useState(false);
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -301,6 +303,45 @@ export default function App() {
        illum
      };
    }, [date, location]);
+
+  // NEW: Atmosphere gradient colors from Sun altitude
+  const atmosphereGradient = useMemo(() => {
+    // Sun altitude in degrees
+    const alt = astro.sun.alt ?? 0;
+
+    // Night/day blend: 0 at alt<=-6°, 1 at alt>=45°
+    const dayBlend = clamp((alt + 6) / (10 + 6), 0, 1);
+
+    // Warmth (sunset/sunrise glow) strongest near horizon (|alt|≈0°), fades by ~8°
+    const warm = clamp(1 - Math.abs(alt) / 4, 0, 1);
+
+    // Base colors (night → day)
+    const topNight = { r: 3, g: 7, b: 17 };      // very dark blue
+    const topDay   = { r: 91, g: 188, b: 255 };  // sky blue
+    const horNight = { r: 0, g: 0, b: 0 };       // black
+    const horDay   = { r: 191, g: 227, b: 255 }; // pale sky near horizon
+    const warmCol  = { r: 255, g: 122, b: 40 };  // orange glow
+
+    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
+    const mix = (c1: any, c2: any, t: number) => ({
+      r: Math.round(lerp(c1.r, c2.r, t)),
+      g: Math.round(lerp(c1.g, c2.g, t)),
+      b: Math.round(lerp(c1.b, c2.b, t)),
+    });
+    const toHex = (c: any) =>
+      `#${[c.r, c.g, c.b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+
+    const topBase = mix(topNight, topDay, dayBlend);
+    const horBase = mix(horNight, horDay, dayBlend);
+
+    // Add warm tint near horizon during twilight/low sun
+    const topColor = toHex(mix(topBase, warmCol, 0.15 * warm));
+    const horizonColor = toHex(mix(horBase, warmCol, 0.60 * warm));
+
+    // Build CSS gradient (from horizon up to top)
+    const css = `linear-gradient(to top, ${horizonColor}, ${topColor})`;
+    return css;
+  }, [astro.sun.alt]);
 
   // Reference azimuth & altitude (follow mode)
   const refAz = useMemo(() => {
@@ -643,6 +684,9 @@ export default function App() {
               // NEW: pass the ground toggle to TopBar
               showEarth={showEarth}
               setShowEarth={setShowEarth}
+              // NEW: pass atmosphere toggle
+              showAtmosphere={showAtmosphere}
+              setShowAtmosphere={setShowAtmosphere}
               // New: pass selected city name for label
               cityName={cityName}
             />
@@ -712,6 +756,22 @@ export default function App() {
 
             <StageCanvas viewport={viewport} stageSize={stageSize} showCameraFrame={showCameraFrame} />
 
+            {/* NEW: Atmosphere layer (top -> horizon), below Sun/Moon */}
+            {showAtmosphere && (
+              <div
+                className="absolute"
+                style={{
+                  zIndex: Z.horizon - 10, // ensure behind bodies
+                  left: viewport.x,
+                  width: viewport.w,
+                  top: viewport.y,
+                  height: Math.max(0, Math.min(viewport.y + viewport.h, horizonY) - viewport.y),
+                  background: atmosphereGradient,
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
+
             <CardinalMarkers horizonY={horizonY} items={visibleCardinals as CardinalItem[]} />
 
             {/* NEW: secondary 16-wind labels (NNE, NE, ENE, ..., ONO, NNO) */}
@@ -732,27 +792,43 @@ export default function App() {
               </div>
             ))}
 
+            {/* Ensure bodies are above the atmosphere */}
             {showSun && (
-              <SunSprite x={sunScreen.x} y={sunScreen.y} visibleX={sunScreen.visibleX} visibleY={sunScreen.visibleY} rotationDeg={rotationToHorizonDegSun} showCard={showSunCard} wPx={bodySizes.sun.w} hPx={bodySizes.sun.h} />
+              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
+                <SunSprite
+                  x={sunScreen.x}
+                  y={sunScreen.y}
+                  visibleX={sunScreen.visibleX}
+                  visibleY={sunScreen.visibleY}
+                  rotationDeg={rotationToHorizonDegSun}
+                  showCard={showSunCard}
+                  wPx={bodySizes.sun.w}
+                  hPx={bodySizes.sun.h}
+                />
+              </div>
             )}
 
+            {/* Moon 2D above atmosphere */}
             {showMoon && !showMoon3D && (
-              <MoonSprite
-                x={moonScreen.x} y={moonScreen.y}
-                visibleX={moonScreen.visibleX} visibleY={moonScreen.visibleY}
-                rotationDeg={rotationToHorizonDegMoon}
-                showPhase={showPhase}
-                earthshine={earthshine}
-                debugMask={debugMask}
-                showCard={showMoonCard}
-                phaseFraction={phaseFraction}
-                brightLimbAngleDeg={brightLimbAngleDeg}
-                maskAngleDeg={maskAngleDeg}
-                wPx={bodySizes.moon.w}
-                hPx={bodySizes.moon.h}
-              />
+              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
+                <MoonSprite
+                  x={moonScreen.x} y={moonScreen.y}
+                  visibleX={moonScreen.visibleX} visibleY={moonScreen.visibleY}
+                  rotationDeg={rotationToHorizonDegMoon}
+                  showPhase={showPhase}
+                  earthshine={earthshine}
+                  debugMask={debugMask}
+                  showCard={showMoonCard}
+                  phaseFraction={phaseFraction}
+                  brightLimbAngleDeg={brightLimbAngleDeg}
+                  maskAngleDeg={maskAngleDeg}
+                  wPx={bodySizes.moon.w}
+                  hPx={bodySizes.moon.h}
+                />
+              </div>
             )}
 
+            {/* Moon 3D already layered; ensure its z stays above atmosphere */}
             {showMoon && showMoon3D && moonScreen.visibleX && moonScreen.visibleY && (
               <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }}>
                 <Moon3D
@@ -800,6 +876,77 @@ export default function App() {
                 }}
               />
             )}
+          </div>
+
+          {/* Top UI bar */}
+          <div
+            className="absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
+            style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
+          >
+            <TopBar
+              follow={follow}
+              setFollow={setFollow}
+              devices={devices}
+              deviceId={deviceId}
+              setDeviceId={setDeviceId}
+              zoomOptions={zoomOptions}
+              zoomId={zoomId}
+              setZoomId={setZoomId}
+              CUSTOM_DEVICE_ID={CUSTOM_DEVICE_ID}
+              fovXDeg={fovXDeg}
+              fovYDeg={fovYDeg}
+              setFovXDeg={setFovXDeg}
+              setFovYDeg={setFovYDeg}
+              linkFov={linkFov}
+              setLinkFov={setLinkFov}
+              viewport={viewport}
+              when={when}
+              onCommitWhenMs={(ms) => { whenMsRef.current = ms; setWhenMs(ms); }}
+              setIsAnimating={setIsAnimating}
+              isAnimating={isAnimating}
+              speedMinPerSec={speedMinPerSec}
+              setSpeedMinPerSec={setSpeedMinPerSec}
+              showSun={showSun}
+              setShowSun={setShowSun}
+              showMoon={showMoon}
+              setShowMoon={setShowMoon}
+              showPhase={showPhase}
+              setShowPhase={setShowPhase}
+              showMoon3D={showMoon3D}
+              setShowMoon3D={setShowMoon3D}
+              rotOffsetDegX={rotOffsetDegX}
+              setRotOffsetDegX={setRotOffsetDegX}
+              rotOffsetDegY={rotOffsetDegY}
+              setRotOffsetDegY={setRotOffsetDegY}
+              rotOffsetDegZ={rotOffsetDegZ}
+              setRotOffsetDegZ={setRotOffsetDegZ}
+              camRotDegX={camRotDegX}
+              setCamRotDegX={setCamRotDegX}
+              camRotDegY={camRotDegY}
+              setCamRotDegY={setCamRotDegY}
+              camRotDegZ={camRotDegZ}
+              setCamRotDegZ={setCamRotDegZ}
+              earthshine={earthshine}
+              setEarthshine={setEarthshine}
+              showSunCard={showSunCard}
+              setShowSunCard={setShowSunCard}
+              showMoonCard={showMoonCard}
+              setShowMoonCard={setShowMoonCard}
+              debugMask={debugMask}
+              setDebugMask={setDebugMask}
+              timeZone={location.timeZone}
+              enlargeObjects={enlargeObjects}
+              setEnlargeObjects={setEnlargeObjects}
+              currentUtcMs={whenMs}
+              // NEW: pass the ground toggle to TopBar
+              showEarth={showEarth}
+              setShowEarth={setShowEarth}
+              // NEW: Atmosphere toggle
+              showAtmosphere={showAtmosphere}
+              setShowAtmosphere={setShowAtmosphere}
+              // New: pass selected city name for label
+              cityName={cityName}
+            />
           </div>
 
           {/* Bottom telemetry cards */}
