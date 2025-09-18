@@ -1,6 +1,8 @@
 import React from "react";
 import { lstDeg } from "../../astro/time";
 import { projectToScreen } from "../../render/projection";
+import { createPortal } from "react-dom";
+import { Z } from "../../render/constants";
 
 type Viewport = { x: number; y: number; w: number; h: number };
 
@@ -19,7 +21,6 @@ type Props = {
   // NEW: toggle constellation markers
   showMarkers?: boolean;
   // NEW: centroid callback (Alt/Az) for the Southern Cross (null when unavailable)
-  onCruxCentroid?: (pos: { altDeg: number; azDeg: number } | null) => void;
 };
 
 type Star = {
@@ -441,8 +442,28 @@ export default function Stars({
 
   const fmt = (v?: number, frac = 2) => (typeof v === "number" ? v.toFixed(frac) : "");
 
+  // Measure an anchor placed at the viewport top-left (inside Stars wrapper)
+  const anchorRef = React.useRef<HTMLDivElement | null>(null);
+  const [anchorPos, setAnchorPos] = React.useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  React.useLayoutEffect(() => {
+    const upd = () => {
+      const r = anchorRef.current?.getBoundingClientRect();
+      if (r) setAnchorPos({ left: r.left, top: r.top });
+    };
+    upd();
+    window.addEventListener("resize", upd);
+    window.addEventListener("scroll", upd, { passive: true });
+    return () => {
+      window.removeEventListener("resize", upd);
+      window.removeEventListener("scroll", upd as any);
+    };
+  }, [viewport.x, viewport.y, viewport.w, viewport.h]);
+
   return (
     <>
+      {/* Invisible anchor at the viewport origin (used to align the portal in page coords) */}
+      <div ref={anchorRef} style={{ position: "absolute", left: viewport.x, top: viewport.y, width: 0, height: 0, pointerEvents: "none" }} />
+
       {dots.map((d, i) => (
         <React.Fragment key={i}>
           <div
@@ -489,17 +510,17 @@ export default function Stars({
         </React.Fragment>
       ))}
 
-      {/* NEW: Southern Cross marker as two opposite lines */}
-      {showMarkers && cruxCross && (
+      {/* NEW: Southern Cross marker as two opposite lines (portal above ground) */}
+      {showMarkers && cruxCross && createPortal(
         <div
           style={{
             position: "absolute",
-            left: viewport.x,
-            top: viewport.y,
+            left: anchorPos.left,
+            top: anchorPos.top,
             width: viewport.w,
             height: viewport.h,
             pointerEvents: "none",
-            zIndex: 3,
+            zIndex: Z.horizon, // above ground (Sol: Z.horizon - 1)
           }}
         >
           <svg width={viewport.w} height={viewport.h}>
@@ -527,7 +548,8 @@ export default function Stars({
               Croix du Sud
             </text>
           </svg>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

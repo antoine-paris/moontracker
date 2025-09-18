@@ -49,8 +49,10 @@ import Stars from "./components/stage/Stars"; // + add
 const POLARIS_COLOR = '#86efac';
 const POLARIS_RA_DEG = 37.952917;
 const POLARIS_DEC_DEG = 89.264167;
-// NEW: Southern Cross marker color
+// NEW: Southern Cross marker color + centroid equatorial coordinates (avg of Acrux, Mimosa, Gacrux, Imai)
 const CRUX_COLOR = '#a78bfa';
+const CRUX_CENTROID_RA_DEG = 187.539271;
+const CRUX_CENTROID_DEC_DEG = -59.6625;
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -112,9 +114,7 @@ export default function App() {
   const [showAtmosphere, setShowAtmosphere] = useState(false);
   const [showStars, setShowStars] = useState(false); // + add
   const [showMarkers, setShowMarkers] = useState(false); 
-  // NEW: Southern Cross centroid Alt/Az
-  const [cruxCentroid, setCruxCentroid] = useState<{ altDeg: number; azDeg: number } | null>(null);
-
+  
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -527,6 +527,22 @@ export default function App() {
     return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
+  const cruxCentroid = useMemo(() => {
+    const LST = lstDeg(date, location.lng);
+    let H = LST - POLARIS_RA_DEG;
+    H = ((H + 180) % 360 + 360) % 360 - 180;
+    const φ = toRad(location.lat);
+    const δ = toRad(POLARIS_DEC_DEG);
+    const Hr = toRad(H);
+    const sinAlt = Math.sin(φ) * Math.sin(δ) + Math.cos(φ) * Math.cos(δ) * Math.cos(Hr);
+    const alt = Math.asin(clamp(sinAlt, -1, 1));
+    const cosAlt = Math.cos(alt);
+    const sinA = -Math.cos(δ) * Math.sin(Hr) / Math.max(1e-9, cosAlt);
+    const cosA = (Math.sin(δ) - Math.sin(alt) * Math.sin(φ)) / Math.max(1e-9, (cosAlt * Math.cos(φ)));
+    const A = Math.atan2(sinA, cosA);
+    return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
+  }, [date, location.lat, location.lng]);
+
   // Polaris Alt/Az (from RA/Dec for current date/location)
   const polarisAltAz = useMemo(() => {
     const LST = lstDeg(date, location.lng);
@@ -534,6 +550,23 @@ export default function App() {
     H = ((H + 180) % 360 + 360) % 360 - 180;
     const φ = toRad(location.lat);
     const δ = toRad(POLARIS_DEC_DEG);
+    const Hr = toRad(H);
+    const sinAlt = Math.sin(φ) * Math.sin(δ) + Math.cos(φ) * Math.cos(δ) * Math.cos(Hr);
+    const alt = Math.asin(clamp(sinAlt, -1, 1));
+    const cosAlt = Math.cos(alt);
+    const sinA = -Math.cos(δ) * Math.sin(Hr) / Math.max(1e-9, cosAlt);
+    const cosA = (Math.sin(δ) - Math.sin(alt) * Math.sin(φ)) / Math.max(1e-9, (cosAlt * Math.cos(φ)));
+    const A = Math.atan2(sinA, cosA);
+    return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
+  }, [date, location.lat, location.lng]);
+
+  // NEW: Southern Cross centroid Alt/Az (from RA/Dec for current date/location)
+  const cruxAltAz = useMemo(() => {
+    const LST = lstDeg(date, location.lng);
+    let H = LST - CRUX_CENTROID_RA_DEG;
+    H = ((H + 180) % 360 + 360) % 360 - 180;
+    const φ = toRad(location.lat);
+    const δ = toRad(CRUX_CENTROID_DEC_DEG);
     const Hr = toRad(H);
     const sinAlt = Math.sin(φ) * Math.sin(δ) + Math.cos(φ) * Math.cos(δ) * Math.cos(Hr);
     const alt = Math.asin(clamp(sinAlt, -1, 1));
@@ -558,10 +591,9 @@ export default function App() {
 
   // NEW: Southern Cross horizon X from centroid azimuth
   const cruxHorizon = useMemo(() => {
-    if (!cruxCentroid) return null;
-    const p = projectToScreen(cruxCentroid.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const p = projectToScreen(cruxAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
     return { ...p, x: viewport.x + p.x };
-  }, [cruxCentroid, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Animation loop
   useEffect(() => {
@@ -858,8 +890,7 @@ export default function App() {
                   enlargeObjects={enlargeObjects}
                   // NEW: drive constellation markers visibility
                   showMarkers={showMarkers}
-                  // NEW: receive Southern Cross centroid Alt/Az
-                  onCruxCentroid={setCruxCentroid}
+                  // REMOVED: no callback needed when hardcoding centroid
                 />
               </div>
             )}
@@ -919,7 +950,7 @@ export default function App() {
             )}
 
             {/* NEW: Southern Cross horizon marker + label */}
-            {showMarkers && showStars && cruxHorizon && cruxHorizon.visibleX && (
+            {showMarkers && cruxHorizon.visibleX && (
               <>
                 <div style={{ position: "absolute", left: cruxHorizon.x, top: horizonY, zIndex: Z.horizon }}>
                   <div className="-translate-x-1/2 -translate-y-1/2">
