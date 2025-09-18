@@ -43,6 +43,7 @@ import Moon3D from "./components/stage/Moon3D";
 import StageCanvas from "./components/stage/StageCanvas";
 // Import du logo (Vite)
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
+import Stars from "./components/stage/Stars"; // + add
 
 // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -102,6 +103,7 @@ export default function App() {
   const [showEarth, setShowEarth] = useState(false);
   // NEW: Atmosphere toggle
   const [showAtmosphere, setShowAtmosphere] = useState(false);
+  const [showStars, setShowStars] = useState(false); // + add
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -702,6 +704,9 @@ export default function App() {
               // NEW: pass atmosphere toggle
               showAtmosphere={showAtmosphere}
               setShowAtmosphere={setShowAtmosphere}
+              // NEW: pass stars toggle
+              showStars={showStars}
+              setShowStars={setShowStars}
               // New: pass selected city name for label
               cityName={cityName}
             />
@@ -785,6 +790,25 @@ export default function App() {
                   pointerEvents: 'none',
                 }}
               />
+            )}
+
+            {/* NEW: Stars layer (above atmosphere, below Sun/Moon) */}
+            {showStars && (
+              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 5, pointerEvents: 'none' }}>
+                <Stars
+                  utcMs={whenMs}
+                  latDeg={location.lat}
+                  lngDeg={location.lng}
+                  refAzDeg={refAz}
+                  refAltDeg={refAlt}
+                  fovXDeg={fovXDeg}
+                  fovYDeg={fovYDeg}
+                  viewport={viewport}
+                  debug={debugMask}
+                  // NEW: drive stars rendering (enlarged vs realistic)
+                  enlargeObjects={enlargeObjects}
+                />
+              </div>
             )}
 
             <CardinalMarkers horizonY={horizonY} items={visibleCardinals as CardinalItem[]} secondaryItems={visibleSecondaryCardinals} />
@@ -944,9 +968,12 @@ export default function App() {
               // NEW: pass the ground toggle to TopBar
               showEarth={showEarth}
               setShowEarth={setShowEarth}
-              // NEW: Atmosphere toggle
+              // NEW: pass atmosphere toggle
               showAtmosphere={showAtmosphere}
               setShowAtmosphere={setShowAtmosphere}
+              // NEW: pass stars toggle
+              showStars={showStars}
+              setShowStars={setShowStars}
               // New: pass selected city name for label
               cityName={cityName}
             />

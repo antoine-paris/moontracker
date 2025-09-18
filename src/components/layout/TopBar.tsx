@@ -8,6 +8,9 @@ import { zonedLocalToUtcMs } from "../../utils/tz";
 export type Viewport = { x: number; y: number; w: number; h: number };
 
 type Props = {
+  debug: boolean;
+  onDebugChange: (value: boolean) => void;
+
   follow: FollowMode;
   setFollow: (f: FollowMode) => void;
 
@@ -78,9 +81,14 @@ type Props = {
   // NEW: Atmosphere toggle
   showAtmosphere: boolean;
   setShowAtmosphere: (v: boolean) => void;
+
+  // NEW: Stars toggle
+  showStars: boolean;
+  setShowStars: (v: boolean) => void;
 };
 
 export default function TopBar({
+  debug, onDebugChange,
   follow, setFollow,
   devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
   fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
@@ -97,6 +105,7 @@ export default function TopBar({
   // NEW
   showEarth, setShowEarth,
   showAtmosphere, setShowAtmosphere,
+  showStars, setShowStars,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -451,6 +460,11 @@ export default function TopBar({
               <input type="checkbox" checked={showEarth} onChange={(e) => setShowEarth(e.target.checked)} />
               <span>Sol</span>
             </label>
+            {/* NEW: Stars toggle */}
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={showStars} onChange={(e) => setShowStars(e.target.checked)} />
+              <span>Étoiles</span>
+            </label>
             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} /><span className="text-amber-300">Soleil</span></label>
             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune 2D</span></label>
             <label className="inline-flex items-center gap-2 text-sm text-sky-300">
@@ -524,6 +538,7 @@ export default function TopBar({
            )}
         </div>
       </div>
+     
     </>
   );
 }

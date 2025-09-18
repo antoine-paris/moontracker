@@ -1,0 +1,7 @@
+Name,Vmag,RA_deg,Dec_deg,SpType,Parallax_arcsec,Distance_ly,Constellation
+1Alp UMi (Polaris),2.02,37.952917,89.264167,  F7:Ib-II          ,0.007,465.9371429,UMi
+Alp1Cru (Acrux),1.33,186.649583,-63.099167,  B0.5IV            ,0.008,407.695,Alp1Cru
+Bet Cru (Mimosa),1.25,191.93,-59.688611,  B0.5III           ,,,Cru
+Gam Cru (Gacrux),1.63,187.79125,-57.113333,  M3.5III           ,,,Cru
+Del Cru (Imai),2.8,183.78625,-58.748889,  B2IV              ,0.003,1087.186667,Cru
+Eps Cru (Ginan),3.59,185.34,-60.401111,  K3-4III           ,0.026,125.4446154,Cru
