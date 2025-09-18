@@ -7,7 +7,7 @@ import type { FollowMode } from "./types";
 import type { LocationOption } from "./data/locations";
 import type { Device, ZoomModule } from "./optics/types";
 import type { Astro as TelemetryAstro } from "./components/layout/BottomTelemetry";
-
+ 
 // Données
 import { LOCATIONS, loadLocationsFromCsv, getAllLocations } from "./data/locations";
 import { DEVICES, CUSTOM_DEVICE_ID } from "./optics/devices";
@@ -45,7 +45,14 @@ import StageCanvas from "./components/stage/StageCanvas";
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 import Stars from "./components/stage/Stars"; // + add
 
-// --- Main Component ----------------------------------------------------------
+// Light-green Polaris marker color + equatorial coordinates
+const POLARIS_COLOR = '#86efac';
+const POLARIS_RA_DEG = 37.952917;
+const POLARIS_DEC_DEG = 89.264167;
+// NEW: Southern Cross marker color
+const CRUX_COLOR = '#a78bfa';
+
+ // --- Main Component ----------------------------------------------------------
 export default function App() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
@@ -104,6 +111,10 @@ export default function App() {
   // NEW: Atmosphere toggle
   const [showAtmosphere, setShowAtmosphere] = useState(false);
   const [showStars, setShowStars] = useState(false); // + add
+  const [showMarkers, setShowMarkers] = useState(false); 
+  // NEW: Southern Cross centroid Alt/Az
+  const [cruxCentroid, setCruxCentroid] = useState<{ altDeg: number; azDeg: number } | null>(null);
+
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -516,6 +527,42 @@ export default function App() {
     return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
+  // Polaris Alt/Az (from RA/Dec for current date/location)
+  const polarisAltAz = useMemo(() => {
+    const LST = lstDeg(date, location.lng);
+    let H = LST - POLARIS_RA_DEG;
+    H = ((H + 180) % 360 + 360) % 360 - 180;
+    const φ = toRad(location.lat);
+    const δ = toRad(POLARIS_DEC_DEG);
+    const Hr = toRad(H);
+    const sinAlt = Math.sin(φ) * Math.sin(δ) + Math.cos(φ) * Math.cos(δ) * Math.cos(Hr);
+    const alt = Math.asin(clamp(sinAlt, -1, 1));
+    const cosAlt = Math.cos(alt);
+    const sinA = -Math.cos(δ) * Math.sin(Hr) / Math.max(1e-9, cosAlt);
+    const cosA = (Math.sin(δ) - Math.sin(alt) * Math.sin(φ)) / Math.max(1e-9, (cosAlt * Math.cos(φ)));
+    const A = Math.atan2(sinA, cosA);
+    return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
+  }, [date, location.lat, location.lng]);
+
+  // Polaris screen position
+  const polarisScreen = useMemo(() => {
+    const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
+  }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+
+  // Polaris horizon X
+  const polarisHorizon = useMemo(() => {
+    const p = projectToScreen(polarisAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    return { ...p, x: viewport.x + p.x };
+  }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+
+  // NEW: Southern Cross horizon X from centroid azimuth
+  const cruxHorizon = useMemo(() => {
+    if (!cruxCentroid) return null;
+    const p = projectToScreen(cruxCentroid.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    return { ...p, x: viewport.x + p.x };
+  }, [cruxCentroid, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+
   // Animation loop
   useEffect(() => {
     if (!isAnimating) {
@@ -707,6 +754,9 @@ export default function App() {
               // NEW: pass stars toggle
               showStars={showStars}
               setShowStars={setShowStars}
+              // NEW: pass markers toggle
+              showMarkers={showMarkers}
+              setShowMarkers={setShowMarkers}
               // New: pass selected city name for label
               cityName={cityName}
             />
@@ -805,19 +855,90 @@ export default function App() {
                   fovYDeg={fovYDeg}
                   viewport={viewport}
                   debug={debugMask}
-                  // NEW: drive stars rendering (enlarged vs realistic)
                   enlargeObjects={enlargeObjects}
+                  // NEW: drive constellation markers visibility
+                  showMarkers={showMarkers}
+                  // NEW: receive Southern Cross centroid Alt/Az
+                  onCruxCentroid={setCruxCentroid}
                 />
               </div>
             )}
 
-            <CardinalMarkers horizonY={horizonY} items={visibleCardinals as CardinalItem[]} secondaryItems={visibleSecondaryCardinals} />
+            {/* Cardinal markers on horizon */}
+            { (
+              <CardinalMarkers
+                horizonY={horizonY}
+                items={visibleCardinals as CardinalItem[]}
+                secondaryItems={visibleSecondaryCardinals}
+              />
+            )}
 
-            {horizonMarkers.map((m, i) => (
-              <div key={i} style={{ position: "absolute", left: m.x, top: horizonY, zIndex: Z.horizon }}>
-                <div className="-translate-x-1/2 -translate-y-1/2"><div className="h-6 w-0.5" style={{ background: m.color, opacity: 0.9 }} /></div>
-              </div>
+            {/* Body horizon markers */}
+            {showMarkers && horizonMarkers.map((m, i) => (
+              <React.Fragment key={i}>
+                <div style={{ position: "absolute", left: m.x, top: horizonY, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-6 w-0.5" style={{ background: m.color, opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* NEW: horizon label aligned like Polaris */}
+                <div
+                  style={{
+                    position: "absolute",
+                    left: m.x + 4,
+                    top: horizonY - 20,
+                    zIndex: Z.horizon,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span className="text-xs" style={{ color: m.color, opacity: 0.95 }}>{m.label}</span>
+                </div>
+              </React.Fragment>
             ))}
+
+            {/* Polaris horizon marker + label (light green) */}
+            {showMarkers && polarisHorizon.visibleX && (
+              <>
+                <div style={{ position: "absolute", left: polarisHorizon.x, top: horizonY, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-6 w-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
+                  </div>
+                </div>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: polarisHorizon.x + 4,
+                    top: horizonY - 20,
+                    zIndex: Z.horizon,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span className="text-xs" style={{ color: POLARIS_COLOR, opacity: 0.95 }}>Polaris</span>
+                </div>
+              </>
+            )}
+
+            {/* NEW: Southern Cross horizon marker + label */}
+            {showMarkers && showStars && cruxHorizon && cruxHorizon.visibleX && (
+              <>
+                <div style={{ position: "absolute", left: cruxHorizon.x, top: horizonY, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-6 w-0.5" style={{ background: CRUX_COLOR, opacity: 0.9 }} />
+                  </div>
+                </div>
+                <div
+                  style={{
+                    position: "absolute",
+                    left: cruxHorizon.x + 4,
+                    top: horizonY - 20,
+                    zIndex: Z.horizon,
+                    pointerEvents: "none",
+                  }}
+                >
+                  <span className="text-xs" style={{ color: CRUX_COLOR, opacity: 0.95 }}>Croix du Sud</span>
+                </div>
+              </>
+            )}
 
             {/* Ensure bodies are above the atmosphere */}
             {showSun && (
@@ -903,9 +1024,145 @@ export default function App() {
                 }}
               />
             )}
+
+            {/* NEW: Body extremity markers (Sun/Moon) when showMarkers */}
+            {showMarkers && showSun && sunScreen.visibleX && sunScreen.visibleY && (
+              <>
+                {/* Sun: top (vertical) */}
+                <div style={{ position: 'absolute', left: sunScreen.x, top: sunScreen.y - bodySizes.sun.h / 2 - 15, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-3 w-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Sun: bottom (vertical) */}
+                <div style={{ position: 'absolute', left: sunScreen.x, top: sunScreen.y + bodySizes.sun.h / 2 + 15, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-3 w-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Sun: left (horizontal) */}
+                <div style={{ position: 'absolute', left: sunScreen.x - bodySizes.sun.w / 2 - 15, top: sunScreen.y, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="w-3 h-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Sun: right (horizontal) */}
+                <div style={{ position: 'absolute', left: sunScreen.x + bodySizes.sun.w / 2 + 15, top: sunScreen.y, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="w-3 h-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
+                  </div>
+                </div>
+              </>
+            )}
+            {/* NEW: Sun label at bottom-left near markers */}
+            {showMarkers && showSun && sunScreen.visibleX && sunScreen.visibleY && (
+              <div
+                style={{
+                  position: 'absolute',
+                  // Start at the extreme left of the right dash: centerX + gap(15) - halfDash(6)
+                  left: sunScreen.x + bodySizes.sun.w / 2 + 15 - 6,
+                  // Vertically center on the bottom dash line: centerY + gap(15)
+                  top: sunScreen.y + bodySizes.sun.h / 2 + 15,
+                  transform: 'translateY(-50%)',
+                  zIndex: Z.horizon,
+                  pointerEvents: 'none',
+                }}
+              >
+                <span className="text-xs" style={{ color: '#f59e0b', opacity: 0.95 }}>Soleil</span>
+              </div>
+            )}
+
+            {showMarkers && showMoon && moonScreen.visibleX && moonScreen.visibleY && (
+              <>
+                {/* Moon: top (vertical) */}
+                <div style={{ position: 'absolute', left: moonScreen.x, top: moonScreen.y - bodySizes.moon.h / 2 - 15, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-3 w-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Moon: bottom (vertical) */}
+                <div style={{ position: 'absolute', left: moonScreen.x, top: moonScreen.y + bodySizes.moon.h / 2 + 15, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-3 w-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Moon: left (horizontal) */}
+                <div style={{ position: 'absolute', left: moonScreen.x - bodySizes.moon.w / 2 - 15, top: moonScreen.y, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="w-3 h-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Moon: right (horizontal) */}
+                <div style={{ position: 'absolute', left: moonScreen.x + bodySizes.moon.w / 2 + 15, top: moonScreen.y, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="w-3 h-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
+                  </div>
+                </div>
+              </>
+            )}
+            {/* NEW: Moon label at bottom-left near markers */}
+            {showMarkers && showMoon && moonScreen.visibleX && moonScreen.visibleY && (
+              <div
+                style={{
+                  position: 'absolute',
+                  // Start at the extreme left of the right dash
+                  left: moonScreen.x + bodySizes.moon.w / 2 + 15 - 6,
+                  // Vertically center on the bottom dash line
+                  top: moonScreen.y + bodySizes.moon.h / 2 + 15,
+                  transform: 'translateY(-50%)',
+                  zIndex: Z.horizon,
+                  pointerEvents: 'none',
+                }}
+              >
+                <span className="text-xs" style={{ color: '#93c5fd', opacity: 0.95 }}>Lune</span>
+              </div>
+            )}
+
+            {/* Polaris object extremity markers + label (light green) */}
+            {showMarkers && showStars && polarisScreen.visibleX && polarisScreen.visibleY && (
+              <>
+                {/* Top (vertical) */}
+                <div style={{ position: 'absolute', left: polarisScreen.x, top: polarisScreen.y - 15, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-3 w-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Bottom (vertical) */}
+                <div style={{ position: 'absolute', left: polarisScreen.x, top: polarisScreen.y + 15, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="h-3 w-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Left (horizontal) */}
+                <div style={{ position: 'absolute', left: polarisScreen.x - 15, top: polarisScreen.y, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="w-3 h-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Right (horizontal) */}
+                <div style={{ position: 'absolute', left: polarisScreen.x + 15, top: polarisScreen.y, zIndex: Z.horizon }}>
+                  <div className="-translate-x-1/2 -translate-y-1/2">
+                    <div className="w-3 h-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
+                  </div>
+                </div>
+                {/* Label aligned with bottom dash, starting at left edge of right dash */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    left: polarisScreen.x + 15 - 6,
+                    top: polarisScreen.y + 15,
+                    transform: 'translateY(-50%)',
+                    zIndex: Z.horizon,
+                    pointerEvents: 'none',
+                  }}
+                >
+                  <span className="text-xs" style={{ color: POLARIS_COLOR, opacity: 0.95 }}>Polaris</span>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Top UI bar */}
+          {/* Top UI bar (duplicate) */}
           <div
             className="absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
             style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
@@ -974,6 +1231,9 @@ export default function App() {
               // NEW: pass stars toggle
               showStars={showStars}
               setShowStars={setShowStars}
+              // NEW: pass markers toggle
+              showMarkers={showMarkers}
+              setShowMarkers={setShowMarkers}
               // New: pass selected city name for label
               cityName={cityName}
             />
@@ -1070,8 +1330,5 @@ export default function App() {
     </div>
   );
 }
-
-
-
 
 function compass16(az: number): string { const idx = Math.round(norm360(az) / 22.5) % 16; return ROSE_16[idx] as string; }

@@ -85,6 +85,10 @@ type Props = {
   // NEW: Stars toggle
   showStars: boolean;
   setShowStars: (v: boolean) => void;
+
+  // NEW: Markers toggle
+  showMarkers: boolean;
+  setShowMarkers: (v: boolean) => void;
 };
 
 export default function TopBar({
@@ -106,6 +110,8 @@ export default function TopBar({
   showEarth, setShowEarth,
   showAtmosphere, setShowAtmosphere,
   showStars, setShowStars,
+  // NEW
+  showMarkers, setShowMarkers,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -450,6 +456,11 @@ export default function TopBar({
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Objets à afficher</div>
           <div className="flex flex-wrap gap-3">
+            {/* NEW: Markers toggle */}
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={showMarkers} onChange={(e) => setShowMarkers(e.target.checked)} />
+              <span>Marqueurs</span>
+            </label>
             {/* NEW: Atmosphere toggle */}
             <label className="inline-flex items-center gap-2 text-sm">
               <input type="checkbox" checked={showAtmosphere} onChange={(e) => setShowAtmosphere(e.target.checked)} />

@@ -16,6 +16,10 @@ type Props = {
   debug?: boolean;
   // NEW: control “enlarged” look vs “realistic”
   enlargeObjects?: boolean;
+  // NEW: toggle constellation markers
+  showMarkers?: boolean;
+  // NEW: centroid callback (Alt/Az) for the Southern Cross (null when unavailable)
+  onCruxCentroid?: (pos: { altDeg: number; azDeg: number } | null) => void;
 };
 
 type Star = {
@@ -162,7 +166,25 @@ function raDecToAltAz(raDeg: number, decDeg: number, latDeg: number, lngDeg: num
   return { altDeg: toDeg(alt), azDeg: azFromNorth };
 }
 
-// Resolve debug from prop, URL (?debug=1), window flag (__MT_DEBUG), or a custom event ('moontracker:debug').
+// NEW: Alt/Az <-> unit vector helpers (Az from North, +E; Alt up)
+function altAzToVec(altDeg: number, azDeg: number) {
+  const alt = toRad(altDeg);
+  const az = toRad(azDeg);
+  const cosAlt = Math.cos(alt);
+  return {
+    x: cosAlt * Math.sin(az), // East
+    y: cosAlt * Math.cos(az), // North
+    z: Math.sin(alt),         // Up
+  };
+}
+function vecToAltAz(x: number, y: number, z: number) {
+  const r = Math.hypot(x, y, z) || 1;
+  const nx = x / r, ny = y / r, nz = z / r;
+  const alt = Math.asin(clamp(nz, -1, 1));
+  const az = Math.atan2(nx, ny);
+  return { altDeg: toDeg(alt), azDeg: norm360(toDeg(az)) };
+}
+
 function useExternalDebug(debugProp?: boolean) {
   const [extDebug, setExtDebug] = React.useState<boolean>(() => {
     try {
@@ -195,6 +217,8 @@ export default function Stars({
   viewport,
   debug = false,
   enlargeObjects = true,
+  showMarkers = false,
+  onCruxCentroid,
 }: Props) {
   const stars = useStarsCatalog();
   const debugStars = useDebugStarsCatalog();
@@ -294,6 +318,127 @@ export default function Stars({
     return res;
   }, [stars, debugStars, debugOn, latDeg, lngDeg, date, refAzDeg, refAltDeg, fovXDeg, fovYDeg, viewport, enlargeObjects, cfg]);
 
+  // NEW: compute a cross marker using opposite stars of the Southern Cross
+  const cruxCross = React.useMemo(() => {
+    type P = { x: number; y: number; s: Star; altDeg: number; azDeg: number };
+    const findByName = (substr: string) =>
+      debugStars.find(s => (s.name || "").toLowerCase().includes(substr.toLowerCase()));
+
+    const projectStar = (s?: Star): P | null => {
+      if (!s) return null;
+      const eq = raDecToAltAz(s.raDeg, s.decDeg, latDeg, lngDeg, date);
+      const p = projectToScreen(eq.azDeg, eq.altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg);
+      if (!(p.visibleX && p.visibleY)) return null;
+      return { x: p.x, y: p.y, s, altDeg: eq.altDeg, azDeg: eq.azDeg };
+    };
+
+    // Named endpoints
+    const pGacrux = projectStar(findByName("Gacrux"));
+    const pAcrux  = projectStar(findByName("Acrux"));
+    const pMimosa = projectStar(findByName("Mimosa"));
+    const pImai   = projectStar(findByName("Imai"));
+
+    let main: { x1: number; y1: number; x2: number; y2: number } | null = null;
+    let cross: { x1: number; y1: number; x2: number; y2: number } | null = null;
+
+    // Prefer canonical pairs if both endpoints are visible
+    const used: P[] = [];
+    if (pGacrux && pAcrux) {
+      main = { x1: pGacrux.x, y1: pGacrux.y, x2: pAcrux.x, y2: pAcrux.y };
+      used.push(pGacrux, pAcrux);
+    }
+    if (pMimosa && pImai) {
+      cross = { x1: pMimosa.x, y1: pMimosa.y, x2: pImai.x, y2: pImai.y };
+      used.push(pMimosa, pImai);
+    }
+
+    // Fallback: select 4 brightest Crux stars, then build opposite pairs
+    if (!main || !cross) {
+      const pool = debugStars
+        .filter(s => (s.constellation === "Cru") || ((s.name || "").includes("Cru")))
+        .slice()
+        .sort((a, b) => (a.mag ?? 10) - (b.mag ?? 10))
+        .slice(0, 6);
+
+      const vis = pool
+        .map(projectStar)
+        .filter((p): p is P => !!p);
+
+      if (vis.length >= 4) {
+        const pts = vis.slice(0, 4);
+        let best = { i: 0, j: 1, d2: -1 };
+        for (let i = 0; i < pts.length; i++) {
+          for (let j = i + 1; j < pts.length; j++) {
+            const dx = pts[i].x - pts[j].x;
+            const dy = pts[i].y - pts[j].y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > best.d2) best = { i, j, d2 };
+          }
+        }
+        const iSet = new Set([best.i, best.j]);
+        const remIdx = [0, 1, 2, 3].filter(k => !iSet.has(k));
+        main = { x1: pts[best.i].x, y1: pts[best.i].y, x2: pts[best.j].x, y2: pts[best.j].y };
+        cross = { x1: pts[remIdx[0]].x, y1: pts[remIdx[0]].y, x2: pts[remIdx[1]].x, y2: pts[remIdx[1]].y };
+        used.length = 0;
+        used.push(pts[best.i], pts[best.j], pts[remIdx[0]], pts[remIdx[1]]);
+      }
+    }
+
+    if (!main && !cross) return null;
+
+    // Screen centroid for label
+    const arr = [
+      ...(main ? [{ x: main.x1, y: main.y1 }, { x: main.x2, y: main.y2 }] : []),
+      ...(cross ? [{ x: cross.x1, y: cross.y1 }, { x: cross.x2, y: cross.y2 }] : []),
+    ];
+    const cx = arr.reduce((a, p) => a + p.x, 0) / arr.length;
+    const cy = arr.reduce((a, p) => a + p.y, 0) / arr.length;
+
+    // Angular centroid via unit-vector averaging
+    if (used.length === 0) return { main, cross, cx, cy, centroidAltDeg: NaN, centroidAzDeg: NaN };
+    let sx = 0, sy = 0, sz = 0;
+    for (const u of used) {
+      const v = altAzToVec(u.altDeg, u.azDeg);
+      sx += v.x; sy += v.y; sz += v.z;
+    }
+    const { altDeg: centroidAltDeg, azDeg: centroidAzDeg } = vecToAltAz(sx, sy, sz);
+
+    return { main, cross, cx, cy, centroidAltDeg, centroidAzDeg };
+  }, [debugStars, latDeg, lngDeg, date, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg]);
+
+  // Notify App of the centroid Alt/Az (or null when unavailable) with change gating
+  const centroidAlt = cruxCross?.centroidAltDeg;
+  const centroidAz = cruxCross?.centroidAzDeg;
+  const prevCentroidRef = React.useRef<{ alt: number; az: number } | null>(null);
+
+  React.useEffect(() => {
+    if (!onCruxCentroid) return;
+    if (!showMarkers) return; // skip when markers are hidden
+
+    const EPS = 0.05; // deg threshold
+    const wrapDeg = (d: number) => ((d + 180) % 360) - 180;
+
+    if (Number.isFinite(centroidAlt as number) && Number.isFinite(centroidAz as number)) {
+      const alt = centroidAlt as number;
+      const az = centroidAz as number;
+      const prev = prevCentroidRef.current;
+      const changed =
+        !prev ||
+        Math.abs(prev.alt - alt) > EPS ||
+        Math.abs(wrapDeg(prev.az - az)) > EPS;
+
+      if (changed) {
+        prevCentroidRef.current = { alt, az };
+        onCruxCentroid({ altDeg: alt, azDeg: az });
+      }
+    } else {
+      if (prevCentroidRef.current !== null) {
+        prevCentroidRef.current = null;
+        onCruxCentroid(null);
+      }
+    }
+  }, [centroidAlt, centroidAz, onCruxCentroid, showMarkers]);
+
   const fmt = (v?: number, frac = 2) => (typeof v === "number" ? v.toFixed(frac) : "");
 
   return (
@@ -343,6 +488,47 @@ export default function Stars({
           )}
         </React.Fragment>
       ))}
+
+      {/* NEW: Southern Cross marker as two opposite lines */}
+      {showMarkers && cruxCross && (
+        <div
+          style={{
+            position: "absolute",
+            left: viewport.x,
+            top: viewport.y,
+            width: viewport.w,
+            height: viewport.h,
+            pointerEvents: "none",
+            zIndex: 3,
+          }}
+        >
+          <svg width={viewport.w} height={viewport.h}>
+            {cruxCross.main && (
+              <line
+                x1={cruxCross.main.x1} y1={cruxCross.main.y1}
+                x2={cruxCross.main.x2} y2={cruxCross.main.y2}
+                stroke="#a78bfa" strokeWidth="1.8"
+              />
+            )}
+            {cruxCross.cross && (
+              <line
+                x1={cruxCross.cross.x1} y1={cruxCross.cross.y1}
+                x2={cruxCross.cross.x2} y2={cruxCross.cross.y2}
+                stroke="#a78bfa" strokeWidth="1.8"
+              />
+            )}
+            <text
+              x={cruxCross.cx + 6}
+              y={cruxCross.cy - 10}
+              fill="#a78bfa"
+              fontSize="11"
+              style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
+            >
+              Croix du Sud
+            </text>
+          </svg>
+        </div>
+      )}
     </>
   );
 }
