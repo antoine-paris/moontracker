@@ -16,11 +16,9 @@ type Props = {
   fovYDeg: number;
   viewport: Viewport;
   debug?: boolean;
-  // NEW: control “enlarged” look vs “realistic”
   enlargeObjects?: boolean;
-  // NEW: toggle constellation markers
   showMarkers?: boolean;
-  // NEW: centroid callback (Alt/Az) for the Southern Cross (null when unavailable)
+  onCruxCentroid?: (pos: { altDeg: number; azDeg: number } | null) => void;
 };
 
 type Star = {
@@ -29,6 +27,11 @@ type Star = {
   decDeg: number;
   mag: number;
   constellation?: string;
+  // NEW: precomputed terms for speed
+  raRad: number;
+  decRad: number;
+  sinDec: number;
+  cosDec: number;
 };
 
 function norm360(v: number) { return ((v % 360) + 360) % 360; }
@@ -37,7 +40,7 @@ function toRad(d: number) { return (d * Math.PI) / 180; }
 function toDeg(r: number) { return (r * 180) / Math.PI; }
 
 // Static: maximum visual magnitude to render (lower = brighter). Increase to show more dim stars.
-const STAR_MAX_MAG = 4.5;
+const STAR_MAX_MAG = 5.0;
 
 // NEW: presets to finely tune stars rendering in both modes
 type StarRenderConfig = {
@@ -59,7 +62,7 @@ type StarRenderConfig = {
 // Tuned for enlargeObjects=true (current look)
 const STAR_RENDER_ENLARGED: StarRenderConfig = {
   maxMag: STAR_MAX_MAG,
-  radiusBase: 4.2,
+  radiusBase: 6.2,
   radiusSlope: 0.7,
   rMin: 0.8,
   rMax: 4.2,
@@ -68,15 +71,15 @@ const STAR_RENDER_ENLARGED: StarRenderConfig = {
   oMin: 0.25,
   oMax: 1.0,
   highlightScale: 1.35,
-  glowNormal: 0.35,
+  glowNormal: 1.35,
   glowHighlight: 0.45,
-  fovScaleExp: 0.0, // keep appearance stable in enlarged mode
+  fovScaleExp: 0.5, // keep appearance stable in enlarged mode
 };
 
 // Tuned for enlargeObjects=false (more “realistic”, smaller/softer)
 const STAR_RENDER_REALISTIC: StarRenderConfig = {
   maxMag: STAR_MAX_MAG,       // allow a few more faint stars but keep it reasonable
-  radiusBase: 1.8,   // much smaller base size
+  radiusBase: 2.8,   // much smaller base size
   radiusSlope: 0.35, // gentler slope so bright stars still stand out
   rMin: 0.35,
   rMax: 2.2,
@@ -85,10 +88,16 @@ const STAR_RENDER_REALISTIC: StarRenderConfig = {
   oMin: 0.20,
   oMax: 0.90,
   highlightScale: 1.15,
-  glowNormal: 0.20,
-  glowHighlight: 0.30,
+  glowNormal: 0.35,
+  glowHighlight: 0.45,
   fovScaleExp: 0.25, // slight compensation at very wide/narrow FOVs
 };
+
+// Module-level caches (fetch/parse once per session)
+let STARS_CACHE: Star[] | null = null;
+let STARS_PROMISE: Promise<Star[]> | null = null;
+let DEBUG_STARS_CACHE: Star[] | null = null;
+let DEBUG_STARS_PROMISE: Promise<Star[]> | null = null;
 
 function parseCsv(text: string): Star[] {
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
@@ -107,38 +116,68 @@ function parseCsv(text: string): Star[] {
     const constellation = (cols[7] || "").replace(/\s+/g, " ").trim() || undefined;
     if (!Number.isFinite(ra) || !Number.isFinite(dec)) continue;
     const mag = Number.isFinite(vmag) ? vmag : 6;
-    out.push({ name, raDeg: ra, decDeg: dec, mag, constellation });
+
+    // NEW: precompute trig
+    const raRad = toRad(ra);
+    const decRad = toRad(dec);
+    const sinDec = Math.sin(decRad);
+    const cosDec = Math.cos(decRad);
+
+    out.push({ name, raDeg: ra, decDeg: dec, mag, constellation, raRad, decRad, sinDec, cosDec });
   }
   return out;
 }
 
+// Cache-aware loaders
+function loadStarsCatalog(): Promise<Star[]> {
+  if (STARS_CACHE) return Promise.resolve(STARS_CACHE);
+  if (!STARS_PROMISE) {
+    const url = new URL("../../assets/stars-mag-9.csv", import.meta.url).toString();
+    STARS_PROMISE = fetch(url)
+      .then(r => r.text())
+      .then(txt => (STARS_CACHE = parseCsv(txt)))
+      .catch(() => (STARS_CACHE = []))
+      .finally(() => { STARS_PROMISE = null; }) as unknown as Promise<Star[]>;
+  }
+  return STARS_PROMISE.then(() => STARS_CACHE || []);
+}
+
+function loadDebugStarsCatalog(): Promise<Star[]> {
+  if (DEBUG_STARS_CACHE) return Promise.resolve(DEBUG_STARS_CACHE);
+  if (!DEBUG_STARS_PROMISE) {
+    const url = new URL("../../assets/stars-polaris-south-cross.csv", import.meta.url).toString();
+    DEBUG_STARS_PROMISE = fetch(url)
+      .then(r => r.text())
+      .then(txt => (DEBUG_STARS_CACHE = parseCsv(txt)))
+      .catch(() => (DEBUG_STARS_CACHE = []))
+      .finally(() => { DEBUG_STARS_PROMISE = null; }) as unknown as Promise<Star[]>;
+  }
+  return DEBUG_STARS_PROMISE.then(() => DEBUG_STARS_CACHE || []);
+}
+
 function useStarsCatalog(): Star[] {
-  const [stars, setStars] = React.useState<Star[]>([]);
+  const [stars, setStars] = React.useState<Star[]>(() => STARS_CACHE || []);
   React.useEffect(() => {
     let cancelled = false;
-    const url = new URL("../../assets/stars-mag-5.csv", import.meta.url).toString();
-    fetch(url)
-      .then(r => r.text())
-      .then(txt => {
-        if (cancelled) return;
-        setStars(parseCsv(txt));
-      })
-      .catch(() => { /* ignore */ });
+    if (STARS_CACHE) {
+      setStars(STARS_CACHE);
+      return;
+    }
+    loadStarsCatalog().then(arr => { if (!cancelled) setStars(arr); });
     return () => { cancelled = true; };
   }, []);
   return stars;
 }
 
-// New: load special stars (Polaris + Southern Cross) for debug highlighting
 function useDebugStarsCatalog(): Star[] {
-  const [stars, setStars] = React.useState<Star[]>([]);
+  const [stars, setStars] = React.useState<Star[]>(() => DEBUG_STARS_CACHE || []);
   React.useEffect(() => {
     let cancelled = false;
-    const url = new URL("../../assets/stars-polaris-south-cross.csv", import.meta.url).toString();
-    fetch(url)
-      .then(r => r.text())
-      .then(txt => { if (!cancelled) setStars(parseCsv(txt)); })
-      .catch(() => { /* ignore */ });
+    if (DEBUG_STARS_CACHE) {
+      setStars(DEBUG_STARS_CACHE);
+      return;
+    }
+    loadDebugStarsCatalog().then(arr => { if (!cancelled) setStars(arr); });
     return () => { cancelled = true; };
   }, []);
   return stars;
@@ -186,6 +225,37 @@ function vecToAltAz(x: number, y: number, z: number) {
   return { altDeg: toDeg(alt), azDeg: norm360(toDeg(az)) };
 }
 
+// NEW: fast Alt/Az using precomputed star trig and per-frame observer terms
+function altAzFromPrecomputed(
+  star: Star,
+  sinPhi: number,
+  cosPhi: number,
+  lstRad: number
+) {
+  let H = lstRad - star.raRad; // hour angle
+  if (H > Math.PI) H -= 2 * Math.PI;
+  else if (H < -Math.PI) H += 2 * Math.PI;
+
+  const cosH = Math.cos(H);
+  const sinH = Math.sin(H);
+
+  const sinAlt = sinPhi * star.sinDec + cosPhi * star.cosDec * cosH;
+  const alt = Math.asin(clamp(sinAlt, -1, 1));
+  const cosAlt = Math.max(1e-9, Math.cos(alt));
+
+  const sinA = -star.cosDec * sinH / cosAlt;
+  const cosA = (star.sinDec - Math.sin(alt) * sinPhi) / Math.max(1e-9, (cosAlt * cosPhi));
+  const A = Math.atan2(sinA, cosA);
+  const azDeg = norm360(toDeg(A));
+
+  return { altRad: alt, azDeg };
+}
+
+// NEW: small azimuth difference helper [-180, 180]
+function angleDiffDeg(a: number, b: number) {
+  return ((a - b + 540) % 360) - 180;
+}
+
 function useExternalDebug(debugProp?: boolean) {
   const [extDebug, setExtDebug] = React.useState<boolean>(() => {
     try {
@@ -226,98 +296,122 @@ export default function Stars({
   const date = React.useMemo(() => new Date(utcMs), [utcMs]);
   const debugOn = useExternalDebug(debug);
 
-  // NEW: select rendering config
+  // NEW: canvas ref and rAF throttling
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const rafRef = React.useRef<number | null>(null);
+
+  // Rendering config
   const cfg = enlargeObjects ? STAR_RENDER_ENLARGED : STAR_RENDER_REALISTIC;
 
-  const dots = React.useMemo(() => {
-    const res: {
-      x: number; y: number; r: number; opacity: number; visible: boolean; color: string; glowAlpha: number;
-      name?: string; raDeg?: number; decDeg?: number; mag?: number; constellation?: string;
-    }[] = [];
+  // NEW: draw stars on a single canvas, throttled to rAF
+  const scheduleDraw = React.useCallback(() => {
+    if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    // Helper: match special stars by RA/Dec proximity (deg)
-    const isSpecialByEq = (ra: number, dec: number) =>
-      debugOn && debugStars.some(ds =>
-        Math.abs(ds.raDeg - ra) < 0.1 && Math.abs(ds.decDeg - dec) < 0.1
-      );
+      // Size & scale for DPR
+      const w = Math.max(0, Math.floor(viewport.w));
+      const h = Math.max(0, Math.floor(viewport.h));
+      const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+      if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
+        canvas.width = w * dpr;
+        canvas.height = h * dpr;
+      }
+      // Always draw in CSS pixels using a transform
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
 
-    // Slight FOV-based micro-scaling (kept subtle)
-    const fovScale = Math.pow(100 / clamp(fovXDeg, 10, 240), cfg.fovScaleExp);
+      if (!stars.length) return;
 
-    for (const s of stars) {
-      // Filter out stars dimmer than the chosen threshold
-      if (s.mag > cfg.maxMag) continue;
+      // Per-frame observer terms
+      const lstRad = toRad(lstDeg(date, lngDeg));
+      const phi = toRad(latDeg);
+      const sinPhi = Math.sin(phi);
+      const cosPhi = Math.cos(phi);
 
-      const eq = raDecToAltAz(s.raDeg, s.decDeg, latDeg, lngDeg, date);
-      const p = projectToScreen(eq.azDeg, eq.altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg);
-      if (!(p.visibleX && p.visibleY)) continue;
+      // Early culling bounds
+      const marginDeg = 2;
+      const altHalf = fovYDeg * 0.5 + marginDeg;
+      const altMinRad = toRad(Math.max(-90, refAltDeg - altHalf));
+      const altMaxRad = toRad(Math.min(90, refAltDeg + altHalf));
+      const azHalf = fovXDeg * 0.5 + marginDeg;
 
-      const highlighted = isSpecialByEq(s.raDeg, s.decDeg);
+      // Subtle FOV-based scaling
+      const fovScale = Math.pow(100 / clamp(fovXDeg, 10, 240), cfg.fovScaleExp);
 
-      // NEW: radius/opacity from preset + tiny FOV adaptation
-      let r = cfg.radiusBase - cfg.radiusSlope * s.mag;
-      r = clamp(r, cfg.rMin, cfg.rMax);
-      r *= fovScale;
-      if (highlighted) r = Math.min(r * cfg.highlightScale, cfg.rMax * 1.4);
+      // Optional highlight check
+      const specialList = debugOn ? debugStars : [];
+      const isSpecial = (raDeg: number, decDeg: number) => {
+        if (!specialList.length) return false;
+        for (let i = 0; i < specialList.length; i++) {
+          const ds = specialList[i];
+          if (Math.abs(ds.raDeg - raDeg) < 0.1 && Math.abs(ds.decDeg - decDeg) < 0.1) return true;
+        }
+        return false;
+      };
 
-      const opacity = clamp(cfg.opacityBase - cfg.opacitySlope * s.mag, cfg.oMin, cfg.oMax);
+      // Draw loop without allocations
+      // Configure defaults
+      ctx.lineWidth = 0;
+      for (let i = 0; i < stars.length; i++) {
+        const s = stars[i];
+        if (s.mag > cfg.maxMag) continue;
 
-      res.push({
-        x: viewport.x + p.x,
-        y: viewport.y + p.y,
-        r, opacity, visible: true,
-        color: highlighted ? "#ff4d4d" : "white",
-        glowAlpha: highlighted ? cfg.glowHighlight : cfg.glowNormal,
-        name: s.name || undefined,
-        raDeg: s.raDeg,
-        decDeg: s.decDeg,
-        mag: s.mag,
-        constellation: s.constellation,
-      });
-    }
+        // Fast Alt/Az
+        const eq = altAzFromPrecomputed(s, sinPhi, cosPhi, lstRad);
+        const altRad = eq.altRad;
+        // Alt cull (fast)
+        if (altRad < altMinRad || altRad > altMaxRad) continue;
 
-    // In debug, also render any special stars missing from the main list
-    if (debugOn) {
-      for (const s of debugStars) {
-        // Skip if something already rendered at similar RA/Dec
-        const already = res.some(d =>
-          typeof d.raDeg === "number" && typeof d.decDeg === "number" &&
-          Math.abs((d.raDeg as number) - s.raDeg) < 0.1 &&
-          Math.abs((d.decDeg as number) - s.decDeg) < 0.1
-        );
-        if (already) continue;
+        // Compute Az for X-FOV cull and projection
+        const azDeg = eq.azDeg;
+        if (Math.abs(angleDiffDeg(azDeg, refAzDeg)) > azHalf) continue;
 
-        const eq = raDecToAltAz(s.raDeg, s.decDeg, latDeg, lngDeg, date);
-        const p = projectToScreen(eq.azDeg, eq.altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg);
+        const altDeg = toDeg(altRad);
+        const p = projectToScreen(azDeg, altDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg);
         if (!(p.visibleX && p.visibleY)) continue;
 
-        // Use preset defaults when mag is missing
-        const mag = Number.isFinite(s.mag as number) ? (s.mag as number) : 2.5;
+        const highlighted = isSpecial(s.raDeg, s.decDeg);
 
-        let r = cfg.radiusBase - cfg.radiusSlope * mag;
-        r = clamp(r, cfg.rMin, cfg.rMax);
-        r *= fovScale;
-        r = Math.min(r * cfg.highlightScale, cfg.rMax * 1.4);
+        // Size/opacity
+        let r = cfg.radiusBase - cfg.radiusSlope * s.mag;
+        r = clamp(r, cfg.rMin, cfg.rMax) * fovScale;
+        if (highlighted) r = Math.min(r * cfg.highlightScale, cfg.rMax * 1.4);
+        const opacity = clamp(cfg.opacityBase - cfg.opacitySlope * s.mag, cfg.oMin, cfg.oMax);
 
-        const opacity = clamp(cfg.opacityBase - cfg.opacitySlope * mag, cfg.oMin, cfg.oMax);
-
-        res.push({
-          x: viewport.x + p.x,
-          y: viewport.y + p.y,
-          r, opacity, visible: true,
-          color: "#ff4d4d",
-          glowAlpha: cfg.glowHighlight,
-          name: s.name || undefined,
-          raDeg: s.raDeg,
-          decDeg: s.decDeg,
-          mag: s.mag,
-          constellation: s.constellation,
-        });
+        // Glow via shadow
+        ctx.globalAlpha = opacity;
+        if (highlighted) {
+          ctx.fillStyle = "#ff4d4d";
+          ctx.shadowColor = `rgba(255,77,77,${cfg.glowHighlight})`;
+        } else {
+          ctx.fillStyle = "#ffffff";
+          ctx.shadowColor = `rgba(255,255,255,${cfg.glowNormal})`;
+        }
+        ctx.shadowBlur = Math.max(1, r);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fill();
       }
-    }
 
-    return res;
-  }, [stars, debugStars, debugOn, latDeg, lngDeg, date, refAzDeg, refAltDeg, fovXDeg, fovYDeg, viewport, enlargeObjects, cfg]);
+      // Reset some state
+      ctx.shadowBlur = 0;
+      ctx.globalAlpha = 1;
+    });
+  }, [stars, debugStars, debugOn, viewport.w, viewport.h, date, lngDeg, latDeg, refAzDeg, refAltDeg, fovXDeg, fovYDeg, cfg]);
+
+  // Schedule drawing on changes (time/device motion -> rAF throttled)
+  React.useEffect(() => {
+    scheduleDraw();
+    return () => {
+      if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    };
+  }, [scheduleDraw]);
 
   // NEW: compute a cross marker using opposite stars of the Southern Cross
   const cruxCross = React.useMemo(() => {
@@ -464,53 +558,21 @@ export default function Stars({
       {/* Invisible anchor at the viewport origin (used to align the portal in page coords) */}
       <div ref={anchorRef} style={{ position: "absolute", left: viewport.x, top: viewport.y, width: 0, height: 0, pointerEvents: "none" }} />
 
-      {dots.map((d, i) => (
-        <React.Fragment key={i}>
-          <div
-            style={{
-              position: "absolute",
-              left: d.x,
-              top: d.y,
-              width: d.r * 2,
-              height: d.r * 2,
-              marginLeft: -d.r,
-              marginTop: -d.r,
-              borderRadius: "9999px",
-              background: d.color,
-              opacity: d.opacity,
-              boxShadow: d.color === "#ff4d4d"
-                ? `0 0 ${Math.max(2, d.r * 2)}px ${Math.max(1, d.r)}px rgba(255,77,77,${d.glowAlpha})`
-                : `0 0 ${Math.max(2, d.r * 2)}px ${Math.max(1, d.r)}px rgba(255,255,255,${d.glowAlpha})`,
-              pointerEvents: "none",
-            }}
-          />
-          {debugOn && d.name && (typeof d.mag === "number" && d.mag <= 2.02) && (
-            <div
-              style={{
-                position: "absolute",
-                left: d.x + 6,
-                top: d.y - 10,
-                color: "#9ee2ff",
-                fontSize: 11,
-                fontFamily: "system-ui, sans-serif",
-                textShadow: "0 1px 2px rgba(0,0,0,0.8)",
-                pointerEvents: "none",
-                whiteSpace: "nowrap",
-                userSelect: "none",
-                zIndex: 3,
-              }}
-              data-star-label
-              title={d.name}
-            >
-              {d.name}
-              {d.constellation ? ` · ${d.constellation}` : ""}
-              {` · RA ${fmt(d.raDeg, 2)}° · Dec ${fmt(d.decDeg, 2)}° · mag ${fmt(d.mag, 2)}`}
-            </div>
-          )}
-        </React.Fragment>
-      ))}
+      {/* NEW: single canvas for stars */}
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: "absolute",
+          left: viewport.x,
+          top: viewport.y,
+          width: viewport.w,
+          height: viewport.h,
+          pointerEvents: "none",
+          zIndex: Z.horizon - 1, // ensure stars are below SVG marker but above background
+        }}
+      />
 
-      {/* NEW: Southern Cross marker as two opposite lines (portal above ground) */}
+      {/* Keep Southern Cross marker as SVG portal */}
       {showMarkers && cruxCross && createPortal(
         <div
           style={{
@@ -520,7 +582,7 @@ export default function Stars({
             width: viewport.w,
             height: viewport.h,
             pointerEvents: "none",
-            zIndex: Z.horizon, // above ground (Sol: Z.horizon - 1)
+            zIndex: Z.horizon,
           }}
         >
           <svg width={viewport.w} height={viewport.h}>

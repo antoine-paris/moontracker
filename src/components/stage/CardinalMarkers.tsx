@@ -3,14 +3,16 @@ import { Z } from "../../render/constants";
 
 export type CardinalItem = { label: 'N' | 'E' | 'S' | 'O'; x: number };
 export type SecondaryCardinalItem = { label: string; x: number };
+export type BodyItem = { x: number; label: string; color: string };
 
 type Props = {
   horizonY: number;
   items: CardinalItem[];
   secondaryItems?: SecondaryCardinalItem[];
+  bodyItems?: BodyItem[];
 };
 
-export default function CardinalMarkers({ horizonY, items, secondaryItems }: Props) {
+export default function CardinalMarkers({ horizonY, items, secondaryItems, bodyItems }: Props) {
   return (
     <>
       {items.map((c, i) => (
@@ -27,6 +29,27 @@ export default function CardinalMarkers({ horizonY, items, secondaryItems }: Pro
             {c.label}
           </div>
         </div>
+      ))}
+      {/* NEW: body/constellation horizon markers */}
+      {bodyItems?.map((m, i) => (
+        <React.Fragment key={`body-${i}`}>
+          <div style={{ position: "absolute", left: m.x, top: horizonY, zIndex: Z.horizon }}>
+            <div className="-translate-x-1/2 -translate-y-1/2">
+              <div className="h-6 w-0.5" style={{ background: m.color, opacity: 0.9 }} />
+            </div>
+          </div>
+          <div
+            style={{
+              position: "absolute",
+              left: m.x + 4,
+              top: horizonY - 20,
+              zIndex: Z.horizon,
+              pointerEvents: "none",
+            }}
+          >
+            <span className="text-xs" style={{ color: m.color, opacity: 0.95 }}>{m.label}</span>
+          </div>
+        </React.Fragment>
       ))}
     </>
   );
