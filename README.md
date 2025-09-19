@@ -106,6 +106,7 @@ MoonTracker computes topocentric Sun/Moon positions and renders a sky stage with
     - tz.ts — timezone conversions, local↔UTC helpers
 
 ## Getting started
+(tested with npm 10.9.3 and node v22.19.0)
 
 1) Clone the repo
 
