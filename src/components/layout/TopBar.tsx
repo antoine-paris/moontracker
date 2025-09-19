@@ -46,8 +46,6 @@ type Props = {
   setShowMoon: (v: boolean) => void;
   showPhase: boolean;
   setShowPhase: (v: boolean) => void;
-  showMoon3D: boolean;
-  setShowMoon3D: (v: boolean) => void;
   rotOffsetDegX: number;
   setRotOffsetDegX: (v: number) => void;
   rotOffsetDegY: number;
@@ -97,7 +95,7 @@ export default function TopBar({
   devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
   fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
   viewport, when, whenInput, setWhenInput, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
-  showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase, showMoon3D, setShowMoon3D,
+  showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase,
   rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
   camRotDegX, setCamRotDegX, camRotDegY, setCamRotDegY, camRotDegZ, setCamRotDegZ,
   earthshine, setEarthshine,
@@ -477,11 +475,7 @@ export default function TopBar({
               <span>Étoiles</span>
             </label>
             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} /><span className="text-amber-300">Soleil</span></label>
-            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune 2D</span></label>
-            <label className="inline-flex items-center gap-2 text-sm text-sky-300">
-              <input type="checkbox" checked={showMoon3D} onChange={e => setShowMoon3D(e.target.checked)} />
-              <span>Lune 3D</span>
-            </label>
+            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune</span></label>
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} /><span>Phase de la Lune</span></label>
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={earthshine} disabled={!showPhase} onChange={(e) => setEarthshine(e.target.checked)} /><span>Clair de Terre</span></label>
              <span className="w-px h-5 bg-white/10 mx-1" />
@@ -491,7 +485,7 @@ export default function TopBar({
              <span className="w-px h-5 bg-white/10 mx-1" />
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span></label>
            </div>
-          {showMoon3D && debugMask && (
+          {debugMask && (
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
                <label className="flex items-center gap-2">
                  <span>Rot X</span>
@@ -519,7 +513,7 @@ export default function TopBar({
                </label>
              </div>
            )}
-          {showMoon3D && debugMask && (
+          {debugMask && (
              <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
                <label className="flex items-center gap-2">
                  <span>Cam X</span>

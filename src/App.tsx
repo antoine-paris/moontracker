@@ -54,6 +54,10 @@ const CRUX_COLOR = '#a78bfa';
 const CRUX_CENTROID_RA_DEG = 187.539271;
 const CRUX_CENTROID_DEC_DEG = -59.6625;
 
+// Seuils de rendu Lune (pixels)
+const MOON_DOT_PX = 5;        // < 5 px => simple point gris
+const MOON_3D_SWITCH_PX = 50; // >= 50 px => rendu 3D
+
  // --- Main Component ----------------------------------------------------------
 export default function App() {
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -96,7 +100,6 @@ export default function App() {
   const [showMoon, setShowMoon] = useState(true);
   const [showPhase, setShowPhase] = useState(true);
   const [earthshine, setEarthshine] = useState(false);
-  const [showMoon3D, setShowMoon3D] = useState(false);
   const [rotOffsetDegX, setRotOffsetDegX] = useState(0);
   const [rotOffsetDegY, setRotOffsetDegY] = useState(0);
   const [rotOffsetDegZ, setRotOffsetDegZ] = useState(0);
@@ -402,6 +405,24 @@ export default function App() {
     const moonR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(moonW, moonH)) / 2;
     return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
   }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAz, refAlt, enlargeObjects]);
+
+  // Diamètre apparent de la Lune en pixels (indépendant de enlargeObjects)
+  const moonApparentPx = useMemo(() => {
+    const p = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const pxPerDegX = p.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
+    const pxPerDegY = p.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
+    const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
+    return (astro.moon.appDiamDeg ?? 0) * pxPerDeg;
+  }, [astro.moon.az, astro.moon.alt, astro.moon.appDiamDeg, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+
+  // Sélection du mode de rendu de la Lune
+  const moonRenderMode = useMemo<'dot' | 'sprite' | '3d'>(() => {
+    if (enlargeObjects) return '3d';
+    if (!Number.isFinite(moonApparentPx)) return 'sprite';
+    if (moonApparentPx < MOON_DOT_PX) return 'dot';
+    if (moonApparentPx < MOON_3D_SWITCH_PX) return 'sprite';
+    return '3d';
+  }, [moonApparentPx]);
 
   const sunScreen = useMemo(() => {
     const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.sun.r, fovXDeg, fovYDeg);
@@ -751,8 +772,6 @@ export default function App() {
               setShowMoon={setShowMoon}
               showPhase={showPhase}
               setShowPhase={setShowPhase}
-              showMoon3D={showMoon3D}
-              setShowMoon3D={setShowMoon3D}
               rotOffsetDegX={rotOffsetDegX}
               setRotOffsetDegX={setRotOffsetDegX}
               rotOffsetDegY={rotOffsetDegY}
@@ -987,8 +1006,24 @@ export default function App() {
               </div>
             )}
 
-            {/* Moon 2D above atmosphere */}
-            {showMoon && !showMoon3D && (
+            {/* Moon auto: dot (<5px), 2D sprite (5–50px), 3D (>=50px) */}
+            {showMoon && moonRenderMode === 'dot' && moonScreen.visibleX && moonScreen.visibleY && (
+              <div
+                className="absolute"
+                style={{
+                  zIndex: Z.horizon - 2,
+                  left: moonScreen.x - 2,
+                  top: moonScreen.y - 2,
+                  width: 4,
+                  height: 4,
+                  borderRadius: '9999px',
+                  background: '#9ca3af',
+                  pointerEvents: 'none',
+                }}
+              />
+            )}
+
+            {showMoon && moonRenderMode === 'sprite' && (
               <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
                 <MoonSprite
                   x={moonScreen.x} y={moonScreen.y}
@@ -1007,8 +1042,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Moon 3D already layered; ensure its z stays above atmosphere */}
-            {showMoon && showMoon3D && moonScreen.visibleX && moonScreen.visibleY && (
+            {showMoon && moonRenderMode === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
               <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }}>
                 <Moon3D
                   x={moonScreen.x}
@@ -1030,10 +1064,8 @@ export default function App() {
                   camRotDegZ={camRotDegZ}
                   showPhase={showPhase}
                   showMoonCard={showMoonCard}
-                  // New: drive light from Moon card data
                   illumFraction={phaseFraction}
                   brightLimbAngleDeg={brightLimbAngleDeg}
-                  // New: enable earthshine-based fill light (camera source)
                   earthshine={earthshine}
                 />
               </div>
@@ -1227,8 +1259,6 @@ export default function App() {
               setShowMoon={setShowMoon}
               showPhase={showPhase}
               setShowPhase={setShowPhase}
-              showMoon3D={showMoon3D}
-              setShowMoon3D={setShowMoon3D}
               rotOffsetDegX={rotOffsetDegX}
               setRotOffsetDegX={setRotOffsetDegX}
               rotOffsetDegY={rotOffsetDegY}
@@ -1282,7 +1312,7 @@ export default function App() {
               brightLimbAngleDeg={brightLimbAngleDeg}
               sunDeclinationDeg={sunDeclinationDeg}
               earthshine={earthshine}
-              showMoon3D={showMoon3D}
+              showMoon3D={true}
               // New: pass eclipse info to the Sun card
               eclipse={eclipse}
             />
