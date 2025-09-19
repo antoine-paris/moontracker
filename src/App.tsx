@@ -36,7 +36,7 @@ import { projectToScreen } from "./render/projection";
 import TopBar from "./components/layout/TopBar";
 import BottomTelemetry from "./components/layout/BottomTelemetry";
 import HorizonOverlay from "./components/stage/HorizonOverlay";
-import CardinalMarkers, { type CardinalItem } from "./components/stage/CardinalMarkers";
+import CardinalMarkers, { type CardinalItem, type BodyItem } from "./components/stage/CardinalMarkers";
 import SunSprite from "./components/stage/SunSprite";
 import MoonSprite from "./components/stage/MoonSprite";
 import Moon3D from "./components/stage/Moon3D";
@@ -44,6 +44,8 @@ import StageCanvas from "./components/stage/StageCanvas";
 // Import du logo (Vite)
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 import Stars from "./components/stage/Stars"; // + add
+import Markers from "./components/stage/Markers";
+import DirectionalKeypad from "./components/stage/DirectionalKeypad";
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -486,6 +488,8 @@ export default function App() {
     return items;
   }, [showSun, showMoon, astro, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
+  
+
   // Visible cardinal points on horizon (global N/E/S/O)
   const visibleCardinals = useMemo(() => {
     const base = [
@@ -615,6 +619,24 @@ export default function App() {
     const p = projectToScreen(cruxAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
     return { ...p, x: viewport.x + p.x };
   }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+
+  // NEW: aggregate horizon items (Sun/Moon + Polaris + Crux) for CardinalMarkers
+  const bodyHorizonItems = useMemo<BodyItem[]>(() => {
+    if (!showMarkers) return [];
+    const out: BodyItem[] = [];
+    // Sun/Moon (already filtered by visibilityX in horizonMarkers)
+    out.push(...horizonMarkers.map(h => ({ x: h.x, label: h.label, color: h.color })));
+    // Polaris
+    if (polarisHorizon.visibleX) {
+      out.push({ x: polarisHorizon.x, label: 'Polaris', color: POLARIS_COLOR });
+    }
+    // Southern Cross
+    if (cruxHorizon.visibleX) {
+      out.push({ x: cruxHorizon.x, label: 'Croix du Sud', color: CRUX_COLOR });
+    }
+    return out;
+  }, [showMarkers, horizonMarkers, polarisHorizon, cruxHorizon]);
+
 
   // Animation loop
   useEffect(() => {
@@ -920,74 +942,8 @@ export default function App() {
                 horizonY={horizonY}
                 items={visibleCardinals as CardinalItem[]}
                 secondaryItems={visibleSecondaryCardinals}
+                bodyItems={bodyHorizonItems} 
               />
-            )}
-
-            {/* Body horizon markers */}
-            {showMarkers && horizonMarkers.map((m, i) => (
-              <React.Fragment key={i}>
-                <div style={{ position: "absolute", left: m.x, top: horizonY, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-6 w-0.5" style={{ background: m.color, opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* NEW: horizon label aligned like Polaris */}
-                <div
-                  style={{
-                    position: "absolute",
-                    left: m.x + 4,
-                    top: horizonY - 20,
-                    zIndex: Z.horizon,
-                    pointerEvents: "none",
-                  }}
-                >
-                  <span className="text-xs" style={{ color: m.color, opacity: 0.95 }}>{m.label}</span>
-                </div>
-              </React.Fragment>
-            ))}
-
-            {/* Polaris horizon marker + label (light green) */}
-            {showMarkers && polarisHorizon.visibleX && (
-              <>
-                <div style={{ position: "absolute", left: polarisHorizon.x, top: horizonY, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-6 w-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
-                  </div>
-                </div>
-                <div
-                  style={{
-                    position: "absolute",
-                    left: polarisHorizon.x + 4,
-                    top: horizonY - 20,
-                    zIndex: Z.horizon,
-                    pointerEvents: "none",
-                  }}
-                >
-                  <span className="text-xs" style={{ color: POLARIS_COLOR, opacity: 0.95 }}>Polaris</span>
-                </div>
-              </>
-            )}
-
-            {/* NEW: Southern Cross horizon marker + label */}
-            {showMarkers && cruxHorizon.visibleX && (
-              <>
-                <div style={{ position: "absolute", left: cruxHorizon.x, top: horizonY, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-6 w-0.5" style={{ background: CRUX_COLOR, opacity: 0.9 }} />
-                  </div>
-                </div>
-                <div
-                  style={{
-                    position: "absolute",
-                    left: cruxHorizon.x + 4,
-                    top: horizonY - 20,
-                    zIndex: Z.horizon,
-                    pointerEvents: "none",
-                  }}
-                >
-                  <span className="text-xs" style={{ color: CRUX_COLOR, opacity: 0.95 }}>Croix du Sud</span>
-                </div>
-              </>
             )}
 
             {/* Ensure bodies are above the atmosphere */}
@@ -1088,141 +1044,27 @@ export default function App() {
               />
             )}
 
-            {/* NEW: Body extremity markers (Sun/Moon) when showMarkers */}
-            {showMarkers && showSun && sunScreen.visibleX && sunScreen.visibleY && (
-              <>
-                {/* Sun: top (vertical) */}
-                <div style={{ position: 'absolute', left: sunScreen.x, top: sunScreen.y - bodySizes.sun.h / 2 - 15, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-3 w-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Sun: bottom (vertical) */}
-                <div style={{ position: 'absolute', left: sunScreen.x, top: sunScreen.y + bodySizes.sun.h / 2 + 15, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-3 w-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Sun: left (horizontal) */}
-                <div style={{ position: 'absolute', left: sunScreen.x - bodySizes.sun.w / 2 - 15, top: sunScreen.y, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="w-3 h-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Sun: right (horizontal) */}
-                <div style={{ position: 'absolute', left: sunScreen.x + bodySizes.sun.w / 2 + 15, top: sunScreen.y, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="w-3 h-0.5" style={{ background: '#f59e0b', opacity: 0.9 }} />
-                  </div>
-                </div>
-              </>
-            )}
-            {/* NEW: Sun label at bottom-left near markers */}
-            {showMarkers && showSun && sunScreen.visibleX && sunScreen.visibleY && (
-              <div
-                style={{
-                  position: 'absolute',
-                  // Start at the extreme left of the right dash: centerX + gap(15) - halfDash(6)
-                  left: sunScreen.x + bodySizes.sun.w / 2 + 15 - 6,
-                  // Vertically center on the bottom dash line: centerY + gap(15)
-                  top: sunScreen.y + bodySizes.sun.h / 2 + 15,
-                  transform: 'translateY(-50%)',
-                  zIndex: Z.horizon,
-                  pointerEvents: 'none',
-                }}
-              >
-                <span className="text-xs" style={{ color: '#f59e0b', opacity: 0.95 }}>Soleil</span>
-              </div>
-            )}
-
-            {showMarkers && showMoon && moonScreen.visibleX && moonScreen.visibleY && (
-              <>
-                {/* Moon: top (vertical) */}
-                <div style={{ position: 'absolute', left: moonScreen.x, top: moonScreen.y - bodySizes.moon.h / 2 - 15, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-3 w-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Moon: bottom (vertical) */}
-                <div style={{ position: 'absolute', left: moonScreen.x, top: moonScreen.y + bodySizes.moon.h / 2 + 15, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-3 w-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Moon: left (horizontal) */}
-                <div style={{ position: 'absolute', left: moonScreen.x - bodySizes.moon.w / 2 - 15, top: moonScreen.y, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="w-3 h-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Moon: right (horizontal) */}
-                <div style={{ position: 'absolute', left: moonScreen.x + bodySizes.moon.w / 2 + 15, top: moonScreen.y, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="w-3 h-0.5" style={{ background: '#93c5fd', opacity: 0.9 }} />
-                  </div>
-                </div>
-              </>
-            )}
-            {/* NEW: Moon label at bottom-left near markers */}
-            {showMarkers && showMoon && moonScreen.visibleX && moonScreen.visibleY && (
-              <div
-                style={{
-                  position: 'absolute',
-                  // Start at the extreme left of the right dash
-                  left: moonScreen.x + bodySizes.moon.w / 2 + 15 - 6,
-                  // Vertically center on the bottom dash line
-                  top: moonScreen.y + bodySizes.moon.h / 2 + 15,
-                  transform: 'translateY(-50%)',
-                  zIndex: Z.horizon,
-                  pointerEvents: 'none',
-                }}
-              >
-                <span className="text-xs" style={{ color: '#93c5fd', opacity: 0.95 }}>Lune</span>
-              </div>
-            )}
-
-            {/* Polaris object extremity markers + label (light green) */}
-            {showMarkers && showStars && polarisScreen.visibleX && polarisScreen.visibleY && (
-              <>
-                {/* Top (vertical) */}
-                <div style={{ position: 'absolute', left: polarisScreen.x, top: polarisScreen.y - 15, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-3 w-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Bottom (vertical) */}
-                <div style={{ position: 'absolute', left: polarisScreen.x, top: polarisScreen.y + 15, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="h-3 w-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Left (horizontal) */}
-                <div style={{ position: 'absolute', left: polarisScreen.x - 15, top: polarisScreen.y, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="w-3 h-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Right (horizontal) */}
-                <div style={{ position: 'absolute', left: polarisScreen.x + 15, top: polarisScreen.y, zIndex: Z.horizon }}>
-                  <div className="-translate-x-1/2 -translate-y-1/2">
-                    <div className="w-3 h-0.5" style={{ background: POLARIS_COLOR, opacity: 0.9 }} />
-                  </div>
-                </div>
-                {/* Label aligned with bottom dash, starting at left edge of right dash */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    left: polarisScreen.x + 15 - 6,
-                    top: polarisScreen.y + 15,
-                    transform: 'translateY(-50%)',
-                    zIndex: Z.horizon,
-                    pointerEvents: 'none',
-                  }}
-                >
-                  <span className="text-xs" style={{ color: POLARIS_COLOR, opacity: 0.95 }}>Polaris</span>
-                </div>
-              </>
-            )}
+             {/* Markers (horizon ticks, body extents, labels, Polaris/Crux) */}
+            <Markers
+              showMarkers={showMarkers}
+              showStars={showStars}
+              zIndexHorizon={Z.horizon}
+              horizonY={horizonY}
+              horizonMarkers={horizonMarkers}
+              polarisHorizon={polarisHorizon}
+              cruxHorizon={cruxHorizon}
+              showSun={showSun}
+              sunScreen={sunScreen}
+              sunSize={{ w: bodySizes.sun.w, h: bodySizes.sun.h }}
+              showMoon={showMoon}
+              moonScreen={moonScreen}
+              moonSize={{ w: bodySizes.moon.w, h: bodySizes.moon.h }}
+              polarisScreen={polarisScreen}
+              sunColor="#f59e0b"
+              moonColor="#93c5fd"
+              polarisColor={POLARIS_COLOR}
+              cruxColor={CRUX_COLOR}
+            />
           </div>
 
           {/* Top UI bar (duplicate) */}
@@ -1319,73 +1161,15 @@ export default function App() {
           </div>
 
           {/* NEW: Directional keypad (right side, vertically centered) */}
-          <div
-            className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2"
-            style={{ zIndex: Z.ui + 20 }}
-          >
-            <button
-              className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
-              title={`Monter de ${stepAltDeg.toFixed(1)}°`}
-              aria-label="Monter"
-              onClick={() => {
-                setDeltaAltDeg(prev => {
-                  const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
-                  return tgt - baseRefAlt;
-                });
-              }}
-            >
-              ↑
-            </button>
-            <div className="flex items-center gap-2">
-              <button
-                className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
-                title={`Gauche de ${stepAzDeg.toFixed(1)}°`}
-                aria-label="Gauche"
-                onClick={() => {
-                  setDeltaAzDeg(prev => {
-                    const nd = prev - stepAzDeg;
-                    return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
-                  });
-                }}
-              >
-                ←
-              </button>
-              <button
-                className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
-                title="Recentrer"
-                aria-label="Recentrer"
-                onClick={() => { setDeltaAzDeg(0); setDeltaAltDeg(0); }}
-              >
-                •
-              </button>
-              <button
-                className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
-                title={`Droite de ${stepAzDeg.toFixed(1)}°`}
-                aria-label="Droite"
-                onClick={() => {
-                  setDeltaAzDeg(prev => {
-                    const nd = prev + stepAzDeg;
-                    return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
-                  });
-                }}
-              >
-                →
-              </button>
-            </div>
-            <button
-              className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
-              title={`Descendre de ${stepAltDeg.toFixed(1)}°`}
-              aria-label="Descendre"
-              onClick={() => {
-                setDeltaAltDeg(prev => {
-                  const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
-                  return tgt - baseRefAlt;
-                });
-              }}
-            >
-              ↓
-            </button>
-          </div>
+          <DirectionalKeypad
+            baseRefAlt={baseRefAlt}
+            stepAzDeg={stepAzDeg}
+            stepAltDeg={stepAltDeg}
+            setDeltaAzDeg={setDeltaAzDeg}
+            setDeltaAltDeg={setDeltaAltDeg}
+            zIndex={Z.ui + 20}
+          />
+
         </main>
       </div>
     </div>
