@@ -46,6 +46,8 @@ import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 import Stars from "./components/stage/Stars"; // + add
 import Markers from "./components/stage/Markers";
 import DirectionalKeypad from "./components/stage/DirectionalKeypad";
+// NEW: grid overlay
+import Grid from "./components/stage/grid";
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -119,7 +121,9 @@ export default function App() {
   const [showAtmosphere, setShowAtmosphere] = useState(false);
   const [showStars, setShowStars] = useState(false); // + add
   const [showMarkers, setShowMarkers] = useState(false); 
-  
+  // NEW: grid toggle
+  const [showGrid, setShowGrid] = useState(false);
+
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -830,6 +834,9 @@ export default function App() {
               // NEW: pass markers toggle
               showMarkers={showMarkers}
               setShowMarkers={setShowMarkers}
+              // NEW: pass grid toggle
+              showGrid={showGrid}
+              setShowGrid={setShowGrid}
               // New: pass selected city name for label
               cityName={cityName}
             />
@@ -898,6 +905,29 @@ export default function App() {
             <HorizonOverlay viewport={viewport} horizonY={horizonY} topLineY={topLineY} bottomLineY={bottomLineY} />
 
             <StageCanvas viewport={viewport} stageSize={stageSize} showCameraFrame={showCameraFrame} />
+
+            {/* NEW: Grid overlay (above atmosphere/stars, below Sun/Moon) */}
+            {showGrid && (
+              <div
+                className="absolute"
+                style={{
+                  zIndex: Z.horizon - 3,
+                  left: viewport.x,
+                  top: viewport.y,
+                  width: viewport.w,
+                  height: viewport.h,
+                  pointerEvents: 'none',
+                }}
+              >
+                <Grid
+                  viewport={viewport}
+                  refAzDeg={refAz}
+                  refAltDeg={refAlt}
+                  fovXDeg={fovXDeg}
+                  fovYDeg={fovYDeg}
+                />
+              </div>
+            )}
 
             {/* NEW: Atmosphere layer (top -> horizon), below Sun/Moon */}
             {showAtmosphere && (
@@ -1137,6 +1167,9 @@ export default function App() {
               // NEW: pass markers toggle
               showMarkers={showMarkers}
               setShowMarkers={setShowMarkers}
+              // NEW: pass grid toggle
+              showGrid={showGrid}
+              setShowGrid={setShowGrid}
               // New: pass selected city name for label
               cityName={cityName}
             />
