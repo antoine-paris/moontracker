@@ -19,6 +19,8 @@ type Props = {
   enlargeObjects?: boolean;
   showMarkers?: boolean;
   onCruxCentroid?: (pos: { altDeg: number; azDeg: number } | null) => void;
+  // NEW: projection mode
+  projectionMode?: 'recti-panini' | 'stereo-centered' | 'ortho';
 };
 
 type Star = {
@@ -290,6 +292,7 @@ export default function Stars({
   enlargeObjects = true,
   showMarkers = false,
   onCruxCentroid,
+  projectionMode = 'recti-panini',
 }: Props) {
   const stars = useStarsCatalog();
   const debugStars = useDebugStarsCatalog();
@@ -372,7 +375,7 @@ export default function Stars({
         if (Math.abs(angleDiffDeg(azDeg, refAzDeg)) > azHalf) continue;
 
         const altDeg = toDeg(altRad);
-        const p = projectToScreen(azDeg, altDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg);
+        const p = projectToScreen(azDeg, altDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
         if (!(p.visibleX && p.visibleY)) continue;
 
         const highlighted = isSpecial(s.raDeg, s.decDeg);
@@ -402,7 +405,7 @@ export default function Stars({
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     });
-  }, [stars, debugStars, debugOn, viewport.w, viewport.h, date, lngDeg, latDeg, refAzDeg, refAltDeg, fovXDeg, fovYDeg, cfg]);
+  }, [stars, debugStars, debugOn, viewport.w, viewport.h, date, lngDeg, latDeg, refAzDeg, refAltDeg, fovXDeg, fovYDeg, cfg, projectionMode]);
 
   // Schedule drawing on changes (time/device motion -> rAF throttled)
   React.useEffect(() => {
@@ -422,7 +425,7 @@ export default function Stars({
     const projectStar = (s?: Star): P | null => {
       if (!s) return null;
       const eq = raDecToAltAz(s.raDeg, s.decDeg, latDeg, lngDeg, date);
-      const p = projectToScreen(eq.azDeg, eq.altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg);
+      const p = projectToScreen(eq.azDeg, eq.altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
       if (!(p.visibleX && p.visibleY)) return null;
       return { x: p.x, y: p.y, s, altDeg: eq.altDeg, azDeg: eq.azDeg };
     };
@@ -499,7 +502,7 @@ export default function Stars({
     const { altDeg: centroidAltDeg, azDeg: centroidAzDeg } = vecToAltAz(sx, sy, sz);
 
     return { main, cross, cx, cy, centroidAltDeg, centroidAzDeg };
-  }, [debugStars, latDeg, lngDeg, date, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg]);
+  }, [debugStars, latDeg, lngDeg, date, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode]);
 
   // Notify App of the centroid Alt/Az (or null when unavailable) with change gating
   const centroidAlt = cruxCross?.centroidAltDeg;

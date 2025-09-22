@@ -10,6 +10,8 @@ type Props = {
   refAltDeg: number;
   fovXDeg: number;
   fovYDeg: number;
+  // added: keep Grid in sync with HorizonOverlay
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho';
 };
 
 function chooseMajorStep(rangeDeg: number) {
@@ -227,7 +229,7 @@ function compassQuantum(stepDeg: number) {
 }
 // +++ end added
 
-export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg }: Props) {
+export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode }: Props) {
   // Step selection
   const { azMinorStep, azMajorStep, polesMinorStep, polesMajorStep } = useMemo(() => {
     const azMajor = chooseMajorStep(Math.max(1, fovXDeg));
@@ -289,8 +291,21 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg }
 
   // Projection helper bound to current viewport/ref/fov
   const proj = (az: number, alt: number) => {
-    const p = projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg);
-    return { x: p.x, y: p.y, visible: !!(p.visibleX && p.visibleY) };
+    const p = projectToScreen(
+      az,
+      alt,
+      refAzDeg,
+      viewport.w,
+      viewport.h,
+      refAltDeg,
+      0,
+      fovXDeg,
+      fovYDeg,
+      // pass-through so curves match HorizonOverlay
+      projectionMode
+    );
+    // align visibility semantics with HorizonOverlay
+    return { x: p.x, y: p.y, visible: (p.visibleX ?? true) && (p.visibleY ?? true) };
   };
 
   const paths = useMemo(() => {
@@ -348,7 +363,8 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg }
     const cardSpecial = [horizonPath, primeVerticalPath].filter(Boolean);
 
     return { minor: pMinor, major: pMajor, cardinalMeridians: cardMeridians, cardinalSpecial: cardSpecial };
-  }, [viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, meridianMinor, meridianMajor, meridianCardinals, poleMinor, poleMajor]);
+  // add projectionMode so sampling recomputes when switching projection
+  }, [viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode, meridianMinor, meridianMajor, meridianCardinals, poleMinor, poleMajor]);
 
   // +++ updated: reference shapes anchored to alt/az; density grows with zoom; constant screen size
   const refShapes = useMemo(() => {
@@ -441,11 +457,12 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg }
     pushAt(-90, 0);
 
     return { circles, squares };
-  }, [refAzDeg, refAltDeg, fovXDeg, fovYDeg, viewport.w, viewport.h]);
+  // ensure shapes recompute across projection changes
+  }, [refAzDeg, refAltDeg, fovXDeg, fovYDeg, viewport.w, viewport.h, projectionMode]);
   // +++ end updated
 
-  // +++ updated: horizontal dashed lines at referenced altitudes (denser when zoomed)
-  const altLines = useMemo(() => {
+  // +++ updated: horizontal dashed lines at referenced altitudes (curved by projection)
+  const altPaths = useMemo(() => {
     const pad = 5;
     const majorAlt = chooseMajorStep(Math.max(1, fovYDeg));
     const stepAlt = densifyStep(minorForMajor(majorAlt), fovYDeg);
@@ -453,26 +470,27 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg }
     const altStart = Math.max(-90, Math.floor((refAltDeg - fovYDeg / 2 - pad) / stepAlt) * stepAlt);
     const altEnd = Math.min(90, Math.ceil((refAltDeg + fovYDeg / 2 + pad) / stepAlt) * stepAlt);
 
-    const ys: number[] = [];
-    const pushY = (altVal: number) => {
-      const a = clamp(altVal, -90, 90);
-      const p = proj(refAzDeg, a);
-      if (p.visible) ys.push(p.y);
-    };
-
-    // Primary lines
-    for (let alt = altStart; alt <= altEnd + 1e-9; alt += stepAlt) {
-      pushY(alt);
-    }
-    // +++ added: half-step offset lines to double count
+    const values: number[] = [];
+    for (let alt = altStart; alt <= altEnd + 1e-9; alt += stepAlt) values.push(alt);
+    // keep the previous half-step interleave to double density
     const half = stepAlt / 2;
-    for (let alt = altStart + half; alt <= altEnd + 1e-9; alt += stepAlt) {
-      pushY(alt);
-    }
-    // +++ end added
+    for (let alt = altStart + half; alt <= altEnd + 1e-9; alt += stepAlt) values.push(alt);
 
-    return ys;
-  }, [refAzDeg, refAltDeg, fovXDeg, fovYDeg, viewport.w, viewport.h]);
+    // sampling step similar to great circles
+    const thetaStep = clamp(Math.min(fovXDeg, fovYDeg) / 120, 0.25, 2);
+
+    // Constant-altitude circle: center at zenith, radius = 90° - alt
+    const paths: string[] = [];
+    for (const a of values) {
+      const altC = clamp(a, -90, 90);
+      const radius = 90 - altC;
+      if (Math.abs(radius) < 1e-3 || Math.abs(180 - radius) < 1e-3) continue; // skip degenerate
+      const d = buildSmallCirclePath(90, 0, radius, proj, thetaStep);
+      if (d) paths.push(d);
+    }
+    return paths;
+  // ensure constant-alt curves recompute across projection changes
+  }, [refAltDeg, fovXDeg, fovYDeg, viewport.w, viewport.h, projectionMode]);
   // +++ end updated
 
   return (
@@ -493,10 +511,10 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg }
           strokeWidth={1.0}
         />
       ))}
-      {/* Horizontal dashed lines at referenced altitudes */}
-      {altLines.map((y, i) => (
-        <line key={`al-${i}`}
-          x1={0} y1={y} x2={viewport.w} y2={y}
+      {/* Horizontal dashed lines at referenced altitudes (now correctly curved) */}
+      {altPaths.map((d, i) => (
+        <path key={`al-${i}`} d={d}
+          fill="none"
           stroke={COLOR_ALT_LINE}
           strokeWidth={0.75}
           strokeDasharray="6 4"

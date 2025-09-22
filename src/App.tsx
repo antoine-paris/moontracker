@@ -124,6 +124,15 @@ export default function App() {
   // NEW: grid toggle
   const [showGrid, setShowGrid] = useState(false);
 
+  // NEW: Projection mode (Step 1 - selection only)
+  /*
+  - "Rectilinear + Panini" (for Photographic simulation) : rectilinear + Panini for ultra-wide, plus fisheye variants when the selected module is fisheye.
+  - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
+  - "Orthographic" (for All-sky context) : orthographic (hemisphere) 
+  */
+  const [projectionMode, setProjectionMode] = useState<'recti-panini' | 'stereo-centered' | 'ortho'>('recti-panini');
+  
+
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
   // Toggle for locations sidebar
@@ -397,8 +406,8 @@ export default function App() {
   // Screen positions
   const bodySizes = useMemo(() => {
     // Obtenir l’échelle locale px/deg au centre (rayon nul, pour ne pas influencer la visibilite)
-    const centerSun = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
-    const centerMoon = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const centerSun = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const centerMoon = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     const pxPerDegXSun = centerSun.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
     const pxPerDegYSun = centerSun.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
     const pxPerDegXMoon = centerMoon.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
@@ -410,16 +419,16 @@ export default function App() {
     const sunR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(sunW, sunH)) / 2;
     const moonR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(moonW, moonH)) / 2;
     return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
-  }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAz, refAlt, enlargeObjects]);
+  }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAz, refAlt, enlargeObjects, projectionMode]);
 
   // Diamètre apparent de la Lune en pixels (indépendant de enlargeObjects)
   const moonApparentPx = useMemo(() => {
-    const p = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const p = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     const pxPerDegX = p.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
     const pxPerDegY = p.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
     const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
     return (astro.moon.appDiamDeg ?? 0) * pxPerDeg;
-  }, [astro.moon.az, astro.moon.alt, astro.moon.appDiamDeg, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  }, [astro.moon.az, astro.moon.alt, astro.moon.appDiamDeg, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
   // Sélection du mode de rendu de la Lune
   const moonRenderMode = useMemo<'dot' | 'sprite' | '3d'>(() => {
@@ -431,13 +440,13 @@ export default function App() {
   }, [moonApparentPx]);
 
   const sunScreen = useMemo(() => {
-    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.sun.r, fovXDeg, fovYDeg);
+    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.sun.r, fovXDeg, fovYDeg, projectionMode);
     return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
-  }, [astro.sun, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.sun]);
+  }, [astro.sun, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.sun, projectionMode]);
   const moonScreen = useMemo(() => {
-    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.moon.r, fovXDeg, fovYDeg);
+    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.moon.r, fovXDeg, fovYDeg, projectionMode);
     return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
-  }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.moon]);
+  }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.moon, projectionMode]);
 
   // Orientation & phase
   const rotationToHorizonDegMoon = useMemo(() => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat), [astro.moon, location.lat]);
@@ -474,23 +483,25 @@ export default function App() {
   // Phase/mask geometry désormais gérée par MoonSprite
 
   // Horizon & helper lines
-  const topLineY = useMemo(() => viewport.y + projectToScreen(refAz, 90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
-  const bottomLineY = useMemo(() => viewport.y + projectToScreen(refAz, -90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
-  const horizonY = useMemo(() => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  // REMOVE top/bottom line Y-only approach for overlay (now computed in HorizonOverlay)
+  // Keep horizonY for other components (markers) that still use a flat baseline.
+  // const topLineY = useMemo(() => viewport.y + projectToScreen(refAz, 90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
+  // const bottomLineY = useMemo(() => viewport.y + projectToScreen(refAz, -90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
+  const horizonY = useMemo(() => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
   // Markers on horizon for bodies
   const horizonMarkers = useMemo(() => {
     const items: { x: number; label: string; color: string }[] = [];
     if (showSun) {
-      const { x, visibleX } = projectToScreen(astro.sun.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
-      if (visibleX) items.push({ x: viewport.x + x, label: "Soleil", color: "#f59e0b" });
+      // const { x, visibleX } = projectToScreen(astro.sun.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      //if (visibleX) items.push({ x: viewport.x + x, label: "Soleil", color: "#f59e0b" });
     }
     if (showMoon) {
-      const { x, visibleX } = projectToScreen(astro.moon.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+      const { x, visibleX } = projectToScreen(astro.moon.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (visibleX) items.push({ x: viewport.x + x, label: "Lune", color: "#93c5fd" });
     }
     return items;
-  }, [showSun, showMoon, astro, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  }, [showSun, showMoon, astro, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
   
 
@@ -506,47 +517,42 @@ export default function App() {
     // Project and keep only those horizontally visible
     const projected = base
       .map(c => {
-        const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+        const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
         const x = viewport.x + p.x;
-        const delta = Math.abs(angularDiff(c.az, refAz)); // proximity to center
+        const delta = Math.abs(angularDiff(c.az, refAz));
         return { ...c, x, visible: p.visibleX, delta };
       })
       .filter(c => c.visible);
 
-    // Deduplicate cardinals that collapse to the same column (e.g., 0° vs 180°)
-    const EPS = 1; // px tolerance
+    // Deduplicate columns that collapse to the same column
+    const EPS = 1;
     const dedup: typeof projected = [];
     for (const it of projected) {
       const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
-      if (idx === -1) {
-        dedup.push(it);
-      } else if (it.delta < dedup[idx].delta) {
-        dedup[idx] = it; // keep the one closer to center
-      }
+      if (idx === -1) dedup.push(it);
+      else if (it.delta < dedup[idx].delta) dedup[idx] = it;
     }
 
     return dedup
       .sort((a, b) => a.x - b.x)
-      .map(({ label, az, x }) => ({ label, az, x, visible: true }));
-  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+      .map(({ label, az, x }) => ({ label, az, x })); // removed .visible
+  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  // NEW: 16-wind secondary markers (exclude N/E/S/O), smaller labels on horizon
+  // 16-wind secondary markers
   const visibleSecondaryCardinals = useMemo(() => {
     const primaries = new Set(['N', 'E', 'S', 'O']);
-    // Build 16 points every 22.5°
     const items = [];
     for (let i = 0; i < 16; i++) {
       const az = i * 22.5;
       const label = compass16(az);
-      if (primaries.has(label)) continue; // skip primary, already rendered
-      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+      if (primaries.has(label)) continue;
+      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (!p.visibleX) continue;
       const x = viewport.x + p.x;
       const delta = Math.abs(angularDiff(az, refAz));
       items.push({ label, az, x, delta });
     }
-    // Deduplicate columns that collapse visually; keep the one closest to center
-    const EPS = 6; // px tolerance
+    const EPS = 6;
     const dedup: typeof items = [];
     for (const it of items) {
       const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
@@ -554,25 +560,14 @@ export default function App() {
       else if (it.delta < dedup[idx].delta) dedup[idx] = it;
     }
     return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
-  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  const cruxCentroid = useMemo(() => {
-    const LST = lstDeg(date, location.lng);
-    let H = LST - POLARIS_RA_DEG;
-    H = ((H + 180) % 360 + 360) % 360 - 180;
-    const φ = toRad(location.lat);
-    const δ = toRad(POLARIS_DEC_DEG);
-    const Hr = toRad(H);
-    const sinAlt = Math.sin(φ) * Math.sin(δ) + Math.cos(φ) * Math.cos(δ) * Math.cos(Hr);
-    const alt = Math.asin(clamp(sinAlt, -1, 1));
-    const cosAlt = Math.cos(alt);
-    const sinA = -Math.cos(δ) * Math.sin(Hr) / Math.max(1e-9, cosAlt);
-    const cosA = (Math.sin(δ) - Math.sin(alt) * Math.sin(φ)) / Math.max(1e-9, (cosAlt * Math.cos(φ)));
-    const A = Math.atan2(sinA, cosA);
-    return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
-  }, [date, location.lat, location.lng]);
+  // Horizon Y at viewport center (still used elsewhere)
+  const horizonYFlat = useMemo(
+    () => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y,
+    [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]
+  );
 
-  // Polaris Alt/Az (from RA/Dec for current date/location)
   const polarisAltAz = useMemo(() => {
     const LST = lstDeg(date, location.lng);
     let H = LST - POLARIS_RA_DEG;
@@ -608,39 +603,49 @@ export default function App() {
 
   // Polaris screen position
   const polarisScreen = useMemo(() => {
-    const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
   }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Polaris horizon X
   const polarisHorizon = useMemo(() => {
-    const p = projectToScreen(polarisAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const p = projectToScreen(polarisAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     return { ...p, x: viewport.x + p.x };
   }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // NEW: Southern Cross horizon X from centroid azimuth
   const cruxHorizon = useMemo(() => {
-    const p = projectToScreen(cruxAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg);
+    const p = projectToScreen(cruxAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     return { ...p, x: viewport.x + p.x };
   }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
-  // NEW: aggregate horizon items (Sun/Moon + Polaris + Crux) for CardinalMarkers
+  // Aggregate body horizon items with az (for CardinalMarkers)
   const bodyHorizonItems = useMemo<BodyItem[]>(() => {
-    if (!showMarkers) return [];
     const out: BodyItem[] = [];
-    // Sun/Moon (already filtered by visibilityX in horizonMarkers)
-    out.push(...horizonMarkers.map(h => ({ x: h.x, label: h.label, color: h.color })));
+    if (showSun) {
+      const az = astro.sun.az;
+      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Soleil", color: "#f59e0b" });
+    }
+    if (showMoon) {
+      const az = astro.moon.az;
+      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Lune", color: "#93c5fd" });
+    }
     // Polaris
-    if (polarisHorizon.visibleX) {
-      out.push({ x: polarisHorizon.x, label: 'Polaris', color: POLARIS_COLOR });
+    {
+      const az = polarisAltAz.azDeg;
+      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Polaris", color: POLARIS_COLOR });
     }
     // Southern Cross
-    if (cruxHorizon.visibleX) {
-      out.push({ x: cruxHorizon.x, label: 'Croix du Sud', color: CRUX_COLOR });
+    {
+      const az = cruxAltAz.azDeg;
+      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Croix du Sud", color: CRUX_COLOR });
     }
     return out;
-  }, [showMarkers, horizonMarkers, polarisHorizon, cruxHorizon]);
-
+  }, [showSun, showMoon, astro.sun.az, astro.moon.az, polarisAltAz.azDeg, cruxAltAz.azDeg, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
   // Animation loop
   useEffect(() => {
@@ -839,6 +844,9 @@ export default function App() {
               setShowGrid={setShowGrid}
               // New: pass selected city name for label
               cityName={cityName}
+              // NEW: pass projection mode
+              projectionMode={projectionMode}
+              setProjectionMode={setProjectionMode}
             />
           </div>
 
@@ -902,9 +910,19 @@ export default function App() {
               </>
             )}
 
-            <HorizonOverlay viewport={viewport} horizonY={horizonY} topLineY={topLineY} bottomLineY={bottomLineY} />
-
-            <StageCanvas viewport={viewport} stageSize={stageSize} showCameraFrame={showCameraFrame} />
+            <HorizonOverlay
+              viewport={viewport}
+              // projection context
+              refAzDeg={refAz}
+              refAltDeg={refAlt}
+              fovXDeg={fovXDeg}
+              fovYDeg={fovYDeg}
+              projectionMode={projectionMode}
+              // visual toggles
+              showAtmosphere={showAtmosphere}
+              atmosphereGradient={atmosphereGradient}
+              showEarth={showEarth}
+            />
 
             {/* NEW: Grid overlay (above atmosphere/stars, below Sun/Moon) */}
             {showGrid && (
@@ -925,24 +943,10 @@ export default function App() {
                   refAltDeg={refAlt}
                   fovXDeg={fovXDeg}
                   fovYDeg={fovYDeg}
+                  // NEW
+                  projectionMode={projectionMode}
                 />
               </div>
-            )}
-
-            {/* NEW: Atmosphere layer (top -> horizon), below Sun/Moon */}
-            {showAtmosphere && (
-              <div
-                className="absolute"
-                style={{
-                  zIndex: Z.horizon - 10, // ensure behind bodies
-                  left: viewport.x,
-                  width: viewport.w,
-                  top: viewport.y,
-                  height: Math.max(0, Math.min(viewport.y + viewport.h, horizonY) - viewport.y),
-                  background: atmosphereGradient,
-                  pointerEvents: 'none',
-                }}
-              />
             )}
 
             {/* NEW: Stars layer (above atmosphere, below Sun/Moon) */}
@@ -959,20 +963,25 @@ export default function App() {
                   viewport={viewport}
                   debug={debugMask}
                   enlargeObjects={enlargeObjects}
-                  // NEW: drive constellation markers visibility
                   showMarkers={showMarkers}
-                  // REMOVED: no callback needed when hardcoding centroid
+                  // NEW
+                  projectionMode={projectionMode}
                 />
               </div>
             )}
 
-            {/* Cardinal markers on horizon */}
-            { (
+            {/* Cardinal markers on horizon (now projected) */}
+            {(
               <CardinalMarkers
-                horizonY={horizonY}
+                viewport={viewport}
+                refAzDeg={refAz}
+                refAltDeg={refAlt}
+                fovXDeg={fovXDeg}
+                fovYDeg={fovYDeg}
+                projectionMode={projectionMode}
                 items={visibleCardinals as CardinalItem[]}
                 secondaryItems={visibleSecondaryCardinals}
-                bodyItems={bodyHorizonItems} 
+                bodyItems={bodyHorizonItems}
               />
             )}
 
@@ -1057,29 +1066,12 @@ export default function App() {
               </div>
             )}
 
-            {/* NEW: Ground layer (opaque), clipped from horizon to bottom.
-                Z: above Sun/Moon(+3D) and below horizon/cardinals */}
-            {showEarth && (
-              <div
-                className="absolute"
-                style={{
-                  zIndex: Z.horizon - 1,
-                  left: viewport.x,
-                  width: viewport.w,
-                  top: Math.max(viewport.y, horizonY),
-                  height: Math.max(0, viewport.y + viewport.h - Math.max(viewport.y, horizonY)),
-                  background: 'linear-gradient(to bottom, rgba(48,48,48,0.98), rgba(16,16,16,1))',
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
-
              {/* Markers (horizon ticks, body extents, labels, Polaris/Crux) */}
             <Markers
               showMarkers={showMarkers}
               showStars={showStars}
               zIndexHorizon={Z.horizon}
-              horizonY={horizonY}
+              horizonY={horizonYFlat}
               horizonMarkers={horizonMarkers}
               polarisHorizon={polarisHorizon}
               cruxHorizon={cruxHorizon}
@@ -1172,6 +1164,9 @@ export default function App() {
               setShowGrid={setShowGrid}
               // New: pass selected city name for label
               cityName={cityName}
+              // NEW: pass projection mode
+              projectionMode={projectionMode}
+              setProjectionMode={setProjectionMode}
             />
           </div>
 

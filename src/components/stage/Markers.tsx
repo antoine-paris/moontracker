@@ -77,74 +77,7 @@ export default function Markers({
 
   return (
     <>
-      {/* Body horizon markers */}
-      {horizonMarkers.map((m, i) => (
-        <React.Fragment key={i}>
-          <div style={{ position: "absolute", left: m.x, top: horizonY, zIndex: zIndexHorizon }}>
-            <div className="-translate-x-1/2 -translate-y-1/2">
-              <div className="h-6 w-0.5" style={{ background: m.color, opacity: 0.9 }} />
-            </div>
-          </div>
-          {/* Horizon label aligned like Polaris */}
-          <div
-            style={{
-              position: "absolute",
-              left: m.x + 4,
-              top: horizonY - 20,
-              zIndex: zIndexHorizon,
-              pointerEvents: "none",
-            }}
-          >
-            <span className="text-xs" style={{ color: m.color, opacity: 0.95 }}>
-              {m.label}
-            </span>
-          </div>
-        </React.Fragment>
-      ))}
-
-      {/* Polaris horizon marker + label */}
-      {polarisHorizon.visibleX && (
-        <>
-          <div style={{ position: "absolute", left: polarisHorizon.x, top: horizonY, zIndex: zIndexHorizon }}>
-            <div className="-translate-x-1/2 -translate-y-1/2">
-              <div className="h-6 w-0.5" style={{ background: polarisColor, opacity: 0.9 }} />
-            </div>
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              left: polarisHorizon.x + 4,
-              top: horizonY - 20,
-              zIndex: zIndexHorizon,
-              pointerEvents: "none",
-            }}
-          >
-            <span className="text-xs" style={{ color: polarisColor, opacity: 0.95 }}>Polaris</span>
-          </div>
-        </>
-      )}
-
-      {/* Southern Cross horizon marker + label */}
-      {cruxHorizon.visibleX && (
-        <>
-          <div style={{ position: "absolute", left: cruxHorizon.x, top: horizonY, zIndex: zIndexHorizon }}>
-            <div className="-translate-x-1/2 -translate-y-1/2">
-              <div className="h-6 w-0.5" style={{ background: cruxColor, opacity: 0.9 }} />
-            </div>
-          </div>
-          <div
-            style={{
-              position: "absolute",
-              left: cruxHorizon.x + 4,
-              top: horizonY - 20,
-              zIndex: zIndexHorizon,
-              pointerEvents: "none",
-            }}
-          >
-            <span className="text-xs" style={{ color: cruxColor, opacity: 0.95 }}>Croix du Sud</span>
-          </div>
-        </>
-      )}
+      
 
       {/* Sun extremity markers + label */}
       {showSun && sunScreen.visibleX && sunScreen.visibleY && (

@@ -91,6 +91,10 @@ type Props = {
   // NEW: Grid toggle
   showGrid: boolean;
   setShowGrid: (v: boolean) => void;
+
+  // NEW: Projection mode
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho';
+  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho') => void;
 };
 
 export default function TopBar({
@@ -116,6 +120,8 @@ export default function TopBar({
   showMarkers, setShowMarkers,
   // NEW
   showGrid, setShowGrid,
+  // NEW
+  projectionMode, setProjectionMode,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -347,6 +353,31 @@ export default function TopBar({
                 </div>
               </div>
             </div>
+
+{/* NEW: Projection selector */}
+<div className="mt-3">
+  <div className="text-xs uppercase tracking-wider text-white/60">Projection</div>
+  <div className="mt-1 flex flex-wrap gap-2">
+    {[
+      { id: 'recti-panini' as const, label: 'Rectilinéaire' },
+      { id: 'stereo-centered' as const, label: 'Stéréographique' },
+      { id: 'ortho' as const, label: 'Orthographique' },
+    ].map(opt => (
+      <button
+        key={opt.id}
+        className={`px-3 py-1.5 rounded-lg border text-sm ${
+          projectionMode === opt.id
+            ? 'border-white/50 bg-white/10'
+            : 'border-white/15 text-white/80 hover:border-white/30'
+        }`}
+        onClick={() => setProjectionMode(opt.id)}
+        title={opt.label}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+</div>
           </div>
         </div>
 
