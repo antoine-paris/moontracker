@@ -108,7 +108,8 @@ function buildSmallCirclePath(
   centerAzDeg: number,
   radiusDeg: number,
   proj: (az: number, alt: number) => { x: number; y: number; visible: boolean },
-  thetaStepDeg = 15
+  thetaStepDeg = 15,
+  gapPx = 32
 ) {
   const vc = altAzToVec(centerAltDeg, centerAzDeg);
   // pick a reference not parallel to vc
@@ -135,11 +136,12 @@ function buildSmallCirclePath(
     const p = proj(az, alt);
     pts.push({ x: p.x, y: p.y, visible: p.visible });
   }
-  return buildPathFromPoints(pts);
+  return buildPathFromPoints(pts, gapPx);
 }
 
 // Build a small "square": 4 vertices at same angular radius along u1/u2 axes.
 // Skips if any vertex is offscreen to avoid wrap artifacts.
+// NOTE: function kept unchanged if present above; it's now unused.
 function buildSmallSquarePath(
   centerAltDeg: number,
   centerAzDeg: number,
@@ -175,7 +177,8 @@ function buildSmallSquarePath(
     const p = proj(az, alt);
     verts.push({ x: p.x, y: p.y, visible: p.visible });
   }
-  if (verts.some(v => !v.visible)) return ""; // skip if any corner offscreen
+  // Relax culling: only skip if all corners are offscreen/invisible.
+  if (verts.every(v => !v.visible)) return "";
   const d = `M${verts[0].x.toFixed(2)},${verts[0].y.toFixed(2)} ` +
             `L${verts[1].x.toFixed(2)},${verts[1].y.toFixed(2)} ` +
             `L${verts[2].x.toFixed(2)},${verts[2].y.toFixed(2)} ` +
@@ -185,7 +188,12 @@ function buildSmallSquarePath(
 // +++ end added helpers
 
 // Build a great circle path defined by a plane normal n (unit), i.e. n·u=0 on the unit sphere
-function buildGreatCircleFromNormal(nIn: readonly number[], proj: (az: number, alt: number) => { x: number; y: number; visible: boolean }, tStepDeg = 1) {
+function buildGreatCircleFromNormal(
+  nIn: readonly number[],
+  proj: (az: number, alt: number) => { x: number; y: number; visible: boolean },
+  tStepDeg = 1,
+  gapPx = 32
+) {
   let n = norm([nIn[0], nIn[1], nIn[2]]);
   const z = [0, 0, 1] as const;
   // Find orthonormal basis (a, b) spanning the GC plane
@@ -207,7 +215,7 @@ function buildGreatCircleFromNormal(nIn: readonly number[], proj: (az: number, a
     const p = proj(az, alt);
     pts.push({ x: p.x, y: p.y, visible: p.visible });
   }
-  return buildPathFromPoints(pts);
+  return buildPathFromPoints(pts, gapPx);
 }
 
 // Colors (statics)
@@ -215,10 +223,12 @@ const COLOR_MINOR = "rgba(219, 142, 142, 0.88)";
 const COLOR_MAJOR = "rgba(219, 142, 142, 0.88)";
 const COLOR_CARDINAL = "rgba(219, 142, 142, 0.88)";
 const COLOR_REF_CIRCLE = "rgba(219, 142, 142, 0.88)";
-const COLOR_REF_SQUARE = "rgba(219, 142, 142, 0.88)";
 // +++ added
 const COLOR_ALT_LINE = "rgba(219, 142, 142, 0.88)";
 const SHAPE_RADIUS_PX = 10; // target on-screen radius for reference shapes
+// Only render shapes within this altitude band (deg)
+const MIN_SHAPE_ALT_DEG = -60;
+const MAX_SHAPE_ALT_DEG = 60;
 // +++ end added
 
 // +++ added: compass-aligned quantum (22.5° subdivided by powers of two, not below 0.25°)
@@ -304,13 +314,23 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
       // pass-through so curves match HorizonOverlay
       projectionMode
     );
-    // align visibility semantics with HorizonOverlay
-    return { x: p.x, y: p.y, visible: (p.visibleX ?? true) && (p.visibleY ?? true) };
+    // relaxed visibility for non-orthographic projections so "backside" data can render
+    const finite = Number.isFinite(p.x) && Number.isFinite(p.y);
+    const maxCoord = Math.max(viewport.w, viewport.h) * 8; // generous guard against runaway values
+    const withinGuard = finite && Math.abs(p.x) <= maxCoord && Math.abs(p.y) <= maxCoord;
+
+    // orthographic: respect projector visibility; others: allow backside if finite and bounded
+    const projectorVisible = (p.visibleX ?? true) && (p.visibleY ?? true);
+    const visible = projectionMode === 'ortho' ? (withinGuard && projectorVisible) : withinGuard;
+
+    return { x: p.x, y: p.y, visible };
   };
 
   const paths = useMemo(() => {
     // Sampling step for great circles (denser at narrow FOVs)
     const tStep = clamp(Math.min(fovXDeg, fovYDeg) / 120, 0.25, 2); // deg on circle
+    // adaptive path gap to break across singularities but keep continuity elsewhere
+    const pathGapPx = Math.max(24, Math.hypot(viewport.w, viewport.h) / 30);
 
     // 1) Meridians (great circles containing Up and azimuth dir)
     function buildMeridian(azDeg: number) {
@@ -318,19 +338,19 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
       const h = altAzToVec(0, azDeg);
       const z = [0, 0, 1] as const;
       const n = cross(z, h);
-      return buildGreatCircleFromNormal(n, proj, tStep);
+      return buildGreatCircleFromNormal(n, proj, tStep, pathGapPx);
     }
 
     // 2) Orthogonal family: planes with normal on the horizon at pole azimuth φ.
     //    φ=0 (North) → prime vertical (E–Zenith–W–Nadir–E).
     function buildOrthogonalCircle(poleAzDeg: number) {
       const n = altAzToVec(0, poleAzDeg); // pole lies on horizon
-      return buildGreatCircleFromNormal(n, proj, tStep);
+      return buildGreatCircleFromNormal(n, proj, tStep, pathGapPx);
     }
 
     // Cardinal special circles:
     // - Horizon: pole n = Up (0,0,1) → E–N–W–S–E (as requested).
-    const horizonPath = buildGreatCircleFromNormal([0, 0, 1], proj, tStep);
+    const horizonPath = buildGreatCircleFromNormal([0, 0, 1], proj, tStep, pathGapPx);
     // - Prime vertical: pole at North
     const primeVerticalPath = buildOrthogonalCircle(0);
 
@@ -363,7 +383,6 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
     const cardSpecial = [horizonPath, primeVerticalPath].filter(Boolean);
 
     return { minor: pMinor, major: pMajor, cardinalMeridians: cardMeridians, cardinalSpecial: cardSpecial };
-  // add projectionMode so sampling recomputes when switching projection
   }, [viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode, meridianMinor, meridianMajor, meridianCardinals, poleMinor, poleMajor]);
 
   // +++ updated: reference shapes anchored to alt/az; density grows with zoom; constant screen size
@@ -379,25 +398,41 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
     // Align azimuth columns to compass quantum
     const azQ = compassQuantum(gridStepAz);
 
-    const azStart = Math.floor((refAzDeg - fovXDeg / 2 - pad) / azQ) * azQ;
-    const azEnd = Math.ceil((refAzDeg + fovXDeg / 2 + pad) / azQ) * azQ;
+    // Always render full 360° azimuth in all projections, including ortho
+    const isOrtho = projectionMode === 'ortho';
+    const azSpan = 360;
+    const azStart = Math.floor((refAzDeg - 180 - pad) / azQ) * azQ;
+    const azEnd   = Math.ceil((refAzDeg + 180 + pad) / azQ) * azQ;
 
-    const altStart = Math.max(-90, Math.floor((refAltDeg - fovYDeg / 2 - pad) / gridStepAlt) * gridStepAlt);
-    const altEnd = Math.min(90, Math.ceil((refAltDeg + fovYDeg / 2 + pad) / gridStepAlt) * gridStepAlt);
+    // Keep existing vertical span computation then clamp to [-60, 60]
+    const spanY = isOrtho ? fovYDeg : 180;
+
+    const rawAltStart = isOrtho
+      ? Math.max(-90, Math.floor((refAltDeg - spanY / 2 - pad) / gridStepAlt) * gridStepAlt)
+      : -90;
+    const rawAltEnd = isOrtho
+      ? Math.min(90, Math.ceil((refAltDeg + spanY / 2 + pad) / gridStepAlt) * gridStepAlt)
+      : 90;
+
+    // Clamp sweep to [-60, 60]
+    const altStart = Math.max(MIN_SHAPE_ALT_DEG, rawAltStart);
+    const altEnd   = Math.min(MAX_SHAPE_ALT_DEG, rawAltEnd);
 
     const circles: string[] = [];
-    const squares: string[] = [];
+    // removed: const squares: string[] = [];
 
     // Local helpers to keep shapes equal size on screen
     const dist = (p1: {x:number;y:number}, p2: {x:number;y:number}) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
-    const estimatePxPerDegAt = (altDeg: number, azDeg: number) => {
+    // Removed the center-based culling that caused “behind” shapes to disappear
+    // const isOnScreen = (p: {x:number;y:number;visible:boolean}, m = 96) =>
+    //   p.x >= -m && p.x <= viewport.w + m && p.y >= -m && p.y <= viewport.h + m && p.visible;
+
+    const estimatePxPerDegAt = (altDeg: number, azDeg: number, c: {x:number;y:number}) => {
       const d = 0.25; // deg
-      const c = proj(azDeg, altDeg);
       const pAz = proj(azDeg + d, altDeg);
       const pAlt = proj(azDeg, clamp(altDeg + d, -89.9, 89.9));
       const ppdAz = dist(c, pAz) / d;
       const ppdAlt = dist(c, pAlt) / d;
-      // Avoid zero scales
       return {
         ppdAz: Math.max(ppdAz, 1e-3),
         ppdAlt: Math.max(ppdAlt, 1e-3),
@@ -406,20 +441,28 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
 
     const pushAt = (altDeg: number, azDeg: number) => {
       const altC = clamp(altDeg, -90, 90);
+      // Skip shapes outside the allowed band
+      if (altC < MIN_SHAPE_ALT_DEG || altC > MAX_SHAPE_ALT_DEG) return;
       const azN = norm360(azDeg);
 
+      // Project center for scale estimation only; do not cull by center visibility.
+      const c = proj(azN, altC);
+
       // Compute local px/deg and convert target pixel radius to angular radius
-      const { ppdAz, ppdAlt } = estimatePxPerDegAt(altC, azN);
+      const { ppdAz, ppdAlt } = estimatePxPerDegAt(altC, azN, c);
       const ppdAvg = (ppdAz + ppdAlt) * 0.5;
       const rDeg = clamp(SHAPE_RADIUS_PX / ppdAvg, 0.1, 20);
 
-      const circleStep = 12; // keep simple; fine for small rDeg
+      // Denser sampling to catch small visible arcs even when center is far.
+      const circleStep = 5; // deg
+      const gapPx = Math.max(24, Math.hypot(viewport.w, viewport.h) / 30);
 
-      const cd = buildSmallCirclePath(altC, azN, rDeg, proj, circleStep);
+      const cd = buildSmallCirclePath(altC, azN, rDeg, proj, circleStep, gapPx);
       if (cd) circles.push(cd);
 
-      const sd = buildSmallSquarePath(altC, azN, rDeg * Math.SQRT1_2, proj); // inscribed square
-      if (sd) squares.push(sd);
+      // removed squares
+      // const sd = buildSmallSquarePath(altC, azN, rDeg * Math.SQRT1_2, proj);
+      // if (sd) squares.push(sd);
     };
 
     // Primary lattice (aligned to compass)
@@ -452,46 +495,61 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
       }
     }
 
-    // Explicit shapes at zenith and nadir
-    pushAt(90, 0);
-    pushAt(-90, 0);
+    // Remove explicit zenith/nadir insertions (outside band)
+    // pushAt(90, 0);
+    // pushAt(-90, 0);
 
-    return { circles, squares };
-  // ensure shapes recompute across projection changes
+    // return circles only
+    return { circles };
   }, [refAzDeg, refAltDeg, fovXDeg, fovYDeg, viewport.w, viewport.h, projectionMode]);
-  // +++ end updated
 
   // +++ updated: horizontal dashed lines at referenced altitudes (curved by projection)
   const altPaths = useMemo(() => {
     const pad = 5;
-    const majorAlt = chooseMajorStep(Math.max(1, fovYDeg));
-    const stepAlt = densifyStep(minorForMajor(majorAlt), fovYDeg);
+    // use the same step computation as refShapes
+    const baseAltStep = minorForMajor(chooseMajorStep(Math.max(1, fovYDeg)));
+    const stepAlt = densifyStep(baseAltStep, fovYDeg);
 
-    const altStart = Math.max(-90, Math.floor((refAltDeg - fovYDeg / 2 - pad) / stepAlt) * stepAlt);
-    const altEnd = Math.min(90, Math.ceil((refAltDeg + fovYDeg / 2 + pad) / stepAlt) * stepAlt);
+    const allowBackHemisphere = projectionMode !== 'ortho';
+
+    // same visual window anchors as refShapes
+    const visStart = Math.max(-90, Math.floor((refAltDeg - fovYDeg / 2 - pad) / stepAlt) * stepAlt);
+    const visEnd   = Math.min(90,  Math.ceil((refAltDeg + fovYDeg / 2 + pad) / stepAlt) * stepAlt);
+
+    // anchor to the same phase (visStart) but still cover full sphere if needed
+    const anchor = visStart;
+    const fullStart = (Math.ceil((-90 - anchor) / stepAlt) * stepAlt) + anchor;
+    const fullEnd   = (Math.floor(( 90 - anchor) / stepAlt) * stepAlt) + anchor;
+
+    const rangeStart = allowBackHemisphere ? fullStart : visStart;
+    const rangeEnd   = allowBackHemisphere ? fullEnd   : visEnd;
 
     const values: number[] = [];
-    for (let alt = altStart; alt <= altEnd + 1e-9; alt += stepAlt) values.push(alt);
-    // keep the previous half-step interleave to double density
+    for (let alt = rangeStart; alt <= rangeEnd + 1e-9; alt += stepAlt) values.push(alt);
+
+    // always interleave half-step to match refShapes’ lattice
     const half = stepAlt / 2;
-    for (let alt = altStart + half; alt <= altEnd + 1e-9; alt += stepAlt) values.push(alt);
+    for (let alt = rangeStart + half; alt <= rangeEnd + 1e-9; alt += stepAlt) values.push(alt);
 
-    // sampling step similar to great circles
+    // dedupe and clamp
+    const uniq = Array.from(new Set(values.map(v => +v.toFixed(6))))
+      .filter(v => v >= -90 && v <= 90)
+      .sort((a, b) => a - b);
+
     const thetaStep = clamp(Math.min(fovXDeg, fovYDeg) / 120, 0.25, 2);
+    const gapPx = Math.max(24, Math.hypot(viewport.w, viewport.h) / 30);
 
-    // Constant-altitude circle: center at zenith, radius = 90° - alt
     const paths: string[] = [];
-    for (const a of values) {
+    for (const a of uniq) {
       const altC = clamp(a, -90, 90);
       const radius = 90 - altC;
-      if (Math.abs(radius) < 1e-3 || Math.abs(180 - radius) < 1e-3) continue; // skip degenerate
-      const d = buildSmallCirclePath(90, 0, radius, proj, thetaStep);
+      if (Math.abs(radius) < 1e-3 || Math.abs(180 - radius) < 1e-3) continue; // skip ±90°
+      const d = buildSmallCirclePath(90, 0, radius, proj, thetaStep, gapPx);
       if (d) paths.push(d);
     }
     return paths;
-  // ensure constant-alt curves recompute across projection changes
   }, [refAltDeg, fovXDeg, fovYDeg, viewport.w, viewport.h, projectionMode]);
-  // +++ end updated
+ // +++ end updated
 
   return (
     <svg
@@ -545,13 +603,17 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
           strokeWidth={0.9}
         />
       ))}
-      {refShapes.squares.map((d, i) => (
+      {/* removed squares rendering */}
+      {/* {refShapes.squares.map((d, i) => (
         <path key={`rs-${i}`} d={d}
           fill="none"
           stroke={COLOR_REF_SQUARE}
           strokeWidth={0.9}
         />
-      ))}
+      ))} */}
     </svg>
   );
 }
+
+
+
