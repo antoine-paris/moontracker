@@ -910,19 +910,45 @@ export default function App() {
               </>
             )}
 
-            <HorizonOverlay
-              viewport={viewport}
-              // projection context
-              refAzDeg={refAz}
-              refAltDeg={refAlt}
-              fovXDeg={fovXDeg}
-              fovYDeg={fovYDeg}
-              projectionMode={projectionMode}
-              // visual toggles
-              showAtmosphere={showAtmosphere}
-              atmosphereGradient={atmosphereGradient}
-              showEarth={showEarth}
-            />
+            <div
+              className="absolute"
+              style={{
+                zIndex: Z.horizon,           // above Sun/Moon (-2/-1), below markers (=Z.horizon)
+                left: viewport.x,
+                top: viewport.y,
+                width: viewport.w,
+                height: viewport.h,
+                pointerEvents: 'none',
+              }}
+            >
+              <HorizonOverlay
+                viewport={viewport}
+                // projection context
+                refAzDeg={refAz}
+                refAltDeg={refAlt}
+                fovXDeg={fovXDeg}
+                fovYDeg={fovYDeg}
+                projectionMode={projectionMode}
+                // visual toggles
+                showAtmosphere={showAtmosphere}
+                atmosphereGradient={atmosphereGradient}
+                showEarth={showEarth}
+              />
+               {/* Cardinal markers on horizon (now projected) */}
+              {(
+                <CardinalMarkers
+                  viewport={viewport}
+                  refAzDeg={refAz}
+                  refAltDeg={refAlt}
+                  fovXDeg={fovXDeg}
+                  fovYDeg={fovYDeg}
+                  projectionMode={projectionMode}
+                  items={visibleCardinals as CardinalItem[]}
+                  secondaryItems={visibleSecondaryCardinals}
+                  bodyItems={bodyHorizonItems}
+                />
+              )}
+            </div>
 
             {/* NEW: Grid overlay (above atmosphere/stars, below Sun/Moon) */}
             {showGrid && (
@@ -970,20 +996,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Cardinal markers on horizon (now projected) */}
-            {(
-              <CardinalMarkers
-                viewport={viewport}
-                refAzDeg={refAz}
-                refAltDeg={refAlt}
-                fovXDeg={fovXDeg}
-                fovYDeg={fovYDeg}
-                projectionMode={projectionMode}
-                items={visibleCardinals as CardinalItem[]}
-                secondaryItems={visibleSecondaryCardinals}
-                bodyItems={bodyHorizonItems}
-              />
-            )}
+           
 
             {/* Ensure bodies are above the atmosphere */}
             {showSun && (

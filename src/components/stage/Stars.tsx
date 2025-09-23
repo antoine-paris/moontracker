@@ -324,7 +324,6 @@ export default function Stars({
         canvas.width = w * dpr;
         canvas.height = h * dpr;
       }
-      // Always draw in CSS pixels using a transform
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
 
@@ -336,12 +335,9 @@ export default function Stars({
       const sinPhi = Math.sin(phi);
       const cosPhi = Math.cos(phi);
 
-      // Early culling bounds
-      const marginDeg = 2;
-      const altHalf = fovYDeg * 0.5 + marginDeg;
-      const altMinRad = toRad(Math.max(-90, refAltDeg - altHalf));
-      const altMaxRad = toRad(Math.min(90, refAltDeg + altHalf));
-      const azHalf = fovXDeg * 0.5 + marginDeg;
+      // Camera-space angular cull setup (use FOV diagonal + small margin)
+      const cam = altAzToVec(refAltDeg, refAzDeg);
+      const fovRadiusRad = toRad(0.5 * Math.hypot(fovXDeg, fovYDeg) + 2); // margin 2°
 
       // Subtle FOV-based scaling
       const fovScale = Math.pow(100 / clamp(fovXDeg, 10, 240), cfg.fovScaleExp);
@@ -358,7 +354,6 @@ export default function Stars({
       };
 
       // Draw loop without allocations
-      // Configure defaults
       ctx.lineWidth = 0;
       for (let i = 0; i < stars.length; i++) {
         const s = stars[i];
@@ -367,13 +362,21 @@ export default function Stars({
         // Fast Alt/Az
         const eq = altAzFromPrecomputed(s, sinPhi, cosPhi, lstRad);
         const altRad = eq.altRad;
-        // Alt cull (fast)
-        if (altRad < altMinRad || altRad > altMaxRad) continue;
-
-        // Compute Az for X-FOV cull and projection
         const azDeg = eq.azDeg;
-        if (Math.abs(angleDiffDeg(azDeg, refAzDeg)) > azHalf) continue;
 
+        // Projection-aware angular culling in camera space
+        {
+          const azRad = toRad(azDeg);
+          const cosAlt = Math.cos(altRad);
+          const sx = cosAlt * Math.sin(azRad); // East
+          const sy = cosAlt * Math.cos(azRad); // North
+          const sz = Math.sin(altRad);         // Up
+          const dot = sx * cam.x + sy * cam.y + sz * cam.z;
+          const ang = Math.acos(clamp(dot, -1, 1));
+          if (ang > fovRadiusRad) continue;
+        }
+
+        // Project and final visibility check
         const altDeg = toDeg(altRad);
         const p = projectToScreen(azDeg, altDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
         if (!(p.visibleX && p.visibleY)) continue;
