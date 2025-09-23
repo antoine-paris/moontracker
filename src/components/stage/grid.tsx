@@ -102,6 +102,87 @@ function densifyStep(stepDeg: number, rangeDeg: number) {
 }
 // +++ end added
 
+// +++ added: perf helpers (trig table + tight-loop hypot)
+type TrigTable = { cos: Float32Array; sin: Float32Array; len: number; step: number };
+const TRIG_CACHE = new Map<string, TrigTable>();
+function getTrigTable(stepDeg: number): TrigTable {
+  const s = Math.max(1e-3, stepDeg); // guard
+  const key = s.toFixed(6);
+  const cached = TRIG_CACHE.get(key);
+  if (cached) return cached;
+  const angles: number[] = [];
+  for (let t = 0; t <= 360 + 1e-9; t += s) angles.push(t * DEG);
+  const len = angles.length;
+  const cos = new Float32Array(len);
+  const sin = new Float32Array(len);
+  for (let i = 0; i < len; i++) {
+    cos[i] = Math.cos(angles[i]);
+    sin[i] = Math.sin(angles[i]);
+  }
+  const table: TrigTable = { cos, sin, len, step: s };
+  TRIG_CACHE.set(key, table);
+  return table;
+}
+function hypot2d(dx: number, dy: number) {
+  return Math.sqrt(dx * dx + dy * dy);
+}
+// +++ added: coarse bbox + culling helpers (used in refShapes and altPaths)
+type BBox = { minX: number; minY: number; maxX: number; maxY: number; hasAny: boolean };
+
+function isBBoxOutsideViewport(b: BBox, vp: { w: number; h: number }, marginPx: number) {
+  if (!b.hasAny) return true;
+  return (
+    b.maxX < -marginPx ||
+    b.minX > vp.w + marginPx ||
+    b.maxY < -marginPx ||
+    b.minY > vp.h + marginPx
+  );
+}
+
+function estimateSmallCircleBBox(
+  centerAltDeg: number,
+  centerAzDeg: number,
+  radiusDeg: number,
+  proj: (az: number, alt: number) => { x: number; y: number; visible: boolean },
+  sampleStepDeg = 30
+): BBox {
+  const table = getTrigTable(sampleStepDeg);
+
+  const vc = altAzToVec(centerAltDeg, centerAzDeg);
+  let ref: readonly number[] = Math.abs(vc[2]) > 0.98 ? [1, 0, 0] : [0, 0, 1];
+  let u1 = cross(vc, ref);
+  const u1len = Math.hypot(u1[0], u1[1], u1[2]) || 1;
+  u1 = [u1[0] / u1len, u1[1] / u1len, u1[2] / u1len];
+  let u2 = cross(u1, vc);
+  const u2len = Math.hypot(u2[0], u2[1], u2[2]) || 1;
+  u2 = [u2[0] / u2len, u2[1] / u2len, u2[2] / u2len];
+
+  const cr = Math.cos(radiusDeg * DEG);
+  const sr = Math.sin(radiusDeg * DEG);
+
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let any = false;
+
+  const v = [0, 0, 0] as number[];
+  for (let i = 0; i < table.len; i++) {
+    const ct = table.cos[i], st = table.sin[i];
+    v[0] = vc[0] * cr + (u1[0] * ct + u2[0] * st) * sr;
+    v[1] = vc[1] * cr + (u1[1] * ct + u2[1] * st) * sr;
+    v[2] = vc[2] * cr + (u1[2] * ct + u2[2] * st) * sr;
+    const { alt, az } = vecToAltAz(v);
+    const p = proj(az, alt);
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) continue;
+    if (!p.visible) continue;
+    any = true;
+    if (p.x < minX) minX = p.x;
+    if (p.x > maxX) maxX = p.x;
+    if (p.y < minY) minY = p.y;
+    if (p.y > maxY) maxY = p.y;
+  }
+  return { minX, minY, maxX, maxY, hasAny: any };
+}
+// +++ end added
+
 // Build a small-circle (constant angular radius) around a center (alt, az).
 function buildSmallCirclePath(
   centerAltDeg: number,
@@ -139,14 +220,14 @@ function buildSmallCirclePath(
   return buildPathFromPoints(pts, gapPx);
 }
 
-// Build a small "square": 4 vertices at same angular radius along u1/u2 axes.
-// Skips if any vertex is offscreen to avoid wrap artifacts.
-// NOTE: function kept unchanged if present above; it's now unused.
-function buildSmallSquarePath(
+// +++ added: streaming builders using precomputed trig tables and minimal allocations
+function buildSmallCirclePathTable(
   centerAltDeg: number,
   centerAzDeg: number,
   radiusDeg: number,
-  proj: (az: number, alt: number) => { x: number; y: number; visible: boolean }
+  proj: (az: number, alt: number) => { x: number; y: number; visible: boolean },
+  table: TrigTable,
+  gapPx = 32
 ) {
   const vc = altAzToVec(centerAltDeg, centerAzDeg);
   let ref: readonly number[] = Math.abs(vc[2]) > 0.98 ? [1, 0, 0] : [0, 0, 1];
@@ -160,38 +241,41 @@ function buildSmallSquarePath(
   const cr = Math.cos(radiusDeg * DEG);
   const sr = Math.sin(radiusDeg * DEG);
 
-  const verts: { x: number; y: number; visible: boolean }[] = [];
-  const dirs = [
-    [1, 0], // +u1
-    [0, 1], // +u2
-    [-1, 0], // -u1
-    [0, -1], // -u2
-  ];
-  for (const [a, b] of dirs) {
-    const v = [
-      vc[0] * cr + (u1[0] * a + u2[0] * b) * sr,
-      vc[1] * cr + (u1[1] * a + u2[1] * b) * sr,
-      vc[2] * cr + (u1[2] * a + u2[2] * b) * sr,
-    ];
+  let d = "";
+  let penDown = false;
+  let prevX = 0, prevY = 0;
+  const gap2 = gapPx * gapPx;
+  const v = [0, 0, 0] as number[];
+
+  for (let i = 0; i < table.len; i++) {
+    const ct = table.cos[i], st = table.sin[i];
+    v[0] = vc[0] * cr + (u1[0] * ct + u2[0] * st) * sr;
+    v[1] = vc[1] * cr + (u1[1] * ct + u2[1] * st) * sr;
+    v[2] = vc[2] * cr + (u1[2] * ct + u2[2] * st) * sr;
     const { alt, az } = vecToAltAz(v);
     const p = proj(az, alt);
-    verts.push({ x: p.x, y: p.y, visible: p.visible });
+    if (!p.visible) { penDown = false; continue; }
+    if (!penDown) {
+      d += `M${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+      penDown = true;
+      prevX = p.x; prevY = p.y;
+    } else {
+      const dx = p.x - prevX, dy = p.y - prevY;
+      if (dx * dx + dy * dy > gap2) {
+        d += `M${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+      } else {
+        d += `L${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+      }
+      prevX = p.x; prevY = p.y;
+    }
   }
-  // Relax culling: only skip if all corners are offscreen/invisible.
-  if (verts.every(v => !v.visible)) return "";
-  const d = `M${verts[0].x.toFixed(2)},${verts[0].y.toFixed(2)} ` +
-            `L${verts[1].x.toFixed(2)},${verts[1].y.toFixed(2)} ` +
-            `L${verts[2].x.toFixed(2)},${verts[2].y.toFixed(2)} ` +
-            `L${verts[3].x.toFixed(2)},${verts[3].y.toFixed(2)} Z`;
-  return d;
+  return d.trim();
 }
-// +++ end added helpers
 
-// Build a great circle path defined by a plane normal n (unit), i.e. n·u=0 on the unit sphere
-function buildGreatCircleFromNormal(
+function buildGreatCircleFromNormalTable(
   nIn: readonly number[],
   proj: (az: number, alt: number) => { x: number; y: number; visible: boolean },
-  tStepDeg = 1,
+  table: TrigTable,
   gapPx = 32
 ) {
   let n = norm([nIn[0], nIn[1], nIn[2]]);
@@ -207,16 +291,37 @@ function buildGreatCircleFromNormal(
   let b = cross(n, a);
   b = norm(b);
 
-  const pts: { x: number; y: number; visible: boolean }[] = [];
-  for (let t = 0; t <= 360 + 1e-9; t += tStepDeg) {
-    const ct = Math.cos(t * DEG), st = Math.sin(t * DEG);
-    const v = [a[0] * ct + b[0] * st, a[1] * ct + b[1] * st, a[2] * ct + b[2] * st];
+  let d = "";
+  let penDown = false;
+  let prevX = 0, prevY = 0;
+  const gap2 = gapPx * gapPx;
+  const v = [0, 0, 0] as number[];
+
+  for (let i = 0; i < table.len; i++) {
+    const ct = table.cos[i], st = table.sin[i];
+    v[0] = a[0] * ct + b[0] * st;
+    v[1] = a[1] * ct + b[1] * st;
+    v[2] = a[2] * ct + b[2] * st;
     const { alt, az } = vecToAltAz(v);
     const p = proj(az, alt);
-    pts.push({ x: p.x, y: p.y, visible: p.visible });
+    if (!p.visible) { penDown = false; continue; }
+    if (!penDown) {
+      d += `M${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+      penDown = true;
+      prevX = p.x; prevY = p.y;
+    } else {
+      const dx = p.x - prevX, dy = p.y - prevY;
+      if (dx * dx + dy * dy > gap2) {
+        d += `M${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+      } else {
+        d += `L${p.x.toFixed(2)},${p.y.toFixed(2)} `;
+      }
+      prevX = p.x; prevY = p.y;
+    }
   }
-  return buildPathFromPoints(pts, gapPx);
+  return d.trim();
 }
+// +++ end added
 
 // Colors (statics)
 const COLOR_MINOR = "rgba(219, 142, 142, 0.88)";
@@ -329,8 +434,9 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
   const paths = useMemo(() => {
     // Sampling step for great circles (denser at narrow FOVs)
     const tStep = clamp(Math.min(fovXDeg, fovYDeg) / 120, 0.25, 2); // deg on circle
+    const trigGC = getTrigTable(tStep);
     // adaptive path gap to break across singularities but keep continuity elsewhere
-    const pathGapPx = Math.max(24, Math.hypot(viewport.w, viewport.h) / 30);
+    const pathGapPx = Math.max(24, Math.sqrt(viewport.w * viewport.w + viewport.h * viewport.h) / 30);
 
     // 1) Meridians (great circles containing Up and azimuth dir)
     function buildMeridian(azDeg: number) {
@@ -338,19 +444,19 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
       const h = altAzToVec(0, azDeg);
       const z = [0, 0, 1] as const;
       const n = cross(z, h);
-      return buildGreatCircleFromNormal(n, proj, tStep, pathGapPx);
+      return buildGreatCircleFromNormalTable(n, proj, trigGC, pathGapPx);
     }
 
     // 2) Orthogonal family: planes with normal on the horizon at pole azimuth φ.
     //    φ=0 (North) → prime vertical (E–Zenith–W–Nadir–E).
     function buildOrthogonalCircle(poleAzDeg: number) {
       const n = altAzToVec(0, poleAzDeg); // pole lies on horizon
-      return buildGreatCircleFromNormal(n, proj, tStep, pathGapPx);
+      return buildGreatCircleFromNormalTable(n, proj, trigGC, pathGapPx);
     }
 
     // Cardinal special circles:
     // - Horizon: pole n = Up (0,0,1) → E–N–W–S–E (as requested).
-    const horizonPath = buildGreatCircleFromNormal([0, 0, 1], proj, tStep, pathGapPx);
+    const horizonPath = buildGreatCircleFromNormalTable([0, 0, 1], proj, trigGC, pathGapPx);
     // - Prime vertical: pole at North
     const primeVerticalPath = buildOrthogonalCircle(0);
 
@@ -385,7 +491,7 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
     return { minor: pMinor, major: pMajor, cardinalMeridians: cardMeridians, cardinalSpecial: cardSpecial };
   }, [viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode, meridianMinor, meridianMajor, meridianCardinals, poleMinor, poleMajor]);
 
-  // +++ updated: reference shapes anchored to alt/az; density grows with zoom; constant screen size
+  // +++ updated: reference shapes with trig table and tight-loop hypot in dist
   const refShapes = useMemo(() => {
     const pad = 5;
 
@@ -422,7 +528,7 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
     // removed: const squares: string[] = [];
 
     // Local helpers to keep shapes equal size on screen
-    const dist = (p1: {x:number;y:number}, p2: {x:number;y:number}) => Math.hypot(p1.x - p2.x, p1.y - p2.y);
+    const dist = (p1: {x:number;y:number}, p2: {x:number;y:number}) => hypot2d(p1.x - p2.x, p1.y - p2.y);
     // Removed the center-based culling that caused “behind” shapes to disappear
     // const isOnScreen = (p: {x:number;y:number;visible:boolean}, m = 96) =>
     //   p.x >= -m && p.x <= viewport.w + m && p.y >= -m && p.y <= viewport.h + m && p.visible;
@@ -438,6 +544,10 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
         ppdAlt: Math.max(ppdAlt, 1e-3),
       };
     };
+
+    // +++ added: viewport margin for culling
+    const CULL_MARGIN_PX = Math.max(64, Math.hypot(viewport.w, viewport.h) / 18);
+    // +++ end added
 
     const pushAt = (altDeg: number, azDeg: number) => {
       const altC = clamp(altDeg, -90, 90);
@@ -455,9 +565,15 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
 
       // Denser sampling to catch small visible arcs even when center is far.
       const circleStep = 5; // deg
-      const gapPx = Math.max(24, Math.hypot(viewport.w, viewport.h) / 30);
+      const trigCircle = getTrigTable(circleStep);
+      const gapPx = Math.max(24, Math.sqrt(viewport.w * viewport.w + viewport.h * viewport.h) / 30);
 
-      const cd = buildSmallCirclePath(altC, azN, rDeg, proj, circleStep, gapPx);
+      // +++ added: quick coarse cull before building a precise path
+      const coarseBBox = estimateSmallCircleBBox(altC, azN, rDeg, proj, 30);
+      if (isBBoxOutsideViewport(coarseBBox, viewport, CULL_MARGIN_PX)) return;
+      // +++ end added
+
+      const cd = buildSmallCirclePathTable(altC, azN, rDeg, proj, trigCircle, gapPx);
       if (cd) circles.push(cd);
 
       // removed squares
@@ -537,19 +653,54 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
       .sort((a, b) => a - b);
 
     const thetaStep = clamp(Math.min(fovXDeg, fovYDeg) / 120, 0.25, 2);
-    const gapPx = Math.max(24, Math.hypot(viewport.w, viewport.h) / 30);
+    const trigGC = getTrigTable(thetaStep);
+    const gapPx = Math.max(24, Math.sqrt(viewport.w * viewport.w + viewport.h * viewport.h) / 30);
+
+    // +++ added: viewport margin for culling similar to refShapes
+    const CULL_MARGIN_PX = Math.max(64, Math.hypot(viewport.w, viewport.h) / 18);
+    // +++ end added
 
     const paths: string[] = [];
     for (const a of uniq) {
       const altC = clamp(a, -90, 90);
       const radius = 90 - altC;
-      if (Math.abs(radius) < 1e-3 || Math.abs(180 - radius) < 1e-3) continue; // skip ±90°
-      const d = buildSmallCirclePath(90, 0, radius, proj, thetaStep, gapPx);
+      if (Math.abs(radius) < 1e-3 || Math.abs(180 - radius) < 1e-3) continue;
+
+      // +++ added: quick coarse cull on altitude small circle (center at zenith)
+      const coarseBBox = estimateSmallCircleBBox(90, 0, radius, proj, 30);
+      if (isBBoxOutsideViewport(coarseBBox, viewport, CULL_MARGIN_PX)) continue;
+      // +++ end added
+
+      const d = buildSmallCirclePathTable(90, 0, radius, proj, trigGC, gapPx);
       if (d) paths.push(d);
     }
     return paths;
   }, [refAltDeg, fovXDeg, fovYDeg, viewport.w, viewport.h, projectionMode]);
  // +++ end updated
+
+  // Merge path arrays into single d-attributes per style to reduce DOM nodes
+  const mergedPaths = useMemo(() => {
+    const dMajor = (paths.major?.join(" ") || "").trim();
+
+    const dAlt = (altPaths?.join(" ") || "").trim();
+
+    const cardSolids = [
+      // primary + inter (solid)
+      ...paths.cardinalMeridians.filter(m => m.kind !== "secondary").map(m => m.d),
+      // specials (solid)
+      ...paths.cardinalSpecial,
+    ];
+    const dCardSolid = (cardSolids.join(" ") || "").trim();
+
+    const dCardDash = (paths.cardinalMeridians
+      .filter(m => m.kind === "secondary")
+      .map(m => m.d)
+      .join(" ") || "").trim();
+
+    const dRef = (refShapes.circles?.join(" ") || "").trim();
+
+    return { dMajor, dAlt, dCardSolid, dCardDash, dRef };
+  }, [paths.major, altPaths, paths.cardinalMeridians, paths.cardinalSpecial, refShapes.circles]);
 
   return (
     <svg
@@ -560,57 +711,52 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
       xmlns="http://www.w3.org/2000/svg"
       shapeRendering="geometricPrecision"
     >
-      
-      {/* Major grid */}
-      {paths.major.map((d, i) => (
-        <path key={`mj-${i}`} d={d}
+      {/* Major grid (merged) */}
+      {mergedPaths.dMajor && (
+        <path d={mergedPaths.dMajor}
           fill="none"
           stroke={COLOR_MAJOR}
           strokeWidth={1.0}
         />
-      ))}
-      {/* Horizontal dashed lines at referenced altitudes (now correctly curved) */}
-      {altPaths.map((d, i) => (
-        <path key={`al-${i}`} d={d}
+      )}
+
+      {/* Horizontal dashed lines at referenced altitudes (merged) */}
+      {mergedPaths.dAlt && (
+        <path d={mergedPaths.dAlt}
           fill="none"
           stroke={COLOR_ALT_LINE}
           strokeWidth={0.75}
           strokeDasharray="6 4"
         />
-      ))}
-      {/* Compass meridians: dashed for secondary, solid otherwise */}
-      {paths.cardinalMeridians.map((m, i) => (
-        <path key={`cm-${i}`} d={m.d}
-          fill="none"
-          stroke={COLOR_CARDINAL}
-          strokeWidth={1.25}
-          strokeDasharray={m.kind === "secondary" ? "6 4" : undefined}
-        />
-      ))}
-      {/* Special great circles: horizon and prime vertical */}
-      {paths.cardinalSpecial.map((d, i) => (
-        <path key={`cs-${i}`} d={d}
+      )}
+
+      {/* Compass meridians + specials: solid (merged) */}
+      {mergedPaths.dCardSolid && (
+        <path d={mergedPaths.dCardSolid}
           fill="none"
           stroke={COLOR_CARDINAL}
           strokeWidth={1.25}
         />
-      ))}
-      {/* Reference shapes */}
-      {refShapes.circles.map((d, i) => (
-        <path key={`rc-${i}`} d={d}
+      )}
+
+      {/* Compass meridians: dashed secondary (merged) */}
+      {mergedPaths.dCardDash && (
+        <path d={mergedPaths.dCardDash}
+          fill="none"
+          stroke={COLOR_CARDINAL}
+          strokeWidth={1.25}
+          strokeDasharray="6 4"
+        />
+      )}
+
+      {/* Reference shapes (merged) */}
+      {mergedPaths.dRef && (
+        <path d={mergedPaths.dRef}
           fill="none"
           stroke={COLOR_REF_CIRCLE}
           strokeWidth={0.9}
         />
-      ))}
-      {/* removed squares rendering */}
-      {/* {refShapes.squares.map((d, i) => (
-        <path key={`rs-${i}`} d={d}
-          fill="none"
-          stroke={COLOR_REF_SQUARE}
-          strokeWidth={0.9}
-        />
-      ))} */}
+      )}
     </svg>
   );
 }
