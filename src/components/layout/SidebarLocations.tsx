@@ -83,8 +83,6 @@ function LocationMarker({
     const y = r * Math.cos(phi);
     const z = r * Math.sin(phi) * Math.cos(theta);
     
-    console.log(`Marker position: lat=${lat}, lng=${lng}, r=${r}, pos=(${x.toFixed(3)}, ${y.toFixed(3)}, ${z.toFixed(3)})`);
-    
     return new THREE.Vector3(x, y, z);
   }, [lat, lng, earthRadius]);
   
@@ -113,7 +111,6 @@ function LocationMarker({
     const distanceFromCenter = earthRadius * (0 + LOCATION_MARKER_DISTANCE) + coneHeight / 2;
     
     const finalPos = normalizedPos.multiplyScalar(distanceFromCenter);
-    console.log(`Cone position: distance=${distanceFromCenter}, pos=(${finalPos.x.toFixed(3)}, ${finalPos.y.toFixed(3)}, ${finalPos.z.toFixed(3)})`);
     
     return finalPos;
   }, [position, earthRadius]);
@@ -264,8 +261,6 @@ function EarthScene({
     // Calculate approximate Earth radius after scaling
     const r = (box.max.distanceTo(box.min) / 2) * s;
     
-    console.log('Earth model info:', { size, scale: s, estimatedRadius: r });
-    
     return { centeredScene: scene, scale: s, radius: r };
   }, [gltf]);
 
@@ -317,12 +312,10 @@ function EarthScene({
 
   // Debug: log Earth rotation
   useEffect(() => {
-    console.log(`Earth rotation for lng ${selectedLng}: ${-THREE.MathUtils.degToRad(selectedLng)} rad`);
   }, [selectedLng]);
 
   // Debug: log when location changes
   useEffect(() => {
-    console.log(`EarthScene location update: lat=${selectedLat}, lng=${selectedLocationLng}`);
   }, [selectedLat, selectedLocationLng]);
 
   return (

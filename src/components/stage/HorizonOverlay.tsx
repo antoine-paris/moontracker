@@ -7,9 +7,8 @@ const COLOR_BOTTOM = "hsla(127, 100%, 66%, 0.90)";     // bottomPath
 const COLOR_TOP = "hsla(239, 100%, 50%, 0.90)";         // topPath
 const COLOR_HZ_FRONT = "hsla(0, 93%, 52%, 0.90)";  // horizon in front of viewer
 const COLOR_HZ_BACK = "hsla(61, 91%, 50%, 1.00)";   // horizon behind viewer
-const COLOR_GROUND_FRONT = "rgba(246, 19, 19, 0.53)";
-// Add a subtle fill for the back union
-const COLOR_GROUND_BACK = "rgba(48, 127, 255, 0.30)";
+const COLOR_GROUND_FRONT = "rgba(19, 246, 72, 0.53)";
+const COLOR_GROUND_BACK = "#f6131387";
 
 // Define a shared 2D point type for segment work
 type Pt = { x: number; y: number };
@@ -600,167 +599,160 @@ export default function HorizonOverlay({
     return d;
   };
 
-  // Build a closed polygon between horizonBack (I1->I2) and bottom arc (I2->I1)
-  const buildGroundunionPathBack = (): string[] | null => {
-    // Skip in orthographic mode (back horizon not drawn there)
-    if (projectionMode === "ortho") return null;
-
-    // Short-hand projection wrapper
+  // New: same as front version but using backSegs (no helper changes)
+  const buildGroundunionPathBack = (): string | null => {
     const proj = (az: number, alt: number) =>
       projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
 
     const finite = (p: any) => Number.isFinite(p.x) && Number.isFinite(p.y);
-    const wrap = (a: number) => {
-      let x = ((a + 180) % 360 + 360) % 360 - 180;
-      return x === -180 ? 180 : x;
-    };
-    const angDiff = (a: number, b: number) => Math.abs(wrap(a - b));
-    const sliceForward = <T,>(arr: T[], i0: number, i1: number) => {
-      if (!arr.length) return [] as T[];
-      if (i0 <= i1) return arr.slice(i0, i1 + 1);
-      return [...arr.slice(i0), ...arr.slice(0, i1 + 1)];
-    };
-    const meanY = (pts: { y: number }[]) => pts.reduce((s, p) => s + p.y, 0) / Math.max(1, pts.length);
+    const flatten = (segs: Pt[][]) => segs.flat();
+    const dist2 = (a: Pt, b: Pt) => { const dx = a.x - b.x, dy = a.y - b.y; return dx * dx + dy * dy; };
 
-    // Intersections of prime-vertical with horizon (screen points)
+    // --- use raw backSegs (do NOT flatten yet) ---
+    const horizonSegs = backSegs || [];
+    if (!horizonSegs.length) return null;
+
     const pI1 = proj(refAzDeg - 90, 0);
     const pI2 = proj(refAzDeg + 90, 0);
     if (!finite(pI1) || !finite(pI2)) return null;
+
     const I1: Pt = { x: pI1.x, y: pI1.y };
     const I2: Pt = { x: pI2.x, y: pI2.y };
 
-    // Back horizon sampling (keep finite points)
-    const startAz = refAzDeg - 180, endAz = refAzDeg + 180;
-    const steps = 720, step = (endAz - startAz) / steps;
-    type Sample = { x: number; y: number; az: number };
-    const backSamples: Sample[] = [];
-    for (let i = 0; i <= steps; i++) {
-      const az = startAz + i * step;
-      if (Math.abs(wrap(az - refAzDeg)) <= 90) continue; // back only
-      const p = proj(az, 0);
-      if (!finite(p)) continue;
-      backSamples.push({ x: p.x, y: p.y, az });
-    }
-    if (backSamples.length < 2) return null;
+    // Find nearest point (segment + index) for an intersection
+    const nearestOnSegs = (pt: Pt) => {
+      let best = { seg: -1, idx: -1, d: Infinity };
+      for (let s = 0; s < horizonSegs.length; s++) {
+        const seg = horizonSegs[s];
+        for (let i = 0; i < seg.length; i++) {
+          const d = dist2(seg[i], pt);
+            if (d < best.d) best = { seg: s, idx: i, d };
+        }
+      }
+      return best;
+    };
 
-    // Indices near refAz±90 on back horizon
-    const idxNearAz = (arr: Sample[], targetAz: number) => {
+    const i1 = nearestOnSegs(I1);
+    const i2 = nearestOnSegs(I2);
+    if (i1.seg < 0 || i2.seg < 0) return null;
+
+    // Traverse from (s0,i0) forward (wrapping segments) until reaching (s1,i1)
+    const collectArc = (s0: number, i0: number, s1: number, i1_: number): Pt[] => {
+      const arc: Pt[] = [];
+      const nSegs = horizonSegs.length;
+      let s = s0;
+      let i = i0;
+      let guard = 0;
+      while (guard++ < 10000) {
+        const seg = horizonSegs[s];
+        for (; i < seg.length; i++) {
+          arc.push(seg[i]);
+          if (s === s1 && i === i1_) return arc;
+        }
+        s = (s + 1) % nSegs;
+        i = 0;
+      }
+      return arc; // fallback (possibly incomplete)
+    };
+
+    // Build both directions: I1 -> I2 and I2 -> I1 (wrapped)
+    const arc12 = collectArc(i1.seg, i1.idx, i2.seg, i2.idx);
+    const arc21 = collectArc(i2.seg, i2.idx, i1.seg, i1.idx);
+
+    // Simple polyline length
+    const polyLen = (pts: Pt[]) => {
+      let L = 0;
+      for (let k = 1; k < pts.length; k++) {
+        const dx = pts[k].x - pts[k - 1].x;
+        const dy = pts[k].y - pts[k - 1].y;
+        L += Math.hypot(dx, dy);
+      }
+      return L;
+    };
+
+    // Pick longer arc as the true back horizon span
+    let hSeg = polyLen(arc12) >= polyLen(arc21) ? arc12 : arc21;
+
+    // Ensure it actually contains more than 2 points; otherwise keep the other if bigger
+    if (hSeg.length <= 2) hSeg = arc12.length > arc21.length ? arc12 : arc21;
+    if (hSeg.length < 2) return null;
+
+    
+    // Bottom arc from bottom prime-vertical segments (still flattened)
+    const bPts = flatten(bottomSegs || []);
+    if (bPts.length < 2) return null;
+
+    // Nearest indices for bottom intersections
+    const nearestIdx = (pts: Pt[], p: Pt) => {
       let mi = 0, md = Infinity;
-      for (let i = 0; i < arr.length; i++) {
-        const d = angDiff(arr[i].az, targetAz);
-        if (d < md) { md = d; mi = i; }
+      for (let k = 0; k < pts.length; k++) {
+        const d = dist2(pts[k], p);
+        if (d < md) { md = d; mi = k; }
       }
       return mi;
     };
-    const i1 = idxNearAz(backSamples, refAzDeg - 90);
-    const i2 = idxNearAz(backSamples, refAzDeg + 90);
-    const hSegBack = sliceForward(backSamples, i2, i1); // I2 -> I1 along back
+    const bI1 = nearestIdx(bPts, I1);
+    const bI2 = nearestIdx(bPts, I2);
 
-    // Bottom prime-vertical sampling (bottom half only)
-    const zAxis = [0, 0, 1] as const;
-    const n = altAzToVec(0, refAzDeg);
-    let a = cross(n, zAxis); if (Math.hypot(a[0], a[1], a[2]) < 1e-6) a = [1, 0, 0]; a = norm(a);
-    let b = cross(n, a); b = norm(b);
-    const stepPrim = Math.max(0.25, Math.min(2, Math.min(fovXDeg, fovYDeg) / 120));
-    const epsAlt = 1e-3;
+    const sliceForward = (pts: Pt[], i0: number, i1: number) => {
+      if (!pts.length) return [] as Pt[];
+      if (i0 <= i1) return pts.slice(i0, i1 + 1);
+      return [...pts.slice(i0), ...pts.slice(0, i1 + 1)];
+    };
 
-    const bottomSamples: Sample[] = [];
-    for (let t = 0; t <= 360 + 1e-9; t += stepPrim) {
-      const ct = Math.cos(t * DEG), st = Math.sin(t * DEG);
-      const v = [a[0] * ct + b[0] * st, a[1] * ct + b[1] * st, a[2] * ct + b[2] * st] as const;
-      const { alt } = vecToAltAz(v);
-      if (alt > epsAlt) continue;
-      const az = Math.atan2(v[0], v[1]) * RAD;
-      const p = proj(az, alt);
-      if (!finite(p)) continue;
-      bottomSamples.push({ x: p.x, y: p.y, az });
-    }
-    if (bottomSamples.length < 2) return null;
+    const bSeg = sliceForward(bPts, bI2, bI1); // reverse direction to close polygon
+    if (bSeg.length < 2) return null;
 
-    // Build both candidate arcs I1->I2 from bottomSamples
-    const bIdx1 = idxNearAz(bottomSamples, refAzDeg - 90);
-    const bIdx2 = idxNearAz(bottomSamples, refAzDeg + 90);
-    const bSegA = sliceForward(bottomSamples, bIdx1, bIdx2);                  // direct
-    const bSegB = [...sliceForward(bottomSamples, bIdx2, bIdx1)].reverse();  // wrap
+    
+    const meanY = (pts: Pt[]) => pts.reduce((s, p) => s + p.y, 0) / Math.max(1, pts.length);
+    //if ((meanY(hSeg) < meanY(bSeg))) return null;
 
-    const maxJump2 = Math.pow(0.3 * Math.hypot(viewport.w, viewport.h), 2);
-    const splitBySeam = (seg: Sample[]) => {
-      const chunks: Sample[][] = [];
-      let curr: Sample[] = [];
-      for (let i = 0; i < seg.length; i++) {
-        const p = seg[i];
-        if (i > 0) {
-          const q = seg[i - 1];
-          if (((p.x - q.x) ** 2 + (p.y - q.y) ** 2) > maxJump2) {
-            if (curr.length >= 2) chunks.push(curr);
-            curr = [];
-          }
+    // Build path
+    let d = `M ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
+    if ((meanY(hSeg) > meanY(bSeg))){      
+      // The Back horizon at the bottom of the screen
+      console.log("back horizon at bottom + sky bellow");
+      console.log("hSeg", meanY(hSeg));
+      console.log("bSeg", meanY(bSeg));
+      // Draw horizon from I1 to I2
+      for (let i = hSeg.length - 1; i >= 0; i--) {
+          const p = hSeg[i];
+          d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
         }
-        curr.push(p);
-      }
-      if (curr.length >= 2) chunks.push(curr);
-      return chunks;
-    };
-
-    // Helper: horizon index by az within hSegBack
-    const idxNearAzBack = (targetAz: number) => idxNearAz(hSegBack, targetAz);
-
-    // Snap to I1/I2 at ~3° to avoid tiny diagonals
-    const nearI1 = (az: number) => angDiff(az, refAzDeg - 90) < 3;
-    const nearI2 = (az: number) => angDiff(az, refAzDeg + 90) < 3;
-
-    // Build polygons for all seam chunks from both arcs; this ensures full coverage
-    const buildChunkPolygon = (ch: Sample[]) => {
-      const azStart = ch[0].az, azEnd = ch[ch.length - 1].az;
-      const hIEnd = idxNearAzBack(azEnd);
-      const hIStart = idxNearAzBack(azStart);
-      const hSlice = sliceForward(hSegBack, hIEnd, hIStart);
-
-      // If bottom is clearly under horizon on average, skip
-      if (!(meanY(ch) < meanY(hSlice))) return null;
-
-      // Start at horizon end
-      const HEnd = hSegBack[hIEnd];
-      let d = `M ${HEnd.x.toFixed(2)} ${HEnd.y.toFixed(2)} `;
-
-      // Follow horizon to start
-      for (const p of hSlice) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-
-      // Connect to bottom start, snapping to I1/I2 if close
-      const BStart = ch[0];
-      /*if (nearI1(azStart)) d += `L ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
-      else if (nearI2(azStart)) d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      else d += `L ${BStart.x.toFixed(2)} ${BStart.y.toFixed(2)} `;
-*/
-      // Follow bottom chunk to its end
-      for (const p of ch) {
-        console.log(`bottom chunk L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `);
-        d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-      }
-
-      // Close back to horizon end, snapping if close to I1/I2
-      const BEnd = ch[ch.length - 1];
-      if (nearI1(azEnd)) d += `L ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
-      else if (nearI2(azEnd)) d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      else d += `L ${HEnd.x.toFixed(2)} ${HEnd.y.toFixed(2)} `;
-
-      d += "Z";
-      return d;
-    };
-
-    const parts: string[] = [];
-    const allChunks = [...splitBySeam(bSegA), ...splitBySeam(bSegB)];
-    for (const ch of allChunks) {
-      const poly = buildChunkPolygon(ch);
-      if (poly) parts.push(poly);
+      d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
+      for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
+    } else if (meanY(hSeg) > 0 && (meanY(hSeg) < meanY(bSeg))){
+      // The Back horizon is infinite below
+      console.log("back horizon at infinite bottom");
+      console.log("hSeg", meanY(hSeg));
+      console.log("bSeg", meanY(bSeg));
+      d += `L ${I1.x.toFixed(2)} ${viewport.h.toFixed(2)} `;
+      d += `L ${viewport.w.toFixed(2)} ${viewport.h.toFixed(2)} `;
+      d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
+      for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
     }
+    else if (meanY(bSeg) < 0 || meanY(hSeg) < 0 ) {
+      // The Back horizon appear on top of the screen 
+      console.log("back horizon at top");
+      console.log("hSeg", meanY(hSeg));
+      console.log("bSeg", meanY(bSeg));
+      d += `L ${I1.x.toFixed(2)} 0.00 `;
+      d += `L ${I2.x.toFixed(2)} 0.00  `;
+      d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
+      for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
+    }else {
+      console.log("back horizon at ?");
+      console.log("hSeg", meanY(hSeg));
+      console.log("bSeg", meanY(bSeg));
+    }
+    d += "Z";
 
-    return parts.length ? parts : null;
+    return d;
   };
 
-  // Replace previous naive concat with the robust closed polygons
-  const unionPathFront = buildGroundunionPathFront();
-  const unionPathBack = buildGroundunionPathBack();
+  // Only build ground union paths if Earth rendering is enabled
+  const unionPathFront = showEarth ? buildGroundunionPathFront() : null;
+  const unionPathBack  = showEarth ? buildGroundunionPathBack()  : null;
 
   return (
     <>
@@ -777,21 +769,7 @@ export default function HorizonOverlay({
           />
         )}
 
-        {/* Back-side union: between bottomPath and horizonBackPath */}
-        {unionPathBack && unionPathBack.length > 0 && (
-          <svg
-            width={viewport.w}
-            height={viewport.h}
-            className="absolute"
-            style={{ left: 0, top: 0, zIndex: Z.horizon + 1, overflow: "visible" }}
-          >
-            {unionPathBack.map((d, i) => (
-              <path key={i} d={d} fill={COLOR_GROUND_BACK} stroke={COLOR_HZ_BACK} strokeWidth={1.5} />
-            ))}
-          </svg>
-        )}
-
-        {/* Projected curves only: horizon (front/back), top/bottom arcs and labels */}
+        {/* Projected curves only */}
         <svg
           width={viewport.w}
           height={viewport.h}
@@ -805,7 +783,7 @@ export default function HorizonOverlay({
           </defs>
 
           {/* Horizon split: draw back first (except in ortho), then front on top */}
-          {projectionMode !== "ortho" && horizonBackPath && (
+          {showEarth && projectionMode !== "ortho" && horizonBackPath && (
             <path d={horizonBackPath} stroke={COLOR_HZ_BACK} strokeWidth={1} fill="none" />
           )}
           {horizonFrontPath && <path d={horizonFrontPath} stroke={COLOR_HZ_FRONT} strokeWidth={1.5} fill="none" />}
@@ -833,8 +811,20 @@ export default function HorizonOverlay({
           )}
         </svg>
 
-        {/* New SVG: union of horizonFrontPath and bottomPath as a closed polygon */}
-        {unionPathFront && (
+        {/* Back ground polygon (only when showEarth) */}
+        {showEarth && unionPathBack && projectionMode != "ortho" && (
+          <svg
+            width={viewport.w}
+            height={viewport.h}
+            className="absolute"
+            style={{ left: 0, top: 0, zIndex: Z.horizon + 2, overflow: "visible" }}
+          >
+            <path d={unionPathBack} fill={COLOR_GROUND_BACK} stroke={COLOR_HZ_BACK} strokeWidth={1.5} />
+          </svg>
+        )}
+
+        {/* Front ground polygon (only when showEarth) */}
+        {showEarth && unionPathFront && (
           <svg
             width={viewport.w}
             height={viewport.h}
