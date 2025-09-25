@@ -933,6 +933,8 @@ export default function App() {
                 showAtmosphere={showAtmosphere}
                 atmosphereGradient={atmosphereGradient}
                 showEarth={showEarth}
+                // NEW: debug mask passthrough
+                debugMask={debugMask}
               />
                {/* Cardinal markers on horizon (now projected) */}
               {(

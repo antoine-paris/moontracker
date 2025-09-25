@@ -4,11 +4,14 @@ import { projectToScreen } from "../../render/projection";
 
 // --- colors (statics) ---
 const COLOR_BOTTOM = "hsla(127, 100%, 66%, 0.90)";     // bottomPath
-const COLOR_TOP = "hsla(239, 100%, 50%, 0.90)";         // topPath
+const COLOR_TOP = "rgba(85, 185, 244, 0.9)";         // topPath
 const COLOR_HZ_FRONT = "hsla(0, 93%, 52%, 0.90)";  // horizon in front of viewer
 const COLOR_HZ_BACK = "hsla(61, 91%, 50%, 1.00)";   // horizon behind viewer
 const COLOR_GROUND_FRONT = "rgba(19, 246, 72, 0.53)";
 const COLOR_GROUND_BACK = "#f6131387";
+const COLOR_MARKER = "#b9b4b4e6";  // horizon in front of viewer
+const COLOR_GROUND = "hsla(125, 64%, 12%, 1.00)";
+
 
 // Define a shared 2D point type for segment work
 type Pt = { x: number; y: number };
@@ -25,6 +28,7 @@ type Props = {
   showAtmosphere?: boolean;
   atmosphereGradient?: string;
   showEarth?: boolean;
+  debugMask?: boolean; // NEW: debug mask passthrough
 };
 
 export default function HorizonOverlay({
@@ -37,7 +41,11 @@ export default function HorizonOverlay({
   showAtmosphere = false,
   atmosphereGradient,
   showEarth = false,
+  debugMask = false, // NEW: debug mask passthrough
 }: Props) {
+  // NEW: avoid closer ±90° to prevent singularities
+  const refAltDegSafe = refAltDeg > 89 ? 89 : (refAltDeg < -89 ? -89 : refAltDeg);
+
   // Build projected horizon/alt curves (alt = const)
   const buildAltPath = (altDeg: number, azSpanDeg: number = fovXDeg) => {
     const startAz = refAzDeg - azSpanDeg / 2;
@@ -50,7 +58,7 @@ export default function HorizonOverlay({
 
     for (let i = 0; i <= steps; i++) {
       const az = startAz + i * step;
-      const p = projectToScreen(az, altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const p = projectToScreen(az, altDeg, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
       const visible = (p.visibleX ?? true) && (p.visibleY ?? true);
       if (visible) {
         const x = p.x;
@@ -88,7 +96,7 @@ export default function HorizonOverlay({
         refAzDeg,
         viewport.w,
         viewport.h,
-        refAltDeg,
+        refAltDegSafe,
         0,
         fovXDeg,
         fovYDeg,
@@ -186,7 +194,7 @@ export default function HorizonOverlay({
         az, altDeg,
         refAzDeg,
         viewport.w, viewport.h,
-        refAltDeg, 0,
+        refAltDegSafe, 0,
         fovXDeg, fovYDeg,
         projectionMode
       );
@@ -277,7 +285,7 @@ export default function HorizonOverlay({
         refAzDeg,                     // reference azimuth for camera
         viewport.w,                   // viewport width
         viewport.h,                   // viewport height
-        refAltDeg,                    // reference altitude for camera
+        refAltDegSafe,                    // reference altitude for camera
         0,                            // roll (unused here)
         fovXDeg,                      // horizontal field of view
         fovYDeg,                      // vertical field of view
@@ -396,7 +404,7 @@ export default function HorizonOverlay({
   const buildGroundunionPathFront = (): string | null => {
     // Short-hand projection wrapper for the current viewport and camera parameters
     const proj = (az: number, alt: number) =>
-      projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
 
     // Predicate to check if a projected point has finite screen coordinates
     const finite = (p: any) => Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -429,8 +437,8 @@ export default function HorizonOverlay({
 
     // Branch for orthographic projection: the visible Earth edge is the limb, not the bottom prime-vertical arc
     if (projectionMode === "ortho") {
-      // Compute the camera center direction vector from current ref alt-az
-      const C = altAzToVec(refAltDeg, refAzDeg);
+      // Use safe refAlt in camera direction computation
+      const C = altAzToVec(refAltDegSafe, refAzDeg);
       // World up axis
       const zAxis = [0, 0, 1] as const;
       // Vector perpendicular to C in the horizontal plane (for limb basis)
@@ -602,7 +610,7 @@ export default function HorizonOverlay({
   // New: same as front version but using backSegs (no helper changes)
   const buildGroundunionPathBack = (): string | null => {
     const proj = (az: number, alt: number) =>
-      projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
 
     const finite = (p: any) => Number.isFinite(p.x) && Number.isFinite(p.y);
     const flatten = (segs: Pt[][]) => segs.flat();
@@ -708,12 +716,14 @@ export default function HorizonOverlay({
     //if ((meanY(hSeg) < meanY(bSeg))) return null;
 
     // Build path
+    console.log("POINT 1", I1.x.toFixed(2), I1.y.toFixed(2));
     let d = `M ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
     if ((meanY(hSeg) > meanY(bSeg))){      
       // The Back horizon at the bottom of the screen
       console.log("back horizon at bottom + sky bellow");
       console.log("hSeg", meanY(hSeg));
       console.log("bSeg", meanY(bSeg));
+      console.log("vporth", viewport.h.toFixed(2));
       // Draw horizon from I1 to I2
       for (let i = hSeg.length - 1; i >= 0; i--) {
           const p = hSeg[i];
@@ -726,9 +736,14 @@ export default function HorizonOverlay({
       console.log("back horizon at infinite bottom");
       console.log("hSeg", meanY(hSeg));
       console.log("bSeg", meanY(bSeg));
+      console.log("vporth", viewport.h.toFixed(2));
+      console.log("POINT 2", I1.x.toFixed(2), viewport.h.toFixed(2));
       d += `L ${I1.x.toFixed(2)} ${viewport.h.toFixed(2)} `;
+      console.log("POINT 3", viewport.w.toFixed(2), viewport.h.toFixed(2));
       d += `L ${viewport.w.toFixed(2)} ${viewport.h.toFixed(2)} `;
+      console.log("POINT 4", I2.x.toFixed(2), I2.y.toFixed(2));
       d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
+      console.log("POINT 5", bSeg);
       for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
     }
     else if (meanY(bSeg) < 0 || meanY(hSeg) < 0 ) {
@@ -736,14 +751,16 @@ export default function HorizonOverlay({
       console.log("back horizon at top");
       console.log("hSeg", meanY(hSeg));
       console.log("bSeg", meanY(bSeg));
-      d += `L ${I1.x.toFixed(2)} 0.00 `;
-      d += `L ${I2.x.toFixed(2)} 0.00  `;
+      console.log("vporth", viewport.h.toFixed(2));
+      d += `L ${I1.x.toFixed(2)} ${viewport.h.toFixed(2)} `;
+      d += `L ${viewport.w.toFixed(2)} ${viewport.h.toFixed(2)} `;
       d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
+      for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
     }else {
       console.log("back horizon at ?");
       console.log("hSeg", meanY(hSeg));
       console.log("bSeg", meanY(bSeg));
+      console.log("vporth", viewport.h.toFixed(2));
     }
     d += "Z";
 
@@ -765,7 +782,7 @@ export default function HorizonOverlay({
         {showAtmosphere && (
           <div
             className="absolute inset-0"
-            style={{ zIndex: Z.horizon - 8, background: atmosphereGradient ?? "linear-gradient(to top, #000, #000)" }}
+            style={{ zIndex: Z.horizon - 8, background: atmosphereGradient ?? "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.01))" }}
           />
         )}
 
@@ -782,58 +799,61 @@ export default function HorizonOverlay({
             {bottomLabelPath && <path id={bottomLabelPathId} d={bottomLabelPath} />}
           </defs>
 
-          {/* Horizon split: draw back first (except in ortho), then front on top */}
-          {showEarth && projectionMode !== "ortho" && horizonBackPath && (
-            <path d={horizonBackPath} stroke={COLOR_HZ_BACK} strokeWidth={1} fill="none" />
+          {/* Back ground polygon (only when showEarth) */}
+          {showEarth && unionPathBack && projectionMode != "ortho" && (
+            <svg
+              width={viewport.w}
+              height={viewport.h}
+              className="absolute"
+              style={{ left: 0, top: 0, zIndex: Z.horizon + 2, overflow: "visible" }}
+            >
+              <path d={unionPathBack} fill={debugMask ? COLOR_GROUND_BACK : COLOR_GROUND} stroke={COLOR_HZ_BACK} strokeWidth={debugMask ? 1.5 : 0} />
+            </svg>
           )}
-          {horizonFrontPath && <path d={horizonFrontPath} stroke={COLOR_HZ_FRONT} strokeWidth={1.5} fill="none" />}
+
+          {/* Front ground polygon (only when showEarth) */}
+          {showEarth && unionPathFront && (
+            <svg
+              width={viewport.w}
+              height={viewport.h}
+              className="absolute"
+              style={{ left: 0, top: 0, zIndex: Z.horizon + 3, overflow: "visible" }}
+            >
+              <path d={unionPathFront} fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND} stroke={COLOR_HZ_FRONT} strokeWidth={debugMask ? 2 : 0} />
+            </svg>
+          )}
+
+          {/* Horizon split: draw back first (except in ortho), then front on top */}
+          {projectionMode !== "ortho" && horizonBackPath && (
+            <path d={horizonBackPath} stroke={debugMask ? COLOR_HZ_BACK : COLOR_MARKER} strokeWidth={1} fill="none" />
+          )}
+
+          {horizonFrontPath && <path d={horizonFrontPath} stroke={debugMask ? COLOR_HZ_FRONT : COLOR_MARKER} strokeWidth={1.5} fill="none" />}
 
           {/* +90° ALT arc (haut): via zenith */}
-          {topPath && (
+          {topPath && (refAltDeg>0 || projectionMode !== "ortho") && (
             <>
-              <path d={topPath} fill="none" stroke={COLOR_TOP} strokeWidth={1} strokeDasharray="4 4" />
-              <text fontSize="10" fill={COLOR_TOP}>
-                <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">haut</textPath>
+              <path d={topPath} fill="none" stroke={debugMask ? COLOR_TOP:COLOR_MARKER} strokeWidth={1} strokeDasharray="4 4" />
+              <text fontSize="10" fill={debugMask ? COLOR_TOP : COLOR_MARKER}>
+                <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">Haut</textPath>
               </text>
             </>
           )}
 
           {/* -90° ALT arc (bas): via nadir */}
-          {bottomPath && (
+          {bottomPath && (refAltDeg<0 || projectionMode !== "ortho") && (
             <>
-              <path d={bottomPath} fill="none" stroke={COLOR_BOTTOM} strokeWidth={1} strokeDasharray="4 4" />
+              <path d={bottomPath} fill="none" stroke={debugMask ? COLOR_BOTTOM : COLOR_MARKER} strokeWidth={1} strokeDasharray="4 4" />
               {bottomLabelPath && (
-                <text fontSize="10" fill={COLOR_BOTTOM}>
-                  <textPath href={`#${bottomLabelPathId}`} startOffset="50%" textAnchor="middle">bas</textPath>
+                <text fontSize="10" fill={debugMask ? COLOR_BOTTOM: COLOR_MARKER}>
+                  <textPath href={`#${bottomLabelPathId}`} startOffset="50%" textAnchor="middle">Bas</textPath>
                 </text>
               )}
             </>
           )}
         </svg>
 
-        {/* Back ground polygon (only when showEarth) */}
-        {showEarth && unionPathBack && projectionMode != "ortho" && (
-          <svg
-            width={viewport.w}
-            height={viewport.h}
-            className="absolute"
-            style={{ left: 0, top: 0, zIndex: Z.horizon + 2, overflow: "visible" }}
-          >
-            <path d={unionPathBack} fill={COLOR_GROUND_BACK} stroke={COLOR_HZ_BACK} strokeWidth={1.5} />
-          </svg>
-        )}
-
-        {/* Front ground polygon (only when showEarth) */}
-        {showEarth && unionPathFront && (
-          <svg
-            width={viewport.w}
-            height={viewport.h}
-            className="absolute"
-            style={{ left: 0, top: 0, zIndex: Z.horizon + 3, overflow: "visible" }}
-          >
-            <path d={unionPathFront} fill={COLOR_GROUND_FRONT} stroke={COLOR_HZ_FRONT} strokeWidth={2} />
-          </svg>
-        )}
+        
       </div>
     </>
   );
