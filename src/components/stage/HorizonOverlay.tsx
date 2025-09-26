@@ -385,7 +385,7 @@ export default function HorizonOverlay({
     }
 
     // Return the two drawable paths and a label path, plus raw bottom segments for later use
-    return { topPath: dTop, bottomPath: dBottom, bottomLabelPath: dBottomLabel, bottomSegs: segsBottom };
+    return { topPath: dTop, bottomPath: dBottom, bottomLabelPath: dBottomLabel, bottomSegs: segsBottom, topSegs: segsTop };
   };
 
   // Use the 360° horizon path so it renders even at zenith/nadir
@@ -394,7 +394,18 @@ export default function HorizonOverlay({
   // Horizon split in two parts
   const { frontD: horizonFrontPath, backD: horizonBackPath, frontSegs, backSegs } = buildHorizonFrontBackPaths(0);
 
-  const { topPath, bottomPath, bottomLabelPath, bottomSegs } = buildPrimeVerticalPaths();
+  const { topPath, bottomPath, bottomLabelPath, bottomSegs, topSegs } = buildPrimeVerticalPaths();
+
+  // Compute highest point (smallest y) on the topPath for logging
+  const topPathHighest: Pt | null = (() => {
+    let best: Pt | null = null;
+    for (const seg of topSegs || []) {
+      for (const p of seg) {
+        if (!best || p.y < best.y) best = p;
+      }
+    }
+    return best;
+  })();
 
   const topPathId = "alt-top-path";
   const bottomPathId = "alt-bottom-path";
@@ -589,7 +600,7 @@ export default function HorizonOverlay({
     const bI2 = nearestIdx(bPts, I2);
     // Extract the bottom arc slice from I2 back to I1
     const bSeg = sliceForward(bPts, bI2, bI1);
-
+    
     // Ensure horizon is above the bottom arc (standard screen y-down convention)
     if (!(meanY(hSeg) < meanY(bSeg))) return null;
 
@@ -604,6 +615,7 @@ export default function HorizonOverlay({
     // Close the polygon
     d += "Z";
     // Return the union polygon path string
+    
     return d;
   };
 
@@ -711,59 +723,51 @@ export default function HorizonOverlay({
     const bSeg = sliceForward(bPts, bI2, bI1); // reverse direction to close polygon
     if (bSeg.length < 2) return null;
 
-    
     const meanY = (pts: Pt[]) => pts.reduce((s, p) => s + p.y, 0) / Math.max(1, pts.length);
     //if ((meanY(hSeg) < meanY(bSeg))) return null;
 
     // Build path
-    console.log("POINT 1", I1.x.toFixed(2), I1.y.toFixed(2));
     let d = `M ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
+    // console.log("hSeg", meanY(hSeg));
+    // console.log("bSeg", meanY(bSeg));
+    // console.log("vporth", viewport.h.toFixed(2));
+    // console.log("topPathHighest", topPathHighest.y.toFixed(2));
     if ((meanY(hSeg) > meanY(bSeg))){      
       // The Back horizon at the bottom of the screen
-      console.log("back horizon at bottom + sky bellow");
-      console.log("hSeg", meanY(hSeg));
-      console.log("bSeg", meanY(bSeg));
-      console.log("vporth", viewport.h.toFixed(2));
-      // Draw horizon from I1 to I2
+      //console.log("back horizon at bottom of screen");
       for (let i = hSeg.length - 1; i >= 0; i--) {
           const p = hSeg[i];
           d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
         }
       d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
       for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-    } else if (meanY(hSeg) > 0 && (meanY(hSeg) < meanY(bSeg))){
-      // The Back horizon is infinite below
-      console.log("back horizon at infinite bottom");
-      console.log("hSeg", meanY(hSeg));
-      console.log("bSeg", meanY(bSeg));
-      console.log("vporth", viewport.h.toFixed(2));
-      console.log("POINT 2", I1.x.toFixed(2), viewport.h.toFixed(2));
+    } else if (meanY(hSeg) > 0 && (meanY(hSeg) < meanY(bSeg)) ||
+              (meanY(bSeg) < 0 || meanY(hSeg) < 0 )){
+      // The Back horizon surround scene
+      //console.log("back horizon surround scene");
       d += `L ${I1.x.toFixed(2)} ${viewport.h.toFixed(2)} `;
-      console.log("POINT 3", viewport.w.toFixed(2), viewport.h.toFixed(2));
       d += `L ${viewport.w.toFixed(2)} ${viewport.h.toFixed(2)} `;
-      console.log("POINT 4", I2.x.toFixed(2), I2.y.toFixed(2));
       d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      console.log("POINT 5", bSeg);
       for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-    }
+      if (refAltDegSafe > 10 || refAltDegSafe < -10) 
+        {
+        d += `L ${I1.x.toFixed(2)} 0.00 `; //top
+        d += `L 0.00 0.00 `; //top
+        d += `L ${viewport.w.toFixed(2)} 0.00 `; //top
+        for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
+      }
+    /*}
     else if (meanY(bSeg) < 0 || meanY(hSeg) < 0 ) {
       // The Back horizon appear on top of the screen 
-      console.log("back horizon at top");
-      console.log("hSeg", meanY(hSeg));
-      console.log("bSeg", meanY(bSeg));
-      console.log("vporth", viewport.h.toFixed(2));
-      d += `L ${I1.x.toFixed(2)} ${viewport.h.toFixed(2)} `;
-      d += `L ${viewport.w.toFixed(2)} ${viewport.h.toFixed(2)} `;
-      d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
+      console.log("back horizon at top of the screen ");
+      d += `L ${I1.x.toFixed(2)} 0.00 `; //top
+      d += `L 0.00 0.00 `; //top
+      d += `L ${viewport.w.toFixed(2)} 0.00 `; //top
+      for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;*/
     }else {
-      console.log("back horizon at ?");
-      console.log("hSeg", meanY(hSeg));
-      console.log("bSeg", meanY(bSeg));
-      console.log("vporth", viewport.h.toFixed(2));
+      // console.log("back horizon at ?");
     }
     d += "Z";
-
     return d;
   };
 
