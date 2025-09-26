@@ -12,6 +12,10 @@ const COLOR_GROUND_BACK = "#f6131387";
 const COLOR_MARKER = "#b9b4b4e6";  // horizon in front of viewer
 const COLOR_GROUND = "hsla(125, 64%, 12%, 1.00)";
 
+// Flat-mode thresholds (≈ 33mm on full-frame: ~58° horizontal, ~40° vertical)
+const FLAT_FOV_X_THRESHOLD = 58;
+const FLAT_FOV_Y_THRESHOLD = 40;
+
 // Define a shared 2D point type for segment work
 type Pt = { x: number; y: number };
 
@@ -729,14 +733,49 @@ export default function HorizonOverlay({
     return d;
   };
 
-  // Only build ground union paths if Earth rendering is enabled (memoized)
+
+
+  // Enable simplified flat rendering for narrow FOVs (telephoto-ish)
+  const simplifyFlat = fovXDeg <= FLAT_FOV_X_THRESHOLD || fovYDeg <= FLAT_FOV_Y_THRESHOLD;
+
+  // Compute a flat horizon line Y and which side is "ground" (below/above)
+  const flatHorizon = useMemo(() => {
+    if (!simplifyFlat) return null as { y: number; groundBelow: boolean } | null;
+    const p = projectToScreen(
+      refAzDeg,               // center of frame azimuth
+      0,                      // horizon altitude
+      refAzDeg,
+      viewport.w, viewport.h,
+      refAltDegSafe,
+      0,
+      fovXDeg, fovYDeg,
+      projectionMode
+    );
+    let y = Number.isFinite(p.x) && Number.isFinite(p.y) ? p.y : viewport.h / 2;
+    // Probe slightly under the horizon to detect the "ground" side in screen space
+    const pb = projectToScreen(
+      refAzDeg, -1,
+      refAzDeg,
+      viewport.w, viewport.h,
+      refAltDegSafe,
+      0,
+      fovXDeg, fovYDeg,
+      projectionMode
+    );
+    const groundBelow = (Number.isFinite(pb.x) && Number.isFinite(pb.y)) ? (pb.y > y) : true;
+    // Clamp within viewport
+    y = Math.max(0, Math.min(viewport.h, y));
+    return { y, groundBelow };
+  }, [simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+
+    // Only build ground union paths if Earth rendering is enabled (memoized)
   const unionPathFront = useMemo(
-    () => (showEarth ? buildGroundunionPathFront() : null),
-    [showEarth, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, frontSegs, bottomSegs]
+    () => (showEarth && !simplifyFlat ? buildGroundunionPathFront() : null),
+    [showEarth, simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, frontSegs, bottomSegs]
   );
   const unionPathBack = useMemo(
-    () => (showEarth ? buildGroundunionPathBack() : null),
-    [showEarth, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, backSegs, bottomSegs]
+    () => (showEarth && !simplifyFlat ? buildGroundunionPathBack() : null),
+    [showEarth, simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, backSegs, bottomSegs]
   );
 
   return (
@@ -767,8 +806,33 @@ export default function HorizonOverlay({
             {bottomLabelPath && <path id={bottomLabelPathId} d={bottomLabelPath} />}
           </defs>
 
-          {/* Back ground polygon (only when showEarth). Flattened: no nested SVG to reduce DOM nodes */}
-          {showEarth && unionPathBack && projectionMode !== "ortho" && (
+          {/* Simplified flat rendering for narrow FOVs */}
+          {simplifyFlat && flatHorizon && (
+            <>
+              {/* Flat ground as a rectangle */}
+              {showEarth && (
+                <rect
+                  x={0}
+                  y={flatHorizon.groundBelow ? flatHorizon.y : 0}
+                  width={viewport.w}
+                  height={flatHorizon.groundBelow ? (viewport.h - flatHorizon.y) : flatHorizon.y}
+                  fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
+                />
+              )}
+              {/* Flat horizon line */}
+              <line
+                x1={0}
+                y1={flatHorizon.y}
+                x2={viewport.w}
+                y2={flatHorizon.y}
+                stroke={debugMask ? COLOR_HZ_FRONT : COLOR_MARKER}
+                strokeWidth={1.5}
+              />
+            </>
+          )}
+
+          {/* Back ground polygon (only when showEarth), disabled in flat mode */}
+          {!simplifyFlat && showEarth && unionPathBack && projectionMode !== "ortho" && (
             <path
               d={unionPathBack}
               fill={debugMask ? COLOR_GROUND_BACK : COLOR_GROUND}
@@ -777,8 +841,8 @@ export default function HorizonOverlay({
             />
           )}
 
-          {/* Front ground polygon (only when showEarth). Flattened: no nested SVG */}
-          {showEarth && unionPathFront && (
+          {/* Front ground polygon (only when showEarth), disabled in flat mode */}
+          {!simplifyFlat && showEarth && unionPathFront && (
             <path
               d={unionPathFront}
               fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
@@ -787,12 +851,13 @@ export default function HorizonOverlay({
             />
           )}
 
-          {/* Horizon split: draw back first (except in ortho), then front on top */}
-          {projectionMode !== "ortho" && horizonBackPath && (
+          {/* Horizon split paths, disabled in flat mode */}
+          {!simplifyFlat && projectionMode !== "ortho" && horizonBackPath && (
             <path d={horizonBackPath} stroke={debugMask ? COLOR_HZ_BACK : COLOR_MARKER} strokeWidth={1} fill="none" />
           )}
-
-          {horizonFrontPath && <path d={horizonFrontPath} stroke={debugMask ? COLOR_HZ_FRONT : COLOR_MARKER} strokeWidth={1.5} fill="none" />}
+          {!simplifyFlat && horizonFrontPath && (
+            <path d={horizonFrontPath} stroke={debugMask ? COLOR_HZ_FRONT : COLOR_MARKER} strokeWidth={1.5} fill="none" />
+          )}
 
           {/* +90° ALT arc (haut): via zenith */}
           {topPath && (refAltDeg > 0 || projectionMode !== "ortho") && (
@@ -820,6 +885,6 @@ export default function HorizonOverlay({
     </>
   );
 }
- 
+
 
 
