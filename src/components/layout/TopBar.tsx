@@ -93,8 +93,8 @@ type Props = {
   setShowGrid: (v: boolean) => void;
 
   // NEW: Projection mode
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho';
-  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho') => void;
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
+  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical') => void;
 };
 
 export default function TopBar({
@@ -362,6 +362,7 @@ export default function TopBar({
       { id: 'recti-panini' as const, label: 'Rectilinéaire' },
       { id: 'stereo-centered' as const, label: 'Stéréographique' },
       { id: 'ortho' as const, label: 'Orthographique' },
+      //{ id: 'cylindrical' as const, label: 'Cylindrique' },
     ].map(opt => (
       <button
         key={opt.id}

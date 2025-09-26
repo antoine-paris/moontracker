@@ -1,6 +1,6 @@
 // Camera-based projection with selectable projection modes.
 
-type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho';
+type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
 
 function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
 function toRad(d: number) { return (d * Math.PI) / 180; }
@@ -89,6 +89,20 @@ export function projectToScreen(
     const v2 = fy * yCam;
     sx = halfW + u;
     sy = halfH - v2;
+  } else if (projectionMode === 'cylindrical') {
+    // Cylindrical (equirectangular, centered on reference/forward)
+    // lon around forward axis: [-pi..pi], lat: [-pi/2..pi/2]
+    const lon = Math.atan2(xCam, zCam);
+    const lat = Math.asin(clamp(yCam, -1, 1));
+    // Map half-FOV (thetaX/thetaY) to half viewport
+    const fx = halfW / Math.max(1e-9, thetaX);
+    const fy = halfH / Math.max(1e-9, thetaY);
+    const u = fx * lon;
+    const v2 = fy * lat;
+    sx = halfW + u;
+    sy = halfH - v2;
+    // Visible if within the specified FOV window
+    visible = Math.abs(lon) <= (thetaX + 1e-9) && Math.abs(lat) <= (thetaY + 1e-9);
   } else {
     // recti-panini: rectilinear for narrow FOV, Panini-like for ultra-wide
     const minFov = Math.min(fovXDeg, fovYDeg);

@@ -20,7 +20,7 @@ type Props = {
   showMarkers?: boolean;
   onCruxCentroid?: (pos: { altDeg: number; azDeg: number } | null) => void;
   // NEW: projection mode
-  projectionMode?: 'recti-panini' | 'stereo-centered' | 'ortho';
+  projectionMode?: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
 };
 
 type Star = {

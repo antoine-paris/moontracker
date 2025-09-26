@@ -26,7 +26,7 @@ type Props = {
   refAltDeg: number;
   fovXDeg: number;
   fovYDeg: number;
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho';
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho'  | 'cylindrical'; // NEW: projection mode
   // visuals
   showAtmosphere?: boolean;
   atmosphereGradient?: string;

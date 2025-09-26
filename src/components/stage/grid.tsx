@@ -11,7 +11,7 @@ type Props = {
   fovXDeg: number;
   fovYDeg: number;
   // added: keep Grid in sync with HorizonOverlay
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho';
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
 };
 
 function chooseMajorStep(rangeDeg: number) {

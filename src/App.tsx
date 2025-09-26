@@ -130,7 +130,7 @@ export default function App() {
   - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
   - "Orthographic" (for All-sky context) : orthographic (hemisphere) 
   */
-  const [projectionMode, setProjectionMode] = useState<'recti-panini' | 'stereo-centered' | 'ortho'>('recti-panini');
+  const [projectionMode, setProjectionMode] = useState<'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical'>('recti-panini');
   
 
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
