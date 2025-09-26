@@ -4,6 +4,9 @@ import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
 import { degToSlider, sliderToDeg, FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
 import { zonedLocalToUtcMs } from "../../utils/tz";
+// NEW: planets registry for UI toggles
+import { PLANETS } from "../../render/planetRegistry";
+import { PLANET_REGISTRY } from "../../render/planetRegistry";
 
 export type Viewport = { x: number; y: number; w: number; h: number };
 
@@ -95,6 +98,10 @@ type Props = {
   // NEW: Projection mode
   projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
   setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical') => void;
+
+  // NEW: Planets visibility
+  showPlanets: Record<string, boolean>;
+  setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 };
 
 export default function TopBar({
@@ -122,6 +129,8 @@ export default function TopBar({
   showGrid, setShowGrid,
   // NEW
   projectionMode, setProjectionMode,
+  // NEW
+  showPlanets, setShowPlanets,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -274,6 +283,15 @@ export default function TopBar({
     setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
   };
 
+  // NEW: normalize planets to {id,label} for UI
+  const uiPlanets = useMemo(() => {
+    return PLANETS.map((p: any) => {
+      const id = (typeof p === 'string') ? p : (p?.id ?? String(p));
+      const label = PLANET_REGISTRY?.[id]?.label ?? p?.label ?? id;
+      return { id, label };
+    });
+  }, []);
+  
   return (
     <>
       <div className="mx-2 sm:mx-4">
@@ -527,7 +545,23 @@ export default function TopBar({
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug</span></label>
              <span className="w-px h-5 bg-white/10 mx-1" />
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span></label>
-           </div>
+
+             {/* NEW: per-planet toggles */}
+             <span className="w-px h-5 bg-white/10 mx-1" />
+             {uiPlanets.map(({ id, label }) => (
+               <label key={id} className="inline-flex items-center gap-2 text-sm">
+                 <input
+                   type="checkbox"
+                   checked={showPlanets[id] ?? true}
+                   onChange={(e) => {
+                     const checked = e.target.checked;
+                     setShowPlanets(prev => ({ ...prev, [id]: checked }));
+                   }}
+                 />
+                 <span>{label}</span>
+               </label>
+             ))}
+          </div>
           {debugMask && (
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
                <label className="flex items-center gap-2">

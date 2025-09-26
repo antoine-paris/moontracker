@@ -49,6 +49,9 @@ import DirectionalKeypad from "./components/stage/DirectionalKeypad";
 // NEW: grid overlay
 import Grid from "./components/stage/grid";
 import Athmosphere from "./components/stage/Athmosphere"; // + add
+// NEW: planets registry + ephemerides
+import { PLANETS, PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "./render/planetRegistry";
+import { getPlanetsEphemerides } from "./astro/planets";
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -124,6 +127,14 @@ export default function App() {
   const [showMarkers, setShowMarkers] = useState(false); 
   // NEW: grid toggle
   const [showGrid, setShowGrid] = useState(false);
+
+  // NEW: per-planet visibility
+  const [showPlanets, setShowPlanets] = useState<Record<string, boolean>>(
+    () => {
+      const ids = PLANETS.map(p => (typeof p === 'string' ? p : (p as any)?.id ?? String(p)));
+      return Object.fromEntries(ids.map(id => [id, true]));
+    }
+  );
 
   // NEW: Projection mode (Step 1 - selection only)
   /*
@@ -347,6 +358,18 @@ export default function App() {
        illum
      };
    }, [date, location]);
+
+  // NEW: Planets ephemerides (Alt/Az, diameters, etc.) – ensure array
+  const planetsEphemArr = useMemo(() => {
+    try {
+      const res = getPlanetsEphemerides(date, location.lat, location.lng);
+      return Array.isArray(res)
+        ? res
+        : (res && typeof res === 'object' ? Object.values(res as any) : []);
+    } catch {
+      return [];
+    }
+  }, [date, location.lat, location.lng]);
 
   // NEW: Atmosphere gradient colors from Sun altitude
   const atmosphereGradient = useMemo(() => {
@@ -645,8 +668,24 @@ export default function App() {
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Croix du Sud", color: CRUX_COLOR });
     }
+    // NEW: planets on horizon
+    for (const p of planetsEphemArr) {
+      const id = (p as any).id as string;
+      if (!showPlanets[id]) continue;
+      const az = ((p as any).azDeg ?? (p as any).az) as number;
+      const reg = PLANET_REGISTRY[id];
+      if (az == null || !reg) continue;
+      const pr = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      if (pr.visibleX) out.push({ x: viewport.x + pr.x, az, label: reg.label, color: reg.color });
+    }
     return out;
-  }, [showSun, showMoon, astro.sun.az, astro.moon.az, polarisAltAz.azDeg, cruxAltAz.azDeg, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
+  }, [
+    showSun, showMoon,
+    astro.sun.az, astro.moon.az,
+    polarisAltAz.azDeg, cruxAltAz.azDeg,
+    planetsEphemArr, showPlanets,
+    refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode
+  ]);
 
   // Animation loop
   useEffect(() => {
@@ -848,6 +887,9 @@ export default function App() {
               // NEW: pass projection mode
               projectionMode={projectionMode}
               setProjectionMode={setProjectionMode}
+              // NEW: planets toggles
+              showPlanets={showPlanets}
+              setShowPlanets={setShowPlanets}
             />
           </div>
 
@@ -1196,6 +1238,9 @@ export default function App() {
               // NEW: pass projection mode
               projectionMode={projectionMode}
               setProjectionMode={setProjectionMode}
+              // NEW: pass planets toggles
+              showPlanets={showPlanets}
+              setShowPlanets={setShowPlanets}
             />
           </div>
 
@@ -1232,5 +1277,6 @@ export default function App() {
     </div>
   );
 }
+
 
 function compass16(az: number): string { const idx = Math.round(norm360(az) / 22.5) % 16; return ROSE_16[idx] as string; }
