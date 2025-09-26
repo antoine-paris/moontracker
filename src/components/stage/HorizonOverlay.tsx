@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Z } from "../../render/constants";
 import { projectToScreen } from "../../render/projection";
 
@@ -11,7 +11,6 @@ const COLOR_GROUND_FRONT = "rgba(19, 246, 72, 0.53)";
 const COLOR_GROUND_BACK = "#f6131387";
 const COLOR_MARKER = "#b9b4b4e6";  // horizon in front of viewer
 const COLOR_GROUND = "hsla(125, 64%, 12%, 1.00)";
-
 
 // Define a shared 2D point type for segment work
 type Pt = { x: number; y: number };
@@ -31,6 +30,36 @@ type Props = {
   debugMask?: boolean; // NEW: debug mask passthrough
 };
 
+// Hoisted math helpers (avoid reallocation each render)
+const DEG = Math.PI / 180;
+const RAD = 180 / Math.PI;
+const clamp01 = (v: number) => Math.max(-1, Math.min(1, v));
+const altAzToVec = (altDeg: number, azDeg: number) => {
+  const alt = altDeg * DEG, az = azDeg * DEG;
+  const ca = Math.cos(alt), sa = Math.sin(alt);
+  return [ca * Math.sin(az), ca * Math.cos(az), sa] as const;
+};
+const vecToAltAz = (v: readonly number[]) => {
+  const [x, y, z] = v;
+  const alt = Math.asin(clamp01(z)) * RAD;
+  const az = Math.atan2(x, y) * RAD;
+  return { alt, az };
+};
+const norm = (v: number[]) => {
+  const m = Math.hypot(v[0], v[1], v[2]) || 1;
+  return [v[0] / m, v[1] / m, v[2] / m];
+};
+const cross = (a: readonly number[], b: readonly number[]) => [
+  a[1] * b[2] - a[2] * b[1],
+  a[2] * b[0] - a[0] * b[2],
+  a[0] * b[1] - a[1] * b[0],
+];
+// Normalize angle to (-180, 180]
+const wrap180 = (a: number) => {
+  let x = ((a + 180) % 360 + 360) % 360 - 180;
+  return x === -180 ? 180 : x;
+};
+
 export default function HorizonOverlay({
   viewport,
   refAzDeg,
@@ -41,40 +70,10 @@ export default function HorizonOverlay({
   showAtmosphere = false,
   atmosphereGradient,
   showEarth = false,
-  debugMask = false, // NEW: debug mask passthrough
+  debugMask = false,
 }: Props) {
   // NEW: avoid closer ±90° to prevent singularities
   const refAltDegSafe = refAltDeg > 89 ? 89 : (refAltDeg < -89 ? -89 : refAltDeg);
-
-  // Build projected horizon/alt curves (alt = const)
-  const buildAltPath = (altDeg: number, azSpanDeg: number = fovXDeg) => {
-    const startAz = refAzDeg - azSpanDeg / 2;
-    const endAz = refAzDeg + azSpanDeg / 2;
-    const steps = Math.max(64, Math.min(512, Math.round(azSpanDeg * 2)));
-    const step = (endAz - startAz) / steps;
-
-    let d = "";
-    let inSeg = false;
-
-    for (let i = 0; i <= steps; i++) {
-      const az = startAz + i * step;
-      const p = projectToScreen(az, altDeg, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
-      const visible = (p.visibleX ?? true) && (p.visibleY ?? true);
-      if (visible) {
-        const x = p.x;
-        const y = p.y;
-        if (!inSeg) {
-          d += `M ${x.toFixed(2)} ${y.toFixed(2)} `;
-          inSeg = true;
-        } else {
-          d += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
-        }
-      } else {
-        inSeg = false; // break segment
-      }
-    }
-    return d.trim();
-  };
 
   // Robust 360° horizon path (ignores FOV clipping, handles seams)
   const buildAltPath360 = (altDeg: number) => {
@@ -134,38 +133,6 @@ export default function HorizonOverlay({
   };
 
   // --- helpers to build the prime-vertical great circle (through zenith, crossing horizon at refAz±90)
-  const DEG = Math.PI / 180;
-  const RAD = 180 / Math.PI;
-  const clamp01 = (v: number) => Math.max(-1, Math.min(1, v));
-  const altAzToVec = (altDeg: number, azDeg: number) => {
-    const alt = altDeg * DEG, az = azDeg * DEG;
-    const ca = Math.cos(alt), sa = Math.sin(alt);
-    // ENU: az=0 => +Y (North), az=90 => +X (East)
-    return [ca * Math.sin(az), ca * Math.cos(az), sa] as const;
-  };
-  const vecToAltAz = (v: readonly number[]) => {
-    const [x, y, z] = v;
-    const alt = Math.asin(clamp01(z)) * RAD;
-    const az = Math.atan2(x, y) * RAD;
-    return { alt, az };
-  };
-  const norm = (v: number[]) => {
-    const m = Math.hypot(v[0], v[1], v[2]) || 1;
-    return [v[0] / m, v[1] / m, v[2] / m];
-  };
-  const cross = (a: readonly number[], b: readonly number[]) => [
-    a[1] * b[2] - a[2] * b[1],
-    a[2] * b[0] - a[0] * b[2],
-    a[0] * b[1] - a[1] * b[0],
-  ];
-
-  // Normalize angle to (-180, 180]
-  const wrap180 = (a: number) => {
-    let x = ((a + 180) % 360 + 360) % 360 - 180;
-    return x === -180 ? 180 : x;
-  };
-
-  // Split the 360° horizon into front/back path strings (robust to seams, no viewport clipping)
   const buildHorizonFrontBackPaths = (altDeg = 0) => {
     const startAz = refAzDeg - 180;
     const endAz = refAzDeg + 180;
@@ -388,30 +355,22 @@ export default function HorizonOverlay({
     return { topPath: dTop, bottomPath: dBottom, bottomLabelPath: dBottomLabel, bottomSegs: segsBottom, topSegs: segsTop };
   };
 
-  // Use the 360° horizon path so it renders even at zenith/nadir
-  const horizonPath = buildAltPath360(0);
+  // Horizon split in two parts (memoized)
+  const { frontD: horizonFrontPath, backD: horizonBackPath, frontSegs, backSegs } = useMemo(
+    () => buildHorizonFrontBackPaths(0),
+    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+  );
 
-  // Horizon split in two parts
-  const { frontD: horizonFrontPath, backD: horizonBackPath, frontSegs, backSegs } = buildHorizonFrontBackPaths(0);
-
-  const { topPath, bottomPath, bottomLabelPath, bottomSegs, topSegs } = buildPrimeVerticalPaths();
-
-  // Compute highest point (smallest y) on the topPath for logging
-  const topPathHighest: Pt | null = (() => {
-    let best: Pt | null = null;
-    for (const seg of topSegs || []) {
-      for (const p of seg) {
-        if (!best || p.y < best.y) best = p;
-      }
-    }
-    return best;
-  })();
+  // Prime-vertical top/bottom arcs (memoized)
+  const { topPath, bottomPath, bottomLabelPath, bottomSegs, topSegs } = useMemo(
+    () => buildPrimeVerticalPaths(),
+    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+  );
 
   const topPathId = "alt-top-path";
   const bottomPathId = "alt-bottom-path";
   const bottomLabelPathId = "alt-bottom-label-path";
 
-  // Build a closed polygon between horizonFront (I1->I2) and bottom arc (I2->I1)
   const buildGroundunionPathFront = (): string | null => {
     // Short-hand projection wrapper for the current viewport and camera parameters
     const proj = (az: number, alt: number) =>
@@ -619,7 +578,6 @@ export default function HorizonOverlay({
     return d;
   };
 
-  // New: same as front version but using backSegs (no helper changes)
   const buildGroundunionPathBack = (): string | null => {
     const proj = (az: number, alt: number) =>
       projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
@@ -771,9 +729,15 @@ export default function HorizonOverlay({
     return d;
   };
 
-  // Only build ground union paths if Earth rendering is enabled
-  const unionPathFront = showEarth ? buildGroundunionPathFront() : null;
-  const unionPathBack  = showEarth ? buildGroundunionPathBack()  : null;
+  // Only build ground union paths if Earth rendering is enabled (memoized)
+  const unionPathFront = useMemo(
+    () => (showEarth ? buildGroundunionPathFront() : null),
+    [showEarth, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, frontSegs, bottomSegs]
+  );
+  const unionPathBack = useMemo(
+    () => (showEarth ? buildGroundunionPathBack() : null),
+    [showEarth, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, backSegs, bottomSegs]
+  );
 
   return (
     <>
@@ -803,28 +767,24 @@ export default function HorizonOverlay({
             {bottomLabelPath && <path id={bottomLabelPathId} d={bottomLabelPath} />}
           </defs>
 
-          {/* Back ground polygon (only when showEarth) */}
-          {showEarth && unionPathBack && projectionMode != "ortho" && (
-            <svg
-              width={viewport.w}
-              height={viewport.h}
-              className="absolute"
-              style={{ left: 0, top: 0, zIndex: Z.horizon + 2, overflow: "visible" }}
-            >
-              <path d={unionPathBack} fill={debugMask ? COLOR_GROUND_BACK : COLOR_GROUND} stroke={COLOR_HZ_BACK} strokeWidth={debugMask ? 1.5 : 0} />
-            </svg>
+          {/* Back ground polygon (only when showEarth). Flattened: no nested SVG to reduce DOM nodes */}
+          {showEarth && unionPathBack && projectionMode !== "ortho" && (
+            <path
+              d={unionPathBack}
+              fill={debugMask ? COLOR_GROUND_BACK : COLOR_GROUND}
+              stroke={COLOR_HZ_BACK}
+              strokeWidth={debugMask ? 1.5 : 0}
+            />
           )}
 
-          {/* Front ground polygon (only when showEarth) */}
+          {/* Front ground polygon (only when showEarth). Flattened: no nested SVG */}
           {showEarth && unionPathFront && (
-            <svg
-              width={viewport.w}
-              height={viewport.h}
-              className="absolute"
-              style={{ left: 0, top: 0, zIndex: Z.horizon + 3, overflow: "visible" }}
-            >
-              <path d={unionPathFront} fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND} stroke={COLOR_HZ_FRONT} strokeWidth={debugMask ? 2 : 0} />
-            </svg>
+            <path
+              d={unionPathFront}
+              fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
+              stroke={COLOR_HZ_FRONT}
+              strokeWidth={debugMask ? 2 : 0}
+            />
           )}
 
           {/* Horizon split: draw back first (except in ortho), then front on top */}
@@ -835,9 +795,9 @@ export default function HorizonOverlay({
           {horizonFrontPath && <path d={horizonFrontPath} stroke={debugMask ? COLOR_HZ_FRONT : COLOR_MARKER} strokeWidth={1.5} fill="none" />}
 
           {/* +90° ALT arc (haut): via zenith */}
-          {topPath && (refAltDeg>0 || projectionMode !== "ortho") && (
+          {topPath && (refAltDeg > 0 || projectionMode !== "ortho") && (
             <>
-              <path d={topPath} fill="none" stroke={debugMask ? COLOR_TOP:COLOR_MARKER} strokeWidth={1} strokeDasharray="4 4" />
+              <path d={topPath} fill="none" stroke={debugMask ? COLOR_TOP : COLOR_MARKER} strokeWidth={1} strokeDasharray="4 4" />
               <text fontSize="10" fill={debugMask ? COLOR_TOP : COLOR_MARKER}>
                 <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">Haut</textPath>
               </text>
@@ -845,23 +805,21 @@ export default function HorizonOverlay({
           )}
 
           {/* -90° ALT arc (bas): via nadir */}
-          {bottomPath && (refAltDeg<0 || projectionMode !== "ortho") && (
+          {bottomPath && (refAltDeg < 0 || projectionMode !== "ortho") && (
             <>
               <path d={bottomPath} fill="none" stroke={debugMask ? COLOR_BOTTOM : COLOR_MARKER} strokeWidth={1} strokeDasharray="4 4" />
               {bottomLabelPath && (
-                <text fontSize="10" fill={debugMask ? COLOR_BOTTOM: COLOR_MARKER}>
+                <text fontSize="10" fill={debugMask ? COLOR_BOTTOM : COLOR_MARKER}>
                   <textPath href={`#${bottomLabelPathId}`} startOffset="50%" textAnchor="middle">Bas</textPath>
                 </text>
               )}
             </>
           )}
         </svg>
-
-        
       </div>
     </>
   );
 }
-
+ 
 
 
