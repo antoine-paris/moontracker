@@ -48,6 +48,7 @@ import Markers from "./components/stage/Markers";
 import DirectionalKeypad from "./components/stage/DirectionalKeypad";
 // NEW: grid overlay
 import Grid from "./components/stage/grid";
+import Athmosphere from "./components/stage/Athmosphere"; // + add
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -930,8 +931,6 @@ export default function App() {
                 fovYDeg={fovYDeg}
                 projectionMode={projectionMode}
                 // visual toggles
-                showAtmosphere={showAtmosphere}
-                atmosphereGradient={atmosphereGradient}
                 showEarth={showEarth}
                 // NEW: debug mask passthrough
                 debugMask={debugMask}
@@ -977,6 +976,23 @@ export default function App() {
               </div>
             )}
 
+            {/* NEW: Atmosphere layer (behind Stars) */}
+            {showAtmosphere && (
+              <div
+                className="absolute"
+                style={{
+                  zIndex: Z.horizon - 20, // was Z.horizon - 8, keep it below stars and everything else
+                  left: viewport.x,
+                  top: viewport.y,
+                  width: viewport.w,
+                  height: viewport.h,
+                  pointerEvents: 'none',
+                }}
+              >
+                <Athmosphere viewport={viewport} gradient={atmosphereGradient} />
+              </div>
+            )}
+
             {/* NEW: Stars layer (above atmosphere, below Sun/Moon) */}
             {showStars && (
               <div className="absolute inset-0" style={{ zIndex: Z.horizon - 5, pointerEvents: 'none' }}>
@@ -997,8 +1013,6 @@ export default function App() {
                 />
               </div>
             )}
-
-           
 
             {/* Ensure bodies are above the atmosphere */}
             {showSun && (

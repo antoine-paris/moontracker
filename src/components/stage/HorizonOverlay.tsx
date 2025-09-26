@@ -28,8 +28,6 @@ type Props = {
   fovYDeg: number;
   projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho'  | 'cylindrical'; // NEW: projection mode
   // visuals
-  showAtmosphere?: boolean;
-  atmosphereGradient?: string;
   showEarth?: boolean;
   debugMask?: boolean; // NEW: debug mask passthrough
 };
@@ -71,8 +69,6 @@ export default function HorizonOverlay({
   fovXDeg,
   fovYDeg,
   projectionMode,
-  showAtmosphere = false,
-  atmosphereGradient,
   showEarth = false,
   debugMask = false,
 }: Props) {
@@ -785,14 +781,6 @@ export default function HorizonOverlay({
         className="absolute"
         style={{ left: viewport.x, top: viewport.y, width: viewport.w, height: viewport.h, pointerEvents: "none" }}
       >
-        {/* Atmosphere only */}
-        {showAtmosphere && (
-          <div
-            className="absolute inset-0"
-            style={{ zIndex: Z.horizon - 8, background: atmosphereGradient ?? "linear-gradient(to top, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.01))" }}
-          />
-        )}
-
         {/* Projected curves only */}
         <svg
           width={viewport.w}
@@ -885,6 +873,7 @@ export default function HorizonOverlay({
     </>
   );
 }
+     
 
 
 
