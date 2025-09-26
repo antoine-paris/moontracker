@@ -26,17 +26,36 @@ export default function CardinalMarkers({
 }: Props) {
   const yForAz = (az: number) => {
     const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
-    return viewport.y + p.y;
+    const y = viewport.y + (p?.y ?? Number.NaN);
+
+    if (Number.isFinite(y)) return y;
+
+    // Fallback: clamp to nearest vertical screen edge based on relative azimuth
+    // Screen "down" corresponds to az == refAzDeg
+    const dAzRad = (az - refAzDeg) * Math.PI / 180;
+    const dy = Math.cos(dAzRad); // sin(dAz + π/2)
+    const edgePad = 1;
+    return viewport.y + (dy > 0 ? viewport.h - edgePad : edgePad);
+  };
+
+  // New: fallback for x when projection collapses at zenith/nadir
+  const xForAz = (x: number, az: number) => {
+    if (Number.isFinite(x)) return x;
+    const dAzRad = (az - refAzDeg) * Math.PI / 180;
+    const dx = Math.sin(dAzRad);
+    const edgePad = 1;
+    return viewport.x + (dx > 0 ? viewport.w - edgePad : edgePad);
   };
 
   return (
     <>
       {items.map((c, i) => {
         const y = yForAz(c.az);
+        const x = xForAz(c.x, c.az);
         return (
           <div
             key={`prim-${i}`}
-            style={{ position: "absolute", left: c.x, top: y, zIndex: Z.horizon - 1, pointerEvents: "none" }}
+            style={{ position: "absolute", left: x, top: y, zIndex: Z.horizon + 5, pointerEvents: "none" }}
           >
             <div className="-translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
               <div className="h-6 w-0.5 bg-white/70" />
@@ -45,12 +64,13 @@ export default function CardinalMarkers({
           </div>
         );
       })}
-      {secondaryItems?.map((c, i) => {
+       {secondaryItems?.map((c, i) => {
         const y = yForAz(c.az);
+        const x = xForAz(c.x, c.az);
         return (
           <div
             key={`sec-${i}`}
-            style={{ position: "absolute", left: c.x, top: y, zIndex: Z.horizon - 1, pointerEvents: "none" }}
+            style={{ position: "absolute", left: x, top: y, zIndex: Z.horizon + 5, pointerEvents: "none" }}
           >
             <div className="-translate-x-1/2 translate-y-[12px] text-[10px] leading-none text-white/60 select-none">
               {c.label}
@@ -61,10 +81,11 @@ export default function CardinalMarkers({
       {/* body/constellation horizon markers */}
       {bodyItems?.map((m, i) => {
         const y = yForAz(m.az);
+        const x = xForAz(m.x, m.az);
         return (
           <React.Fragment key={`body-${i}`}>
             <div
-              style={{ position: "absolute", left: m.x, top: y, zIndex: Z.horizon - 1, pointerEvents: "none" }}
+              style={{ position: "absolute", left: x, top: y, zIndex: Z.horizon + 5, pointerEvents: "none" }}
             >
               <div className="-translate-x-1/2 -translate-y-1/2">
                 <div className="h-6 w-0.5" style={{ background: m.color, opacity: 0.9 }} />
@@ -73,9 +94,9 @@ export default function CardinalMarkers({
             <div
               style={{
                 position: "absolute",
-                left: m.x + 4,
+                left: x + 4,
                 top: y - 20,
-                zIndex: Z.horizon - 1,
+                zIndex: Z.horizon + 5,
                 pointerEvents: "none",
               }}
             >
