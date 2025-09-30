@@ -32,7 +32,7 @@ export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showC
           width: wPx,
           height: hPx,
           background:
-            "radial-gradient(circle at 30% 30%, rgba(255,255,200,1) 0%, rgba(255,200,80,0.95) 35%, rgba(255,160,30,0.85) 55%, rgba(255,120,10,0.7) 75%, rgba(255,100,0,0.5) 100%)",
+            "radial-gradient(circle at 30% 30%, rgba(255,255,200,1) 0%, rgba(255,200,80,1) 35%, rgba(255,160,30,1) 55%, rgba(255,120,10,1) 75%, rgba(255,100,0,1) 100%)",
           boxShadow:
             "0 0 40px 10px rgba(255,180,40,0.35), 0 0 80px 20px rgba(255,180,40,0.15)",
           borderRadius: "9999px",
