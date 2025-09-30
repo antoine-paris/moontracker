@@ -17,9 +17,12 @@ type HorizonPoint = {
 type SizePx = { w: number; h: number };
 
 type Planet = {
-  name: string;
+  // accept either name or label (App.tsx sends "label")
+  name?: string;
+  label?: string;
   screen: ScreenPoint;
-  size: SizePx;
+  // size can be omitted (optional chaining already used below)
+  size?: SizePx;
   color: string;
 };
 
@@ -247,80 +250,79 @@ export default function Markers({
       )}
 
       {/* Planets extremity markers + label */}
-      {
-        planets?.map((p, i) =>
-          p?.screen?.visibleX && p?.screen?.visibleY ? (
-            <React.Fragment key={`planet-${p.name || i}`}>
-              {/* top */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: p.screen.x,
-                  top: p.screen.y - ((p.size?.h ?? 0) / 2) - 15,
-                  zIndex: zIndexHorizon,
-                }}
-              >
-                <div className="-translate-x-1/2 -translate-y-1/2">
-                  <div className="h-3 w-0.5" style={{ background: p.color, opacity: 0.9 }} />
-                </div>
+      {planets?.map((p, i) =>
+        p?.screen?.visibleX && p?.screen?.visibleY ? (
+          <React.Fragment key={`planet-${p.label || i}`}>
+            {/* top */}
+            <div
+              style={{
+                position: "absolute",
+                left: p.screen.x,
+                top: p.screen.y - ((p.size?.h ?? 0) / 2) - 15,
+                zIndex: zIndexHorizon,
+              }}
+            >
+              <div className="-translate-x-1/2 -translate-y-1/2">
+                <div className="h-3 w-0.5" style={{ background: p.color, opacity: 0.9 }} />
               </div>
-              {/* bottom */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: p.screen.x,
-                  top: p.screen.y + ((p.size?.h ?? 0) / 2) + 15,
-                  zIndex: zIndexHorizon,
-                }}
-              >
-                <div className="-translate-x-1/2 -translate-y-1/2">
-                  <div className="h-3 w-0.5" style={{ background: p.color, opacity: 0.9 }} />
-                </div>
+            </div>
+            {/* bottom */}
+            <div
+              style={{
+                position: "absolute",
+                left: p.screen.x,
+                top: p.screen.y + ((p.size?.h ?? 0) / 2) + 15,
+                zIndex: zIndexHorizon,
+              }}
+            >
+              <div className="-translate-x-1/2 -translate-y-1/2">
+                <div className="h-3 w-0.5" style={{ background: p.color, opacity: 0.9 }} />
               </div>
-              {/* left */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: p.screen.x - ((p.size?.w ?? 0) / 2) - 15,
-                  top: p.screen.y,
-                  zIndex: zIndexHorizon,
-                }}
-              >
-                <div className="-translate-x-1/2 -translate-y-1/2">
-                  <div className="w-3 h-0.5" style={{ background: p.color, opacity: 0.9 }} />
-                </div>
+            </div>
+            {/* left */}
+            <div
+              style={{
+                position: "absolute",
+                left: p.screen.x - ((p.size?.w ?? 0) / 2) - 15,
+                top: p.screen.y,
+                zIndex: zIndexHorizon,
+              }}
+            >
+              <div className="-translate-x-1/2 -translate-y-1/2">
+                <div className="w-3 h-0.5" style={{ background: p.color, opacity: 0.9 }} />
               </div>
-              {/* right */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: p.screen.x + ((p.size?.w ?? 0) / 2) + 15,
-                  top: p.screen.y,
-                  zIndex: zIndexHorizon,
-                }}
-              >
-                <div className="-translate-x-1/2 -translate-y-1/2">
-                  <div className="w-3 h-0.5" style={{ background: p.color, opacity: 0.9 }} />
-                </div>
+            </div>
+            {/* right */}
+            <div
+              style={{
+                position: "absolute",
+                left: p.screen.x + ((p.size?.w ?? 0) / 2) + 15,
+                top: p.screen.y,
+                zIndex: zIndexHorizon,
+              }}
+            >
+              <div className="-translate-x-1/2 -translate-y-1/2">
+                <div className="w-3 h-0.5" style={{ background: p.color, opacity: 0.9 }} />
               </div>
-              {/* label near bottom dash */}
-              <div
-                style={{
-                  position: "absolute",
-                  left: p.screen.x + ((p.size?.w ?? 0) / 2) + 15 - 6,
-                  top: p.screen.y + ((p.size?.h ?? 0) / 2) + 15,
-                  transform: "translateY(-50%)",
-                  zIndex: zIndexHorizon,
-                  pointerEvents: "none",
-                }}
-              >
-                <span className="text-xs" style={{ color: p.color, opacity: 0.95 }}>
-                  {p.name}
-                </span>
-              </div>
-            </React.Fragment>
-          ) : null
-        )}
+            </div>
+            {/* label near bottom dash */}
+            <div
+              style={{
+                position: "absolute",
+                left: p.screen.x + ((p.size?.w ?? 0) / 2) + 15 - 6,
+                top: p.screen.y + ((p.size?.h ?? 0) / 2) + 15,
+                transform: "translateY(-50%)",
+                zIndex: zIndexHorizon,
+                pointerEvents: "none",
+              }}
+            >
+              <span className="text-xs" style={{ color: p.color, opacity: 0.95 }}>
+                {p.label}
+              </span>
+            </div>
+          </React.Fragment>
+        ) : null
+      )}
     </>
   );
 }

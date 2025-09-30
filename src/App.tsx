@@ -136,6 +136,12 @@ export default function App() {
     }
   );
 
+  // NEW: compute ephemerides only if at least one planet is selected in the TopBar
+  const anyPlanetSelected = useMemo(
+    () => Object.values(showPlanets).some(Boolean),
+    [showPlanets]
+  );
+
   // NEW: Projection mode (Step 1 - selection only)
   /*
   - "Rectilinear + Panini" (for Photographic simulation) : rectilinear + Panini for ultra-wide, plus fisheye variants when the selected module is fisheye.
@@ -361,6 +367,8 @@ export default function App() {
 
   // NEW: Planets ephemerides (Alt/Az, diameters, etc.) – ensure array
   const planetsEphemArr = useMemo(() => {
+    // Skip all computation if planets are disabled in the TopBar
+    if (!anyPlanetSelected) return [];
     try {
       const res = getPlanetsEphemerides(date, location.lat, location.lng);
       return Array.isArray(res)
@@ -369,7 +377,7 @@ export default function App() {
     } catch {
       return [];
     }
-  }, [date, location.lat, location.lng]);
+  }, [anyPlanetSelected, date, location.lat, location.lng]);
 
   // NEW: Atmosphere gradient colors from Sun altitude
   const atmosphereGradient = useMemo(() => {
@@ -472,30 +480,106 @@ export default function App() {
     return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
   }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.moon, projectionMode]);
 
-  // Orientation & phase
-  const rotationToHorizonDegMoon = useMemo(() => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat), [astro.moon, location.lat]);
-  const rotationToHorizonDegSun = useMemo(() => -parallacticAngleDeg(astro.sun.az, astro.sun.alt, location.lat), [astro.sun, location.lat]);
+  // NEW: Per-planet render info (screen position, size px, phase fraction, angle to Sun)
+  const planetsRender = useMemo(() => {
+    if (!planetsEphemArr?.length) return [];
+    const items: {
+      id: string;
+      x: number; y: number;
+      visibleX?: boolean; visibleY?: boolean;
+      sizePx: number;
+      color: string;
+      phaseFrac: number;           // [0..1], defaults to 1 (full) if unknown
+      angleToSunDeg: number;       // screen-space angle planet->sun (deg)
+      mode: 'dot' | 'sprite';
+    }[] = [];
 
-  // Compute Sun direction on Moon once, reuse both bearing and declination
+    for (const p of planetsEphemArr) {
+      const id = (p as any).id as string;
+      if (!id || !showPlanets[id]) continue;
+
+      const alt = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
+      const az = ((p as any).azDeg ?? (p as any).az) as number | undefined;
+      if (alt == null || az == null) continue;
+
+      const reg = PLANET_REGISTRY[id];
+      if (!reg) continue;
+
+      // Project to screen
+      const s = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      const screen = { x: viewport.x + s.x, y: viewport.y + s.y, visibleX: s.visibleX, visibleY: s.visibleY };
+
+      // Local px/deg
+      const pxPerDegX = s.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
+      const pxPerDegY = s.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
+      const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
+
+      // Apparent diameter (deg) from multiple possible keys
+      const appDiamDeg =
+        (p as any).appDiamDeg ??
+        (((p as any).appDiamArcsec ?? (p as any).diamArcsec ?? (p as any).angDiameterArcsec) != null
+          ? ((p as any).appDiamArcsec ?? (p as any).diamArcsec ?? (p as any).angDiameterArcsec) / 3600
+          : 0);
+
+      // Size in px (or fallback)
+      let sizePx = enlargeObjects ? MOON_RENDER_DIAMETER : (Number(appDiamDeg) > 0 ? appDiamDeg * pxPerDeg : 0);
+      const hasValidSize = Number.isFinite(sizePx) && sizePx > 0;
+      if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
+
+      const mode: 'dot' | 'sprite' = !hasValidSize || sizePx < PLANET_DOT_MIN_PX ? 'dot' : 'sprite';
+
+      // Phase fraction best-effort (default full)
+      const phaseFrac =
+        (p as any).phaseFraction ??
+        (p as any).illumFraction ??
+        (p as any).illum ??
+        (p as any).k ??
+        1;
+
+      // Screen-space angle from planet to Sun
+      const dx = (sunScreen?.x ?? screen.x) - screen.x;
+      const dy = (sunScreen?.y ?? screen.y) - screen.y;
+      const angleToSunDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+
+      items.push({
+        id,
+        x: screen.x, y: screen.y,
+        visibleX: screen.visibleX, visibleY: screen.visibleY,
+        sizePx,
+        color: reg.color,
+        phaseFrac: clamp(Number.isFinite(phaseFrac) ? phaseFrac : 1, 0, 1),
+        angleToSunDeg,
+        mode,
+      });
+    }
+    return items;
+  }, [
+    planetsEphemArr, showPlanets,
+    refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode,
+    enlargeObjects, sunScreen.x, sunScreen.y
+  ]);
+
+  // ADD: orientation & phase dependencies used by sprites/telemetry
+  const rotationToHorizonDegMoon = useMemo(
+    () => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat),
+    [astro.moon, location.lat]
+  );
+  const rotationToHorizonDegSun = useMemo(
+    () => -parallacticAngleDeg(astro.sun.az, astro.sun.alt, location.lat),
+    [astro.sun, location.lat]
+  );
   const sunOnMoonInfo = useMemo(() => sunOnMoon(date), [date]);
-
-  // Angle du limbe éclairé
   const brightLimbAngleDeg = useMemo(() => sunOnMoonInfo.bearingDeg, [sunOnMoonInfo]);
-
-  // New: Sun declination relative to the lunar equator (deg, signed)
   const sunDeclinationDeg = useMemo(() => sunOnMoonInfo.declinationDeg, [sunOnMoonInfo]);
-
-  // Auto-polarity to ensure lit side points toward the Sun
   const maskAngleBase = useMemo(() => norm360(brightLimbAngleDeg - 90), [brightLimbAngleDeg]);
   const maskAngleDeg = useMemo(() => {
     const litVecAngle = norm360(maskAngleBase + 90);
     let d = norm360(litVecAngle - brightLimbAngleDeg); if (d > 180) d = 360 - d;
     return d > 90 ? norm360(maskAngleBase + 180) : maskAngleBase;
   }, [maskAngleBase, brightLimbAngleDeg]);
+  const phaseFraction = astro.illum.fraction ?? 0;
 
-  const phaseFraction = astro.illum.fraction ?? 0; // [0..1]
-
-  // Diagnostic d’éclipse locale
+  // ADD: eclipse info used by BottomTelemetry
   const eclipse = useMemo(() => {
     const sep = sepDeg(astro.sun.alt, astro.sun.az, astro.moon.alt, astro.moon.az);
     const rS = (astro.sun.appDiamDeg ?? 0) / 2;
@@ -504,32 +588,23 @@ export default function App() {
     return { sep, rS, rM, kind } as const;
   }, [astro.sun, astro.moon]);
 
-  // Phase/mask geometry désormais gérée par MoonSprite
+  // ADD: Horizon flat Y (used by Markers baseline)
+  const horizonYFlat = useMemo(
+    () => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y,
+    [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]
+  );
 
-  // Horizon & helper lines
-  // REMOVE top/bottom line Y-only approach for overlay (now computed in HorizonOverlay)
-  // Keep horizonY for other components (markers) that still use a flat baseline.
-  // const topLineY = useMemo(() => viewport.y + projectToScreen(refAz, 90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-  // const bottomLineY = useMemo(() => viewport.y + projectToScreen(refAz, -90, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-  const horizonY = useMemo(() => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-
-  // Markers on horizon for bodies
+  // ADD: Simple horizon markers (Moon only by default)
   const horizonMarkers = useMemo(() => {
     const items: { x: number; label: string; color: string }[] = [];
-    if (showSun) {
-      // const { x, visibleX } = projectToScreen(astro.sun.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      //if (visibleX) items.push({ x: viewport.x + x, label: "Soleil", color: "#f59e0b" });
-    }
     if (showMoon) {
       const { x, visibleX } = projectToScreen(astro.moon.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (visibleX) items.push({ x: viewport.x + x, label: "Lune", color: "#93c5fd" });
     }
     return items;
-  }, [showSun, showMoon, astro, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
+  }, [showMoon, astro.moon.az, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  
-
-  // Visible cardinal points on horizon (global N/E/S/O)
+  // ADD: 4 main cardinals visible on horizon
   const visibleCardinals = useMemo(() => {
     const base = [
       { label: 'N' as const, az: 0 },
@@ -537,8 +612,6 @@ export default function App() {
       { label: 'S' as const, az: 180 },
       { label: 'O' as const, az: 270 },
     ];
-
-    // Project and keep only those horizontally visible
     const projected = base
       .map(c => {
         const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
@@ -548,7 +621,6 @@ export default function App() {
       })
       .filter(c => c.visible);
 
-    // Deduplicate columns that collapse to the same column
     const EPS = 1;
     const dedup: typeof projected = [];
     for (const it of projected) {
@@ -559,13 +631,13 @@ export default function App() {
 
     return dedup
       .sort((a, b) => a.x - b.x)
-      .map(({ label, az, x }) => ({ label, az, x })); // removed .visible
+      .map(({ label, az, x }) => ({ label, az, x }));
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  // 16-wind secondary markers
+  // ADD: 16-wind secondary markers
   const visibleSecondaryCardinals = useMemo(() => {
     const primaries = new Set(['N', 'E', 'S', 'O']);
-    const items = [];
+    const items: { label: string; az: number; x: number; delta: number }[] = [];
     for (let i = 0; i < 16; i++) {
       const az = i * 22.5;
       const label = compass16(az);
@@ -586,12 +658,7 @@ export default function App() {
     return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  // Horizon Y at viewport center (still used elsewhere)
-  const horizonYFlat = useMemo(
-    () => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y,
-    [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]
-  );
-
+  // ADD: Polaris and Southern Cross alt/az + screen positions
   const polarisAltAz = useMemo(() => {
     const LST = lstDeg(date, location.lng);
     let H = LST - POLARIS_RA_DEG;
@@ -607,8 +674,6 @@ export default function App() {
     const A = Math.atan2(sinA, cosA);
     return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
   }, [date, location.lat, location.lng]);
-
-  // NEW: Southern Cross centroid Alt/Az (from RA/Dec for current date/location)
   const cruxAltAz = useMemo(() => {
     const LST = lstDeg(date, location.lng);
     let H = LST - CRUX_CENTROID_RA_DEG;
@@ -625,20 +690,17 @@ export default function App() {
     return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
   }, [date, location.lat, location.lng]);
 
-  // Polaris screen position
   const polarisScreen = useMemo(() => {
     const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
-  }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
-
-  // Southern Cross screen position
+  }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
   const cruxScreen = useMemo(() => {
     const p = projectToScreen(cruxAltAz.azDeg, cruxAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
-  }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
+  }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  // Aggregate body horizon items with az (for CardinalMarkers)
-  const bodyHorizonItems = useMemo<BodyItem[]>(() => {
+  // ADD: horizon body items (for CardinalMarkers)
+  const bodyHorizonItems = useMemo(() => {
     const out: BodyItem[] = [];
     if (showSun) {
       const az = astro.sun.az;
@@ -650,23 +712,20 @@ export default function App() {
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Lune", color: "#93c5fd" });
     }
-    // Polaris
     {
       const az = polarisAltAz.azDeg;
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Polaris", color: POLARIS_COLOR });
     }
-    // Southern Cross
     {
       const az = cruxAltAz.azDeg;
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Croix du Sud", color: CRUX_COLOR });
     }
-    // NEW: planets on horizon
-    for (const p of planetsEphemArr) {
-      const id = (p as any).id as string;
+    for (const pl of planetsEphemArr) {
+      const id = (pl as any).id as string;
       if (!showPlanets[id]) continue;
-      const az = ((p as any).azDeg ?? (p as any).az) as number;
+      const az = ((pl as any).azDeg ?? (pl as any).az) as number;
       const reg = PLANET_REGISTRY[id];
       if (az == null || !reg) continue;
       const pr = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
@@ -681,43 +740,41 @@ export default function App() {
     refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode
   ]);
 
-  // NEW: planets screen markers (for Markers overlay)
+  // ADD: planets screen markers for Markers overlay
   const planetMarkers = useMemo(() => {
-    const items: { screen: { x: number; y: number; visibleX?: boolean; visibleY?: boolean }; label: string; color: string }[] = [];
-    for (const p of planetsEphemArr) {
-      const id = (p as any).id as string;
-      if (!id || !showPlanets[id]) continue;
-      const alt = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
-      const az = ((p as any).azDeg ?? (p as any).az) as number | undefined;
-      if (alt == null || az == null) continue;
-      const reg = PLANET_REGISTRY[id];
-      if (!reg) continue;
-      const s = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      items.push({
-        screen: { ...s, x: viewport.x + s.x, y: viewport.y + s.y },
-        label: reg.label,
-        color: reg.color,
-      });
-    }
-    return items;
-  }, [planetsEphemArr, showPlanets, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
+    // Use planetsRender so sizePx matches the on-screen rendered size
+    return planetsRender.map(pr => {
+      const S = Math.max(1, Math.round(pr.sizePx));
+      const reg = PLANET_REGISTRY[pr.id];
+      return {
+        screen: { x: pr.x, y: pr.y, visibleX: pr.visibleX, visibleY: pr.visibleY },
+        label: reg?.label ?? pr.id,
+        color: reg?.color ?? pr.color,
+        size: { w: S, h: S },
+      };
+    });
+  }, [planetsRender]);
 
-  // Animation loop
+  // --- Animation Loop (RESTORED) ---------------------------------------------------
+  // Animation loop (restore)
   useEffect(() => {
     if (!isAnimating) {
       if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null; lastTsRef.current = null; 
+      rafIdRef.current = null;
+      lastTsRef.current = null;
       runningRef.current = false;
       return;
     }
-    // Ne pas réinitialiser whenMsRef ici, on continue depuis la valeur courante
+    // Continue from current whenMsRef (do not reset here)
     lastTsRef.current = null;
     runningRef.current = true;
     const tick = (ts: number) => {
       if (!runningRef.current) return;
-      if (lastTsRef.current == null) { lastTsRef.current = ts; }
-      else {
-        const dtSec = (ts - lastTsRef.current) / 1000; lastTsRef.current = ts;
+      if (lastTsRef.current == null) {
+        lastTsRef.current = ts;
+      } else {
+        const dtSec = (ts - lastTsRef.current) / 1000;
+        lastTsRef.current = ts;
         const rate = clamp(speedMinPerSec, -360, 360);
         whenMsRef.current += dtSec * rate * 60 * 1000;
         setWhenMs(whenMsRef.current);
@@ -725,11 +782,11 @@ export default function App() {
       if (runningRef.current) rafIdRef.current = requestAnimationFrame(tick);
     };
     rafIdRef.current = requestAnimationFrame(tick);
-    return () => { 
+    return () => {
       runningRef.current = false;
-      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current); 
-      rafIdRef.current = null; 
-      lastTsRef.current = null; 
+      if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+      lastTsRef.current = null;
     };
   }, [isAnimating, speedMinPerSec]);
 
@@ -1152,7 +1209,63 @@ export default function App() {
               </div>
             )}
 
-             {/* Markers (horizon ticks, body extents, labels, Polaris/Crux) */}
+            {/* NEW: Planets rendering (dot or sprite) */}
+            {planetsRender.map(p => {
+              if (!(p.visibleX && p.visibleY)) return null;
+              if (p.mode === 'dot') {
+                return (
+                  <div
+                    key={p.id}
+                    className="absolute"
+                    style={{
+                      zIndex: Z.horizon - 2,
+                      left: p.x - 2,
+                      top: p.y - 2,
+                      width: 4,
+                      height: 4,
+                      borderRadius: '9999px',
+                      background: p.color,
+                      pointerEvents: 'none',
+                    }}
+                  />
+                );
+              }
+              // Sprite: colored disc + dark overlay rotated toward anti-solar direction.
+              const S = Math.max(1, Math.round(p.sizePx));
+              const darkFrac = clamp(1 - p.phaseFrac, 0, 1);
+              const stop = Math.round(darkFrac * 100); // % of dark side coverage (straight-edge approx)
+              return (
+                <div
+                  key={p.id}
+                  className="absolute"
+                  style={{
+                    zIndex: Z.horizon - 2,
+                    left: p.x - S / 2,
+                    top: p.y - S / 2,
+                    width: S,
+                    height: S,
+                    borderRadius: '9999px',
+                    background: p.color,
+                    boxShadow: '0 0 4px rgba(0,0,0,0.4) inset, 0 0 6px rgba(0,0,0,0.3)',
+                    pointerEvents: 'none',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      borderRadius: '9999px',
+                      transform: `rotate(${p.angleToSunDeg}deg)`,
+                      // Black-to-transparent mask, rotated so transparent side faces the Sun
+                      background: `linear-gradient(90deg, rgba(0,0,0,0.9) ${stop}%, rgba(0,0,0,0) ${stop}%)`,
+                    }}
+                  />
+                </div>
+              );
+            })}
+
+            {/* Markers (horizon ticks, body extents, labels, Polaris/Crux) */}
             <Markers
               showMarkers={showMarkers}
               showStars={showStars}
@@ -1253,9 +1366,10 @@ export default function App() {
               // New: pass selected city name for label
               cityName={cityName}
               // NEW: pass projection mode
+             
               projectionMode={projectionMode}
               setProjectionMode={setProjectionMode}
-              // NEW: pass planets toggles
+              // NEW: planets toggles
               showPlanets={showPlanets}
               setShowPlanets={setShowPlanets}
             />
