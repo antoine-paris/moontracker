@@ -508,6 +508,8 @@ export default function App() {
       phaseFrac: number;
       angleToSunDeg: number;
       mode: 'dot' | 'sprite';
+      // NEW: carry topocentric distance for sorting and z-index logic
+      distAU: number;
     }[] = [];
 
     for (const p of planetsEphemArr) {
@@ -561,6 +563,9 @@ export default function App() {
       const dy = (sunScreen?.y ?? screen.y) - screen.y;
       const angleToSunDeg = Math.atan2(dy, dx) * 180 / Math.PI;
 
+      // NEW: planet distance (AU) for ordering and z-index
+      const distAU = Number.isFinite((p as any).distAU) ? Number((p as any).distAU) : Number.POSITIVE_INFINITY;
+
       items.push({
         id,
         x: screen.x, y: screen.y,
@@ -570,8 +575,11 @@ export default function App() {
         phaseFrac: clamp(Number.isFinite(phaseFrac) ? phaseFrac : 1, 0, 1),
         angleToSunDeg,
         mode,
+        distAU,
       });
     }
+    // NEW: sort planets so far objects are painted first, near last (near on top)
+    items.sort((a, b) => b.distAU - a.distAU);
     return items;
   }, [
     planetsEphemArr, showPlanets,
@@ -1234,13 +1242,21 @@ export default function App() {
             {/* NEW: Planets rendering (dot or sprite) */}
             {planetsRender.map(p => {
               if (!(p.visibleX && p.visibleY)) return null;
+
+              // NEW: dynamic z-index vs Sun (farther-than-Sun => behind Sun)
+              const isFartherThanSun =
+                Number.isFinite(astro.sun.distAU) && Number.isFinite(p.distAU)
+                  ? (p.distAU as number) > (astro.sun.distAU as number)
+                  : true;
+              const z = isFartherThanSun ? Z.horizon - 3 : Z.horizon - 2;
+
               if (p.mode === 'dot') {
                 return (
                   <div
                     key={p.id}
                     className="absolute"
                     style={{
-                      zIndex: Z.horizon - 2,
+                      zIndex: z,
                       left: p.x - 2,
                       top: p.y - 2,
                       width: 4,
@@ -1255,13 +1271,13 @@ export default function App() {
               // Sprite: colored disc + dark overlay rotated toward anti-solar direction.
               const S = Math.max(1, Math.round(p.sizePx));
               const darkFrac = clamp(1 - p.phaseFrac, 0, 1);
-              const stop = Math.round(darkFrac * 100); // % of dark side coverage (straight-edge approx)
+              const stop = Math.round(darkFrac * 100);
               return (
                 <div
                   key={p.id}
                   className="absolute"
                   style={{
-                    zIndex: Z.horizon - 2,
+                    zIndex: z,
                     left: p.x - S / 2,
                     top: p.y - S / 2,
                     width: S,
@@ -1279,7 +1295,6 @@ export default function App() {
                       inset: 0,
                       borderRadius: '9999px',
                       transform: `rotate(${p.angleToSunDeg}deg)`,
-                      // Black-to-transparent mask, rotated so transparent side faces the Sun
                       background: `linear-gradient(90deg, rgba(0,0,0,0.9) ${stop}%, rgba(0,0,0,0) ${stop}%)`,
                     }}
                   />
