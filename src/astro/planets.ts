@@ -27,13 +27,13 @@ export function getPlanetsEphemerides(
   // ...existing code...
   // Placeholder so the project compiles; replace with real ephemerides.
   const base: PlanetsEphemerides = {
-    Mercury: { id: 'Mercury', az: 0, alt: -90, appDiamDeg: 0 },
-    Venus:   { id: 'Venus',   az: 0, alt: -90, appDiamDeg: 0 },
-    Mars:    { id: 'Mars',    az: 0, alt: -90, appDiamDeg: 0 },
-    Jupiter: { id: 'Jupiter', az: 0, alt: -90, appDiamDeg: 0 },
-    Saturn:  { id: 'Saturn',  az: 0, alt: -90, appDiamDeg: 0 },
-    Uranus:  { id: 'Uranus',  az: 0, alt: -90, appDiamDeg: 0 },
-    Neptune: { id: 'Neptune', az: 0, alt: -90, appDiamDeg: 0 },
+    Mercury: { id: 'Mercury', az: 10, alt: 10, appDiamDeg: 0 },
+    Venus:   { id: 'Venus',   az: 15, alt: 15, appDiamDeg: 0 },
+    Mars:    { id: 'Mars',    az: 20, alt: 20, appDiamDeg: 0 },
+    Jupiter: { id: 'Jupiter', az: 25, alt: 25, appDiamDeg: 0 },
+    Saturn:  { id: 'Saturn',  az: 30, alt: 30, appDiamDeg: 0 },
+    Uranus:  { id: 'Uranus',  az: 35, alt: 35, appDiamDeg: 0 },
+    Neptune: { id: 'Neptune', az: 40, alt: 40, appDiamDeg: 0 },
   };
   return base;
 }

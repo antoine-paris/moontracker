@@ -631,16 +631,10 @@ export default function App() {
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
   }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
-  // Polaris horizon X
-  const polarisHorizon = useMemo(() => {
-    const p = projectToScreen(polarisAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    return { ...p, x: viewport.x + p.x };
-  }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
-
-  // NEW: Southern Cross horizon X from centroid azimuth
-  const cruxHorizon = useMemo(() => {
-    const p = projectToScreen(cruxAltAz.azDeg, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    return { ...p, x: viewport.x + p.x };
+  // Southern Cross screen position
+  const cruxScreen = useMemo(() => {
+    const p = projectToScreen(cruxAltAz.azDeg, cruxAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
   }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg]);
 
   // Aggregate body horizon items with az (for CardinalMarkers)
@@ -686,6 +680,27 @@ export default function App() {
     planetsEphemArr, showPlanets,
     refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode
   ]);
+
+  // NEW: planets screen markers (for Markers overlay)
+  const planetMarkers = useMemo(() => {
+    const items: { screen: { x: number; y: number; visibleX?: boolean; visibleY?: boolean }; label: string; color: string }[] = [];
+    for (const p of planetsEphemArr) {
+      const id = (p as any).id as string;
+      if (!id || !showPlanets[id]) continue;
+      const alt = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
+      const az = ((p as any).azDeg ?? (p as any).az) as number | undefined;
+      if (alt == null || az == null) continue;
+      const reg = PLANET_REGISTRY[id];
+      if (!reg) continue;
+      const s = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+      items.push({
+        screen: { ...s, x: viewport.x + s.x, y: viewport.y + s.y },
+        label: reg.label,
+        color: reg.color,
+      });
+    }
+    return items;
+  }, [planetsEphemArr, showPlanets, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
   // Animation loop
   useEffect(() => {
@@ -1144,8 +1159,8 @@ export default function App() {
               zIndexHorizon={Z.horizon}
               horizonY={horizonYFlat}
               horizonMarkers={horizonMarkers}
-              polarisHorizon={polarisHorizon}
-              cruxHorizon={cruxHorizon}
+              //polarisHorizon={polarisHorizon}
+              //cruxHorizon={cruxHorizon}
               showSun={showSun}
               sunScreen={sunScreen}
               sunSize={{ w: bodySizes.sun.w, h: bodySizes.sun.h }}
@@ -1157,6 +1172,8 @@ export default function App() {
               moonColor="#93c5fd"
               polarisColor={POLARIS_COLOR}
               cruxColor={CRUX_COLOR}
+              // NEW: planets markers
+              planets={planetMarkers}
             />
           </div>
 
