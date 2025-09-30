@@ -136,10 +136,16 @@ export default function App() {
     }
   );
 
+  // IDs actually selected in the TopBar
+  const selectedPlanetIds = useMemo(
+    () => Object.entries(showPlanets).filter(([, v]) => v).map(([id]) => id),
+    [showPlanets]
+  );
+
   // NEW: compute ephemerides only if at least one planet is selected in the TopBar
   const anyPlanetSelected = useMemo(
-    () => Object.values(showPlanets).some(Boolean),
-    [showPlanets]
+    () => selectedPlanetIds.length > 0,
+    [selectedPlanetIds]
   );
 
   // NEW: Projection mode (Step 1 - selection only)
@@ -370,14 +376,24 @@ export default function App() {
     // Skip all computation if planets are disabled in the TopBar
     if (!anyPlanetSelected) return [];
     try {
-      const res = getPlanetsEphemerides(date, location.lat, location.lng);
-      return Array.isArray(res)
+      // Compute only selected planets
+      const res = getPlanetsEphemerides(
+        date,
+        location.lat,
+        location.lng,
+        0,
+        undefined,
+        selectedPlanetIds as any // PlanetId[]
+      );
+      const arr = Array.isArray(res)
         ? res
         : (res && typeof res === 'object' ? Object.values(res as any) : []);
+      // Already limited to selected; keep filter as a safeguard
+      return arr.filter((p: any) => selectedPlanetIds.includes(p?.id));
     } catch {
       return [];
     }
-  }, [anyPlanetSelected, date, location.lat, location.lng]);
+  }, [anyPlanetSelected, date, location.lat, location.lng, selectedPlanetIds]);
 
   // NEW: Atmosphere gradient colors from Sun altitude
   const atmosphereGradient = useMemo(() => {
@@ -489,18 +505,25 @@ export default function App() {
       visibleX?: boolean; visibleY?: boolean;
       sizePx: number;
       color: string;
-      phaseFrac: number;           // [0..1], defaults to 1 (full) if unknown
-      angleToSunDeg: number;       // screen-space angle planet->sun (deg)
+      phaseFrac: number;
+      angleToSunDeg: number;
       mode: 'dot' | 'sprite';
     }[] = [];
 
     for (const p of planetsEphemArr) {
       const id = (p as any).id as string;
+      // Per-safety: skip if somehow not selected
       if (!id || !showPlanets[id]) continue;
 
       const alt = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
       const az = ((p as any).azDeg ?? (p as any).az) as number | undefined;
       if (alt == null || az == null) continue;
+
+      // Cheap pre-cull in angular space to avoid projection when far outside FOV
+      const dAz = Math.abs(angularDiff(az, refAz));
+      const dAlt = Math.abs(alt - refAlt);
+      const margin = 5; // degrees
+      if (dAz > fovXDeg / 2 + margin || dAlt > fovYDeg / 2 + margin) continue;
 
       const reg = PLANET_REGISTRY[id];
       if (!reg) continue;
@@ -514,21 +537,19 @@ export default function App() {
       const pxPerDegY = s.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
       const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
 
-      // Apparent diameter (deg) from multiple possible keys
+      // Apparent diameter (deg)
       const appDiamDeg =
         (p as any).appDiamDeg ??
         (((p as any).appDiamArcsec ?? (p as any).diamArcsec ?? (p as any).angDiameterArcsec) != null
           ? ((p as any).appDiamArcsec ?? (p as any).diamArcsec ?? (p as any).angDiameterArcsec) / 3600
           : 0);
 
-      // Size in px (or fallback)
       let sizePx = enlargeObjects ? MOON_RENDER_DIAMETER : (Number(appDiamDeg) > 0 ? appDiamDeg * pxPerDeg : 0);
       const hasValidSize = Number.isFinite(sizePx) && sizePx > 0;
       if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
 
       const mode: 'dot' | 'sprite' = !hasValidSize || sizePx < PLANET_DOT_MIN_PX ? 'dot' : 'sprite';
 
-      // Phase fraction best-effort (default full)
       const phaseFrac =
         (p as any).phaseFraction ??
         (p as any).illumFraction ??
@@ -536,7 +557,6 @@ export default function App() {
         (p as any).k ??
         1;
 
-      // Screen-space angle from planet to Sun
       const dx = (sunScreen?.x ?? screen.x) - screen.x;
       const dy = (sunScreen?.y ?? screen.y) - screen.y;
       const angleToSunDeg = Math.atan2(dy, dx) * 180 / Math.PI;
@@ -743,16 +763,18 @@ export default function App() {
   // ADD: planets screen markers for Markers overlay
   const planetMarkers = useMemo(() => {
     // Use planetsRender so sizePx matches the on-screen rendered size
-    return planetsRender.map(pr => {
-      const S = Math.max(1, Math.round(pr.sizePx));
-      const reg = PLANET_REGISTRY[pr.id];
-      return {
-        screen: { x: pr.x, y: pr.y, visibleX: pr.visibleX, visibleY: pr.visibleY },
-        label: reg?.label ?? pr.id,
-        color: reg?.color ?? pr.color,
-        size: { w: S, h: S },
-      };
-    });
+    return planetsRender
+      .filter(pr => pr.visibleX && pr.visibleY)
+      .map(pr => {
+        const S = Math.max(1, Math.round(pr.sizePx));
+        const reg = PLANET_REGISTRY[pr.id];
+        return {
+          screen: { x: pr.x, y: pr.y, visibleX: pr.visibleX, visibleY: pr.visibleY },
+          label: reg?.label ?? pr.id,
+          color: reg?.color ?? pr.color,
+          size: { w: S, h: S },
+        };
+      });
   }, [planetsRender]);
 
   // --- Animation Loop (RESTORED) ---------------------------------------------------
@@ -1366,7 +1388,6 @@ export default function App() {
               // New: pass selected city name for label
               cityName={cityName}
               // NEW: pass projection mode
-             
               projectionMode={projectionMode}
               setProjectionMode={setProjectionMode}
               // NEW: planets toggles

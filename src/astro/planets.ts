@@ -21,8 +21,8 @@ const MEAN_RADIUS_KM: Record<PlanetId, number> = {
   Mercury: 2439.7,
   Venus:   6051.8,
   Mars:    3389.5,
-  Jupiter: 69911,    // mean radius
-  Saturn:  58232,    // mean radius
+  Jupiter: 69911,
+  Saturn:  58232,
   Uranus:  25362,
   Neptune: 24622,
 };
@@ -58,15 +58,16 @@ function apparentDiameterDeg(radiusKm: number, distanceKm: number): number {
 }
 
 /**
- * Compute all 7 planets (topocentric alt/az + apparent diameter) using astronomy-engine.
- * Accepts Date or epoch ms; elevation and timezone are optional to keep compatibility with older calls.
+ * Compute selected planets (topocentric alt/az + apparent diameter) using astronomy-engine.
+ * If includeIds is omitted/empty, computes all 7 planets (backward compatible).
  */
 export function getPlanetsEphemerides(
   when: Date | number,
   latitudeDeg: number,
   longitudeDeg: number,
   elevationM = 0,
-  _timeZone?: string
+  _timeZone?: string,
+  includeIds?: PlanetId[]
 ): PlanetsEphemerides {
   const date = typeof when === 'number' ? new Date(when) : when;
   const time = MakeTime(date);
@@ -74,7 +75,7 @@ export function getPlanetsEphemerides(
 
   // Compute Sun RA/Dec once (topocentric apparent-of-date)
   const eqSun = Equator(Body.Sun, time, obs, true, true);
-  const alphaSunDeg = eqSun.ra * 15; // hours -> degrees
+  const alphaSunDeg = eqSun.ra * 15;
   const deltaSunDeg = eqSun.dec;
 
   const mapBody: Record<PlanetId, Body> = {
@@ -89,7 +90,12 @@ export function getPlanetsEphemerides(
 
   const out = {} as PlanetsEphemerides;
 
-  (Object.keys(mapBody) as PlanetId[]).forEach((id) => {
+  const ids: PlanetId[] =
+    (includeIds && includeIds.length)
+      ? includeIds
+      : (Object.keys(mapBody) as PlanetId[]);
+
+  ids.forEach((id) => {
     const body = mapBody[id];
     // Topocentric apparent RA/Dec
     const eq = Equator(body, time, obs, true, true);
@@ -99,18 +105,27 @@ export function getPlanetsEphemerides(
     const distKm = Math.max(1e-6, eq.dist * AU_KM);
     // Apparent diameter (deg)
     const radiusKm = MEAN_RADIUS_KM[id];
-    const appDiamDeg = apparentDiameterDeg(radiusKm, distKm);
+    const appDiamDeg = 2 * Math.atan(radiusKm / Math.max(1e-6, distKm)) * (180 / Math.PI);
 
     // Phase (illumination fraction)
     const illum = Illumination(body, time);
     const phaseFraction = illum.phase_fraction;
 
-    // Bright limb position angle (deg) measured from celestial north toward east
-    const alphaPlanetDeg = eq.ra * 15; // hours -> degrees
+    // Bright limb position angle
+    const alphaPlanetDeg = eq.ra * 15;
     const deltaPlanetDeg = eq.dec;
-    const brightLimbAngleDeg = brightLimbPAdeg(alphaPlanetDeg, deltaPlanetDeg, alphaSunDeg, deltaSunDeg);
+    const brightLimbAngleDeg = (() => {
+      const R2D = 180 / Math.PI, D2R = Math.PI / 180;
+      const ap = alphaPlanetDeg * D2R, dp = deltaPlanetDeg * D2R;
+      const as = alphaSunDeg * D2R, ds = deltaSunDeg * D2R;
+      const dAlpha = as - ap;
+      const num = Math.cos(ds) * Math.sin(dAlpha);
+      const den = Math.sin(ds) * Math.cos(dp) - Math.cos(ds) * Math.sin(dp) * Math.cos(dAlpha);
+      let pa = Math.atan2(num, den) * R2D;
+      pa = ((pa % 360) + 360) % 360;
+      return pa;
+    })();
 
-    // Base result
     const base: PlanetEphemeris = {
       id,
       az: hz.azimuth,
@@ -118,7 +133,6 @@ export function getPlanetsEphemerides(
       appDiamDeg,
     };
 
-    // Only attach phase info for Mercury/Venus (others omit to keep object small)
     if (id === 'Mercury' || id === 'Venus' || id === 'Mars') {
       base.phaseFraction = phaseFraction;
       base.brightLimbAngleDeg = brightLimbAngleDeg;
