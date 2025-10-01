@@ -7,9 +7,9 @@ import type { PlanetId } from '../../astro/planets';
 import { PLANET_REGISTRY } from '../../render/planetRegistry';
 
 // Light/relief settings (match Moon3D defaults)
-const EARTHSHINE_INTENSITY_GAIN = 1.0;
-const SUNLIGHT_INTENSITY = 10.0;
-const RELIEF_SCALE_DEFAULT = 0.4;
+const EARTHSHINE_INTENSITY_GAIN = 0.0;
+const SUNLIGHT_INTENSITY = 0.2;
+const RELIEF_SCALE_DEFAULT = 0.2;
 
 // Minimal/neutral GLB calibration (models may already be oriented)
 const GLB_CALIB = {

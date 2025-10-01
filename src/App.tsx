@@ -53,6 +53,7 @@ import { PLANETS, PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "./render/planetRegi
 import { getPlanetsEphemerides } from "./astro/planets";
 import { getPlanetOrientationAngles, type PlanetId } from "./astro/planets";
 import PlanetSprite from "./components/stage/PlanetSprite";
+import Planet3D from "./components/stage/Planet3D"; 
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -66,6 +67,7 @@ const CRUX_CENTROID_DEC_DEG = -59.6625;
 // Seuils de rendu Lune (pixels)
 const MOON_DOT_PX = 5;        // < 5 px => simple point gris
 const MOON_3D_SWITCH_PX = 50; // >= 50 px => rendu 3D
+const PLANET_3D_SWITCH_PX = 100;
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -508,102 +510,92 @@ export default function App() {
       color: string;
       phaseFrac: number;
       angleToSunDeg: number;
-      mode: 'dot' | 'sprite';
-      // NEW: carry topocentric distance for sorting and z-index logic
+      mode: 'dot' | 'sprite' | '3d';
       distAU: number;
-      // NEW: on-screen corrected rotation (planet north up), like Moon/Sun
       rotationDeg: number;
+      planetAltDeg: number;
+      planetAzDeg: number;
     }[] = [];
 
     for (const p of planetsEphemArr) {
       const id = (p as any).id as string;
-      // Per-safety: skip if somehow not selected
       if (!id || !showPlanets[id]) continue;
 
+      const reg = PLANET_REGISTRY[id];
+      const color = reg?.color ?? '#9ca3af';
+
       const alt = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
-      const az = ((p as any).azDeg ?? (p as any).az) as number | undefined;
+      const az  = ((p as any).azDeg  ?? (p as any).az ) as number | undefined;
       if (alt == null || az == null) continue;
 
-      // Cheap pre-cull in angular space to avoid projection when far outside FOV
-      const dAz = Math.abs(angularDiff(az, refAz));
-      const dAlt = Math.abs(alt - refAlt);
-      const margin = 5; // degrees
-      if (dAz > fovXDeg / 2 + margin || dAlt > fovYDeg / 2 + margin) continue;
+      // Projection au centre de la planète
+      const proj = projectToScreen(
+        az, alt,
+        refAz,
+        viewport.w, viewport.h,
+        refAlt,
+        0,
+        fovXDeg, fovYDeg,
+        projectionMode
+      );
 
-      const reg = PLANET_REGISTRY[id];
-      if (!reg) continue;
+      const screen = {
+        x: viewport.x + proj.x,
+        y: viewport.y + proj.y,
+        visibleX: proj.visibleX,
+        visibleY: proj.visibleY,
+      };
 
-      // Project to screen
-      const s = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      const screen = { x: viewport.x + s.x, y: viewport.y + s.y, visibleX: s.visibleX, visibleY: s.visibleY };
-
-      // Local px/deg
-      const pxPerDegX = s.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
-      const pxPerDegY = s.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
+      // Echelle locale px/deg
+      const pxPerDegX = proj.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
+      const pxPerDegY = proj.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
       const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
 
-      // Apparent diameter (deg)
-      const appDiamDeg =
-        (p as any).appDiamDeg ??
-        (((p as any).appDiamArcsec ?? (p as any).diamArcsec ?? (p as any).angDiameterArcsec) != null
-          ? ((p as any).appDiamArcsec ?? (p as any).diamArcsec ?? (p as any).angDiameterArcsec) / 3600
-          : 0);
+      // Diamètre apparent (si fourni par l’éphéméride)
+      const appDiamDeg = Number((p as any).appDiamDeg ?? 0);
 
+      // Taille à l’écran
       let sizePx = enlargeObjects ? MOON_RENDER_DIAMETER : (Number(appDiamDeg) > 0 ? appDiamDeg * pxPerDeg : 0);
       const hasValidSize = Number.isFinite(sizePx) && sizePx > 0;
       if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
 
-      const mode: 'dot' | 'sprite' = !hasValidSize || sizePx < PLANET_DOT_MIN_PX ? 'dot' : 'sprite';
+      // Mode rendu
+      const mode: 'dot' | 'sprite' | '3d' =
+        enlargeObjects
+          ? '3d'
+          : (!hasValidSize || sizePx < PLANET_DOT_MIN_PX
+              ? 'dot'
+              : (sizePx >= PLANET_3D_SWITCH_PX ? '3d' : 'sprite'));
 
-      const phaseFrac =
-        (p as any).phaseFraction ??
-        (p as any).illumFraction ??
-        (p as any).illum ??
-        (p as any).k ??
-        1;
+      // Distance (AU) si dispo
+      const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
 
-      const dx = (sunScreen?.x ?? screen.x) - screen.x;
-      const dy = (sunScreen?.y ?? screen.y) - screen.y;
-      const angleToSunDeg = Math.atan2(dy, dx) * 180 / Math.PI;
+      // Angle de la direction du Soleil autour de la planète (0=N, 90=E)
+      const alpha = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x); // rad (0=→, 90°=↓)
+      const angleToSunDeg = norm360((alpha * 180 / Math.PI) + 90);              // 0=N, 90=E
 
-      // NEW: planet distance (AU) for ordering and z-index
-      const distAU = Number.isFinite((p as any).distAU) ? Number((p as any).distAU) : Number.POSITIVE_INFINITY;
+      // Fraction éclairée (approx) à partir de la séparation apparente
+      const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
+      const phaseFrac = clamp((1 + Math.cos((sep * Math.PI) / 180)) / 2, 0, 1);
 
-      // NEW: orientation relative to horizon, corrected for projection at planet position
-      let rotationDeg = 0;
-      try {
-        const o = getPlanetOrientationAngles(date, location.lat, location.lng, id as PlanetId);
-        const rotationToHorizonDegPlanet = o.rotationToHorizonDegPlanetNorth;
-
-        // projection-aware local vertical direction at planet (like Moon/Sun)
-        const eps = 0.01; // deg
-        const p0 = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-        const p1 = projectToScreen(az, alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-        const vx = p1.x - p0.x;
-        const vy = p1.y - p0.y; // y increases downward
-        const localUpAngleDeg = Math.atan2(vy, vx) * 180 / Math.PI; // 0=→, 90=↓, -90=↑
-
-        // Same correction formula used for Moon/Sun
-        rotationDeg = -(-rotationToHorizonDegPlanet + (-90 - localUpAngleDeg));
-      } catch {
-        rotationDeg = 0;
-      }
-      
+      // Rotation écran pour sprite (neutre ici)
+      const rotationDeg = 0;
 
       items.push({
         id,
         x: screen.x, y: screen.y,
         visibleX: screen.visibleX, visibleY: screen.visibleY,
         sizePx,
-        color: reg.color,
-        phaseFrac: clamp(Number.isFinite(phaseFrac) ? phaseFrac : 1, 0, 1),
+        color,
+        phaseFrac,
         angleToSunDeg,
         mode,
         distAU,
-        rotationDeg, // NEW
+        rotationDeg,
+        planetAltDeg: alt,
+        planetAzDeg: az,
       });
     }
-    // NEW: sort planets so far objects are painted first, near last (near on top)
     items.sort((a, b) => b.distAU - a.distAU);
     return items;
   }, [
@@ -1328,7 +1320,6 @@ export default function App() {
                     className="absolute"
                     style={{
                       zIndex: z,
-
                       left: p.x - half,
                       top: p.y - half,
                       width: S,
@@ -1341,25 +1332,55 @@ export default function App() {
                 );
               }
 
+              if (p.mode === 'sprite') {
+                return (
+                  <PlanetSprite
+                    key={p.id}
+                    x={p.x}
+                    y={p.y}
+                    visibleX={true}
+                    visibleY={true}
+                    rotationDeg={p.rotationDeg}
+                    angleToSunDeg={p.angleToSunDeg}
+                    phaseFraction={p.phaseFrac}
+                    wPx={S}
+                    hPx={S}
+                    color={p.color}
+                    debugMask={debugMask}
+                    brightLimbAngleDeg={p.angleToSunDeg}
+                    zIndex={z}
+                  />
+                );
+              }
+
+              // mode === '3d'
               return (
-                <PlanetSprite
-                  key={p.id}
-                  x={p.x}
-                  y={p.y}
-                  visibleX={true}
-                  visibleY={true}
-                  rotationDeg={p.rotationDeg}
-                  angleToSunDeg={p.angleToSunDeg}
-                  phaseFraction={p.phaseFrac}
-                  wPx={S}
-                  hPx={S}
-                  color={p.color}
-                  // Optionnel: léger halo côté nuit, identique à la Lune
-                  // ambientNight={0.12}
-                  debugMask={debugMask}
-                  brightLimbAngleDeg={p.angleToSunDeg}
-                  zIndex={z}
-                />
+                <div key={p.id} className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }}>
+                  <Planet3D
+                    id={p.id as PlanetId}
+                    x={p.x}
+                    y={p.y}
+                    wPx={S}
+                    hPx={S}
+                    planetAltDeg={p.planetAltDeg}
+                    planetAzDeg={p.planetAzDeg}
+                    sunAltDeg={astro.sun.alt}
+                    sunAzDeg={astro.sun.az}
+                    limbAngleDeg={-p.rotationDeg}
+                    debugMask={debugMask}
+                    rotOffsetDegX={rotOffsetDegX}
+                    rotOffsetDegY={rotOffsetDegY}
+                    rotOffsetDegZ={rotOffsetDegZ}
+                    camRotDegX={camRotDegX}
+                    camRotDegY={camRotDegY}
+                    camRotDegZ={camRotDegZ}
+                    showPhase={showPhase}
+                    showPlanetCard={false}
+                    illumFraction={p.phaseFrac}
+                    showSubsolarCone={false}
+                    earthshine={earthshine}
+                  />
+                </div>
               );
             })}
 
