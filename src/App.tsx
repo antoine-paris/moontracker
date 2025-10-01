@@ -47,14 +47,12 @@ import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 import Stars from "./components/stage/Stars"; // + add
 import Markers from "./components/stage/Markers";
 import DirectionalKeypad from "./components/stage/DirectionalKeypad";
-// NEW: grid overlay
 import Grid from "./components/stage/grid";
 import Athmosphere from "./components/stage/Athmosphere"; // + add
-// NEW: planets registry + ephemerides
 import { PLANETS, PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "./render/planetRegistry";
 import { getPlanetsEphemerides } from "./astro/planets";
-
 import { getPlanetOrientationAngles, type PlanetId } from "./astro/planets";
+import PlanetSprite from "./components/stage/PlanetSprite";
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -590,6 +588,7 @@ export default function App() {
       } catch {
         rotationDeg = 0;
       }
+      //rotationDeg=90;
 
       items.push({
         id,
@@ -1333,37 +1332,28 @@ export default function App() {
                   />
                 );
               }
-              // Sprite: colored disc + dark overlay rotated toward anti-solar direction.
+
+              // Sprite: remplace le rendu précédent par PlanetSprite (terminateur LUT + masques)
               const S = Math.max(1, Math.round(p.sizePx));
-              const darkFrac = clamp(1 - p.phaseFrac, 0, 1);
-              const stop = Math.round(darkFrac * 100);
               return (
-                <div
+                <PlanetSprite
                   key={p.id}
-                  className="absolute"
-                  style={{
-                    zIndex: z,
-                    left: p.x - S / 2,
-                    top: p.y - S / 2,
-                    width: S,
-                    height: S,
-                    borderRadius: '9999px',
-                    background: p.color,
-                    boxShadow: '0 0 4px rgba(0,0,0,0.4) inset, 0 0 6px rgba(0,0,0,0.3)',
-                    pointerEvents: 'none',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      position: 'absolute',
-                      inset: 0,
-                      borderRadius: '9999px',
-                      transform: `rotate(${p.angleToSunDeg}deg)`,
-                      background: `linear-gradient(90deg, rgba(0,0,0,0.9) ${stop}%, rgba(0,0,0,0) ${stop}%)`,
-                    }}
-                  />
-                </div>
+                  x={p.x}
+                  y={p.y}
+                  visibleX={p.visibleX}
+                  visibleY={p.visibleY}
+                  rotationDeg={p.rotationDeg}
+                  angleToSunDeg={p.angleToSunDeg}
+                  phaseFraction={p.phaseFrac}
+                  wPx={S}
+                  hPx={S}
+                  color={p.color}
+                  // Optionnel: léger halo côté nuit, identique à la Lune
+                  // ambientNight={0.12}
+                  debugMask={debugMask}
+                  brightLimbAngleDeg={p.angleToSunDeg}
+                  zIndex={z}
+                />
               );
             })}
 
