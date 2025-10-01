@@ -594,13 +594,44 @@ export default function App() {
   );
   const rotationToHorizonDegMoon = moonOrientation.rotationToHorizonDegMoonNorth;
 
- 
+  // NEW: projection-aware local vertical angle (screen) at Moon
+  const localUpAngleMoonDeg = useMemo(() => {
+    const eps = 0.01; // deg
+    const p0 = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const p1 = projectToScreen(astro.moon.az, astro.moon.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const vx = p1.x - p0.x;
+    const vy = p1.y - p0.y; // y écran vers le bas
+    return Math.atan2(vy, vx) * 180 / Math.PI; // 0=→, 90=↓, -90=↑
+  }, [astro.moon.az, astro.moon.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+
+  // NEW: corrected on-screen rotation for Moon (align local vertical with screen vertical)
+  const rotationDegMoonScreen = useMemo(
+    () => -(-rotationToHorizonDegMoon + (-90 - localUpAngleMoonDeg)),
+    [rotationToHorizonDegMoon, localUpAngleMoonDeg]
+  );
+
   const sunOrientation = useMemo(
     () => getSunOrientationAngles(date, location.lat, location.lng),
     [date, location.lat, location.lng]
   );
   
   const rotationToHorizonDegSun = sunOrientation.rotationToHorizonDegSolarNorth;
+
+  // NEW: projection-aware local vertical angle (screen) at Sun
+  const localUpAngleSunDeg = useMemo(() => {
+    const eps = 0.01;
+    const p0 = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const p1 = projectToScreen(astro.sun.az, astro.sun.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const vx = p1.x - p0.x;
+    const vy = p1.y - p0.y;
+    return Math.atan2(vy, vx) * 180 / Math.PI;
+  }, [astro.sun.az, astro.sun.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+
+  // NEW: corrected on-screen rotation for Sun
+  const rotationDegSunScreen = useMemo(
+    () => -(-rotationToHorizonDegSun + (-90 - localUpAngleSunDeg)),
+    [rotationToHorizonDegSun, localUpAngleSunDeg]
+  );
 
   const sunOnMoonInfo = useMemo(() => sunOnMoon(date), [date]);
   const brightLimbAngleDeg = useMemo(() => sunOnMoonInfo.bearingDeg, [sunOnMoonInfo]);
@@ -1174,7 +1205,7 @@ export default function App() {
                   y={sunScreen.y}
                   visibleX={sunScreen.visibleX}
                   visibleY={sunScreen.visibleY}
-                  rotationDeg={rotationToHorizonDegSun}
+                  rotationDeg={rotationDegSunScreen}
                   showCard={showSunCard}
                   wPx={bodySizes.sun.w}
                   hPx={bodySizes.sun.h}
@@ -1204,7 +1235,7 @@ export default function App() {
                 <MoonSprite
                   x={moonScreen.x} y={moonScreen.y}
                   visibleX={moonScreen.visibleX} visibleY={moonScreen.visibleY}
-                  rotationDeg={rotationToHorizonDegMoon}
+                  rotationDeg={rotationDegMoonScreen}
                   showPhase={showPhase}
                   earthshine={earthshine}
                   debugMask={debugMask}
@@ -1229,7 +1260,7 @@ export default function App() {
                   moonAzDeg={astro.moon.az}
                   sunAltDeg={astro.sun.alt}
                   sunAzDeg={astro.sun.az}
-                  limbAngleDeg={rotationToHorizonDegMoon * -1}
+                  limbAngleDeg={rotationDegMoonScreen * -1}
                   librationTopo={astro.moon.librationTopo}
                   debugMask={debugMask}
                   rotOffsetDegX={rotOffsetDegX}
