@@ -54,6 +54,8 @@ import Athmosphere from "./components/stage/Athmosphere"; // + add
 import { PLANETS, PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "./render/planetRegistry";
 import { getPlanetsEphemerides } from "./astro/planets";
 
+import { getPlanetOrientationAngles, type PlanetId } from "./astro/planets";
+
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
 const POLARIS_RA_DEG = 37.952917;
@@ -511,6 +513,8 @@ export default function App() {
       mode: 'dot' | 'sprite';
       // NEW: carry topocentric distance for sorting and z-index logic
       distAU: number;
+      // NEW: on-screen corrected rotation (planet north up), like Moon/Sun
+      rotationDeg: number;
     }[] = [];
 
     for (const p of planetsEphemArr) {
@@ -567,6 +571,26 @@ export default function App() {
       // NEW: planet distance (AU) for ordering and z-index
       const distAU = Number.isFinite((p as any).distAU) ? Number((p as any).distAU) : Number.POSITIVE_INFINITY;
 
+      // NEW: orientation relative to horizon, corrected for projection at planet position
+      let rotationDeg = 0;
+      try {
+        const o = getPlanetOrientationAngles(date, location.lat, location.lng, id as PlanetId);
+        const rotationToHorizonDegPlanet = o.rotationToHorizonDegPlanetNorth;
+
+        // projection-aware local vertical direction at planet (like Moon/Sun)
+        const eps = 0.01; // deg
+        const p0 = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+        const p1 = projectToScreen(az, alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+        const vx = p1.x - p0.x;
+        const vy = p1.y - p0.y; // y increases downward
+        const localUpAngleDeg = Math.atan2(vy, vx) * 180 / Math.PI; // 0=→, 90=↓, -90=↑
+
+        // Same correction formula used for Moon/Sun
+        rotationDeg = -(-rotationToHorizonDegPlanet + (-90 - localUpAngleDeg));
+      } catch {
+        rotationDeg = 0;
+      }
+
       items.push({
         id,
         x: screen.x, y: screen.y,
@@ -577,6 +601,7 @@ export default function App() {
         angleToSunDeg,
         mode,
         distAU,
+        rotationDeg, // NEW
       });
     }
     // NEW: sort planets so far objects are painted first, near last (near on top)
@@ -585,7 +610,8 @@ export default function App() {
   }, [
     planetsEphemArr, showPlanets,
     refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode,
-    enlargeObjects, sunScreen.x, sunScreen.y
+    enlargeObjects, sunScreen.x, sunScreen.y,
+    date, location.lat, location.lng
   ]);
 
   const moonOrientation = useMemo(
