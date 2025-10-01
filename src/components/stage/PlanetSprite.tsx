@@ -52,7 +52,7 @@ export default function PlanetSprite({
   brightLimbAngleDeg,
   zIndex = Z.horizon - 2,
 }: Props) {
-  if (!visibleX || !visibleY) return null;
+  // Do not cull here; parent handles partial on-screen culling.
 
   const R_SVG = 312;
 

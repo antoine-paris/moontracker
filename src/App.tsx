@@ -588,7 +588,7 @@ export default function App() {
       } catch {
         rotationDeg = 0;
       }
-      //rotationDeg=90;
+      
 
       items.push({
         id,
@@ -1305,7 +1305,14 @@ export default function App() {
 
             {/* NEW: Planets rendering (dot or sprite) */}
             {planetsRender.map(p => {
-              if (!(p.visibleX && p.visibleY)) return null;
+              const S = Math.max(1, Math.round(p.sizePx));
+              const half = S / 2;
+              const offscreen =
+                p.x + half < viewport.x ||
+                p.x - half > viewport.x + viewport.w ||
+                p.y + half < viewport.y ||
+                p.y - half > viewport.y + viewport.h;
+              if (offscreen) return null;
 
               // NEW: dynamic z-index vs Sun (farther-than-Sun => behind Sun)
               const isFartherThanSun =
@@ -1321,10 +1328,11 @@ export default function App() {
                     className="absolute"
                     style={{
                       zIndex: z,
-                      left: p.x - 2,
-                      top: p.y - 2,
-                      width: 4,
-                      height: 4,
+
+                      left: p.x - half,
+                      top: p.y - half,
+                      width: S,
+                      height: S,
                       borderRadius: '9999px',
                       background: p.color,
                       pointerEvents: 'none',
@@ -1333,15 +1341,13 @@ export default function App() {
                 );
               }
 
-              // Sprite: remplace le rendu précédent par PlanetSprite (terminateur LUT + masques)
-              const S = Math.max(1, Math.round(p.sizePx));
               return (
                 <PlanetSprite
                   key={p.id}
                   x={p.x}
                   y={p.y}
-                  visibleX={p.visibleX}
-                  visibleY={p.visibleY}
+                  visibleX={true}
+                  visibleY={true}
                   rotationDeg={p.rotationDeg}
                   angleToSunDeg={p.angleToSunDeg}
                   phaseFraction={p.phaseFrac}
