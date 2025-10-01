@@ -129,7 +129,6 @@ export function getMoonIllumination(date: Date): MoonIllum {
   return { fraction: ill.phase_fraction, phase: phaseCycle, angleDeg: phaseAngle };
 }
 
-
 // Libration lunaire: latitude/longitude de libration et angle de position de l’axe (Meeus)
 export function getMoonLibration(date: Date, obs?: { lat: number; lng: number }): MoonLibration {
   const time = MakeTime(date);
@@ -265,6 +264,207 @@ function matVec(A: number[][], v: {x:number;y:number;z:number}) {
     y: A[1][0]*v.x + A[1][1]*v.y + A[1][2]*v.z,
     z: A[2][0]*v.x + A[2][1]*v.y + A[2][2]*v.z,
   };
+}
+
+// +++ added: parallactic angle from alt/az (deg)
+// Angle between celestial north and the local vertical (toward zenith), positive toward east.
+export function parallacticAngleFromAltAz(azDeg: number, altDeg: number, latitudeDeg: number): number {
+  const A = azDeg * D2R;     // azimuth: 0=N, 90=E
+  const a = altDeg * D2R;    // altitude
+  const phi = latitudeDeg * D2R;
+
+  const num = Math.sin(A);
+  const den = Math.tan(phi) * Math.cos(a) - Math.sin(a) * Math.cos(A);
+  let q = Math.atan2(num, den) * R2D; // [-180,180]
+  if (q > 180) q -= 360;
+  if (q <= -180) q += 360;
+  return q;
+}
+// +++ end added
+
+// Internal: tilt of the ecliptic vs horizon given Sun RA/Dec and parallactic angle q (deg).
+function eclipticTiltFromEqAndQ(raDeg: number, decDeg: number, qDeg: number, date: Date): number {
+  // Obliquity (of-date): mean is sufficient for a visual overlay
+  const T = julianCenturiesTT(date);
+  const eps = meanObliquityDeg(T) * D2R;
+
+  // Sun unit vector in equatorial frame
+  const alpha = raDeg * D2R;
+  const delta = decDeg * D2R;
+  const r = {
+    x: Math.cos(delta) * Math.cos(alpha),
+    y: Math.cos(delta) * Math.sin(alpha),
+    z: Math.sin(delta),
+  };
+
+  // North ecliptic pole (equatorial frame)
+  const Ne = { x: 0, y: -Math.sin(eps), z: Math.cos(eps) };
+
+  // Tangent to the ecliptic at the Sun
+  let te = cross(Ne, r);
+  te = norm(te);
+
+  // Local tangent basis (north, east) at the Sun in equatorial frame
+  let e_alpha = { x: -Math.cos(delta) * Math.sin(alpha), y: Math.cos(delta) * Math.cos(alpha), z: 0 };
+  let e_delta = { x: -Math.sin(delta) * Math.cos(alpha), y: -Math.sin(delta) * Math.sin(alpha), z: Math.cos(delta) };
+  e_alpha = norm(e_alpha);
+  e_delta = norm(e_delta);
+
+  // Position angle of the ecliptic (from celestial north toward east)
+  const Pe = Math.atan2(dot(te, e_alpha), dot(te, e_delta)) * R2D;
+
+  // Horizon-line PA = q + 90°
+  let Ph = qDeg + 90;
+  while (Ph < -180) Ph += 360;
+  while (Ph >  180) Ph -= 360;
+
+  // Smallest angle between directions -> [0, 90] degrees
+  let tilt = Math.abs(Pe - Ph);
+  tilt = ((tilt + 180) % 360) - 180;
+  tilt = Math.abs(tilt);
+  if (tilt > 90) tilt = 180 - tilt;
+  return tilt;
+}
+
+// Tilt of the ecliptic vs. the local horizon at the Sun's apparent position (degrees).
+// Depends on local lat/lon through the topocentric Sun alt/az and parallactic angle.
+export function eclipticTiltVsHorizonAtSun(date: Date, lat: number, lng: number): number {
+  const time = MakeTime(date);
+  const obs = new Observer(lat, lng, 0);
+  const eqSun = Equator(Body.Sun, time, obs, true, true);
+  const hzSun = Horizon(time, obs, eqSun.ra, eqSun.dec, 'normal');
+  const q = parallacticAngleFromAltAz(hzSun.azimuth, hzSun.altitude, lat);
+  return eclipticTiltFromEqAndQ(eqSun.ra * 15, eqSun.dec, q, date);
+}
+
+// small vector helpers
+function dot(a:{x:number;y:number;z:number}, b:{x:number;y:number;z:number}){ return a.x*b.x + a.y*b.y + a.z*b.z; }
+function cross(a:{x:number;y:number;z:number}, b:{x:number;y:number;z:number}){ return { x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x*b.y - a.y*b.x }; }
+function norm(v:{x:number;y:number;z:number}){ const s = Math.hypot(v.x,v.y,v.z); return { x: v.x/s, y: v.y/s, z: v.z/s }; }
+
+// Position angle of the Sun's north pole (P), measured from celestial north toward east (degrees).
+export function solarNorthPositionAngleDeg(date: Date): number {
+  const time = MakeTime(date);
+  // Geocentric apparent Sun (suffices for P; topocentric difference is negligible for the Sun)
+  const eqSun = Equator(Body.Sun, time, new Observer(0, 0, 0), true, true);
+  const raDeg = eqSun.ra * 15;
+  const decDeg = eqSun.dec;
+
+  // IAU (approx J2000) solar north pole direction in equatorial coords
+  const RA_P = 286.13;
+  const DEC_P = 63.87;
+
+  const a0 = deg2rad(raDeg);
+  const d0 = deg2rad(decDeg);
+  const ap = deg2rad(RA_P);
+  const dp = deg2rad(DEC_P);
+
+  const y = Math.sin(ap - a0) * Math.cos(dp);
+  const x = Math.sin(dp) * Math.cos(d0) - Math.cos(dp) * Math.sin(d0) * Math.cos(ap - a0);
+  return -Math.atan2(y, x) * R2D; // [-180,180], E from N
+}
+
+// Aggregate Sun orientation angles relative to horizon at observer location.
+export function getSunOrientationAngles(date: Date, lat: number, lng: number): {
+  qDeg: number;  eclipticTiltDeg: number;  solarNorthPositionAngleDeg: number;
+  rotationToHorizonDeg: number;  rotationToHorizonDegSolarNorth: number;
+} {
+  const time = MakeTime(date);
+  const obs = new Observer(lat, lng, 0);
+
+  // Sun topocentric for local parallactic angle
+  const eq = Equator(Body.Sun, time, obs, true, true);
+  const hz = Horizon(time, obs, eq.ra, eq.dec, 'normal');
+
+  const q = parallacticAngleFromAltAz(hz.azimuth, hz.altitude, lat);
+  const tilt = eclipticTiltFromEqAndQ(eq.ra * 15, eq.dec, q, date);
+  const P = solarNorthPositionAngleDeg(date);
+
+  return {
+    qDeg: q,
+    eclipticTiltDeg: tilt,
+    solarNorthPositionAngleDeg: P,
+    rotationToHorizonDeg: -q,
+    rotationToHorizonDegSolarNorth: -q + P,
+  };
+}
+
+// Aggregate Moon orientation angles relative to horizon at observer location.
+export function getMoonOrientationAngles(date: Date, lat: number, lng: number): {
+  qDeg: number;                          // parallactic angle at Moon
+  moonPolePositionAngleDeg: number;      // P (E from N), J2000
+  rotationToHorizonDeg: number;          // celestial-N up
+  rotationToHorizonDegMoonNorth: number; // lunar-N up
+} {
+  const time = MakeTime(date);
+  const obs = new Observer(lat, lng, 0);
+
+  // Moon topocentric for local parallactic angle
+  const eq = Equator(Body.Moon, time, obs, true, true);
+  const hz = Horizon(time, obs, eq.ra, eq.dec, 'normal');
+
+  const q = parallacticAngleFromAltAz(hz.azimuth, hz.altitude, lat);
+
+  // Use J2000 Moon-North vs Earth-North angle
+  const P = moonNorthPositionAngleJ2000Deg(date);
+
+  return {
+    qDeg: q,
+    moonPolePositionAngleDeg: P,
+    rotationToHorizonDeg: -q,
+    rotationToHorizonDegMoonNorth: -q + P,
+  };
+}
+
+// Small helper: IAU/WGCCRE 2015 lunar pole RA/DEC in EQJ (J2000)
+function lunarPoleEqj(date: Date): { raDeg: number; decDeg: number } {
+  const t = new AstroTime(date);
+  const d = t.tt;                    // days TT since J2000
+  const T = d / 36525.0;
+
+  const E = (deg: number) => deg2rad(deg);
+  const E1  = E(125.045  - 0.0529921 * d);
+  const E2  = E(250.089  - 0.1059842 * d);
+  const E3  = E(260.008  + 13.0120009 * d);
+  const E4  = E(176.625  + 13.3407154 * d);
+  const E6  = E(311.589  + 26.4057084 * d);
+  const E7  = E(134.963  + 13.0649930 * d);
+  const E10 = E( 15.134  -  0.1589763 * d);
+  const E13 = E( 25.053  + 12.9590088 * d);
+
+  const RAdeg =
+    269.9949 + 0.0031 * T
+    - 3.8787 * Math.sin(E1)  - 0.1204 * Math.sin(E2)
+    + 0.0700 * Math.sin(E3)  - 0.0172 * Math.sin(E4)
+    + 0.0072 * Math.sin(E6)  - 0.0052 * Math.sin(E10)
+    + 0.0043 * Math.sin(E13);
+
+  const DECdeg =
+     66.5392 + 0.0130 * T
+    + 1.5419 * Math.cos(E1)  + 0.0239 * Math.cos(E2)
+    - 0.0278 * Math.cos(E3)  + 0.0068 * Math.cos(E4)
+    - 0.0029 * Math.cos(E6)  + 0.0009 * Math.cos(E7)
+    + 0.0008 * Math.cos(E10) - 0.0009 * Math.cos(E13);
+
+  return { raDeg: RAdeg, decDeg: DECdeg };
+}
+
+// Position angle of the Moon's north pole in EQJ (J2000), E from N.
+// Angle between Moon North and Earth North in the J2000 equatorial frame.
+export function moonNorthPositionAngleJ2000Deg(date: Date): number {
+  const time = MakeTime(date);
+  // Geocentric apparent Moon in EQJ (ofDate=false)
+  const eqMoon = Equator(Body.Moon, time, new Observer(0, 0, 0), false, true);
+  const a0 = deg2rad(eqMoon.ra * 15);
+  const d0 = deg2rad(eqMoon.dec);
+
+  const pole = lunarPoleEqj(date);
+  const ap = deg2rad(pole.raDeg);
+  const dp = deg2rad(pole.decDeg);
+
+  const y = Math.sin(ap - a0) * Math.cos(dp);
+  const x = Math.sin(dp) * Math.cos(d0) - Math.cos(dp) * Math.sin(d0) * Math.cos(ap - a0);
+  return -Math.atan2(y, x) * R2D; // [-180,180], E from N
 }
 
 

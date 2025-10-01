@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // Astronomy-Engine wrapper centralisé
-import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg } from "./astro/aeInterop";
+import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg, getSunOrientationAngles } from "./astro/aeInterop";
+import { getMoonOrientationAngles } from "./astro/aeInterop";
 
 // Types
 import type { FollowMode } from "./types";
@@ -587,15 +588,20 @@ export default function App() {
     enlargeObjects, sunScreen.x, sunScreen.y
   ]);
 
-  // ADD: orientation & phase dependencies used by sprites/telemetry
-  const rotationToHorizonDegMoon = useMemo(
-    () => -parallacticAngleDeg(astro.moon.az, astro.moon.alt, location.lat),
-    [astro.moon, location.lat]
+  const moonOrientation = useMemo(
+    () => getMoonOrientationAngles(date, location.lat, location.lng),
+    [date, location.lat, location.lng]
   );
-  const rotationToHorizonDegSun = useMemo(
-    () => -parallacticAngleDeg(astro.sun.az, astro.sun.alt, location.lat),
-    [astro.sun, location.lat]
+  const rotationToHorizonDegMoon = moonOrientation.rotationToHorizonDegMoonNorth;
+
+ 
+  const sunOrientation = useMemo(
+    () => getSunOrientationAngles(date, location.lat, location.lng),
+    [date, location.lat, location.lng]
   );
+  
+  const rotationToHorizonDegSun = sunOrientation.rotationToHorizonDegSolarNorth;
+
   const sunOnMoonInfo = useMemo(() => sunOnMoon(date), [date]);
   const brightLimbAngleDeg = useMemo(() => sunOnMoonInfo.bearingDeg, [sunOnMoonInfo]);
   const sunDeclinationDeg = useMemo(() => sunOnMoonInfo.declinationDeg, [sunOnMoonInfo]);
@@ -615,7 +621,9 @@ export default function App() {
     const kind = eclipseKind(sep, rS, rM);
     return { sep, rS, rM, kind } as const;
   }, [astro.sun, astro.moon]);
-
+    
+  const eclipticTiltDeg = sunOrientation.eclipticTiltDeg;
+  
   // ADD: Horizon flat Y (used by Markers baseline)
   const horizonYFlat = useMemo(
     () => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y,
@@ -1426,6 +1434,8 @@ export default function App() {
               showMoon3D={true}
               // New: pass eclipse info to the Sun card
               eclipse={eclipse}
+              // NEW: pass ecliptic tilt vs horizon at Sun
+              eclipticTiltDeg={eclipticTiltDeg}
             />
           </div>
 

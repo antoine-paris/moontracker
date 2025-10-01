@@ -36,9 +36,10 @@ type Props = {
   sunDeclinationDeg: number;
   // New: eclipse info (computed in App)
   eclipse: { sep: number; rS: number; rM: number; kind: string };
+  eclipticTiltDeg: number;
 };
 
-export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phaseFraction, brightLimbAngleDeg, earthshine, showMoon3D, sunDeclinationDeg, eclipse }: Props) {
+export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phaseFraction, brightLimbAngleDeg, earthshine, showMoon3D, sunDeclinationDeg, eclipse, eclipticTiltDeg }: Props) {
   const libG = astro.moon.libration;
   const libT = astro.moon.librationTopo;
   const libQuadrant = libT ? (() => { const lnorm = ((libT.lonDeg + 180) % 360) - 180; const ns = libT.latDeg >= 0 ? 'N' : 'S'; const ew = lnorm >= 0 ? 'E' : 'O'; return ns + ew; })() : '—';
@@ -113,6 +114,9 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
         <div className="text-sm text-white/85">Azimut : <span className="font-mono">{formatDeg(astro.sun.az)}</span></div>
         <div className="text-sm text-white/85">Diamètre apparent : <span className="font-mono">{astro.sun.appDiamDeg.toFixed(2)}°</span></div>
         <div className="text-sm text-white/85">Distance : <span className="font-mono">{Math.round(astro.sun.distAU * AU_KM).toLocaleString('fr-FR')} km ({Math.round(astro.sun.distAU * 100)}% UA)</span></div>
+
+        {/* NEW: ecliptic tilt vs horizon */}
+        <div className="text-sm text-white/85">Inclinaison écliptique / horizon : <span className="font-mono">{eclipticTiltDeg.toFixed(1)}°</span></div>
 
         {/* New: Eclipse info moved here */}
         <div className="mt-1 text-sm text-white/85">Séparation lune : <span className="font-mono">{eclipse.sep.toFixed(2)}°</span> — R☉ : <span className="font-mono">{eclipse.rS.toFixed(2)}°</span> — R☽ : <span className="font-mono">{eclipse.rM.toFixed(2)}°</span></div>
