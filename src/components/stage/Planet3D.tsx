@@ -12,8 +12,8 @@ const DEFAULT_AMBIENT_FILL_INTENSITY = 0.05;
 const DEFAULT_RELIEF_SCALE = 0.5;
 const DEFAULT_NO_PHASE_AMBIENT_INTENSITY = 0.5;
 
-// Card overlay factors (same as Moon3D)
-const AXIS_LEN_FACTOR = 0.125;
+// Card overlay factors 
+const AXIS_LEN_FACTOR = 0.05;
 const N_SIZE_FACTOR = 0.18;
 const RING_RADIUS_FACTOR = 1.10;
 const RING_TUBE_FACTOR = 0.01;
@@ -318,7 +318,7 @@ function Model({
 
   const rotX = ((baseX + oX + rotOffsetDegX) * Math.PI) / 180;
   const rotY = ((baseY + oY + rotOffsetDegY) * Math.PI) / 180;
-  const rotZ = ((baseZ + oZ + rotOffsetDegZ) * Math.PI) / 180;
+  const rotZ = (((baseZ + limbAngleDeg + oZ + rotOffsetDegZ) * Math.PI) / 180);
   const quaternion = useMemo(() => {
     const e = new THREE.Euler(rotX, rotY, rotZ, 'ZXY');
     return new THREE.Quaternion().setFromEuler(e);

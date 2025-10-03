@@ -97,6 +97,48 @@ export default function App() {
   const [zoomId, setZoomId] = useState<string>(() => DEVICES[0].zooms[0].id);
   const zoom = useMemo(() => device.zooms.find(z => z.id === zoomId) ?? device.zooms[0], [device, zoomId]);
   // Zooms visibles (si custom, afficher une focale théorique calculée depuis les sliders)
+
+  // Parsed date
+  const date = useMemo(() => new Date(whenMs), [whenMs]);
+
+// Astronomical positions
+  const astro = useMemo(() => {
+     const { lat, lng } = location;
+     // Use combined alt/az fetch to reuse MakeTime/Observer
+     const both = getSunAndMoonAltAzDeg(date, lat, lng);
+     const sun = both.sun;
+     const moon = both.moon;
+     const illum = getMoonIllumination(date);
+     const sunDistAU = sun.distAU; // meilleur via AE
+     const sunDiamDeg = sunApparentDiameterDeg(date, sunDistAU);
+     // Parallaxe horizontale et distance topocentrique
+     const moonParallaxDeg = moonHorizontalParallaxDeg(moon.distanceKm);
+     const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg ?? moon.alt);
+     const moonDiamDeg = moonApparentDiameterDeg(moonTopoKm);
+     // Libration (Meeus): géocentrique + topocentrique (apparente)
+     let moonLibrationGeo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
+     let moonLibrationTopo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
+     let moonLibrationError: string | undefined;
+     try { moonLibrationGeo = getMoonLibration(date); } catch (e) { moonLibrationError = (e as Error)?.message ?? 'calcul non disponible'; }
+     try { moonLibrationTopo = getMoonLibration(date, { lat, lng }); } catch { /* ignore */ }
+     return {
+       sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
+       moon: {
+        alt: moon.altDeg,
+        az: moon.azDeg,
+        parallacticDeg: moonParallaxDeg,
+        distKm: moon.distanceKm,
+        topoDistKm: moonTopoKm,
+        appDiamDeg: moonDiamDeg,
+        libration: moonLibrationGeo,
+        librationTopo: moonLibrationTopo,
+        librationError: moonLibrationError,
+      },
+       illum
+     };
+   }, [date, location]);
+
+
   const zoomOptions = useMemo(() => {
     if (deviceId === CUSTOM_DEVICE_ID) {
       const ar = stageSize.w > 0 && stageSize.h > 0 ? (stageSize.w / stageSize.h) : 4 / 3;
@@ -131,7 +173,6 @@ export default function App() {
   // NEW: grid toggle
   const [showGrid, setShowGrid] = useState(false);
 
-  // NEW: per-planet visibility
   const [showPlanets, setShowPlanets] = useState<Record<string, boolean>>(
     () => {
       const ids = PLANETS.map(p => (typeof p === 'string' ? p : (p as any)?.id ?? String(p)));
@@ -145,11 +186,96 @@ export default function App() {
     [showPlanets]
   );
 
-  // NEW: compute ephemerides only if at least one planet is selected in the TopBar
-  const anyPlanetSelected = useMemo(
-    () => selectedPlanetIds.length > 0,
-    [selectedPlanetIds]
-  );
+  // NEW: map FollowMode -> planet id (registry)
+  const followPlanetId = useMemo<PlanetId | null>(() => {
+    switch (follow) {
+      case 'MERCURE': return 'Mercury';
+      case 'VENUS': return 'Venus';
+      case 'MARS': return 'Mars';
+      case 'JUPITER': return 'Jupiter';
+      case 'SATURNE': return 'Saturn';
+      case 'URANUS': return 'Uranus';
+      case 'NEPTUNE': return 'Neptune';
+      default: return null;
+    }
+  }, [follow]);
+
+  // REPLACED: do not union follow target into requested render ids
+  const selectedAnyPlanets = useMemo(() => selectedPlanetIds.length > 0, [selectedPlanetIds]);
+
+  // Compute ephemerides ONLY for selected (rendering), independent from follow target
+  const planetsEphemArr = useMemo(() => {
+    if (!selectedAnyPlanets) return [];
+    try {
+      const res = getPlanetsEphemerides(
+        date,
+        location.lat,
+        location.lng,
+        0,
+        undefined,
+        selectedPlanetIds as any // PlanetId[]
+      );
+      const arr = Array.isArray(res)
+        ? res
+        : (res && typeof res === 'object' ? Object.values(res as any) : []);
+      return arr.filter((p: any) => selectedPlanetIds.includes(p?.id));
+    } catch {
+      return [];
+    }
+  }, [selectedAnyPlanets, selectedPlanetIds, date, location.lat, location.lng]);
+
+
+  // NEW: quick lookup by id
+  const planetsById = useMemo(() => {
+    const m: Record<string, any> = {};
+    for (const p of planetsEphemArr) {
+      if (p?.id) m[p.id] = p;
+    }
+    return m;
+  }, [planetsEphemArr]);
+  
+  // NEW: Follow target alt/az (sun/moon direct, planets from cache or one-off ephemeris)
+  const followAltAz = useMemo(() => {
+    switch (follow) {
+      case 'SOLEIL': return { az: astro.sun.az,  alt: astro.sun.alt };
+      case 'LUNE':   return { az: astro.moon.az, alt: astro.moon.alt };
+      case 'N':      return { az: 0,   alt: 0 };
+      case 'E':      return { az: 90,  alt: 0 };
+      case 'S':      return { az: 180, alt: 0 };
+      case 'O':      return { az: 270, alt: 0 };
+    }
+    if (!followPlanetId) return { az: 0, alt: 0 };
+
+    // Try cached (if selected)
+    const cached = planetsById[followPlanetId];
+    const azC = cached?.azDeg ?? cached?.az;
+    const altC = cached?.altDeg ?? cached?.alt;
+    if (Number.isFinite(azC) && Number.isFinite(altC)) {
+      return { az: Number(azC), alt: Number(altC) };
+    }
+
+    // Fallback: compute just this planet
+    try {
+      const res = getPlanetsEphemerides(
+        date,
+        location.lat,
+        location.lng,
+        0,
+        undefined,
+        [followPlanetId] as any
+      );0
+      const it = Array.isArray(res) ? res[0] : (res as any)?.[followPlanetId];
+      const az = it?.azDeg ?? it?.az;
+      const alt = it?.altDeg ?? it?.alt;
+      if (Number.isFinite(az) && Number.isFinite(alt)) {
+        return { az: Number(az), alt: Number(alt) };
+      }
+    } catch { /* ignore */ }
+
+    return { az: 0, alt: 0 };
+  }, [follow, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, followPlanetId, planetsById, date, location.lat, location.lng]);
+
+
 
   // NEW: Projection mode (Step 1 - selection only)
   /*
@@ -289,8 +415,7 @@ export default function App() {
     if (Math.abs(targetY - fovYDeg) > 0.1) setFovYDeg(targetY);
   }, [linkFov, viewport, fovXDeg, fovYDeg]);
 
-  // Parsed date
-  const date = useMemo(() => new Date(whenMs), [whenMs]);
+  
 
   // Browser local time and UTC time strings
   const browserLocalTime = useMemo(() => {
@@ -337,66 +462,9 @@ export default function App() {
     }
   }, [date, location.timeZone]);
 
-  // Astronomical positions
-  const astro = useMemo(() => {
-     const { lat, lng } = location;
-     // Use combined alt/az fetch to reuse MakeTime/Observer
-     const both = getSunAndMoonAltAzDeg(date, lat, lng);
-     const sun = both.sun;
-     const moon = both.moon;
-     const illum = getMoonIllumination(date);
-     const sunDistAU = sun.distAU; // meilleur via AE
-     const sunDiamDeg = sunApparentDiameterDeg(date, sunDistAU);
-     // Parallaxe horizontale et distance topocentrique
-     const moonParallaxDeg = moonHorizontalParallaxDeg(moon.distanceKm);
-     const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg ?? moon.alt);
-     const moonDiamDeg = moonApparentDiameterDeg(moonTopoKm);
-     // Libration (Meeus): géocentrique + topocentrique (apparente)
-     let moonLibrationGeo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
-     let moonLibrationTopo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
-     let moonLibrationError: string | undefined;
-     try { moonLibrationGeo = getMoonLibration(date); } catch (e) { moonLibrationError = (e as Error)?.message ?? 'calcul non disponible'; }
-     try { moonLibrationTopo = getMoonLibration(date, { lat, lng }); } catch { /* ignore */ }
-     return {
-       sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sunDistAU, appDiamDeg: sunDiamDeg },
-       moon: {
-        alt: moon.altDeg,
-        az: moon.azDeg,
-        parallacticDeg: moonParallaxDeg,
-        distKm: moon.distanceKm,
-        topoDistKm: moonTopoKm,
-        appDiamDeg: moonDiamDeg,
-        libration: moonLibrationGeo,
-        librationTopo: moonLibrationTopo,
-        librationError: moonLibrationError,
-      },
-       illum
-     };
-   }, [date, location]);
+  
 
-  // NEW: Planets ephemerides (Alt/Az, diameters, etc.) – ensure array
-  const planetsEphemArr = useMemo(() => {
-    // Skip all computation if planets are disabled in the TopBar
-    if (!anyPlanetSelected) return [];
-    try {
-      // Compute only selected planets
-      const res = getPlanetsEphemerides(
-        date,
-        location.lat,
-        location.lng,
-        0,
-        undefined,
-        selectedPlanetIds as any // PlanetId[]
-      );
-      const arr = Array.isArray(res)
-        ? res
-        : (res && typeof res === 'object' ? Object.values(res as any) : []);
-      // Already limited to selected; keep filter as a safeguard
-      return arr.filter((p: any) => selectedPlanetIds.includes(p?.id));
-    } catch {
-      return [];
-    }
-  }, [anyPlanetSelected, date, location.lat, location.lng, selectedPlanetIds]);
+  
 
   // NEW: Atmosphere gradient colors from Sun altitude
   const atmosphereGradient = useMemo(() => {
@@ -438,17 +506,9 @@ export default function App() {
   }, [astro.sun.alt]);
 
   // Reference azimuth & altitude (follow mode)
-  const baseRefAz = useMemo(() => {
-    switch (follow) {
-      case 'SOLEIL': return astro.sun.az;
-      case 'LUNE': return astro.moon.az;
-      case 'N': return 0;
-      case 'E': return 90;
-      case 'S': return 180;
-      case 'O': return 270;
-    }
-  }, [follow, astro]);
-  const baseRefAlt = useMemo(() => (follow === 'SOLEIL' ? astro.sun.alt : follow === 'LUNE' ? astro.moon.alt : 0), [follow, astro]);
+  const baseRefAz = useMemo(() => followAltAz.az,  [followAltAz]);
+  const baseRefAlt = useMemo(() => followAltAz.alt, [followAltAz]);
+
 
   // Final ref with keypad deltas applied
   const refAz = useMemo(() => norm360(baseRefAz + deltaAzDeg), [baseRefAz, deltaAzDeg]);

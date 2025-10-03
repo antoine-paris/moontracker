@@ -303,11 +303,30 @@ export default function TopBar({
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">SUIVI</div>
           <div className="flex flex-wrap gap-2">
-            {(['SOLEIL','LUNE','N','E','S','O'] as FollowMode[]).map(opt => (
+            {([
+              'SOLEIL','LUNE',
+              'MERCURE','VENUS','MARS','JUPITER','SATURNE','URANUS','NEPTUNE',
+              'N','E','S','O'
+            ] as FollowMode[]).map(opt => (
               <button key={opt}
                 className={`px-3 py-1.5 rounded-lg border text-sm ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
                 onClick={() => setFollow(opt)}
-              >{opt}</button>
+              >
+                {opt === 'SOLEIL' ? <span>&#9728;</span>
+                : opt === 'LUNE' ? <span>&#127762;</span>
+                : opt === 'MERCURE' ? <span>&#9791;</span>
+                : opt === 'VENUS' ? <span>&#9792;</span>
+                : opt === 'MARS' ? <span>&#9794;</span>
+                : opt === 'JUPITER' ? <span>&#9795;</span>
+                : opt === 'SATURNE' ? <span>&#9796;</span>
+                : opt === 'URANUS' ? <span>&#9797;</span>
+                : opt === 'NEPTUNE' ? <span>&#9798;</span>
+                : opt === 'N' ? <span>&#129517; N</span>
+                : opt === 'E' ? <span>&#129517; E</span>
+                : opt === 'S' ? <span>&#129517; S</span>
+                : opt === 'O' ? <span>&#129517; O</span>
+                : opt}
+              </button>
             ))}
           </div>
           <div className="mt-3">
@@ -541,7 +560,7 @@ export default function TopBar({
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={earthshine} disabled={!showPhase} onChange={(e) => setEarthshine(e.target.checked)} /><span>Clair de Terre</span></label>
              <span className="w-px h-5 bg-white/10 mx-1" />
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span></label>
-             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal Lune</span></label>
+             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal local</span></label>
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug</span></label>
              <span className="w-px h-5 bg-white/10 mx-1" />
              <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span></label>

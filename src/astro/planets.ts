@@ -23,6 +23,13 @@ export type PlanetEphemeris = {
   // Apparent body orientation as seen from Earth (Euler, degrees):
   // X: south->north positive; Y: east->west positive; Z: east->north positive.
   orientationXYZDeg?: { x: number; y: number; z: number };
+
+  // Saturn rings (if applicable)
+  ring?: {
+    majorDeg: number;    // apparent major-axis diameter (outer edge)
+    minorDeg: number;    // apparent minor-axis diameter (outer edge)
+    openingDeg: number;  // ring opening angle |B| (deg)
+  };
 };
 
 export type PlanetsEphemerides = Record<PlanetId, PlanetEphemeris>;
@@ -37,6 +44,9 @@ const MEAN_RADIUS_KM: Record<PlanetId, number> = {
   Uranus:  25362,
   Neptune: 24622,
 };
+
+// Outer edge of Saturn's A ring (km)
+const SATURN_RING_OUTER_RADIUS_KM = 136_780;
 
 const R2D = 180 / Math.PI;
 const D2R = Math.PI / 180;
@@ -66,6 +76,23 @@ function apparentDiameterDeg(radiusKm: number, distanceKm: number): number {
   if (!Number.isFinite(radiusKm) || !Number.isFinite(distanceKm) || distanceKm <= 0) return 0;
   // full diameter = 2 * atan(R / d)
   return 2 * Math.atan(radiusKm / Math.max(1e-6, distanceKm)) * R2D;
+}
+
+// Apparent major/minor diameters of Saturn's rings (outer edge), in degrees.
+function saturnRingApparentDiametersDeg(time: AstroTime, distanceKm: number): { majorDeg: number; minorDeg: number; openingDeg: number } {
+  // Ring opening angle B from Saturn's pole vs line-of-sight.
+  const rot = RotationAxis(Body.Saturn, time);         // includes 'north' vector in EQJ
+  const N = vnorm(rot.north as Vec3);                  // Saturn north pole (unit)
+  const gv = GeoVector(Body.Saturn, time, true);       // Earth -> Saturn
+  const L = vnorm({ x: -gv.x, y: -gv.y, z: -gv.z });   // Saturn -> Earth (unit)
+  const B = Math.asin(vdot(N, L));                     // radians (sub-Earth planetocentric lat)
+  const openingDeg = Math.abs(B) * R2D;
+
+  // Major axis doesn't depend on B; minor axis scales by |sin B|.
+  const majorDeg = apparentDiameterDeg(SATURN_RING_OUTER_RADIUS_KM, distanceKm);
+  const minorDeg = 2 * Math.atan((SATURN_RING_OUTER_RADIUS_KM * Math.abs(Math.sin(B))) / Math.max(1e-6, distanceKm)) * R2D;
+
+  return { majorDeg, minorDeg, openingDeg };
 }
 
 /**
@@ -114,7 +141,15 @@ export function getPlanetsEphemerides(
     const distKm = Math.max(1e-6, eq.dist * AU_KM);
     // Apparent diameter (deg) via helper
     const radiusKm = MEAN_RADIUS_KM[id];
-    const appDiamDeg = apparentDiameterDeg(radiusKm, distKm);
+    let appDiamDeg = apparentDiameterDeg(radiusKm, distKm);
+
+    // If Saturn, use ring major-axis diameter, and expose ring geometry.
+    let ringInfo: PlanetEphemeris['ring'] | undefined;
+    if (id === 'Saturn') {
+      const ring = saturnRingApparentDiametersDeg(time, distKm);
+      ringInfo = ring;
+      appDiamDeg = ring.majorDeg; // prefer ring span for overall "size"
+    }
 
     // Phase (illumination fraction)
     const illum = Illumination(body, time);
@@ -137,12 +172,11 @@ export function getPlanetsEphemerides(
       alt: hz.altitude,
       appDiamDeg,
       distAU: planetDistAU, // NEW
+      ring: ringInfo
     };
 
       base.phaseFraction = phaseFraction;
       base.brightLimbAngleDeg = brightLimbAngleDeg;
-
-      // Apparent orientation (Euler XYZ degrees)
       base.orientationXYZDeg = planetOrientationEulerDeg(date, id);
     
     if (id === 'Mercury' || id === 'Venus') {
