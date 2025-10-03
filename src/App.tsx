@@ -619,6 +619,9 @@ export default function App() {
         projectionMode
       );
 
+      if (!proj.visibleX || !proj.visibleY) continue;
+      if (!Number.isFinite(proj.x) || !Number.isFinite(proj.y)) continue;
+
       const screen = {
         x: viewport.x + proj.x,
         y: viewport.y + proj.y,
@@ -1495,6 +1498,8 @@ export default function App() {
 
             {/* NEW: Planets rendering (dot or sprite) */}
             {planetsRender.map(p => {
+              if (!p.visibleX || !p.visibleY) return null;
+              if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
               const S = Math.max(4, Math.round(p.sizePx));
               const half = S / 2;
               const offscreen =
@@ -1539,7 +1544,7 @@ export default function App() {
                     visibleX={true}
                     visibleY={true}
                     rotationDeg={p.rotationDeg}
-                    angleToSunDeg={p.angleToSunDeg}
+                    angleToSunDeg={p.rotationDegPlanetScreen}
                     phaseFraction={p.phaseFrac}
                     wPx={S}
                     hPx={S}
