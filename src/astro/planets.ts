@@ -1,4 +1,5 @@
 import { MakeTime, Observer, Equator, Horizon, Illumination, Body, AstroTime } from 'astronomy-engine';
+import { RotationAxis, GeoVector } from 'astronomy-engine';
 import { parallacticAngleFromAltAz } from './aeInterop';
 import { AU_KM } from './sun';
 
@@ -18,6 +19,10 @@ export type PlanetEphemeris = {
   // 'near'  => planet is between Earth and Sun (closer to Earth than the Sun)
   // 'far'   => planet is on the far side of the Sun (farther from Earth than the Sun)
   sunSide?: 'near' | 'far';
+
+  // Apparent body orientation as seen from Earth (Euler, degrees):
+  // X: south->north positive; Y: east->west positive; Z: east->north positive.
+  orientationXYZDeg?: { x: number; y: number; z: number };
 };
 
 export type PlanetsEphemerides = Record<PlanetId, PlanetEphemeris>;
@@ -115,6 +120,7 @@ export function getPlanetsEphemerides(
     const illum = Illumination(body, time);
     const phaseFraction = illum.phase_fraction;
 
+
     // Bright limb position angle via helper
     const alphaPlanetDeg = eq.ra * 15;
     const deltaPlanetDeg = eq.dec;
@@ -133,14 +139,17 @@ export function getPlanetsEphemerides(
       distAU: planetDistAU, // NEW
     };
 
-    if (id === 'Mercury' || id === 'Venus' || id === 'Mars') {
       base.phaseFraction = phaseFraction;
       base.brightLimbAngleDeg = brightLimbAngleDeg;
-    }
+
+      // Apparent orientation (Euler XYZ degrees)
+      base.orientationXYZDeg = planetOrientationEulerDeg(date, id);
+    
     if (id === 'Mercury' || id === 'Venus') {
       base.sunSide = sunSide;
     }
 
+    //console.log(id, base);
     out[id] = base;
   });
   return out;
@@ -245,4 +254,72 @@ export function getPlanetsOrientationAngles(
   const res = {} as any;
   ids.forEach(id => { res[id] = getPlanetOrientationAngles(when, latitudeDeg, longitudeDeg, id); });
   return res;
+}
+
+// --- vector helpers ---
+type Vec3 = { x: number; y: number; z: number };
+function vdot(a: Vec3, b: Vec3): number { return a.x*b.x + a.y*b.y + a.z*b.z; }
+function vcross(a: Vec3, b: Vec3): Vec3 { return { x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x*b.y - a.y*b.x }; }
+function vlen(a: Vec3): number { return Math.hypot(a.x, a.y, a.z); }
+function vnorm(a: Vec3): Vec3 { const L = vlen(a) || 1; return { x: a.x/L, y: a.y/L, z: a.z/L }; }
+function vscale(a: Vec3, s: number): Vec3 { return { x: a.x*s, y: a.y*s, z: a.z*s }; }
+function vadd(a: Vec3, b: Vec3): Vec3 { return { x: a.x+b.x, y: a.y+b.y, z: a.z+b.z }; }
+function vsub(a: Vec3, b: Vec3): Vec3 { return { x: a.x-b.x, y: a.y-b.y, z: a.z-b.z }; }
+
+function wrap180(deg: number): number {
+  let a = ((deg + 180) % 360 + 360) % 360 - 180;
+  return a;
+}
+
+// Compute apparent body orientation (Euler angles) as seen from Earth, EQJ frame.
+function planetOrientationEulerDeg(date: Date, id: PlanetId): { x: number; y: number; z: number } {
+  const time = MakeTime(date);
+  const body = ({ Mercury: Body.Mercury, Venus: Body.Venus, Mars: Body.Mars, Jupiter: Body.Jupiter, Saturn: Body.Saturn, Uranus: Body.Uranus, Neptune: Body.Neptune })[id];
+
+  // Planet rotation axis and spin (IAU model) in EQJ.
+  const rot = RotationAxis(body, time); // rot.ra, rot.dec, rot.spin (deg), rot.north:{x,y,z}
+  const N = vnorm(rot.north as Vec3);   // north pole unit vector (EQJ)
+
+  // Line-of-sight from planet to Earth in EQJ.
+  const gv = GeoVector(body, time, true);           // Earth -> planet
+  const L = vnorm({ x: -gv.x, y: -gv.y, z: -gv.z }); // planet -> Earth
+
+  // X: sub-Earth planetocentric latitude (north positive).
+  const xDeg = Math.asin(vdot(N, L)) * R2D;
+
+  // Build body equator basis at the ascending node of the body equator on EQJ.
+  const k: Vec3 = { x: 0, y: 0, z: 1 };
+  let A = vcross(k, N);                 // along ascending node in the equator plane
+  if (vlen(A) < 1e-12) A = vcross({ x: 1, y: 0, z: 0 }, N); // fallback if nearly parallel
+  A = vnorm(A);
+  const Bp = vnorm(vcross(N, A));       // 90° east along equator
+
+  // Prime meridian direction on equator using IAU spin angle.
+  const sp = rot.spin * D2R;
+  const M = vnorm(vadd(vscale(A, Math.cos(sp)), vscale(Bp, Math.sin(sp)))); // longitude 0 direction (equator)
+
+  // East unit on equator at meridian M.
+  const Ehat = vnorm(vcross(N, M)); // points toward increasing east-longitude on equator
+
+  // Project line-of-sight into equator plane.
+  const Lpar = vsub(L, vscale(N, vdot(N, L)));
+  const LparLen = vlen(Lpar);
+
+  // East-positive central meridian longitude of sub-Earth point (deg).
+  let lambdaEast = 0;
+  if (LparLen > 1e-12) {
+    const Lpe = vscale(Lpar, 1 / LparLen);
+    const y = vdot(Lpe, Ehat);
+    const x = vdot(Lpe, M);
+    lambdaEast = Math.atan2(y, x) * R2D; // (-180,180]
+  }
+
+  // Y: apply rotation about axis so the correct central meridian faces Earth.
+  // We choose Y = -lambdaEast (positive rotates east toward west).
+  const yDeg = wrap180(-lambdaEast);
+
+  // Z: position angle of the planet north pole (E from N).
+  const zDeg = planetNorthPositionAngleJ2000Deg(date, id);
+
+  return { x: xDeg, y: yDeg, z: zDeg };
 }

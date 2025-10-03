@@ -1,19 +1,41 @@
 import React, { Suspense, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { useGLTF, OrthographicCamera } from '@react-three/drei';
+import { useGLTF, OrthographicCamera, Text, Billboard } from '@react-three/drei'
 import * as THREE from 'three';
 import { Z } from '../../render/constants';
 import type { PlanetId } from '../../astro/planets';
 import { PLANET_REGISTRY } from '../../render/planetRegistry';
 
-// Light/relief settings (match Moon3D defaults)
-const EARTHSHINE_INTENSITY_GAIN = 0.0;
-const SUNLIGHT_INTENSITY = 0.2;
-const RELIEF_SCALE_DEFAULT = 0.2;
+// Light/relief defaults (can be overridden per-planet via PLANET_REGISTRY)
+const DEFAULT_SUNLIGHT_INTENSITY = 5.0;
+const DEFAULT_AMBIENT_FILL_INTENSITY = 0.05;
+const DEFAULT_RELIEF_SCALE = 0.5;
+const DEFAULT_NO_PHASE_AMBIENT_INTENSITY = 0.5;
 
-// Minimal/neutral GLB calibration (models may already be oriented)
-const GLB_CALIB = {
-  rotationBaseDeg: { x: 0, y: 0, z: 0 },
+// Card overlay factors (same as Moon3D)
+const AXIS_LEN_FACTOR = 0.125;
+const N_SIZE_FACTOR = 0.18;
+const RING_RADIUS_FACTOR = 1.10;
+const RING_TUBE_FACTOR = 0.01;
+const AXIS_THICKNESS_FACTOR = 0.01;
+const CENTER_DOT_FACTOR = 0.04;
+const N_MARGIN_FACTOR = 0.08;
+const LABEL_MARGIN_SCALE = 0.25;
+const AXIS_GAP_FACTOR = 0.15;
+const LABEL_GAP_FACTOR = 0.22;
+
+// Minimal/neutral GLB calibration with sensible defaults for card overlays
+type GlbCalib = {
+  rotationBaseDeg: { x: number; y: number; z: number };
+  northLocal: THREE.Vector3;          // direction du Nord dans l'espace local du GLB
+  viewForwardLocal: THREE.Vector3;    // direction "vers caméra" dans l'espace local du GLB
+  lon0EquatorLocal: THREE.Vector3;    // direction du point (lon=0, lat=0) dans l'espace local du GLB
+};
+const DEFAULT_GLB_CALIB: GlbCalib = {
+  rotationBaseDeg: { x: 0, y: -90, z: 180 },
+  northLocal: new THREE.Vector3(0, 0, 1),
+  viewForwardLocal: new THREE.Vector3(0, 0, -1),
+  lon0EquatorLocal: new THREE.Vector3(1, 0, 0),
 } as const;
 
 // Cached processed models (per url+reliefScale)
@@ -21,7 +43,7 @@ type ProcessedModel = { scene: THREE.Object3D; maxDim: number; radius: number };
 const processedCache = new Map<string, ProcessedModel>();
 
 function processSceneOnce(original: THREE.Object3D, reliefScale: number): ProcessedModel {
-  const rScale = Math.max(0, reliefScale ?? RELIEF_SCALE_DEFAULT);
+  const rScale = Math.max(0, reliefScale ?? DEFAULT_RELIEF_SCALE);
   const clone = original.clone(true);
 
   // Center clone to origin
@@ -142,7 +164,7 @@ function processSceneOnce(original: THREE.Object3D, reliefScale: number): Proces
 }
 
 function getProcessedModel(modelUrl: string, original: THREE.Object3D, reliefScale: number): ProcessedModel {
-  const key = `${modelUrl}::${Math.max(0, reliefScale ?? RELIEF_SCALE_DEFAULT)}`;
+  const key = `${modelUrl}::${Math.max(0, reliefScale ?? DEFAULT_RELIEF_SCALE)}`;
   const cached = processedCache.get(key);
   if (cached) return cached;
   const processed = processSceneOnce(original, reliefScale);
@@ -193,12 +215,10 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
     [
       vx[1][0] * vx[0][0] + vx[1][1] * vx[1][0] + vx[1][2] * vx[2][0],
       vx[1][0] * vx[0][1] + vx[1][1] * vx[1][1] + vx[1][2] * vx[2][1],
-      vx[1][0] * vx[0][2] + vx[1][1] * vx[1][2] + vx[1][2] * vx[2][2],
     ],
     [
       vx[2][0] * vx[0][0] + vx[2][1] * vx[1][0] + vx[2][2] * vx[2][0],
       vx[2][0] * vx[0][1] + vx[2][1] * vx[1][1] + vx[2][2] * vx[2][1],
-      vx[2][0] * vx[0][2] + vx[2][1] * vx[1][2] + vx[2][2] * vx[2][2],
     ],
   ];
   return [
@@ -241,8 +261,10 @@ type Props = {
   illumFraction?: number | string;      // mainly for Mercury/Venus
   brightLimbAngleDeg?: number | string; // PA of bright limb (0=N, 90=E)
   showSubsolarCone?: boolean;
-  earthshine?: boolean;
   reliefScale?: number;
+  orientationDegX?: number;
+  orientationDegY?: number;
+  orientationDegZ?: number;
 };
 
 function Model({
@@ -257,7 +279,11 @@ function Model({
   rotOffsetDegY = 0,
   rotOffsetDegZ = 0,
   debugMask = false,
-  reliefScale = RELIEF_SCALE_DEFAULT,
+  reliefScale = DEFAULT_RELIEF_SCALE,
+  glbCalib = DEFAULT_GLB_CALIB,
+  orientationDegX,
+  orientationDegY,
+  orientationDegZ,
 }: {
   targetPx: number;
   modelUrl: string;
@@ -270,6 +296,10 @@ function Model({
   rotOffsetDegZ?: number;
   debugMask?: boolean;
   reliefScale?: number;
+  glbCalib?: GlbCalib;
+  orientationDegX?: number;
+  orientationDegY?: number;
+  orientationDegZ?: number;
 }) {
   useGLTF.preload(modelUrl);
   const { scene } = useGLTF(modelUrl);
@@ -281,10 +311,14 @@ function Model({
   }, [modelUrl, scene, reliefScale, targetPx]);
 
   // Neutral base + user offsets + "limb" rotation on Z (keep parity with Moon3D inputs)
-  const baseX = GLB_CALIB.rotationBaseDeg.x, baseY = GLB_CALIB.rotationBaseDeg.y, baseZ = GLB_CALIB.rotationBaseDeg.z;
-  const rotX = ((baseX + rotOffsetDegX) * Math.PI) / 180;
-  const rotY = ((baseY + rotOffsetDegY) * Math.PI) / 180;
-  const rotZ = (((baseZ + limbAngleDeg + rotOffsetDegZ)) * Math.PI) / 180;
+  const baseX = glbCalib.rotationBaseDeg.x, baseY = glbCalib.rotationBaseDeg.y, baseZ = glbCalib.rotationBaseDeg.z;
+  const oX = Number.isFinite(orientationDegX) ? (orientationDegX as number) : 0;
+  const oY = Number.isFinite(orientationDegY) ? (orientationDegY as number) : 0;
+  const oZ = Number.isFinite(orientationDegZ) ? (orientationDegZ as number) : limbAngleDeg;
+
+  const rotX = ((baseX + oX + rotOffsetDegX) * Math.PI) / 180;
+  const rotY = ((baseY + oY + rotOffsetDegY) * Math.PI) / 180;
+  const rotZ = ((baseZ + oZ + rotOffsetDegZ) * Math.PI) / 180;
   const quaternion = useMemo(() => {
     const e = new THREE.Euler(rotX, rotY, rotZ, 'ZXY');
     return new THREE.Quaternion().setFromEuler(e);
@@ -320,10 +354,239 @@ function Model({
     return { center, rotation, h, baseRadius } as const;
   }, [sunDirWorld, quaternion, radius]);
 
+// Card overlays (same logic as Moon3D, using planet GLB calibration)
+  const axisLen = useMemo(() => radius * AXIS_LEN_FACTOR, [radius]);
+  const axisLenNF = useMemo(() => axisLen * 6, [axisLen]);
+  const northLocal = useMemo(
+    () => (glbCalib.northLocal ? glbCalib.northLocal.clone() : new THREE.Vector3(0, 1, 0)),
+    [glbCalib]
+  );
+  const viewLocal = useMemo(
+    () => (glbCalib.viewForwardLocal ? glbCalib.viewForwardLocal.clone() : new THREE.Vector3(0, 0, -1)),
+    [glbCalib]
+  );
+  const lon0EquatorLocal = useMemo(
+    () => (glbCalib.lon0EquatorLocal ? glbCalib.lon0EquatorLocal.clone() : new THREE.Vector3(1, 0, 0)),
+    [glbCalib]
+  );
+ const meridianNormalLocal = useMemo(() => {
+  const n = new THREE.Vector3().crossVectors(northLocal, viewLocal);
+  if (n.lengthSq() < 1e-9) return new THREE.Vector3(1, 0, 0);
+  return n.normalize();
+}, [northLocal, viewLocal]);
+
+const qEquatorTorus = useMemo(() => {
+  const q = new THREE.Quaternion();
+  q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), northLocal);
+  return q;
+}, [northLocal]);
+
+const qMeridianTorus = useMemo(() => {
+  const q = new THREE.Quaternion();
+  q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), meridianNormalLocal);
+  return q;
+}, [meridianNormalLocal]);
+
+  const diskNorthLocal = useMemo(() => {
+    const m = meridianNormalLocal.clone();
+    if (m.lengthSq() < 1e-9) m.set(1, 0, 0);
+    const d = new THREE.Vector3().crossVectors(m, northLocal);
+    if (d.lengthSq() < 1e-9) return new THREE.Vector3(0, 1, 0);
+    return d.normalize();
+  }, [meridianNormalLocal, northLocal]);
+
+  const viewNorm = useMemo(() => viewLocal.clone().normalize(), [viewLocal]);
+  const diskEastLocal = useMemo(() => {
+    const e = new THREE.Vector3().crossVectors(viewNorm, diskNorthLocal);
+    if (e.lengthSq() < 1e-9) return new THREE.Vector3(1, 0, 0);
+    return e.normalize();
+  }, [viewNorm, diskNorthLocal]);
+  const diskSouthLocal = useMemo(() => diskNorthLocal.clone().multiplyScalar(-1), [diskNorthLocal]);
+  const diskWestLocal = useMemo(() => diskEastLocal.clone().multiplyScalar(-1), [diskEastLocal]);
+
+  const rotY90 = useMemo(
+    () => new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2),
+    []
+  );
+  const diskEastLocalR = useMemo(
+    () => diskEastLocal.clone().applyQuaternion(rotY90).normalize(),
+    [diskEastLocal, rotY90]
+  );
+  const diskWestLocalR = useMemo(
+    () => diskWestLocal.clone().applyQuaternion(rotY90).normalize(),
+    [diskWestLocal, rotY90]
+  );
+
+  const qAxisN = useMemo(() => {
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), diskNorthLocal);
+    return q;
+  }, [diskNorthLocal]);
+  const qAxisDiskE = useMemo(() => {
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), diskEastLocalR);
+    return q;
+  }, [diskEastLocalR]);
+  const qAxisDiskS = useMemo(() => {
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), diskSouthLocal);
+    return q;
+  }, [diskSouthLocal]);
+  const qAxisDiskO = useMemo(() => {
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), diskWestLocalR);
+    return q;
+  }, [diskWestLocalR]);
+
+  const qAxisNear = useMemo(() => {
+    const q = new THREE.Quaternion();
+    q.setFromUnitVectors(new THREE.Vector3(0, 1, 0), lon0EquatorLocal);
+    return q;
+  }, [lon0EquatorLocal]);
+
+  const axisPosNear = useMemo(
+    () => lon0EquatorLocal.clone().multiplyScalar(radius + axisLenNF / 2 + radius * AXIS_GAP_FACTOR),
+    [lon0EquatorLocal, radius, axisLenNF]
+  );
+  const axisPos = useMemo(() => {
+    const nv = diskNorthLocal.clone();
+    return nv.multiplyScalar(radius + axisLen / 2 + radius * AXIS_GAP_FACTOR);
+  }, [diskNorthLocal, radius, axisLen]);
+  const labelPos = useMemo(() => {
+    const nv = diskNorthLocal.clone();
+    return nv.multiplyScalar(
+      radius +
+        axisLen +
+        radius * N_MARGIN_FACTOR * LABEL_MARGIN_SCALE +
+        radius * LABEL_GAP_FACTOR
+    );
+  }, [diskNorthLocal, radius, axisLen]);
+
+  const axisPosE = useMemo(
+    () => diskEastLocalR.clone().multiplyScalar(radius + axisLen / 2 + radius * AXIS_GAP_FACTOR),
+    [diskEastLocalR, radius, axisLen]
+  );
+  const labelPosE = useMemo(
+    () =>
+      diskEastLocalR.clone().multiplyScalar(
+        radius + axisLen + radius * N_MARGIN_FACTOR * LABEL_MARGIN_SCALE + radius * LABEL_GAP_FACTOR
+      ),
+    [diskEastLocalR, radius, axisLen]
+  );
+  const axisPosS = useMemo(
+    () => diskSouthLocal.clone().multiplyScalar(radius + axisLen / 2 + radius * AXIS_GAP_FACTOR),
+    [diskSouthLocal, radius, axisLen]
+  );
+  const labelPosS = useMemo(
+    () =>
+      diskSouthLocal.clone().multiplyScalar(
+        radius + axisLen + radius * N_MARGIN_FACTOR * LABEL_MARGIN_SCALE + radius * LABEL_GAP_FACTOR
+      ),
+    [diskSouthLocal, radius, axisLen]
+  );
+  const axisPosO = useMemo(
+    () => diskWestLocalR.clone().multiplyScalar(radius + axisLen / 2 + radius * AXIS_GAP_FACTOR),
+    [diskWestLocalR, radius, axisLen]
+  );
+  const labelPosO = useMemo(
+    () =>
+      diskWestLocalR.clone().multiplyScalar(
+        radius + axisLen + radius * N_MARGIN_FACTOR * LABEL_MARGIN_SCALE + radius * LABEL_GAP_FACTOR
+      ),
+    [diskWestLocalR, radius, axisLen]
+  );
+
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternion}>
       {debugMask && <axesHelper args={[targetPx * 0.6]} />}
       <primitive object={centeredScene} />
+
+      {showPlanetCard && (
+        <group>
+          {/* Equator ring */}
+          <group quaternion={qEquatorTorus} renderOrder={10}>
+            <mesh renderOrder={10}>
+              <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+              <meshBasicMaterial
+                color="#22c55e"
+                transparent
+                opacity={0.95}
+                depthTest
+                depthWrite={false}
+                side={THREE.DoubleSide}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+          </group>
+          {/* Méridien central: torus plein avant */}
+          <group quaternion={qMeridianTorus} renderOrder={10}>
+            <mesh renderOrder={10}>
+              <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+              <meshBasicMaterial
+                color="#ef4444"
+                transparent
+                opacity={0.95}
+                depthTest
+                depthWrite={false}
+                side={THREE.DoubleSide}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+          </group>
+          {/* Center dot */}
+          <mesh renderOrder={11}>
+            <sphereGeometry args={[radius * CENTER_DOT_FACTOR, 16, 16]} />
+            <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
+          </mesh>
+          {/* N axis + label */}
+          <group renderOrder={11}>
+            <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisN} renderOrder={11}>
+              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
+              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
+            </Billboard>
+          </group>
+          {/* E, S, O axes + labels + near/reference axis */}
+          <group renderOrder={11}>
+            {/* E */}
+            <mesh position={[axisPosE.x, axisPosE.y, axisPosE.z]} quaternion={qAxisDiskE} renderOrder={11}>
+              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
+              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
+            </Billboard>
+            {/* S */}
+            <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
+              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
+              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
+            </Billboard>
+            {/* O (W) */}
+            <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
+              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
+              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
+            </Billboard>
+            {/* Reference axis along lon0EquatorLocal (no label) */}
+            <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>
+              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+          </group>
+        </group>
+      )}
+
       {showPlanetCard && showSubsolarCone && subsolar && (
         <mesh position={[subsolar.center.x, subsolar.center.y, subsolar.center.z]} quaternion={subsolar.rotation} renderOrder={12}>
           <coneGeometry args={[subsolar.baseRadius, subsolar.h, 24]} />
@@ -355,16 +618,34 @@ export default function Planet3D({
   illumFraction,
   brightLimbAngleDeg,
   showSubsolarCone = true,
-  earthshine = false,
-  reliefScale = RELIEF_SCALE_DEFAULT,
+  reliefScale,
+  orientationDegX,
+  orientationDegY,
+  orientationDegZ,
 }: Props) {
-  // ...existing code...
-  if (!Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2) return null;
+  // Source model URL and per-planet overrides
+  const reg = PLANET_REGISTRY[id] as any;
+  const renderCfg = (reg?.render) || {};
 
-  // Source static model from registry (override if provided)
-  const reg = PLANET_REGISTRY[id];
   const modelUrl = modelUrlOverride || reg?.modelUrl;
   if (!modelUrl) return null;
+
+
+  // Preload GLB even if we don't render now
+  useGLTF.preload(modelUrl);
+
+  if (!Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2) return null;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+  // Per-planet resolved values with defaults
+  const sunlightIntensity = toFiniteNumber(renderCfg.sunlightIntensity) ?? DEFAULT_SUNLIGHT_INTENSITY;
+  const ambientFillIntensity = toFiniteNumber(renderCfg.ambientFillIntensity) ?? DEFAULT_AMBIENT_FILL_INTENSITY;
+  const noPhaseAmbientIntensity = toFiniteNumber(renderCfg.noPhaseAmbientIntensity) ?? DEFAULT_NO_PHASE_AMBIENT_INTENSITY;
+  const reliefScaleDefault = toFiniteNumber(renderCfg.reliefScaleDefault ?? renderCfg.reliefScale) ?? DEFAULT_RELIEF_SCALE;
+  const glbCalib: GlbCalib = (renderCfg.glbCalib as GlbCalib) ?? DEFAULT_GLB_CALIB;
+
+  // Effective relief (prop wins over per-planet default)
+  const effectiveReliefScale = toFiniteNumber(reliefScale) ?? reliefScaleDefault;
 
   const vPlanet = useMemo(() => altAzToVec(planetAltDeg, planetAzDeg), [planetAltDeg, planetAzDeg]);
   const vSun = useMemo(() => altAzToVec(sunAltDeg, sunAzDeg), [sunAltDeg, sunAzDeg]);
@@ -392,7 +673,7 @@ export default function Planet3D({
     }
     return mul(R, vSun);
   }, [illumFraction, brightLimbAngleDeg, R, vSun]);
-
+  //console.log(reg.label, " illumFraction: ", illumFraction);
   const camEuler = useMemo(
     () =>
       new THREE.Euler(
@@ -409,7 +690,6 @@ export default function Planet3D({
     const v = new THREE.Vector3(lightCam[0], lightCam[1], lightCam[2]).applyQuaternion(q);
     return [-v.x, -v.y, -v.z] as Vec3;
   }, [lightCam, camEuler]);
-
   const sunDirWorld = useMemo((): Vec3 => {
     const d = new THREE.Vector3(-baseLightPos[0], -baseLightPos[1], -baseLightPos[2]);
     if (d.lengthSq() < 1e-9) return [0, 0, -1];
@@ -423,25 +703,6 @@ export default function Planet3D({
   const canvasPx = Math.floor(targetPx * (1 + extraMargin));
   const left = Math.round(x - canvasPx / 2);
   const top = Math.round(y - canvasPx / 2);
-
-  // Earthshine fill intensity/position
-  const earthshineFrac = useMemo(() => {
-    const f = toFiniteNumber(illumFraction);
-    if (typeof f !== 'number') return 0;
-    return Math.max(0, Math.min(1, 1 - f));
-  }, [illumFraction]);
-
-  const earthFillIntensity = useMemo(() => {
-    if (!earthshine) return 0;
-    return Math.pow(earthshineFrac, 0.8) * EARTHSHINE_INTENSITY_GAIN;
-  }, [earthshine, earthshineFrac]);
-
-  const earthFillPos = useMemo((): Vec3 => {
-    const rWorld = targetPx / 2;
-    const fwd = new THREE.Vector3(0, 0, -1).applyEuler(camEuler).normalize();
-    const pos = fwd.multiplyScalar(-rWorld * 1.02);
-    return [pos.x, pos.y, pos.z];
-  }, [camEuler, targetPx]);
 
   return (
     <div
@@ -470,30 +731,12 @@ export default function Planet3D({
         />
         {!showPhase ? (
           <>
-            <ambientLight intensity={1.2} />
-            <directionalLight position={[1, 0, 0]} intensity={3.5} />
-            <directionalLight position={[-1, 0, 0]} intensity={3.5} />
-            <directionalLight position={[0, 1, 0]} intensity={3.5} />
-            <directionalLight position={[0, -1, 0]} intensity={3.5} />
-            <directionalLight position={[0, 0, 1]} intensity={3.5} />
-            <directionalLight position={[0, 0, -1]} intensity={3.5} />
-            <directionalLight position={[1, 1, 1]} intensity={2.0} />
-            <directionalLight position={[1, 1, -1]} intensity={2.0} />
-            <directionalLight position={[1, -1, 1]} intensity={2.0} />
-            <directionalLight position={[1, -1, -1]} intensity={2.0} />
-            <directionalLight position={[-1, 1, 1]} intensity={2.0} />
-            <directionalLight position={[-1, 1, -1]} intensity={2.0} />
-            <directionalLight position={[-1, -1, 1]} intensity={2.0} />
-            <directionalLight position={[-1, -1, -1]} intensity={2.0} />
+            <ambientLight intensity={noPhaseAmbientIntensity} />
           </>
         ) : (
           <>
-            <hemisphereLight args={[0x888888, 0x111111, 1.2]} />
-            <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={SUNLIGHT_INTENSITY} />
-            <ambientLight intensity={0.8} />
-            {earthFillIntensity > 0 && (
-              <directionalLight position={earthFillPos} color="#9999ff" intensity={earthFillIntensity} />
-            )}
+          <ambientLight intensity={ambientFillIntensity} />
+          <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={sunlightIntensity} />
           </>
         )}
         <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="#b0b0b0" /></mesh>}>
@@ -508,7 +751,11 @@ export default function Planet3D({
             rotOffsetDegY={rotOffsetDegY}
             rotOffsetDegZ={rotOffsetDegZ}
             debugMask={debugMask}
-            reliefScale={reliefScale}
+            reliefScale={effectiveReliefScale}
+            glbCalib={glbCalib}
+            orientationDegX={orientationDegX}
+            orientationDegY={orientationDegY}
+            orientationDegZ={orientationDegZ}
           />
         </Suspense>
       </Canvas>

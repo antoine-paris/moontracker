@@ -515,7 +515,24 @@ export default function App() {
       rotationDeg: number;
       planetAltDeg: number;
       planetAzDeg: number;
+      orientationDegX?: number;
+      orientationDegY?: number;
+      orientationDegZ?: number;
     }[] = [];
+
+    // Helper ENU <-> (az,alt)
+    const altAzToVec = (azDeg: number, altDeg: number) => {
+      const az = toRad(azDeg);
+      const alt = toRad(altDeg);
+      const E = Math.cos(alt) * Math.sin(az); // East
+      const N = Math.cos(alt) * Math.cos(az); // North
+      const U = Math.sin(alt);                // Up
+      return [E, N, U] as const;
+    };
+    const norm3 = (v: readonly number[]) => {
+      const L = Math.hypot(v[0], v[1], v[2]) || 1;
+      return [v[0]/L, v[1]/L, v[2]/L] as const;
+    };
 
     for (const p of planetsEphemArr) {
       const id = (p as any).id as string;
@@ -551,7 +568,7 @@ export default function App() {
       const pxPerDegY = proj.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
       const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
 
-      // Diamètre apparent (si fourni par l’éphéméride)
+      // Diamètre apparent (si fourni)
       const appDiamDeg = Number((p as any).appDiamDeg ?? 0);
 
       // Taille à l’écran
@@ -570,16 +587,85 @@ export default function App() {
       // Distance (AU) si dispo
       const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
 
-      // Angle de la direction du Soleil autour de la planète (0=N, 90=E)
-      const alpha = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x); // rad (0=→, 90°=↓)
-      const angleToSunDeg = norm360((alpha * 180 / Math.PI) + 90);              // 0=N, 90=E
+      // --- Projection-aware: choisir le pas (±EPS) qui bouge le plus à l'écran ---
+      let angleToSunDeg: number;
+      {
+        const u0 = altAzToVec(az, alt);
+        const uS = altAzToVec(astro.sun.az, astro.sun.alt);
+        const dotUS = u0[0]*uS[0] + u0[1]*uS[1] + u0[2]*uS[2];
 
-      // Fraction éclairée (approx) à partir de la séparation apparente
+        const EPS_RAD = toRad(0.05); // ~0.05°
+        if (1 - Math.abs(dotUS) < 1e-9) {
+          // Quasi colinéaire: repli direct écran→écran
+          const alpha = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x); // 0=→, 90=↓
+          angleToSunDeg = norm360(toDeg(alpha) + 90);                                // 0=N, 90=E
+        } else {
+          // Tangente locale vers le Soleil
+          const t = norm3([uS[0] - dotUS*u0[0], uS[1] - dotUS*u0[1], uS[2] - dotUS*u0[2]]);
+
+          // Pas avant (vers Soleil) et arrière (opposé)
+          const wF = norm3([
+            Math.cos(EPS_RAD)*u0[0] + Math.sin(EPS_RAD)*t[0],
+            Math.cos(EPS_RAD)*u0[1] + Math.sin(EPS_RAD)*t[1],
+            Math.cos(EPS_RAD)*u0[2] + Math.sin(EPS_RAD)*t[2],
+          ]);
+          const wB = norm3([
+            Math.cos(EPS_RAD)*u0[0] - Math.sin(EPS_RAD)*t[0],
+            Math.cos(EPS_RAD)*u0[1] - Math.sin(EPS_RAD)*t[1],
+            Math.cos(EPS_RAD)*u0[2] - Math.sin(EPS_RAD)*t[2],
+          ]);
+
+          const altF = toDeg(Math.asin(wF[2]));
+          const azF  = norm360(toDeg(Math.atan2(wF[0], wF[1])));
+          const altB = toDeg(Math.asin(wB[2]));
+          const azB  = norm360(toDeg(Math.atan2(wB[0], wB[1])));
+
+          const pF = projectToScreen(azF, altF, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+          const pB = projectToScreen(azB, altB, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+
+          const xF = viewport.x + pF.x, yF = viewport.y + pF.y;
+          const xB = viewport.x + pB.x, yB = viewport.y + pB.y;
+
+          const dxF = xF - screen.x, dyF = yF - screen.y;
+          const dxB = xB - screen.x, dyB = yB - screen.y;
+
+          const mF = Math.hypot(dxF, dyF);
+          const mB = Math.hypot(dxB, dyB);
+
+          // Choisir le pas qui “décroche” du bord
+          const useBack = mB > mF;
+          let alpha = Math.atan2(useBack ? dyB : dyF, useBack ? dxB : dxF); // 0=→, 90=↓
+          let deg = norm360(toDeg(alpha) + 90);                              // 0=N, 90=E
+
+          // Si on a dû prendre le pas arrière, corriger de 180° pour retrouver la direction “vers le Soleil”
+          if (useBack) deg = norm360(deg + 180);
+
+          // Repli si les deux déplacements sont quasi nuls (clamp aux bords)
+          if (Math.max(mF, mB) < 1e-6) {
+            const a = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x);
+            deg = norm360(toDeg(a) + 90);
+          }
+
+          angleToSunDeg = deg;
+        }
+      }
+
+      // Fraction éclairée (approx) via séparation apparente
       const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
-      const phaseFrac = clamp((1 + Math.cos((sep * Math.PI) / 180)) / 2, 0, 1);
+      let phaseFrac = Number((p as any).phaseFraction);
+      if (!Number.isFinite(phaseFrac)) {
+        const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
+        phaseFrac = clamp((1 + Math.cos((sep * Math.PI) / 180)) / 2, 0, 1);
+      } else {
+        phaseFrac = clamp(phaseFrac, 0, 1);
+      }
+      // Rotation du sprite: 0=→, donc -90 depuis 0=N
+      const rotationDeg = angleToSunDeg - 90;
+      const ori = (p as any).orientationXYZDeg;
+      const orientationDegX = Number.isFinite(ori?.x) ? Number(ori.x) : undefined;
+      const orientationDegY = Number.isFinite(ori?.y) ? Number(ori.y) : undefined;
+      const orientationDegZ = Number.isFinite(ori?.z) ? Number(ori.z) : undefined;
 
-      // Rotation écran pour sprite (neutre ici)
-      const rotationDeg = 0;
 
       items.push({
         id,
@@ -594,16 +680,14 @@ export default function App() {
         rotationDeg,
         planetAltDeg: alt,
         planetAzDeg: az,
+        orientationDegX,
+        orientationDegY,
+        orientationDegZ,
       });
     }
     items.sort((a, b) => b.distAU - a.distAU);
     return items;
-  }, [
-    planetsEphemArr, showPlanets,
-    refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode,
-    enlargeObjects, sunScreen.x, sunScreen.y,
-    date, location.lat, location.lng
-  ]);
+   }, [planetsEphemArr, showPlanets, refAz, viewport.w, viewport.h, viewport.x, viewport.y, refAlt, fovXDeg, fovYDeg, projectionMode, enlargeObjects, astro.sun.alt, astro.sun.az, sunScreen.y, sunScreen.x]);
 
   const moonOrientation = useMemo(
     () => getMoonOrientationAngles(date, location.lat, location.lng),
@@ -615,10 +699,17 @@ export default function App() {
   const localUpAngleMoonDeg = useMemo(() => {
     const eps = 0.01; // deg
     const p0 = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const p1 = projectToScreen(astro.moon.az, astro.moon.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const vx = p1.x - p0.x;
-    const vy = p1.y - p0.y; // y écran vers le bas
-    return Math.atan2(vy, vx) * 180 / Math.PI; // 0=→, 90=↓, -90=↑
+    const pU = projectToScreen(astro.moon.az, astro.moon.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const pD = projectToScreen(astro.moon.az, astro.moon.alt - eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const x0 = p0.x, y0 = p0.y;
+    const dxU = pU.x - x0, dyU = pU.y - y0;
+    const dxD = pD.x - x0, dyD = pD.y - y0;
+    const mU = Math.hypot(dxU, dyU);
+    const mD = Math.hypot(dxD, dyD);
+    const useDown = mD > mU;
+    let ang = Math.atan2(useDown ? dyD : dyU, useDown ? dxD : dxU) * 180 / Math.PI; // 0=→, 90=↓
+    if (useDown) ang = norm360(ang + 180); // rétablir la direction “vers +alt”
+    return ang;
   }, [astro.moon.az, astro.moon.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
 
   // NEW: corrected on-screen rotation for Moon (align local vertical with screen vertical)
@@ -638,10 +729,17 @@ export default function App() {
   const localUpAngleSunDeg = useMemo(() => {
     const eps = 0.01;
     const p0 = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const p1 = projectToScreen(astro.sun.az, astro.sun.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const vx = p1.x - p0.x;
-    const vy = p1.y - p0.y;
-    return Math.atan2(vy, vx) * 180 / Math.PI;
+    const pU = projectToScreen(astro.sun.az, astro.sun.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const pD = projectToScreen(astro.sun.az, astro.sun.alt - eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+    const x0 = p0.x, y0 = p0.y;
+    const dxU = pU.x - x0, dyU = pU.y - y0;
+    const dxD = pD.x - x0, dyD = pD.y - y0;
+    const mU = Math.hypot(dxU, dyU);
+    const mD = Math.hypot(dxD, dyD);
+    const useDown = mD > mU;
+    let ang = Math.atan2(useDown ? dyD : dyU, useDown ? dxD : dxU) * 180 / Math.PI;
+    if (useDown) ang = norm360(ang + 180);
+    return ang;
   }, [astro.sun.az, astro.sun.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
 
   // NEW: corrected on-screen rotation for Sun
@@ -1367,6 +1465,10 @@ export default function App() {
                     sunAltDeg={astro.sun.alt}
                     sunAzDeg={astro.sun.az}
                     limbAngleDeg={-p.rotationDeg}
+                    brightLimbAngleDeg={p.angleToSunDeg}
+                    orientationDegX={p.orientationDegX}
+                    orientationDegY={p.orientationDegY}
+                    orientationDegZ={p.orientationDegZ}
                     debugMask={debugMask}
                     rotOffsetDegX={rotOffsetDegX}
                     rotOffsetDegY={rotOffsetDegY}
@@ -1375,10 +1477,9 @@ export default function App() {
                     camRotDegY={camRotDegY}
                     camRotDegZ={camRotDegZ}
                     showPhase={showPhase}
-                    showPlanetCard={false}
+                    showPlanetCard={showMoonCard}
                     illumFraction={p.phaseFrac}
-                    showSubsolarCone={false}
-                    earthshine={earthshine}
+                    showSubsolarCone={true}
                   />
                 </div>
               );
