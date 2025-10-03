@@ -578,6 +578,9 @@ export default function App() {
       orientationDegX?: number;
       orientationDegY?: number;
       orientationDegZ?: number;
+      localUpAnglePlanetDeg?: number;
+      rotationToHorizonDegPlanet?: number;
+      rotationDegPlanetScreen?: number;
     }[] = [];
 
     // Helper ENU <-> (az,alt)
@@ -726,6 +729,40 @@ export default function App() {
       const orientationDegY = Number.isFinite(ori?.y) ? Number(ori.y) : undefined;
       const orientationDegZ = Number.isFinite(ori?.z) ? Number(ori.z) : undefined;
 
+      let localUpAnglePlanetDeg: number | undefined;
+      {
+        const eps = 0.01;
+        const p0 = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+        const pU = projectToScreen(az, alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+        const pD = projectToScreen(az, alt - eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
+        const dxU = pU.x - p0.x, dyU = pU.y - p0.y;
+        const dxD = pD.x - p0.x, dyD = pD.y - p0.y;
+        const mU = Math.hypot(dxU, dyU);
+        const mD = Math.hypot(dxD, dyD);
+        const useDown = mD > mU;
+        let ang = Math.atan2(useDown ? dyD : dyU, useDown ? dxD : dxU) * 180 / Math.PI; // 0=→, 90=↓
+        if (useDown) ang = norm360(ang + 180); // restore “toward +alt”
+        localUpAnglePlanetDeg = ang;
+      }
+
+      let rotationToHorizonDegPlanet: number | undefined;
+      try {
+        const po = getPlanetOrientationAngles(date, location.lat, location.lng, id as PlanetId);
+        rotationToHorizonDegPlanet =
+          (po as any)?.rotationToHorizonDegPlanetNorth ??
+          (po as any)?.rotationToHorizonDegPlanet ??
+          (po as any)?.rotationToHorizonDeg ??
+          undefined;
+      } catch {
+        // ignore if unavailable
+      }
+
+      // corrected on-screen rotation for planet (like rotationDegSunScreen)
+      const rotationDegPlanetScreen =
+        Number.isFinite(rotationToHorizonDegPlanet) && Number.isFinite(localUpAnglePlanetDeg)
+          ? norm360(-(-Number(rotationToHorizonDegPlanet) + (-90 - Number(localUpAnglePlanetDeg))))
+          : 0 ;
+
 
       items.push({
         id,
@@ -743,6 +780,9 @@ export default function App() {
         orientationDegX,
         orientationDegY,
         orientationDegZ,
+        localUpAnglePlanetDeg,
+        rotationToHorizonDegPlanet,
+        rotationDegPlanetScreen,
       });
     }
     items.sort((a, b) => b.distAU - a.distAU);
@@ -1455,7 +1495,7 @@ export default function App() {
 
             {/* NEW: Planets rendering (dot or sprite) */}
             {planetsRender.map(p => {
-              const S = Math.max(1, Math.round(p.sizePx));
+              const S = Math.max(4, Math.round(p.sizePx));
               const half = S / 2;
               const offscreen =
                 p.x + half < viewport.x ||
@@ -1525,6 +1565,7 @@ export default function App() {
                     sunAltDeg={astro.sun.alt}
                     sunAzDeg={astro.sun.az}
                     limbAngleDeg={-p.rotationDeg}
+                    rotationDeg={p.rotationDegPlanetScreen}
                     brightLimbAngleDeg={p.angleToSunDeg}
                     orientationDegX={p.orientationDegX}
                     orientationDegY={p.orientationDegY}

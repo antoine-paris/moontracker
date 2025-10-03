@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import { Z } from '../../render/constants';
 import type { PlanetId } from '../../astro/planets';
 import { PLANET_REGISTRY } from '../../render/planetRegistry';
+import { formatDeg } from "../../utils/format";
 
 // Light/relief defaults (can be overridden per-planet via PLANET_REGISTRY)
 const DEFAULT_SUNLIGHT_INTENSITY = 5.0;
@@ -250,6 +251,7 @@ type Props = {
   limbAngleDeg: number;
   modelUrl?: string;
   debugMask?: boolean;
+  rotationDeg : number
   rotOffsetDegX?: number;
   rotOffsetDegY?: number;
   rotOffsetDegZ?: number;
@@ -275,6 +277,7 @@ function Model({
   showPlanetCard = false,
   // rotation/orientation
   limbAngleDeg,
+  rotationDeg = 0,
   rotOffsetDegX = 0,
   rotOffsetDegY = 0,
   rotOffsetDegZ = 0,
@@ -291,6 +294,7 @@ function Model({
   showSubsolarCone?: boolean;
   showPlanetCard?: boolean;
   limbAngleDeg: number;
+  rotationDeg?: number;
   rotOffsetDegX?: number;
   rotOffsetDegY?: number;
   rotOffsetDegZ?: number;
@@ -314,11 +318,11 @@ function Model({
   const baseX = glbCalib.rotationBaseDeg.x, baseY = glbCalib.rotationBaseDeg.y, baseZ = glbCalib.rotationBaseDeg.z;
   const oX = Number.isFinite(orientationDegX) ? (orientationDegX as number) : 0;
   const oY = Number.isFinite(orientationDegY) ? (orientationDegY as number) : 0;
-  const oZ = Number.isFinite(orientationDegZ) ? (orientationDegZ as number) : limbAngleDeg;
+  const oZ = Number.isFinite(orientationDegZ) ? (orientationDegZ as number) : 0;
 
   const rotX = ((baseX + oX + rotOffsetDegX) * Math.PI) / 180;
   const rotY = ((baseY + oY + rotOffsetDegY) * Math.PI) / 180;
-  const rotZ = (((baseZ + limbAngleDeg + oZ + rotOffsetDegZ) * Math.PI) / 180);
+  const rotZ = ((baseZ + oZ - rotationDeg + rotOffsetDegZ) * Math.PI) / 180;
   const quaternion = useMemo(() => {
     const e = new THREE.Euler(rotX, rotY, rotZ, 'ZXY');
     return new THREE.Quaternion().setFromEuler(e);
@@ -608,6 +612,7 @@ export default function Planet3D({
   x, y, wPx, hPx,
   planetAltDeg, planetAzDeg,
   sunAltDeg, sunAzDeg,
+  rotationDeg,
   limbAngleDeg,
   modelUrl: modelUrlOverride,
   debugMask = false,
@@ -703,6 +708,24 @@ export default function Planet3D({
   const canvasPx = Math.floor(targetPx * (1 + extraMargin));
   const left = Math.round(x - canvasPx / 2);
   const top = Math.round(y - canvasPx / 2);
+  // Debug: show all incoming props
+  const debugProps = {
+    id,
+    limbAngleDeg,
+    illumFraction,
+    rotationDeg,
+    orientationDegX,
+    orientationDegY,  
+    orientationDegZ,
+  };
+  const debugText = id+"\n" +
+    "Eclairé : " + formatDeg(limbAngleDeg) + " " + (illumFraction * 100).toFixed(2) + "%, " + "\n " +
+    "RotZ Ecran : " + formatDeg(rotationDeg) + "\n" +
+    "RotX astro : " + formatDeg(orientationDegX) + "\n" +
+    "RotY astro : " + formatDeg(orientationDegY) + "\n" +
+    "RotZ astro : " + formatDeg(orientationDegZ) + "\n";
+
+  //JSON.stringify(debugProps.lim, null, 2);
 
   return (
     <div
@@ -747,6 +770,7 @@ export default function Planet3D({
             showSubsolarCone={showSubsolarCone}
             showPlanetCard={showPlanetCard}
             limbAngleDeg={limbAngleDeg}
+            rotationDeg={rotationDeg}
             rotOffsetDegX={rotOffsetDegX}
             rotOffsetDegY={rotOffsetDegY}
             rotOffsetDegZ={rotOffsetDegZ}
@@ -759,6 +783,29 @@ export default function Planet3D({
           />
         </Suspense>
       </Canvas>
+      {debugMask && (
+        <div
+          style={{
+            position: 'absolute',
+            left: 6,
+            top: 6,
+            right: 6,
+            maxHeight: '95%',
+            color: '#e5e7eb',
+            background: 'rgba(0,0,0,0.55)',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            fontSize: 11,
+            lineHeight: 1.2,
+            padding: 8,
+            borderRadius: 6,
+            whiteSpace: 'pre-wrap',
+            overflow: 'auto',
+          }}
+        >
+          {debugText}
+          
+        </div>
+      )}
     </div>
   );
 }

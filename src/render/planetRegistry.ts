@@ -34,7 +34,7 @@ export const PLANET_REGISTRY = {
       noPhaseAmbientIntensity: 0.5,
       reliefScale: 0.5,
       glbCalib: { 
-          rotationBaseDeg: { x: 0, y: 0, z: 180 },
+          rotationBaseDeg: { x: 0, y: 0, z: 0 },
           northLocal: new THREE.Vector3(0, 0, -1),
           viewForwardLocal: new THREE.Vector3(0, 0, 1),
           lon0EquatorLocal: new THREE.Vector3(-1, 0, 0),
