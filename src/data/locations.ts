@@ -20,7 +20,7 @@ export const LOCATIONS: LocationOption[] = [
 ];
 
 // New: URL to the CSV asset bundled by Vite
-const CITIES_CSV_URL = new URL('../assets/cities100k.csv', import.meta.url).href;
+const CITIES_CSV_URL = new URL('../assets/cities1k.csv', import.meta.url).href;
 
 // New: parse helpers
 function parseNumber(s: string): number {
