@@ -1544,7 +1544,7 @@ export default function App() {
                     y={p.y}
                     visibleX={true}
                     visibleY={true}
-                    rotationDeg={p.rotationDeg}
+                    rotationDeg={p.rotationDegPlanetScreen}
                     angleToSunDeg={p.rotationDegPlanetScreen}
                     phaseFraction={p.phaseFrac}
                     wPx={S}
