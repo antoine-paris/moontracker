@@ -1539,6 +1539,7 @@ export default function App() {
                 return (
                   <PlanetSprite
                     key={p.id}
+                    planetId={p.id}   // + add
                     x={p.x}
                     y={p.y}
                     visibleX={true}
@@ -1552,6 +1553,7 @@ export default function App() {
                     debugMask={debugMask}
                     brightLimbAngleDeg={p.angleToSunDeg}
                     zIndex={z}
+                    orientationDegX={p.orientationDegX}
                   />
                 );
               }

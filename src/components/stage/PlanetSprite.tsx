@@ -1,45 +1,28 @@
 import React, { useMemo } from 'react';
 import { Z } from '../../render/constants';
 import { sampleTerminatorLUT } from '../../astro/lut';
+import { SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO } from '../../astro/planets'; // gardez seulement l'outer ratio
 
 type Props = {
   x: number;
   y: number;
   visibleX?: boolean;
   visibleY?: boolean;
-
-  // Orientation locale du sprite (Nord planète vers le haut écran)
   rotationDeg: number;
-
-  // Angle écran vers le Soleil (0=→, 90=↓)
   angleToSunDeg: number;
-
-  // Optionnel: forcer directement l’angle du masque (sinon calculé depuis angleToSunDeg/rotationDeg)
   maskAngleDeg?: number;
-
-  // Phase 0..1
   phaseFraction: number;
-
-  // Rendu
   wPx: number;
   hPx: number;
-
-  // Couleur de base si pas de texture
   color: string;
-
-  // Optionnel: texture de surface (si fournie, appliquée comme pour la Lune)
   textureUrl?: string;
-
-  // Intensité du halo côté nuit (0..0.3) — similaire à l’earthshine de la Lune
   ambientNight?: number;
-
-  // Debug: affiche le gabarit du terminateur
   debugMask?: boolean;
-
-  // Optionnel: angle du limbe brillant (pour debug visuel uniquement)
   brightLimbAngleDeg?: number;
-
   zIndex?: number;
+  planetId?: string;
+  orientationDegZ?: number;
+  orientationDegX?: number;           // + add (tilt anneaux vue)
 };
 
 export default function PlanetSprite({
@@ -51,6 +34,8 @@ export default function PlanetSprite({
   debugMask = false,
   brightLimbAngleDeg,
   zIndex = Z.horizon - 2,
+  planetId,
+  orientationDegX,                     // + add
 }: Props) {
   // Do not cull here; parent handles partial on-screen culling.
 
@@ -92,6 +77,26 @@ export default function PlanetSprite({
   const litMaskId = nearHalf ? ids.litChord : (phaseFraction > 0.5 ? ids.litGibb : ids.litCres);
 
   const useTexture = !!textureUrl;
+  const isSaturn = planetId === 'Saturn';
+
+  // Ouverture: utiliser orientationDegX (angle d’ouverture des anneaux).
+  // Si non défini, repli sur orientationDegZ puis constante.
+  const D2R = Math.PI / 180;
+  const tiltDeg = (orientationDegX ?? orientationDegZ ?? 60);
+  const openness = Math.abs(Math.sin(tiltDeg * D2R));         // 0 edge-on, 1 face-on
+  const ringOuterScale = isSaturn ? SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO : 1;
+  const ringVerticalScale = isSaturn ? Math.max(0.05, openness) : 1; // mince mais non nul edge-on
+
+  // Style anneau simple (ellipse pleine devant)
+  const ringFill = '#d8d0c2';
+  const ringFillOpacity = 0.55;
+  const ringStroke = '#eee5d8';
+  const ringStrokeOpacity = 0.65;
+  const ringStrokeWidthPx = 1.2;
+
+  // Opacités
+  const backOpacity = 0.55;
+  const frontBoost = 0.35;
 
   return (
     <div
@@ -104,8 +109,11 @@ export default function PlanetSprite({
         width: wPx,
         height: hPx,
         pointerEvents: 'none',
+        overflow: 'visible',
+        opacity: (visibleX && visibleY) ? 1 : 0,
       }}
     >
+      {/* Disque planète + phases (inchangé) */}
       <svg width={wPx} height={hPx} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, display: 'block' }}>
         <defs>
           <clipPath id={ids.clip}>
@@ -197,6 +205,35 @@ export default function PlanetSprite({
         )}
       </svg>
 
+      {/* Anneaux Saturne SIMPLIFIES : simple ellipse pleine devant */}
+      {isSaturn && (
+        <svg
+          width={wPx * ringOuterScale }
+          height={wPx * ringOuterScale * ringVerticalScale}
+          viewBox="0 0 1000 1000"
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            pointerEvents: 'none',
+          }}
+        >
+          <ellipse
+            cx={500}
+            cy={500}
+            rx={500 * 0.5 * ringOuterScale*1.8}
+            ry={500 * 0.5 * ringOuterScale * ringVerticalScale}
+            fill={ringFill}
+            fillOpacity={ringFillOpacity}
+            stroke={ringStroke}
+            strokeOpacity={ringStrokeOpacity}
+            strokeWidth={ringStrokeWidthPx}
+          />
+        </svg>
+      )}
+
+      {/* Debug (inchangé) */}
       {debugMask && (
         <svg width={wPx} height={hPx} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <circle cx="312" cy="312" r="312" fill="none" stroke="#ffffff66" strokeWidth="1" strokeDasharray="3,4" />

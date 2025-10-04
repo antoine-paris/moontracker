@@ -6,6 +6,7 @@ import { Z } from '../../render/constants';
 import type { PlanetId } from '../../astro/planets';
 import { PLANET_REGISTRY } from '../../render/planetRegistry';
 import { formatDeg } from "../../utils/format";
+import { SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO } from '../../astro/planets'; // + add
 
 // Light/relief defaults (can be overridden per-planet via PLANET_REGISTRY)
 const DEFAULT_SUNLIGHT_INTENSITY = 5.0;
@@ -222,10 +223,11 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
       vx[2][0] * vx[0][1] + vx[2][1] * vx[1][1] + vx[2][2] * vx[2][1],
     ],
   ];
+  const kx = k * vx[0][0], ky = k * vx[1][1], kz = k * vx[2][2];
   return [
-    [1 + vx[0][0] + vx2[0][0] * k, vx[0][1] + vx2[0][1] * k, vx[0][2] + vx2[0][2] * k],
-    [vx[1][0] + vx2[1][0] * k, 1 + vx[1][1] + vx2[1][1] * k, vx[1][2] + vx2[1][2] * k],
-    [vx[2][0] + vx2[2][0] * k, vx[2][1] + vx2[2][1] * k, 1 + vx[2][2] + vx2[2][2] * k],
+    [1 + kx + vx2[0][0], vx[0][1] + vx2[0][1] * k, vx[0][2] + vx2[0][2] * k],
+    [vx[1][0] + vx2[1][0] * k, 1 + ky + vx2[1][1] * k, vx[1][2] + vx2[1][2] * k],
+    [vx[2][0] + vx2[2][0] * k, vx[2][1] + vx2[2][1] * k, 1 + kz + vx2[2][2] * k],
   ];
 }
 
@@ -287,6 +289,7 @@ function Model({
   orientationDegX,
   orientationDegY,
   orientationDegZ,
+  planetId,                 // + add
 }: {
   targetPx: number;
   modelUrl: string;
@@ -304,15 +307,79 @@ function Model({
   orientationDegX?: number;
   orientationDegY?: number;
   orientationDegZ?: number;
+  planetId?: PlanetId;       // + add
 }) {
   useGLTF.preload(modelUrl);
   const { scene } = useGLTF(modelUrl);
 
   const { centeredScene, scale, radius } = useMemo(() => {
     const processed = getProcessedModel(modelUrl, scene, reliefScale);
-    const s = Math.max(1, targetPx) / Math.max(1e-6, processed.maxDim);
-    return { centeredScene: processed.scene, scale: s, radius: processed.radius };
-  }, [modelUrl, scene, reliefScale, targetPx]);
+
+    let maxDimForScale = processed.maxDim;
+    let radiusForScale = processed.radius;
+
+    let coreMaxDim: number | null = null;
+    let fullMaxDim: number = processed.maxDim;
+
+    // Clone (we will mutate ring scale if Saturn)
+    const working = processed.scene.clone(true);
+
+    if (planetId === 'Saturn') {
+      // Mesure du cœur (sans anneaux)
+      const boxCore = new THREE.Box3();
+      const vMin = new THREE.Vector3(+Infinity, +Infinity, +Infinity);
+      const vMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
+      let found = false;
+      working.traverse((obj: any) => {
+        if (obj?.isMesh) {
+          const name = (obj.name || '').toLowerCase();
+          if (name.includes('ring')) return;
+          if (obj.geometry) {
+            obj.updateWorldMatrix?.(true, false);
+            const b = new THREE.Box3().setFromObject(obj);
+            vMin.min(b.min);
+            vMax.max(b.max);
+            found = true;
+          }
+        }
+      });
+      if (found) {
+        boxCore.min.copy(vMin);
+        boxCore.max.copy(vMax);
+        const sizeCore = new THREE.Vector3();
+        boxCore.getSize(sizeCore);
+        coreMaxDim = Math.max(sizeCore.x, sizeCore.y);
+      }
+
+      if (coreMaxDim && coreMaxDim > 0) {
+        maxDimForScale = coreMaxDim;
+        radiusForScale = coreMaxDim / 2;
+
+        // Ratio physique cible
+        const physicalRatio = SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO;
+
+        // Ratio réel du GLB
+        const glbRatio = fullMaxDim / coreMaxDim;
+
+        let ringEnlarge = physicalRatio / glbRatio; // corrige pour matcher physique
+        if (!Number.isFinite(ringEnlarge) || ringEnlarge <= 0) ringEnlarge = 1;
+
+        if (Math.abs(ringEnlarge - 1) > 0.02 && ringEnlarge < 5) {
+          working.traverse((obj: any) => {
+            if (obj?.isMesh) {
+              const name = (obj.name || '').toLowerCase();
+              if (name.includes('ring')) {
+                obj.scale.multiplyScalar(ringEnlarge); // + applique correction
+              }
+            }
+          });
+        }
+      }
+    }
+
+    const s = Math.max(1, targetPx) / Math.max(1e-6, maxDimForScale);
+    return { centeredScene: working, scale: s, radius: radiusForScale };
+  }, [modelUrl, scene, reliefScale, targetPx, planetId]); // replaced id by planetId
 
   // Neutral base + user offsets + "limb" rotation on Z (keep parity with Moon3D inputs)
   const baseX = glbCalib.rotationBaseDeg.x, baseY = glbCalib.rotationBaseDeg.y, baseZ = glbCalib.rotationBaseDeg.z;
@@ -628,10 +695,8 @@ export default function Planet3D({
   orientationDegY,
   orientationDegZ,
 }: Props) {
-  // Source model URL and per-planet overrides
   const reg = PLANET_REGISTRY[id] as any;
   const renderCfg = (reg?.render) || {};
-
   const modelUrl = modelUrlOverride || reg?.modelUrl;
   if (!modelUrl) return null;
 
@@ -702,12 +767,23 @@ export default function Planet3D({
     return [d.x, d.y, d.z];
   }, [baseLightPos]);
 
-  // Sizing like Moon3D: add small margin for cones/card if enabled
+  // Sizing (ajusté pour les anneaux de Saturne)
+  const hasRings = !!reg?.hasRings;
   const targetPx = Math.floor(Math.min(wPx, hPx));
-  const extraMargin = showPlanetCard ? 0.45 : 0.20;
+
+  // marge de base (carte active -> un peu plus)
+  let extraMargin = showPlanetCard ? 0.45 : 0.20;
+
+  if (hasRings) {
+    const RING_OUTER_FACTOR = SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO; // ≈2.347
+    const needed = RING_OUTER_FACTOR - 1;
+    const withBuffer = needed + 0.08; // léger buffer
+    if (extraMargin < withBuffer) extraMargin = withBuffer;
+  }
+
   const canvasPx = Math.floor(targetPx * (1 + extraMargin));
   const left = Math.round(x - canvasPx / 2);
-  const top = Math.round(y - canvasPx / 2);
+  const top  = Math.round(y - canvasPx / 2);
   // Debug: show all incoming props
   const debugProps = {
     id,
@@ -780,6 +856,7 @@ export default function Planet3D({
             orientationDegX={orientationDegX}
             orientationDegY={orientationDegY}
             orientationDegZ={orientationDegZ}
+            planetId={id}             // + pass id
           />
         </Suspense>
       </Canvas>

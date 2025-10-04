@@ -47,6 +47,12 @@ const MEAN_RADIUS_KM: Record<PlanetId, number> = {
 
 // Outer edge of Saturn's A ring (km)
 const SATURN_RING_OUTER_RADIUS_KM = 136_780;
+const SATURN_RING_INNER_RADIUS_KM = 74_658; // bord interne (≈ C ring) pour un rendu visuel
+export const SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO =
+  (SATURN_RING_OUTER_RADIUS_KM / MEAN_RADIUS_KM.Saturn);
+export const SATURN_RING_INNER_TO_GLOBE_DIAM_RATIO =
+  (SATURN_RING_INNER_RADIUS_KM / MEAN_RADIUS_KM.Saturn);
+// ≈ 2.347  (utilisé pour le rendu 2D/3D)
 
 const R2D = 180 / Math.PI;
 const D2R = Math.PI / 180;
