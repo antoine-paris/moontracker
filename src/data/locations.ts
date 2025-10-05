@@ -1,23 +1,20 @@
 export type LocationOption = {
   id: string;
-  label: string; // Pays — Capitale
+  label: string; // Pays — Capitale ou "Ville - Pays"
   lat: number;
   lng: number;
   timeZone: string;
+  /**
+   * Mots/alias de recherche (dérivés de la colonne 'search' du CSV, séparés par des virgules)
+   */
+  searchTerms?: string[];
+  /**
+   * Population (entier si disponible). Parsing tolérant (espaces, séparateur , ou .)
+   */
+  population?: number;
 };
 
-export const LOCATIONS: LocationOption[] = [
-  { id: "no", label: "Norvège — Oslo", lat: 59.9139, lng: 10.7522, timeZone: "Europe/Oslo" },
-  { id: "dk", label: "Danemark — Copenhague", lat: 55.6761, lng: 12.5683, timeZone: "Europe/Copenhagen" },
-  { id: "fr", label: "France — Paris", lat: 48.8566, lng: 2.3522, timeZone: "Europe/Paris" },
-  { id: "burgos", label: "Espagne — Burgos", lat: 42.3439, lng: -3.6969, timeZone: "Europe/Madrid" },
-  { id: "dz", label: "Algérie — Alger", lat: 36.7538, lng: 3.0588, timeZone: "Africa/Algiers" },
-  { id: "ml", label: "Mali — Bamako", lat: 12.6392, lng: -8.0029, timeZone: "Africa/Bamako" },
-  { id: "gh", label: "Ghana — Accra", lat: 5.6037, lng: -0.1870, timeZone: "Africa/Accra" },
-  { id: "ga", label: "Gabon — Libreville", lat: 0.4162, lng: 9.4673, timeZone: "Africa/Libreville" },
-  { id: "za", label: "Afrique du Sud — Pretoria", lat: -25.7479, lng: 28.2293, timeZone: "Africa/Johannesburg" },
-  { id: "wellington", label: "Nouvelle-Zélande — Wellington", lat: -41.2866, lng: 174.7756, timeZone: "Pacific/Auckland" },
-];
+export const LOCATIONS: LocationOption[] = []; // Désormais vide : seules les valeurs du CSV sont utilisées
 
 // New: URL to the CSV asset bundled by Vite
 const CITIES_CSV_URL = new URL('../assets/cities1k.csv', import.meta.url).href;
@@ -28,22 +25,89 @@ function parseNumber(s: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+// NEW: parse population (tolère " 101 616,00 " → 101616)
+function parsePopulation(raw: string | undefined): number | undefined {
+  if (!raw) return undefined;
+  const cleaned = raw
+    .trim()
+    .replace(/\s/g, '')     // retire espaces milliers
+    .replace(/\.(?=.*\.)/g, '') // retire points milliers si multiples
+    .replace(',', '.');     // virgule décimale → point
+  const n = parseFloat(cleaned);
+  if (!Number.isFinite(n)) return undefined;
+  return Math.round(n);
+}
+
+// NEW: split termes de recherche
+function parseSearchTerms(raw: string | undefined): string[] | undefined {
+  if (!raw) return undefined;
+  const arr = raw
+    .split(',')
+    .map(s => s.trim())
+    .filter(Boolean);
+  return arr.length ? Array.from(new Set(arr)) : undefined;
+}
+
+// UPDATED: parsing CSV avec en-têtes flexibles
 function parseCsv(text: string): LocationOption[] {
   const lines = text.split(/\r?\n/).filter(l => l.trim().length > 0);
-  const hasHeader = lines[0]?.toLowerCase().startsWith('id;');
+  if (lines.length === 0) return [];
+  const first = lines[0];
+  const headerCols = first.split(';').map(c => c.trim().toLowerCase());
+  const hasHeader = headerCols.includes('id');
+
+  // Indices par nom (fallback ordre ancien si pas d'en-tête)
+  let idx = {
+    id: 0,
+    label: 1,
+    lat: 2,
+    lng: 3,
+    timezone: 4,
+    search: 5,
+    population: 6,
+  };
+
+  if (hasHeader) {
+    const mapIndex = (name: string) => headerCols.findIndex(h => h === name);
+    const altIndex = (alts: string[]) =>
+      headerCols.findIndex(h => alts.includes(h));
+    idx = {
+      id: mapIndex('id'),
+      label: altIndex(['label', 'name']),
+      lat: altIndex(['lat', 'latitude']),
+      lng: altIndex(['lng', 'lon', 'long', 'longitude']),
+      timezone: altIndex(['timezone', 'tz']),
+      search: altIndex(['search', 'aliases']),
+      population: altIndex(['population', 'pop']),
+    };
+  }
+
   const start = hasHeader ? 1 : 0;
-  
   const out: LocationOption[] = [];
+
   for (let i = start; i < lines.length; i++) {
     const cols = lines[i].split(';');
-    if (cols.length < 5) continue;
-    const id = cols[0].trim();
-    const label = cols[1]?.trim() ?? '';
-    const lat = parseNumber(cols[2] ?? '0');
-    const lng = parseNumber(cols[3] ?? '0');
-    const timeZone = (cols[4] ?? '').trim();
+    const get = (j: number) => (j >= 0 && j < cols.length ? cols[j].trim() : '');
+
+    const id = get(idx.id);
+    const label = get(idx.label);
+    const lat = parseNumber(get(idx.lat));
+    const lng = parseNumber(get(idx.lng));
+    const timeZone = get(idx.timezone);
     if (!id || !label || !timeZone) continue;
-    out.push({ id, label, lat, lng, timeZone });
+
+    const searchTerms = parseSearchTerms(get(idx.search));
+    const population = parsePopulation(get(idx.population));
+
+    out.push({
+      id,
+      label,
+      lat,
+      lng,
+      timeZone,
+      ...(searchTerms ? { searchTerms } : {}),
+      ...(population ? { population } : {}),
+    });
   }
   return out;
 }
@@ -52,29 +116,25 @@ function parseCsv(text: string): LocationOption[] {
 let csvLocationsPromise: Promise<LocationOption[]> | null = null;
 
 /**
- * Load all locations from the CSV file (cached).
- * Falls back to the curated LOCATIONS if the CSV cannot be loaded.
+ * Charge les localisations depuis le CSV uniquement.
+ * En cas d’échec: retourne un tableau vide (plus de repli vers une liste codée).
  */
 export function loadLocationsFromCsv(): Promise<LocationOption[]> {
-   if (!csvLocationsPromise) {
+  if (!csvLocationsPromise) {
     csvLocationsPromise = fetch(CITIES_CSV_URL)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.text();
       })
       .then(text => parseCsv(text))
-      .catch(() => LOCATIONS);
+      .catch(() => []); // plus de fallback
   }
   return csvLocationsPromise;
 }
 
 /**
- * Convenience: get curated + CSV merged (CSV wins on id conflicts).
+ * Retourne uniquement les entrées issues du CSV (pas de fusion).
  */
 export async function getAllLocations(): Promise<LocationOption[]> {
-  const csv = await loadLocationsFromCsv();
-  const map = new Map<string, LocationOption>();
-  for (const l of LOCATIONS) map.set(l.id, l);
-  for (const l of csv) map.set(l.id, l);
-  return Array.from(map.values());
+  return loadLocationsFromCsv();
 }

@@ -5,12 +5,11 @@ import { getMoonOrientationAngles } from "./astro/aeInterop";
 
 // Types
 import type { FollowMode } from "./types";
-import type { LocationOption } from "./data/locations";
 import type { Device, ZoomModule } from "./optics/types";
 import type { Astro as TelemetryAstro } from "./components/layout/BottomTelemetry";
  
 // Données
-import { LOCATIONS, loadLocationsFromCsv, getAllLocations } from "./data/locations";
+import { getAllLocations, type LocationOption } from "./data/locations";
 import { DEVICES, CUSTOM_DEVICE_ID } from "./optics/devices";
 
 // Constantes d’affichage
@@ -75,15 +74,50 @@ export default function App() {
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
 
   // New: dynamic locations loaded from CSV
-  const [locations, setLocations] = useState<LocationOption[]>(LOCATIONS);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
+  const [locationsLoading, setLocationsLoading] = useState<boolean>(true);
 
-  // Add this useEffect to load locations from CSV
+  // Placeholder location to avoid undefined access before async load
+  const PLACEHOLDER_LOCATION: LocationOption = {
+    id: 'loading',
+    label: 'Loading…',
+    lat: 0,
+    lng: 0,
+    timeZone: 'UTC'
+  };
+
+  // Current selected location (starts with placeholder)
+  const [location, setLocation] = useState<LocationOption>(PLACEHOLDER_LOCATION);
+
   useEffect(() => {
-    getAllLocations().then(setLocations);
+    let cancelled = false;
+    getAllLocations()
+      .then(list => {
+        if (cancelled) return;
+        setLocations(list);
+        // If still placeholder and we have real data, pick first
+        if (list.length && location.id === 'loading') {
+          setLocation(list[0]);
+        }
+      })
+      .catch(() => {
+        // keep placeholder if failure
+      })
+      .finally(() => {
+        if (!cancelled) setLocationsLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
+  // If user deletes current city externally (rare), auto-fix
+  useEffect(() => {
+    if (location.id === 'loading') return;
+    if (locations.length && !locations.find(l => l.id === location.id)) {
+      setLocation(locations[0]);
+    }
+  }, [locations, location.id]);
+
   // Controls
-  const [location, setLocation] = useState<LocationOption>(LOCATIONS[2]); // default Paris
   const [when, setWhen] = useState<string>(() => toDatetimeLocalInputValue(new Date()));
   const [whenMs, setWhenMs] = useState<number>(() => Date.parse(when));
   const [follow, setFollow] = useState<FollowMode>('LUNE');
@@ -103,7 +137,7 @@ export default function App() {
 
 // Astronomical positions
   const astro = useMemo(() => {
-     const { lat, lng } = location;
+     const { lat, lng } = location || PLACEHOLDER_LOCATION;
      // Use combined alt/az fetch to reuse MakeTime/Observer
      const both = getSunAndMoonAltAzDeg(date, lat, lng);
      const sun = both.sun;
@@ -294,7 +328,7 @@ export default function App() {
   const [showPanels, setShowPanels] = useState(true);
   // City label derived from location label (format "Pays — Ville")
   const cityName = useMemo(() => {
-    const parts = location.label.split('—');
+    const parts = (location?.label ?? '').split('—');
     return (parts[1] ?? parts[0]).trim();
   }, [location]);
 
@@ -1155,9 +1189,13 @@ export default function App() {
             activeAltDeg={refAlt}
           />
         </aside>
-
         {/* Main stage */}
         <main className="relative flex-1">
+          {locationsLoading && location.id === 'loading' && (
+            <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">
+              Chargement des localisations…
+            </div>
+          )}
           {/* Global toggle button (top-right) */}
           <button
             onClick={() => setShowPanels(v => !v)}
@@ -1223,6 +1261,7 @@ export default function App() {
               debugMask={debugMask}
               setDebugMask={setDebugMask}
               timeZone={location.timeZone}
+
               enlargeObjects={enlargeObjects}
               setEnlargeObjects={setEnlargeObjects}
               currentUtcMs={whenMs}
@@ -1617,8 +1656,6 @@ export default function App() {
               planets={planetMarkers}
             />
           </div>
-
-          
 
           {/* Bottom telemetry cards */}
           <div
