@@ -112,6 +112,7 @@ export default function App() {
   // If user deletes current city externally (rare), auto-fix
   useEffect(() => {
     if (location.id === 'loading') return;
+    if (location.id.startsWith('np@') || location.id.startsWith('sp@')) return;
     if (locations.length && !locations.find(l => l.id === location.id)) {
       setLocation(locations[0]);
     }

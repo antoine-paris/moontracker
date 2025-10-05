@@ -13,6 +13,8 @@ export type LocationOption = {
    */
   population?: number;
 };
+// Filtre: population minimale requise pour inclure une ville (modifier au besoin)
+export const MIN_POPULATION = 100000;
 
 export const LOCATIONS: LocationOption[] = []; // Désormais vide : seules les valeurs du CSV sont utilisées
 
@@ -99,6 +101,10 @@ function parseCsv(text: string): LocationOption[] {
     const searchTerms = parseSearchTerms(get(idx.search));
     const population = parsePopulation(get(idx.population));
 
+    // Ignorer si pas de population ou en dessous du seuil
+    if (population === undefined) continue;
+    if (population < MIN_POPULATION) continue;
+
     out.push({
       id,
       label,
@@ -106,7 +112,7 @@ function parseCsv(text: string): LocationOption[] {
       lng,
       timeZone,
       ...(searchTerms ? { searchTerms } : {}),
-      ...(population ? { population } : {}),
+      population,
     });
   }
   return out;
