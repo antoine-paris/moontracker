@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import appLogo from '../../assets/applogos/android-chrome-192x192.png';
 // import earthModel from '../../assets/Earth_1_12756.glb'; // removed: GLB is not a TS module
 import type { LocationOption } from '../../data/locations';
+import { searchLocations } from '../../data/locations'; // NEW
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -360,6 +361,9 @@ export default function SidebarLocations({
   const [search, setSearch] = useState('');
   const listRef = useRef<HTMLUListElement>(null);
 
+  // NEW: flash si impossible de naviguer (seule ville sur cette latitude)
+  const [flashNoSameLat, setFlashNoSameLat] = useState(false);
+
   // Update selectedLng when selectedLocation changes externally
   useEffect(() => {
     setSelectedLng(Math.round(normLng(selectedLocation.lng)));
@@ -549,9 +553,13 @@ export default function SidebarLocations({
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     if (s.length > 0) {
-      return locations
-        .filter(l => l.label.toLowerCase().includes(s))
-        .sort((a, b) => b.lat - a.lat); // keep north -> south for consistency
+      // NEW: use indexed search (fallback preserves previous behavior order if needed)
+      const hits = searchLocations(s, locations);
+      return hits.length
+        ? hits
+        : locations
+            .filter(l => l.label.toLowerCase().includes(s))
+            .sort((a, b) => b.lat - a.lat);
     }
     return locations
       .filter(l => Math.round(normLng(l.lng)) === selectedLng)
@@ -639,54 +647,63 @@ export default function SidebarLocations({
         }, 0);
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
-        
-        // Remember current latitude for finding closest city
-        const currentLat = selectedLocation.lat;
-        
-        // Change longitude
-        const newLng = normLng(selectedLng + (e.key === 'ArrowRight' ? 1 : -1));
-        setSelectedLng(newLng);
-        
-        // Find and select closest city by latitude at the new longitude
+
+        // Nouvelle logique : navigation parmi les villes partageant le même degré entier de latitude
+        const targetLatDeg = Math.trunc(selectedLocation.lat);
+
+        // Filtrer les villes à ± le même degré entier
+        const sameLatCities = locations
+          .filter(l => Math.trunc(l.lat) === targetLatDeg)
+          .sort((a, b) => normLng(a.lng) - normLng(b.lng));
+
+        // Si aucune ou une seule -> impossible d'avancer
+        if (sameLatCities.length <= 1) {
+          // flash visuel bref
+            setFlashNoSameLat(true);
+            setTimeout(() => setFlashNoSameLat(false), 600);
+            return;
+        }
+
+        // Trouver index actuel
+        let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
+        if (currentIndex === -1) {
+          // Si la ville actuelle n’est pas dans la liste (ex: Pôle), on se positionne sur la première
+          currentIndex = 0;
+        }
+
+        let newIndex: number;
+        if (e.key === 'ArrowRight') {
+          // Avancer vers l'est (wrap-around)
+          newIndex = (currentIndex + 1) % sameLatCities.length;
+        } else {
+          // Aller vers l'ouest (wrap-around)
+          newIndex = (currentIndex - 1 + sameLatCities.length) % sameLatCities.length;
+        }
+
+        // Si le nouvel index est identique (seul cas possible : length==1 déjà traité) on ne bouge pas
+        if (newIndex === currentIndex) {
+          setFlashNoSameLat(true);
+          setTimeout(() => setFlashNoSameLat(false), 600);
+          return;
+        }
+
+        const newLoc = sameLatCities[newIndex];
+        // Mettre à jour longitude filtrante + sélection
+        setSelectedLng(Math.round(normLng(newLoc.lng)));
+        onSelectLocation(newLoc);
+        if (search.trim()) setSearch('');
+
         setTimeout(() => {
-          const citiesAtNewLng = locations.filter(l => Math.round(normLng(l.lng)) === newLng);
-          
-          let closestLocation: LocationOption;
-          
-          if (citiesAtNewLng.length === 0) {
-            // No cities at this longitude, select based on latitude
-            if (currentLat >= 45) {
-              closestLocation = { id: `np@${newLng}`, label: 'Pôle Nord', lat: 89, lng: newLng, timeZone: 'Etc/UTC' };
-            } else if (currentLat <= -45) {
-              closestLocation = { id: `sp@${newLng}`, label: 'Pôle Sud', lat: -89, lng: newLng, timeZone: 'Etc/UTC' };
-            } else {
-              // Select north pole by default for mid-latitudes when no cities
-              closestLocation = { id: `np@${newLng}`, label: 'Pôle Nord', lat: 89, lng: newLng, timeZone: 'Etc/UTC' };
-            }
-          } else {
-            // Find closest city by latitude
-            closestLocation = citiesAtNewLng.reduce((closest, city) => {
-              const closestDiff = Math.abs(closest.lat - currentLat);
-              const cityDiff = Math.abs(city.lat - currentLat);
-              return cityDiff < closestDiff ? city : closest;
-            });
-          }
-          
-          onSelectLocation(closestLocation);
-          
-          // Scroll to the selected item and focus it
-          setTimeout(() => {
-            const selectedButton = listRef.current?.querySelector(`button[data-location-id="${closestLocation.id}"]`) as HTMLButtonElement;
-            selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            selectedButton?.focus();
-          }, 0);
+          const btn = listRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
+          btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          btn?.focus();
         }, 0);
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collapsed, allLocations, selectedLocation, onSelectLocation, selectedLng, locations, isSearching]);
+  }, [collapsed, locations, selectedLocation, onSelectLocation, search, selectedLng]);
 
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
@@ -794,6 +811,15 @@ export default function SidebarLocations({
             .cities-list::-webkit-scrollbar-thumb:hover {
               background: rgba(255, 255, 255, 0.3);
             }
+            @keyframes flashSelected {
+              0% { box-shadow: 0 0 0 0 rgba(255,80,80,0); }
+              30% { box-shadow: 0 0 0 4px rgba(255,80,80,0.65); }
+              60% { box-shadow: 0 0 0 4px rgba(255,80,80,0.65); }
+              100% { box-shadow: 0 0 0 0 rgba(255,80,80,0); }
+            }
+            .flash-no-same-lat {
+              animation: flashSelected 600ms ease-in-out;
+            }
           `}</style>
 
           {/* Show poles only when NOT searching */}
@@ -830,13 +856,13 @@ export default function SidebarLocations({
           {filtered.map(loc => (
             <li key={loc.id}>
               <button
+                className={loc.id === selectedLocation.id && flashNoSameLat ? 'flash-no-same-lat' : undefined}
                 style={{
                   ...styles.itemBtn,
                   background: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                   borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
                 }}
                 onClick={() => {
-                  // NEW: Set longitude to city's and clear search, then select and scroll
                   const newLng = Math.round(normLng(loc.lng));
                   setSelectedLng(newLng);
                   onSelectLocation(loc);
