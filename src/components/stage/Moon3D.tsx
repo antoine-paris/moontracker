@@ -426,7 +426,8 @@ export default function Moon3D({
   x, y, wPx, hPx,
   moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg,
   librationTopo,
-  modelUrl = '/src/assets/moon-nasa-gov-4720-1k.glb',
+  // modelUrl = '/src/assets/moon-nasa-gov-4720-1k.glb',
+  modelUrl = new URL('../../assets/moon-nasa-gov-4720-1k.glb', import.meta.url).href,
   debugMask = false,
   rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
   camRotDegX = 0, camRotDegY = 0, camRotDegZ = 0,
@@ -630,7 +631,7 @@ export default function Moon3D({
              )}
            </>
          )}
-        <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="#b0b0b0" /></mesh>}>
+        <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="rgba(176, 176, 176, 0.45)" /></mesh>}>
            <Model
              limbAngleDeg={limbAngleDeg}
              targetPx={targetPx}
