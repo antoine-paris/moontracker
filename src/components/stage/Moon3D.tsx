@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { useGLTF, OrthographicCamera, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { Z } from '../../render/constants';
+import { getOrProcess, MOON_RELIEF_SCALE_DEFAULT } from '../../render/modelPrewarm';
 
 // Calibration dépendante du GLB (orientation et axes locaux du modèle)
 // Si vous changez de modèle GLB, ajustez ces valeurs ici.
@@ -33,151 +34,6 @@ const SUNLIGHT_INTENSITY = 10.0;
 
 // NEW: default scaling for texture-driven relief (displacement/bump/normal)
 const RELIEF_SCALE_DEFAULT = 0.4;
-
-// NEW: one-time processed model cache (per url+reliefScale)
-type ProcessedModel = { scene: THREE.Object3D; maxDim: number; radius: number };
-const processedCache = new Map<string, ProcessedModel>();
-
-function processSceneOnce(original: THREE.Object3D, reliefScale: number): ProcessedModel {
-  const rScale = Math.max(0, reliefScale ?? RELIEF_SCALE_DEFAULT);
-  // removed noisy console.log
-  // Deep clone
-  const clone = original.clone(true);
-
-  // Center clone to origin
-  const box0 = new THREE.Box3().setFromObject(clone);
-  const center0 = new THREE.Vector3();
-  const size0 = new THREE.Vector3();
-  box0.getCenter(center0);
-  box0.getSize(size0);
-  clone.position.x += -center0.x;
-  clone.position.y += -center0.y;
-  clone.position.z += -center0.z;
-
-  // IMPORTANT: clone geometries so we don't mutate GLTF shared BufferGeometries
-  clone.traverse((obj: any) => {
-    if (obj && obj.isMesh && obj.geometry?.isBufferGeometry) {
-      obj.geometry = (obj.geometry as THREE.BufferGeometry).clone();
-      // ensure position attribute is a unique buffer as well
-      const posAttr = obj.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
-      if (posAttr && (posAttr as any).clone) {
-        obj.geometry.setAttribute('position', (posAttr as any).clone());
-      }
-    }
-  });
-
-  // Material relief scaling (one time)
-  clone.traverse((obj: any) => {
-    if (obj && obj.isMesh) {
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      mats.forEach((m: any) => {
-        if (!m) return;
-        if (typeof m.displacementScale === 'number') m.displacementScale *= rScale;
-        if (typeof m.bumpScale === 'number') m.bumpScale *= rScale;
-        if (m.normalScale && m.normalScale.isVector2) m.normalScale.multiplyScalar(rScale);
-        m.needsUpdate = true;
-      });
-    }
-  });
-
-  // Geometry-based relief scaling (works for baked relief)
-  if (Number.isFinite(rScale) && Math.abs(rScale - 1) > 1e-6) {
-    clone.updateMatrixWorld(true);
-    let minR = Infinity, maxR = 0;
-    const v = new THREE.Vector3();
-
-    // Pass 1: compute reference radii
-    clone.traverse((obj: any) => {
-      if (obj && obj.isMesh && obj.geometry?.attributes?.position) {
-        const pos = obj.geometry.attributes.position as THREE.BufferAttribute;
-        for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i);
-          obj.localToWorld(v);
-          const r = v.length();
-          if (r < minR) minR = r;
-          if (r > maxR) maxR = r;
-        }
-      }
-    });
-
-    if (isFinite(minR) && isFinite(maxR) && maxR > 0) {
-      const r0 = (minR + maxR) * 0.5;
-      const vLocal = new THREE.Vector3();
-      const vWorld = new THREE.Vector3();
-
-      // Pass 2: rescale along radial direction
-      clone.traverse((obj: any) => {
-        if (obj && obj.isMesh && obj.geometry?.attributes?.position) {
-          const geom = obj.geometry as THREE.BufferGeometry;
-          const pos = geom.attributes.position as THREE.BufferAttribute;
-          for (let i = 0; i < pos.count; i++) {
-            vLocal.fromBufferAttribute(pos, i);
-            vWorld.copy(vLocal);
-            obj.localToWorld(vWorld);
-            const r = vWorld.length();
-            if (r > 1e-9) {
-              vWorld.multiplyScalar(1 / r);
-              const newR = r0 + (r - r0) * rScale;
-              vWorld.multiplyScalar(newR);
-              obj.worldToLocal(vWorld);
-              pos.setXYZ(i, vWorld.x, vWorld.y, vWorld.z);
-            }
-          }
-          pos.needsUpdate = true;
-          // IMPORTANT: do NOT recompute normals if present (preserve baked shading relief)
-          if (!geom.getAttribute('normal')) {
-            geom.computeVertexNormals();
-          }
-          geom.computeBoundingSphere();
-          geom.computeBoundingBox?.();
-        }
-      });
-    }
-  }
-
-  // NEW: scale baked vertex normals around spherical normals (works when relief is in normals)
-  clone.traverse((obj: any) => {
-    if (obj && obj.isMesh && obj.geometry?.attributes?.position && obj.geometry?.attributes?.normal) {
-      const geom = obj.geometry as THREE.BufferGeometry;
-      const pos = geom.attributes.position as THREE.BufferAttribute;
-      const normal = geom.attributes.normal as THREE.BufferAttribute;
-      // copy original normals so we can write the scaled result
-      const orig = new Float32Array(normal.array); // same length
-      const p = new THREE.Vector3();
-      const nSphere = new THREE.Vector3();
-      const n0 = new THREE.Vector3();
-      const nOut = new THREE.Vector3();
-      for (let i = 0; i < pos.count; i++) {
-        p.fromBufferAttribute(pos, i);
-        nSphere.copy(p).normalize();       // spherical normal (smooth)
-        n0.set(orig[i * 3 + 0], orig[i * 3 + 1], orig[i * 3 + 2]).normalize(); // baked normal
-        // n = normalize(nSphere + (n0 - nSphere) * rScale)
-        nOut.copy(n0).sub(nSphere).multiplyScalar(rScale).add(nSphere).normalize();
-        normal.setXYZ(i, nOut.x, nOut.y, nOut.z);
-      }
-      normal.needsUpdate = true;
-      // leave tangents as-is; they are not needed for vertex-normal based relief
-    }
-  });
-
-  // Size after processing
-  const box = new THREE.Box3().setFromObject(clone);
-  const size = new THREE.Vector3();
-  box.getSize(size);
-  const maxDim = Math.max(size.x, size.y);
-  const radius = Math.max(1e-6, maxDim) / 2;
-
-  return { scene: clone, maxDim, radius };
-}
-
-function getProcessedModel(modelUrl: string, original: THREE.Object3D, reliefScale: number): ProcessedModel {
-  const key = `${modelUrl}::${Math.max(0, reliefScale ?? RELIEF_SCALE_DEFAULT)}`;
-  const cached = processedCache.get(key);
-  if (cached) return cached;
-  const processed = processSceneOnce(original, reliefScale);
-  processedCache.set(key, processed);
-  return processed;
-}
 
 // Types et helpers (internes au fichier)
 type Props = {
@@ -300,15 +156,14 @@ function Model({
   reliefScale?: number;
 }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
-  useGLTF.preload(modelUrl);
   const { scene } = useGLTF(modelUrl);
 
   // Use one-time processed clone from cache, then only compute the render scale
   const { centeredScene, scale, radius } = useMemo(() => {
-     const processed = getProcessedModel(modelUrl, scene, reliefScale);
-     const s = Math.max(1, targetPx) / Math.max(1e-6, processed.maxDim);
-     return { centeredScene: processed.scene, scale: s, radius: processed.radius };
-   }, [modelUrl, scene, reliefScale, targetPx]);
+    const processed = getOrProcess(modelUrl, scene, reliefScale, 'moon');
+    const s = Math.max(1, targetPx) / Math.max(1e-6, processed.maxDim);
+    return { centeredScene: processed.scene, scale: s, radius: processed.radius };
+  }, [modelUrl, scene, reliefScale, targetPx]);
    // Orientation absolue appliquée au group parent (axesHelper suit la même rotation)
    const baseX = GLB_CALIB.rotationBaseDeg.x, baseY = GLB_CALIB.rotationBaseDeg.y, baseZ = GLB_CALIB.rotationBaseDeg.z;
    const rotX = ((baseX + rotOffsetDegX) * Math.PI) / 180;
@@ -461,7 +316,7 @@ function Model({
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
        {debugMask && <axesHelper args={[targetPx * 0.6]} />}
 
-       {/* Rendre la Lune en premier pour remplir le depth buffer */}
+       {/* Rendu principal de la Lune (déjà centré & préparé) */}
        <primitive object={centeredScene} />
 
        {showMoonCard && (
@@ -582,7 +437,7 @@ export default function Moon3D({
   showSubsolarCone = true,
   earthshine = false,
   // NEW: allow overriding from parent
-  reliefScale = RELIEF_SCALE_DEFAULT,
+  reliefScale = MOON_RELIEF_SCALE_DEFAULT,
 }: Props) {
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 

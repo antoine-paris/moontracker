@@ -54,6 +54,7 @@ import { getPlanetOrientationAngles, type PlanetId } from "./astro/planets";
 import PlanetSprite from "./components/stage/PlanetSprite";
 import Planet3D from "./components/stage/Planet3D"; 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { prewarmModel, MOON_RELIEF_SCALE_DEFAULT, PLANET_RELIEF_SCALE_DEFAULT } from './render/modelPrewarm';
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -85,26 +86,32 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     const urls = new Set<string>();
+    const modelKindByUrl = new Map<string, 'moon' | 'planet'>();
 
+    // Moon
     try {
-      // Default Moon model (same as Moon3D default prop)
-      urls.add(new URL('./assets/moon-nasa-gov-4720-1k.glb', import.meta.url).href);
-    } catch {}
-    try {
-      // Earth model (SidebarLocations)
-      urls.add(new URL('./assets/Earth_1_12756.glb', import.meta.url).href);
+      const moonUrl = new URL('./assets/moon-nasa-gov-4720-1k.glb', import.meta.url).href;
+      urls.add(moonUrl);
+      modelKindByUrl.set(moonUrl, 'moon');
     } catch {}
 
-    // Planet registry models
+    // Earth (treat as planet)
+    try {
+      const earthUrl = new URL('./assets/Earth_1_12756.glb', import.meta.url).href;
+      urls.add(earthUrl);
+      modelKindByUrl.set(earthUrl, 'planet');
+    } catch {}
+
+    // Planets
     Object.values(PLANET_REGISTRY).forEach((entry: any) => {
       const u = entry?.modelUrl;
       if (!u) return;
-      try {
-        urls.add(new URL(u, import.meta.url).href);
-      } catch {
-        urls.add(u); // keep as-is if already absolute or public path
-      }
+      let resolved = u;
+      try { resolved = new URL(u, import.meta.url).href; } catch {}
+      urls.add(resolved);
+      modelKindByUrl.set(resolved, 'planet');
     });
+
     const list = Array.from(urls);
     if (!list.length) return;
     setGlbLoading(true);
@@ -113,24 +120,40 @@ export default function App() {
     const loader = new GLTFLoader();
     let loaded = 0;
 
+    // Dynamically require drei (works in Vite) to call useGLTF.preload
+    let useGLTFPreload: ((u: string) => void) | undefined;
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { useGLTF } = require('@react-three/drei');
+      if (useGLTF?.preload) useGLTFPreload = useGLTF.preload;
+    } catch { /* ignore */ }
+
     Promise.all(
       list.map(
-        (url) =>
-          new Promise<void>((resolve) => {
+        url =>
+          new Promise<void>(resolve => {
             loader.load(
               url,
-              () => {
-                if (cancelled) return resolve();
-                loaded += 1;
-                setGlbProgress({ loaded, total: list.length });
+              gltf => {
+                if (!cancelled) {
+                  // Prime drei cache (so Suspense won't flash)
+                  try { useGLTFPreload && useGLTFPreload(url); } catch {}
+                  // Pre-process & cache geometry (relief)
+                  const kind = modelKindByUrl.get(url) ?? 'planet';
+                  const defaultRelief = kind === 'moon' ? MOON_RELIEF_SCALE_DEFAULT : PLANET_RELIEF_SCALE_DEFAULT;
+                  try { prewarmModel(url, gltf.scene, defaultRelief, kind); } catch {}
+                  loaded += 1;
+                  setGlbProgress({ loaded, total: list.length });
+                }
                 resolve();
               },
               undefined,
               () => {
-                if (cancelled) return resolve();
-                // count errors as completed
-                loaded += 1;
-                setGlbProgress({ loaded, total: list.length });
+                if (!cancelled) {
+                  // Even on error, count it to avoid stuck loader
+                  loaded += 1;
+                  setGlbProgress({ loaded, total: list.length });
+                }
                 resolve();
               }
             );
@@ -140,9 +163,7 @@ export default function App() {
       if (!cancelled) setGlbLoading(false);
     });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   // Placeholder location to avoid undefined access before async load

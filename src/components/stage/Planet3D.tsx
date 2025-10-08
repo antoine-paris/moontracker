@@ -7,6 +7,7 @@ import type { PlanetId } from '../../astro/planets';
 import { PLANET_REGISTRY } from '../../render/planetRegistry';
 import { formatDeg } from "../../utils/format";
 import { SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO } from '../../astro/planets'; // + add
+import { getOrProcess, PLANET_RELIEF_SCALE_DEFAULT } from '../../render/modelPrewarm';
 
 // Light/relief defaults (can be overridden per-planet via PLANET_REGISTRY)
 const DEFAULT_SUNLIGHT_INTENSITY = 5.0;
@@ -39,237 +40,6 @@ const DEFAULT_GLB_CALIB: GlbCalib = {
   viewForwardLocal: new THREE.Vector3(0, 0, -1),
   lon0EquatorLocal: new THREE.Vector3(1, 0, 0),
 } as const;
-
-// Cached processed models (per url+reliefScale)
-type ProcessedModel = { scene: THREE.Object3D; maxDim: number; radius: number };
-const processedCache = new Map<string, ProcessedModel>();
-
-function processSceneOnce(original: THREE.Object3D, reliefScale: number): ProcessedModel {
-  const rScale = Math.max(0, reliefScale ?? DEFAULT_RELIEF_SCALE);
-  const clone = original.clone(true);
-
-  // Center clone to origin
-  const box0 = new THREE.Box3().setFromObject(clone);
-  const center0 = new THREE.Vector3();
-  const size0 = new THREE.Vector3();
-  box0.getCenter(center0);
-  box0.getSize(size0);
-  clone.position.x += -center0.x;
-  clone.position.y += -center0.y;
-  clone.position.z += -center0.z;
-
-  // Clone geometries so we can mutate safely
-  clone.traverse((obj: any) => {
-    if (obj?.isMesh && obj.geometry?.isBufferGeometry) {
-      obj.geometry = (obj.geometry as THREE.BufferGeometry).clone();
-      const posAttr = obj.geometry.getAttribute('position') as THREE.BufferAttribute | undefined;
-      if (posAttr && (posAttr as any).clone) {
-        obj.geometry.setAttribute('position', (posAttr as any).clone());
-      }
-    }
-  });
-
-  // Scale material-driven relief
-  clone.traverse((obj: any) => {
-    if (obj?.isMesh) {
-      const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-      mats.forEach((m: any) => {
-        if (!m) return;
-        if (typeof m.displacementScale === 'number') m.displacementScale *= rScale;
-        if (typeof m.bumpScale === 'number') m.bumpScale *= rScale;
-        if (m.normalScale && m.normalScale.isVector2) m.normalScale.multiplyScalar(rScale);
-        m.needsUpdate = true;
-      });
-    }
-  });
-
-  // Optional geometry-based relief rescale
-  if (Number.isFinite(rScale) && Math.abs(rScale - 1) > 1e-6) {
-    clone.updateMatrixWorld(true);
-    let minR = Infinity, maxR = 0;
-    const v = new THREE.Vector3();
-
-    clone.traverse((obj: any) => {
-      if (obj?.isMesh && obj.geometry?.attributes?.position) {
-        const pos = obj.geometry.attributes.position as THREE.BufferAttribute;
-        for (let i = 0; i < pos.count; i++) {
-          v.fromBufferAttribute(pos, i);
-          obj.localToWorld(v);
-          const r = v.length();
-          if (r < minR) minR = r;
-          if (r > maxR) maxR = r;
-        }
-      }
-    });
-
-    if (isFinite(minR) && isFinite(maxR) && maxR > 0) {
-      const r0 = (minR + maxR) * 0.5;
-      const vLocal = new THREE.Vector3();
-      const vWorld = new THREE.Vector3();
-
-      clone.traverse((obj: any) => {
-        if (obj?.isMesh && obj.geometry?.attributes?.position) {
-          const geom = obj.geometry as THREE.BufferGeometry;
-          const pos = geom.attributes.position as THREE.BufferAttribute;
-          for (let i = 0; i < pos.count; i++) {
-            vLocal.fromBufferAttribute(pos, i);
-            vWorld.copy(vLocal);
-            obj.localToWorld(vWorld);
-            const r = vWorld.length();
-            if (r > 1e-9) {
-              vWorld.multiplyScalar(1 / r);
-              const newR = r0 + (r - r0) * rScale;
-              vWorld.multiplyScalar(newR);
-              obj.worldToLocal(vWorld);
-              pos.setXYZ(i, vWorld.x, vWorld.y, vWorld.z);
-            }
-          }
-          pos.needsUpdate = true;
-          if (!geom.getAttribute('normal')) {
-            geom.computeVertexNormals();
-          }
-          geom.computeBoundingSphere();
-          geom.computeBoundingBox?.();
-        }
-      });
-    }
-  }
-
-  // Optional: blend baked normals toward spherical normals
-  clone.traverse((obj: any) => {
-    if (obj?.isMesh && obj.geometry?.attributes?.position && obj.geometry?.attributes?.normal) {
-      const geom = obj.geometry as THREE.BufferGeometry;
-      const pos = geom.attributes.position as THREE.BufferAttribute;
-      const normal = geom.attributes.normal as THREE.BufferAttribute;
-      const orig = new Float32Array(normal.array);
-      const p = new THREE.Vector3();
-      const nSphere = new THREE.Vector3();
-      const n0 = new THREE.Vector3();
-      const nOut = new THREE.Vector3();
-      for (let i = 0; i < pos.count; i++) {
-        p.fromBufferAttribute(pos, i);
-        nSphere.copy(p).normalize();
-        n0.set(orig[i * 3 + 0], orig[i * 3 + 1], orig[i * 3 + 2]).normalize();
-        nOut.copy(n0).sub(nSphere).multiplyScalar(rScale).add(nSphere).normalize();
-        normal.setXYZ(i, nOut.x, nOut.y, nOut.z);
-      }
-      normal.needsUpdate = true;
-    }
-  });
-
-  const box = new THREE.Box3().setFromObject(clone);
-  const size = new THREE.Vector3();
-  box.getSize(size);
-  const maxDim = Math.max(size.x, size.y);
-  const radius = Math.max(1e-6, maxDim) / 2;
-  return { scene: clone, maxDim, radius };
-}
-
-function getProcessedModel(modelUrl: string, original: THREE.Object3D, reliefScale: number): ProcessedModel {
-  const key = `${modelUrl}::${Math.max(0, reliefScale ?? DEFAULT_RELIEF_SCALE)}`;
-  const cached = processedCache.get(key);
-  if (cached) return cached;
-  const processed = processSceneOnce(original, reliefScale);
-  processedCache.set(key, processed);
-  return processed;
-}
-
-// Helpers copied/adapted from Moon3D
-type Vec3 = [number, number, number];
-
-function toFiniteNumber(v: unknown): number | undefined {
-  if (v == null) return undefined;
-  if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
-  if (typeof v === 'string') {
-    const cleaned = v.replace(/[^0-9+\-.eE]/g, '');
-    const n = Number(cleaned);
-    return Number.isFinite(n) ? n : undefined;
-  }
-  return undefined;
-}
-
-function altAzToVec(altDeg: number, azDeg: number): Vec3 {
-  const d2r = Math.PI / 180;
-  const alt = altDeg * d2r;
-  const az = azDeg * d2r;
-  const cosAlt = Math.cos(alt);
-  return [cosAlt * Math.sin(az), cosAlt * Math.cos(az), Math.sin(alt)];
-}
-
-function rotateAToB(a: Vec3, b: Vec3): number[][] {
-  const [ax, ay, az] = a;
-  const [bx, by, bz] = b;
-  const v: Vec3 = [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx];
-  const s = Math.hypot(v[0], v[1], v[2]) || 1e-9;
-  const c = ax * bx + ay * by + az * bz;
-  const vx = [
-    [0, -v[2], v[1]],
-    [v[2], 0, -v[0]],
-    [-v[1], v[0], 0],
-  ];
-  const k = (1 - c) / (s * s);
-  const vx2 = [
-    [
-      vx[0][0] * vx[0][0] + vx[0][1] * vx[1][0] + vx[0][2] * vx[2][0],
-      vx[0][0] * vx[0][1] + vx[0][1] * vx[1][1] + vx[0][2] * vx[2][1],
-      vx[0][0] * vx[0][2] + vx[0][1] * vx[1][2] + vx[0][2] * vx[2][2],
-    ],
-    [
-      vx[1][0] * vx[0][0] + vx[1][1] * vx[1][0] + vx[1][2] * vx[2][0],
-      vx[1][0] * vx[0][1] + vx[1][1] * vx[1][1] + vx[1][2] * vx[2][1],
-    ],
-    [
-      vx[2][0] * vx[0][0] + vx[2][1] * vx[1][0] + vx[2][2] * vx[2][0],
-      vx[2][0] * vx[0][1] + vx[2][1] * vx[1][1] + vx[2][2] * vx[2][1],
-    ],
-  ];
-  const kx = k * vx[0][0], ky = k * vx[1][1], kz = k * vx[2][2];
-  return [
-    [1 + kx + vx2[0][0], vx[0][1] + vx2[0][1] * k, vx[0][2] + vx2[0][2] * k],
-    [vx[1][0] + vx2[1][0] * k, 1 + ky + vx2[1][1] * k, vx[1][2] + vx2[1][2] * k],
-    [vx[2][0] + vx2[2][0] * k, vx[2][1] + vx2[2][1] * k, 1 + kz + vx2[2][2] * k],
-  ];
-}
-
-function mul(R: number[][], v: Vec3): Vec3 {
-  return [
-    R[0][0] * v[0] + R[0][1] * v[1] + R[0][2] * v[2],
-    R[1][0] * v[0] + R[1][1] * v[1] + R[1][2] * v[2],
-    R[2][0] * v[0] + R[2][1] * v[1] + R[2][2] * v[2],
-  ];
-}
-
-// Props aligned with Moon3D (planet-centric names where applicable)
-type Props = {
-  id: PlanetId;
-  x: number;
-  y: number;
-  wPx: number;
-  hPx: number;
-  planetAltDeg: number;
-  planetAzDeg: number;
-  sunAltDeg: number;
-  sunAzDeg: number;
-  limbAngleDeg: number;
-  modelUrl?: string;
-  debugMask?: boolean;
-  rotationDeg : number
-  rotOffsetDegX?: number;
-  rotOffsetDegY?: number;
-  rotOffsetDegZ?: number;
-  camRotDegX?: number;
-  camRotDegY?: number;
-  camRotDegZ?: number;
-  showPhase?: boolean;
-  showPlanetCard?: boolean; // reserved; no axes/rings overlays here
-  illumFraction?: number | string;      // mainly for Mercury/Venus
-  brightLimbAngleDeg?: number | string; // PA of bright limb (0=N, 90=E)
-  showSubsolarCone?: boolean;
-  reliefScale?: number;
-  orientationDegX?: number;
-  orientationDegY?: number;
-  orientationDegZ?: number;
-};
 
 function Model({
   targetPx,
@@ -309,77 +79,56 @@ function Model({
   orientationDegZ?: number;
   planetId?: PlanetId;       // + add
 }) {
-  useGLTF.preload(modelUrl);
   const { scene } = useGLTF(modelUrl);
 
   const { centeredScene, scale, radius } = useMemo(() => {
-    const processed = getProcessedModel(modelUrl, scene, reliefScale);
+    const processed = getOrProcess(modelUrl, scene, reliefScale, 'planet');
 
+    // Clone for Saturn ring adjustment (safe: we only mutate a clone)
+    const working = processed.scene.clone(true);
     let maxDimForScale = processed.maxDim;
     let radiusForScale = processed.radius;
 
-    let coreMaxDim: number | null = null;
-    let fullMaxDim: number = processed.maxDim;
-
-    // Clone (we will mutate ring scale if Saturn)
-    const working = processed.scene.clone(true);
-
     if (planetId === 'Saturn') {
-      // Mesure du cœur (sans anneaux)
-      const boxCore = new THREE.Box3();
+      const SATURN_RATIO = SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO;
+      // Measure core (globe only)
       const vMin = new THREE.Vector3(+Infinity, +Infinity, +Infinity);
       const vMax = new THREE.Vector3(-Infinity, -Infinity, -Infinity);
       let found = false;
       working.traverse((obj: any) => {
         if (obj?.isMesh) {
           const name = (obj.name || '').toLowerCase();
-          if (name.includes('ring')) return;
-          if (obj.geometry) {
-            obj.updateWorldMatrix?.(true, false);
-            const b = new THREE.Box3().setFromObject(obj);
-            vMin.min(b.min);
-            vMax.max(b.max);
-            found = true;
-          }
+            if (name.includes('ring')) return;
+            if (obj.geometry) {
+              const b = new THREE.Box3().setFromObject(obj);
+              vMin.min(b.min);
+              vMax.max(b.max);
+              found = true;
+            }
         }
       });
       if (found) {
-        boxCore.min.copy(vMin);
-        boxCore.max.copy(vMax);
-        const sizeCore = new THREE.Vector3();
-        boxCore.getSize(sizeCore);
-        coreMaxDim = Math.max(sizeCore.x, sizeCore.y);
-      }
-
-      if (coreMaxDim && coreMaxDim > 0) {
-        maxDimForScale = coreMaxDim;
-        radiusForScale = coreMaxDim / 2;
-
-        // Ratio physique cible
-        const physicalRatio = SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO;
-
-        // Ratio réel du GLB
-        const glbRatio = fullMaxDim / coreMaxDim;
-
-        let ringEnlarge = physicalRatio / glbRatio; // corrige pour matcher physique
-        if (!Number.isFinite(ringEnlarge) || ringEnlarge <= 0) ringEnlarge = 1;
-
-        if (Math.abs(ringEnlarge - 1) > 0.02 && ringEnlarge < 5) {
-          working.traverse((obj: any) => {
-            if (obj?.isMesh) {
-              const name = (obj.name || '').toLowerCase();
-              if (name.includes('ring')) {
-                obj.scale.multiplyScalar(ringEnlarge); // + applique correction
+        const sizeCore = new THREE.Vector3().subVectors(vMax, vMin);
+        const coreMaxDim = Math.max(sizeCore.x, sizeCore.y);
+        if (coreMaxDim > 0) {
+          maxDimForScale = coreMaxDim;
+          radiusForScale = coreMaxDim / 2;
+          const glbRatio = processed.maxDim / coreMaxDim;
+          let ringEnlarge = SATURN_RATIO / glbRatio;
+          if (!Number.isFinite(ringEnlarge) || ringEnlarge <= 0) ringEnlarge = 1;
+          if (Math.abs(ringEnlarge - 1) > 0.02 && ringEnlarge < 5) {
+            working.traverse((obj: any) => {
+              if (obj?.isMesh && (obj.name || '').toLowerCase().includes('ring')) {
+                obj.scale.multiplyScalar(ringEnlarge);
               }
-            }
-          });
+            });
+          }
         }
       }
     }
-
     const s = Math.max(1, targetPx) / Math.max(1e-6, maxDimForScale);
     return { centeredScene: working, scale: s, radius: radiusForScale };
-  }, [modelUrl, scene, reliefScale, targetPx, planetId]); // replaced id by planetId
+  }, [modelUrl, scene, reliefScale, targetPx, planetId]);
 
   // Neutral base + user offsets + "limb" rotation on Z (keep parity with Moon3D inputs)
   const baseX = glbCalib.rotationBaseDeg.x, baseY = glbCalib.rotationBaseDeg.y, baseZ = glbCalib.rotationBaseDeg.z;
@@ -701,11 +450,62 @@ export default function Planet3D({
   if (!modelUrl) return null;
 
 
-  // Preload GLB even if we don't render now
-  useGLTF.preload(modelUrl);
-
   if (!Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2) return null;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return null;
+
+  function toFiniteNumber(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+  if (typeof v === 'string') {
+    const cleaned = v.replace(/[^0-9+\-.eE]/g, '');
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+function altAzToVec(altDeg: number, azDeg: number): Vec3 {
+  const d2r = Math.PI / 180;
+  const alt = altDeg * d2r;
+  const az = azDeg * d2r;
+  const cosAlt = Math.cos(alt);
+  return [cosAlt * Math.sin(az), cosAlt * Math.cos(az), Math.sin(alt)];
+}
+
+function rotateAToB(a: Vec3, b: Vec3): number[][] {
+  const [ax, ay, az] = a;
+  const [bx, by, bz] = b;
+  const v: Vec3 = [ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx];
+  const s = Math.hypot(v[0], v[1], v[2]) || 1e-9;
+  const c = ax * bx + ay * by + az * bz;
+  const vx = [
+    [0, -v[2], v[1]],
+    [v[2], 0, -v[0]],
+    [-v[1], v[0], 0],
+  ];
+  const k = (1 - c) / (s * s);
+  const vx2 = [
+    [
+      vx[0][0] * vx[0][0] + vx[0][1] * vx[1][0] + vx[0][2] * vx[2][0],
+      vx[0][0] * vx[0][1] + vx[0][1] * vx[1][1] + vx[0][2] * vx[2][1],
+      vx[0][0] * vx[0][2] + vx[0][1] * vx[1][2] + vx[0][2] * vx[2][2],
+    ],
+    [
+      vx[1][0] * vx[0][0] + vx[1][1] * vx[1][0] + vx[1][2] * vx[2][0],
+      vx[1][0] * vx[0][1] + vx[1][1] * vx[1][1] + vx[1][2] * vx[2][1],
+    ],
+    [
+      vx[2][0] * vx[0][0] + vx[2][1] * vx[1][0] + vx[2][2] * vx[2][0],
+      vx[2][0] * vx[0][1] + vx[2][1] * vx[1][1] + vx[2][2] * vx[2][1],
+    ],
+  ];
+  const kx = k * vx[0][0], ky = k * vx[1][1], kz = k * vx[2][2];
+  return [
+    [1 + kx + vx2[0][0], vx[0][1] + vx2[0][1] * k, vx[0][2] + vx2[0][2] * k],
+    [vx[1][0] + vx2[1][0] * k, 1 + ky + vx2[1][1] * k, vx[1][2] + vx2[1][2] * k],
+    [vx[2][0] + vx2[2][0] * k, vx[2][1] + vx2[2][1] * k, 1 + kz + vx2[2][2] * k],
+  ];
+}
 
   // Per-planet resolved values with defaults
   const sunlightIntensity = toFiniteNumber(renderCfg.sunlightIntensity) ?? DEFAULT_SUNLIGHT_INTENSITY;
