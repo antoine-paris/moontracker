@@ -53,6 +53,7 @@ import { getPlanetsEphemerides } from "./astro/planets";
 import { getPlanetOrientationAngles, type PlanetId } from "./astro/planets";
 import PlanetSprite from "./components/stage/PlanetSprite";
 import Planet3D from "./components/stage/Planet3D"; 
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -76,6 +77,73 @@ export default function App() {
   // New: dynamic locations loaded from CSV
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [locationsLoading, setLocationsLoading] = useState<boolean>(true);
+
+  // NEW: GLB preload (Moon, Earth, planets)
+  const [glbLoading, setGlbLoading] = useState<boolean>(false);
+  const [glbProgress, setGlbProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+    const urls = new Set<string>();
+
+    try {
+      // Default Moon model (same as Moon3D default prop)
+      urls.add(new URL('./assets/moon-nasa-gov-4720-1k.glb', import.meta.url).href);
+    } catch {}
+    try {
+      // Earth model (SidebarLocations)
+      urls.add(new URL('./assets/Earth_1_12756.glb', import.meta.url).href);
+    } catch {}
+
+    // Planet registry models
+    Object.values(PLANET_REGISTRY).forEach((entry: any) => {
+      const u = entry?.modelUrl;
+      if (!u) return;
+      try {
+        urls.add(new URL(u, import.meta.url).href);
+      } catch {
+        urls.add(u); // keep as-is if already absolute or public path
+      }
+    });
+    const list = Array.from(urls);
+    if (!list.length) return;
+    setGlbLoading(true);
+    setGlbProgress({ loaded: 0, total: list.length });
+
+    const loader = new GLTFLoader();
+    let loaded = 0;
+
+    Promise.all(
+      list.map(
+        (url) =>
+          new Promise<void>((resolve) => {
+            loader.load(
+              url,
+              () => {
+                if (cancelled) return resolve();
+                loaded += 1;
+                setGlbProgress({ loaded, total: list.length });
+                resolve();
+              },
+              undefined,
+              () => {
+                if (cancelled) return resolve();
+                // count errors as completed
+                loaded += 1;
+                setGlbProgress({ loaded, total: list.length });
+                resolve();
+              }
+            );
+          })
+      )
+    ).finally(() => {
+      if (!cancelled) setGlbLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Placeholder location to avoid undefined access before async load
   const PLACEHOLDER_LOCATION: LocationOption = {
@@ -584,6 +652,8 @@ export default function App() {
     if (moonApparentPx < MOON_3D_SWITCH_PX) return 'sprite';
     return '3d';
   }, [moonApparentPx]);
+
+  const moonRenderModeEffective = glbLoading && moonRenderMode === '3d' ? 'sprite' : moonRenderMode;
 
   const sunScreen = useMemo(() => {
     const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.sun.r, fovXDeg, fovYDeg, projectionMode);
@@ -1192,9 +1262,14 @@ export default function App() {
         </aside>
         {/* Main stage */}
         <main className="relative flex-1">
-          {locationsLoading && location.id === 'loading' && (
-            <div className="absolute inset-0 flex items-center justify-center text-white/60 text-sm">
-              Chargement des localisations…
+          {(locationsLoading || glbLoading) && (
+            <div className="absolute inset-0 flex flex-col gap-2 items-center justify-center text-white/70 text-sm pointer-events-none">
+              {locationsLoading && location.id === 'loading' && <div>Chargement des localisations…</div>}
+              {glbLoading && (
+                <div>
+                  Chargement des modèles 3D… {glbProgress.total > 0 ? Math.round(glbProgress.loaded / glbProgress.total * 100) : 0}%
+                </div>
+              )}
             </div>
           )}
           {/* Global toggle button (top-right) */}
@@ -1472,7 +1547,7 @@ export default function App() {
             )}
 
             {/* Moon auto: dot (<5px), 2D sprite (5–50px), 3D (>=50px) */}
-            {showMoon && moonRenderMode === 'dot' && moonScreen.visibleX && moonScreen.visibleY && (
+            {showMoon && !glbLoading && moonRenderModeEffective === 'dot' && moonScreen.visibleX && moonScreen.visibleY && (
               <div
                 className="absolute"
                 style={{
@@ -1488,7 +1563,7 @@ export default function App() {
               />
             )}
 
-            {showMoon && moonRenderMode === 'sprite' && (
+            {showMoon && !glbLoading && moonRenderModeEffective === 'sprite' && (
               <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
                 <MoonSprite
                   x={moonScreen.x} y={moonScreen.y}
@@ -1507,7 +1582,7 @@ export default function App() {
               </div>
             )}
 
-            {showMoon && moonRenderMode === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
+            {showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
               <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }}>
                 <Moon3D
                   x={moonScreen.x}
@@ -1549,14 +1624,16 @@ export default function App() {
                 p.y - half > viewport.y + viewport.h;
               if (offscreen) return null;
 
-              // NEW: dynamic z-index vs Sun (farther-than-Sun => behind Sun)
               const isFartherThanSun =
                 Number.isFinite(astro.sun.distAU) && Number.isFinite(p.distAU)
                   ? (p.distAU as number) > (astro.sun.distAU as number)
                   : true;
               const z = isFartherThanSun ? Z.horizon - 3 : Z.horizon - 2;
 
-              if (p.mode === 'dot') {
+              // Downgrade 3D planets to sprite while GLBs still loading
+              const effectiveMode = glbLoading && p.mode === '3d' ? 'sprite' : p.mode;
+
+              if (effectiveMode === 'dot') {
                 return (
                   <div
                     key={p.id}
@@ -1575,11 +1652,11 @@ export default function App() {
                 );
               }
 
-              if (p.mode === 'sprite') {
+              if (effectiveMode === 'sprite') {
                 return (
                   <PlanetSprite
                     key={p.id}
-                    planetId={p.id}   // + add
+                    planetId={p.id}
                     x={p.x}
                     y={p.y}
                     visibleX={true}
@@ -1598,7 +1675,7 @@ export default function App() {
                 );
               }
 
-              // mode === '3d'
+              // effectiveMode === '3d' (only when glbLoading === false)
               return (
                 <div key={p.id} className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }}>
                   <Planet3D
