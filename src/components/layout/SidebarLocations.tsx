@@ -958,7 +958,23 @@ export default function SidebarLocations({
                 data-location-id={loc.id}
                 onFocus={(e) => e.currentTarget.blur()}
               >
-                <div>{loc.label}</div>
+                {/* Label row with directional arrow for non-selected items */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  {loc.id !== selectedLocation.id && (
+                    <span
+                      style={{
+                        ...styles.navDir,
+                        display: 'inline-block',
+                        transform: loc.lat > selectedLocation.lat ? 'rotate(270deg)' : 'rotate(90deg)',
+                      }}
+                    >
+                      &#x27A4;
+                    </span>
+                  )}
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {loc.label}
+                  </span>
+                </div>
                 <div style={styles.sub}>
                   {`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}
                 </div>
