@@ -21,7 +21,8 @@ import { toDatetimeLocalInputValue, formatTimeInZone, formatDateTimeInZone, form
 import { utcMsToZonedLocalString } from "./utils/tz";
 
 // Optique / FOV
-import { fovRect, fovFromF35, f35FromFov, FOV_DEG_MIN, FOV_DEG_MAX } from "./optics/fov";
+import { fovRect, fovFromF35, f35FromFovBest, FOV_DEG_MIN, FOV_DEG_MAX } from "./optics/fov";
+
 
 // Astro
 import { moonApparentDiameterDeg } from "./astro/moon";
@@ -266,13 +267,15 @@ export default function App() {
 
   const zoomOptions = useMemo(() => {
     if (deviceId === CUSTOM_DEVICE_ID) {
-      const ar = stageSize.w > 0 && stageSize.h > 0 ? (stageSize.w / stageSize.h) : 4 / 3;
-      const f35eq = f35FromFov(fovXDeg, fovYDeg, ar);
-      const label = `Focale théorique (~${Math.round(f35eq)} mm eq 35mm)`;
+      // Use full-frame (24x36) aspect for 35mm-equivalent
+      const FULL_FRAME_ASPECT = 36 / 24; // 3:2
+      const f35eq = f35FromFovBest(fovXDeg, fovYDeg, FULL_FRAME_ASPECT);
+      const mmStr = f35eq < 10 ? f35eq.toFixed(1) : String(Math.round(f35eq));
+      const label = `Focale théorique (~${mmStr} mm eq 24/36)`;
       return [{ id: 'custom-theo', label, kind: 'module', f35: f35eq } as ZoomModule];
     }
     return device.zooms;
-  }, [deviceId, device, fovXDeg, fovYDeg, stageSize]);
+  }, [deviceId, device, fovXDeg, fovYDeg]);
   useEffect(() => { if (deviceId === CUSTOM_DEVICE_ID) setZoomId('custom-theo'); }, [deviceId]);
   const [showSun, setShowSun] = useState(true);
   const [showMoon, setShowMoon] = useState(true);

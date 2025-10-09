@@ -42,3 +42,21 @@ export function f35FromFov(hDeg: number, vDeg: number, aspect = 4 / 3) {
   const diagFF = Math.hypot(36, 24); // 43.266 mm
   return diagFF / (2 * Math.tan(FOVd / 2));
 }
+
+// New: compute from horizontal FOV
+export function f35FromFovH(hDeg: number, aspect = 4 / 3) {
+  const hf = toRad(Math.max(1e-6, Math.min(179.999, hDeg)));
+  const th = Math.tan(hf / 2);
+  const a = Math.max(1e-6, aspect);
+  // From hf = 2*atan(a*k) ⇒ k = tan(hf/2)/a; tan(alpha) = k*sqrt(a^2+1)
+  const tanAlpha = (th / a) * Math.sqrt(a * a + 1);
+  const diagFF = Math.hypot(36, 24); // 43.266 mm
+  return diagFF / (2 * tanAlpha);
+}
+
+// New: best-of using both axes (yields the smaller 35mm eq for wide FOVs)
+export function f35FromFovBest(hDeg: number, vDeg: number, aspect = 4 / 3) {
+  const fV = f35FromFov(hDeg, vDeg, aspect);
+  const fH = f35FromFovH(hDeg, aspect);
+  return Math.min(fV, fH);
+}
