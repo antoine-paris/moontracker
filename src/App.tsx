@@ -265,17 +265,18 @@ export default function App() {
    }, [date, location]);
 
 
-  const zoomOptions = useMemo(() => {
+ const zoomOptions = useMemo(() => {
     if (deviceId === CUSTOM_DEVICE_ID) {
       // Use full-frame (24x36) aspect for 35mm-equivalent
       const FULL_FRAME_ASPECT = 36 / 24; // 3:2
       const f35eq = f35FromFovBest(fovXDeg, fovYDeg, FULL_FRAME_ASPECT);
       const mmStr = f35eq < 10 ? f35eq.toFixed(1) : String(Math.round(f35eq));
-      const label = `Focale théorique (~${mmStr} mm eq 24/36)`;
+      const label = `Focale théorique ${mmStr}mm eq 24/36`;
       return [{ id: 'custom-theo', label, kind: 'module', f35: f35eq } as ZoomModule];
     }
     return device.zooms;
   }, [deviceId, device, fovXDeg, fovYDeg]);
+
   useEffect(() => { if (deviceId === CUSTOM_DEVICE_ID) setZoomId('custom-theo'); }, [deviceId]);
   const [showSun, setShowSun] = useState(true);
   const [showMoon, setShowMoon] = useState(true);
@@ -1432,7 +1433,9 @@ export default function App() {
                   className="absolute top-2 left-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
                   style={{ zIndex: Z.ui }}
                 >
-                  {`${device.label} — ${(deviceId === CUSTOM_DEVICE_ID ? (zoomOptions[0]?.label ?? '') : (zoom?.label ?? ''))}`}
+                  {deviceId === CUSTOM_DEVICE_ID
+                    ? (zoomOptions[0]?.label ?? '')
+                    : `${device.label} — ${zoom?.label ?? ''}`}
                 </div>
 
                 {/* Droite centrée: Altitude observateur (refAlt) */}
