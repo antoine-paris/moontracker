@@ -321,10 +321,10 @@ export default function TopBar({
                 : opt === 'SATURNE' ? <span>&#9796;</span>
                 : opt === 'URANUS' ? <span>&#9797;</span>
                 : opt === 'NEPTUNE' ? <span>&#9798;</span>
-                : opt === 'N' ? <span>&#129517; N</span>
-                : opt === 'E' ? <span>&#129517; E</span>
-                : opt === 'S' ? <span>&#129517; S</span>
-                : opt === 'O' ? <span>&#129517; O</span>
+                : opt === 'N' ? <span style={{ display: 'inline-block', transform: 'rotate(270deg)' }}>&#x27A4;</span>
+                : opt === 'E' ? <span >&#x27A4;</span>
+                : opt === 'S' ? <span style={{ display: 'inline-block', transform: 'rotate(90deg)' }}>&#x27A4;</span>
+                : opt === 'O' ? <span style={{ display: 'inline-block', transform: 'rotate(180deg)' }}>&#x27A4;</span>
                 : opt}
               </button>
             ))}
