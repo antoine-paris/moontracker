@@ -515,10 +515,9 @@ export default function SidebarLocations({
       flex: 1,
       overflowY: 'auto',
       overflowX: 'hidden',
-      minHeight: 0, // Important for flex child to scroll properly
-      // Custom scrollbar styles
-      scrollbarWidth: 'thin', // For Firefox
-      scrollbarColor: 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)', // For Firefox
+      minHeight: 0,
+      scrollbarWidth: 'thin',
+      scrollbarColor: 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)',
     } as React.CSSProperties & {
       scrollbarWidth?: string;
       scrollbarColor?: string;
@@ -541,6 +540,42 @@ export default function SidebarLocations({
       fontSize: 11,
       color: 'rgba(255,255,255,0.55)',
       marginTop: 2,
+    },
+
+    // NEW: NESW pad at the bottom
+    navPad: {
+      display: collapsed ? 'none' : 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 6,
+      marginTop: 8,
+    },
+    navBtn: {
+      height: 44,
+      borderRadius: 10,
+      border: '1px solid rgba(255,255,255,0.15)',
+      background: 'transparent',
+      color: 'rgba(255,255,255,0.95)',
+      fontSize: 13,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: 8,
+      padding: '0 10px',
+      overflow: 'hidden',
+      cursor: 'pointer',
+    },
+    navDir: {
+      flex: '0 0 auto',
+      fontSize: 16,
+      opacity: 0.9,
+    },
+    navText: {
+      flex: 1,
+      minWidth: 0,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
+      textAlign: 'left',
     },
   };
 
@@ -715,6 +750,69 @@ export default function SidebarLocations({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [collapsed, locations, selectedLocation, onSelectLocation, search, selectedLng, isSearching, northPole, southPole]);
 
+  // NEW: Helper to move selection to a given location (keeps behavior consistent)
+  const moveToLocation = (newLoc: LocationOption) => {
+    const newLng = Math.round(normLng(newLoc.lng));
+    setSelectedLng(newLng);
+    onSelectLocation(newLoc);
+    if (search.trim()) setSearch('');
+    setTimeout(() => {
+      const btn = listRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
+      btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      btn?.focus();
+    }, 0);
+  };
+
+  // NEW: Compute next targets for N/S using same logic as ArrowUp/ArrowDown
+  const northTarget = useMemo(() => {
+    const atNorthPole = !isSearching && selectedLocation.id === northPole.id;
+    if (atNorthPole || allLocations.length === 0) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : allLocations.length - 1;
+    return { loc: allLocations[newIndex], disabled: false };
+  }, [allLocations, selectedLocation, isSearching, northPole.id]);
+
+  const southTarget = useMemo(() => {
+    const atSouthPole = !isSearching && selectedLocation.id === southPole.id;
+    if (atSouthPole || allLocations.length === 0) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
+    const newIndex = currentIndex < allLocations.length - 1 ? currentIndex + 1 : 0;
+    return { loc: allLocations[newIndex], disabled: false };
+  }, [allLocations, selectedLocation, isSearching, southPole.id]);
+
+  // NEW: Compute next targets for E/W using same logic as ArrowRight/ArrowLeft
+  const eastTarget = useMemo(() => {
+    const targetLatDeg = Math.trunc(selectedLocation.lat);
+    const sameLatCities = locations
+      .filter(l => Math.trunc(l.lat) === targetLatDeg)
+      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
+    if (sameLatCities.length <= 1) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
+    if (currentIndex === -1) currentIndex = 0;
+    const newIndex = (currentIndex + 1) % sameLatCities.length;
+    return { loc: sameLatCities[newIndex], disabled: false };
+  }, [locations, selectedLocation]);
+
+  const westTarget = useMemo(() => {
+    const targetLatDeg = Math.trunc(selectedLocation.lat);
+    const sameLatCities = locations
+      .filter(l => Math.trunc(l.lat) === targetLatDeg)
+      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
+    if (sameLatCities.length <= 1) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
+    if (currentIndex === -1) currentIndex = 0;
+    const newIndex = (currentIndex - 1 + sameLatCities.length) % sameLatCities.length;
+    return { loc: sameLatCities[newIndex], disabled: false };
+  }, [locations, selectedLocation]);
+
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
       <div style={styles.header}>
@@ -776,33 +874,6 @@ export default function SidebarLocations({
           onChange={e => setSearch(e.target.value)}
           style={styles.search}
         />
-
-        {/* Mini toolbar: Ouest / Lng X° / Est */}
-        <div style={styles.miniToolbar} role="group" aria-label="Navigation par longitude">
-          <button
-            style={styles.btn}
-            title="Ouest (−1°)"
-            onMouseDown={() => startPress(-1)}
-            onMouseUp={endPress}
-            onMouseLeave={endPress}
-            onTouchStart={(e) => { e.preventDefault(); startPress(-1); }}
-            onTouchEnd={(e) => { e.preventDefault(); endPress(); }}
-          >
-            {'← Ouest'}
-          </button>
-          <div style={styles.centerPill} aria-live="polite">{`Lng ${selectedLng}°`}</div>
-          <button
-            style={styles.btn}
-            title="Est (+1°)"
-            onMouseDown={() => startPress(1)}
-            onMouseUp={endPress}
-            onMouseLeave={endPress} // Changed from endDrag to endPress
-            onTouchStart={(e) => { e.preventDefault(); startPress(1); }}
-            onTouchEnd={(e) => { e.preventDefault(); endPress(); }}
-          >
-            {'Est →'}
-          </button>
-        </div>
 
         {/* List */}
         <ul style={styles.list} className="cities-list" ref={listRef}>
@@ -926,6 +997,44 @@ export default function SidebarLocations({
             </li>
           )}
         </ul>
+
+        {/* NEW: NESW quick navigation pad */}
+        <div style={styles.navPad} role="group" aria-label="Navigation rapide NESW">
+          <button
+            type="button"
+            style={{
+              ...styles.navBtn,
+              opacity: westTarget.disabled ? 0.5 : 1,
+              cursor: westTarget.disabled ? 'default' : 'pointer',
+            }}
+            disabled={westTarget.disabled}
+            title={westTarget.loc ? `Aller à l’ouest: ${westTarget.loc.label}` : 'Aucune autre ville à cette latitude'}
+            onClick={() => westTarget.loc && moveToLocation(westTarget.loc)}
+          >
+            <span
+              style={{ ...styles.navDir, display: 'inline-block', transform: 'rotate(180deg)' }}
+            >
+              &#x27A4;
+            </span>
+            <span style={styles.navText}>{westTarget.loc ? westTarget.loc.label : '—'}</span>
+          </button>
+
+          <button
+            type="button"
+            style={{
+              ...styles.navBtn,
+              opacity: eastTarget.disabled ? 0.5 : 1,
+              cursor: eastTarget.disabled ? 'default' : 'pointer',
+            }}
+            disabled={eastTarget.disabled}
+            title={eastTarget.loc ? `Aller à l’est: ${eastTarget.loc.label}` : 'Aucune autre ville à cette latitude'}
+            onClick={() => eastTarget.loc && moveToLocation(eastTarget.loc)}
+          >
+            <span style={styles.navText}>{eastTarget.loc ? eastTarget.loc.label : '—'}</span>
+            <span style={styles.navDir}>&#x27A4;</span>
+          </button>
+          
+        </div>
       </div>
     </aside>
   );
