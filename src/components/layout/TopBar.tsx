@@ -187,6 +187,75 @@ export default function TopBar({
     }
   }, [currentDate, timeZone]);
 
+  // Build "HH:MM in CityName (HH:MM UTC)"
+  const { cityHM, utcHM } = useMemo(() => {
+    const hmFmt = new Intl.DateTimeFormat('fr-FR', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const hmParts = hmFmt.formatToParts(currentDate).reduce<Record<string, string>>((acc, p) => {
+      if (p.type !== 'literal') acc[p.type] = p.value;
+      return acc;
+    }, {});
+    const cityHM = `${hmParts.hour ?? '00'}:${hmParts.minute ?? '00'}`;
+    const utcHM = currentDate.toISOString().slice(11, 16);
+    return { cityHM, utcHM };
+  }, [currentDate, timeZone]);
+
+  // Build "CityName HH:MM:SS UTC±HH:MM (HH:MM:SS UTC)"
+  const { cityHMS, utcHMS, offsetLabel } = useMemo(() => {
+    // City HH:MM:SS in selected time zone
+    const hmsFmt = new Intl.DateTimeFormat('fr-FR', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    const hmsParts = hmsFmt.formatToParts(currentDate).reduce<Record<string, string>>((acc, p) => {
+      if (p.type !== 'literal') acc[p.type] = p.value;
+      return acc;
+    }, {});
+    const cityHMS = `${hmsParts.hour ?? '00'}:${hmsParts.minute ?? '00'}:${hmsParts.second ?? '00'}`;
+
+    // UTC HH:MM:SS
+    const utcHMS = currentDate.toISOString().slice(11, 19);
+
+    // Compute UTC offset for the selected time zone (±HH:MM)
+    const fullFmt = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    const parts = fullFmt.formatToParts(currentDate).reduce<Record<string, string>>((acc, p) => {
+      if (p.type !== 'literal') acc[p.type] = p.value;
+      return acc;
+    }, {});
+    const wallAsUTC = Date.UTC(
+      Number(parts.year),
+      Number(parts.month) - 1,
+      Number(parts.day),
+      Number(parts.hour),
+      Number(parts.minute),
+      Number(parts.second)
+    );
+    const offsetMin = Math.round((wallAsUTC - currentDate.getTime()) / 60000);
+    const sign = offsetMin >= 0 ? '+' : '-';
+    const abs = Math.abs(offsetMin);
+    const oh = String(Math.floor(abs / 60)).padStart(2, '0');
+    const om = String(abs % 60).padStart(2, '0');
+    const offsetLabel = `UTC${sign}${oh}:${om}`;
+
+    return { cityHMS, utcHMS, offsetLabel };
+  }, [currentDate, timeZone]);
+
   // Local state for datetime input to prevent instability
   const [localDateTimeInput, setLocalDateTimeInput] = React.useState(browserLocalTimeString);
   const [isEditing, setIsEditing] = React.useState(false);
@@ -472,10 +541,10 @@ export default function TopBar({
                     Maintenant
                   </button>
                 </div>
-                {/* Replace single UTC line with both UTC and city-local */}
+                {/* Replace single UTC line with the required format:
+                    "HH:MM in CityName (HH:MM UTC)" */}
                 <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3">
-                  <div>{utcTime}</div>
-                  <div title={timeZone}>{`|   ${cityName} ${cityLocalTimeString}`}</div>
+                  <div title={timeZone}>{`${cityHM} in ${cityName} (${utcHM} UTC)`}</div>
                 </div>
               </div>
               <div className="mt-2 mb-1 text-xs uppercase tracking-wider text-white/50">Animation</div>
