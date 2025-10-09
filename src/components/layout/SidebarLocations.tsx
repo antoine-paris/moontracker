@@ -822,10 +822,10 @@ export default function SidebarLocations({
               background: rgba(255, 255, 255, 0.3);
             }
             @keyframes flashSelected {
-              0% { box-shadow: 0 0 0 0 rgba(255,80,80,0); }
-              30% { box-shadow: 0 0 0 4px rgba(255,80,80,0.65); }
-              60% { box-shadow: 0 0 0 4px rgba(255,80,80,0.65); }
-              100% { box-shadow: 0 0 0 0 rgba(255,80,80,0); }
+              0% { box-shadow: 0 0 0 0 rgba(80,80,80,0); }
+              30% { box-shadow: 0 0 0 4px rgba(80,80,80,0.65); }
+              60% { box-shadow: 0 0 0 4px rgba(80,80,80,0.65); }
+              100% { box-shadow: 0 0 0 0 rgba(80,80,80,0); }
             }
             .flash-no-same-lat {
               animation: flashSelected 600ms ease-in-out;
