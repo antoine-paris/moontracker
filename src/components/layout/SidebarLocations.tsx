@@ -627,6 +627,17 @@ export default function SidebarLocations({
         e.preventDefault();
 
         const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
+
+        // Block at poles (use existing flash) when not searching
+        const atNorthPole = !isSearching && selectedLocation.id === northPole.id;
+        const atSouthPole = !isSearching && selectedLocation.id === southPole.id;
+
+        if ((e.key === 'ArrowUp' && atNorthPole) || (e.key === 'ArrowDown' && atSouthPole)) {
+          setFlashNoSameLat(true);
+          setTimeout(() => setFlashNoSameLat(false), 600);
+          return;
+        }
+
         let newIndex: number;
         if (e.key === 'ArrowDown') {
           newIndex = currentIndex < allLocations.length - 1 ? currentIndex + 1 : 0;
@@ -635,7 +646,6 @@ export default function SidebarLocations({
         }
 
         const newLoc = allLocations[newIndex];
-        // NEW: sync longitude to selected city and clear search to return to longitude-based list
         setSelectedLng(Math.round(normLng(newLoc.lng)));
         onSelectLocation(newLoc);
         if (isSearching) setSearch('');
@@ -703,7 +713,7 @@ export default function SidebarLocations({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collapsed, locations, selectedLocation, onSelectLocation, search, selectedLng]);
+  }, [collapsed, locations, selectedLocation, onSelectLocation, search, selectedLng, isSearching, northPole, southPole]);
 
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
@@ -826,6 +836,7 @@ export default function SidebarLocations({
           {!isSearching && (
             <li>
               <button
+                className={northPole.id === selectedLocation.id && flashNoSameLat ? 'flash-no-same-lat' : undefined}
                 style={{
                   ...styles.itemBtn,
                   background: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
@@ -887,6 +898,7 @@ export default function SidebarLocations({
           {!isSearching && (
             <li>
               <button
+                className={southPole.id === selectedLocation.id && flashNoSameLat ? 'flash-no-same-lat' : undefined}
                 style={{
                   ...styles.itemBtn,
                   background: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
