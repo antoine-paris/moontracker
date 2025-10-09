@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import appLogo from '../../assets/applogos/android-chrome-192x192.png';
 // import earthModel from '../../assets/Earth_1_12756.glb'; // removed: GLB is not a TS module
 import type { LocationOption } from '../../data/locations';
@@ -361,6 +361,34 @@ export default function SidebarLocations({
   const [search, setSearch] = useState('');
   const listRef = useRef<HTMLUListElement>(null);
 
+  // NEW: refs to measure collapsed header width
+  const headerRef = useRef<HTMLDivElement>(null);
+  const logoRef = useRef<HTMLImageElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const [collapsedWidth, setCollapsedWidth] = useState<number>(64);
+
+  // NEW: measure minimal collapsed width = padding(8*2) + logo(48) + gap(8) + toggle button width
+  useLayoutEffect(() => {
+    const measure = () => {
+      const padding = 8 * 2;
+      const gap = 8;
+      const logoW = logoRef.current?.offsetWidth ?? 48;
+      const btnW = toggleRef.current?.offsetWidth ?? 28;
+      const min = 64;
+      setCollapsedWidth(Math.max(min, padding + logoW + gap + btnW));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (headerRef.current) ro.observe(headerRef.current);
+    if (toggleRef.current) ro.observe(toggleRef.current);
+    if (logoRef.current) ro.observe(logoRef.current);
+    window.addEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, []);
+
   // NEW: flash si impossible de naviguer (seule ville sur cette latitude)
   const [flashNoSameLat, setFlashNoSameLat] = useState(false);
 
@@ -401,7 +429,8 @@ export default function SidebarLocations({
     }
   }, [utcMs, selectedLng]); // <— now depends on selected longitude
 
-  const width = collapsed ? 64 : 260;
+  // Use measured collapsed width
+  const width = collapsed ? collapsedWidth : 260;
 
   const styles: Record<string, React.CSSProperties> = {
     aside: {
@@ -430,6 +459,7 @@ export default function SidebarLocations({
       height: 48,
       borderRadius: 6,
       flex: '0 0 auto',
+      cursor: collapsed ? 'pointer' : 'default', // NEW: clickable when collapsed
     },
     brandText: {
       fontWeight: 600,
