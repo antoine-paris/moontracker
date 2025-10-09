@@ -1781,7 +1781,7 @@ export default function App() {
           </div>
 
           {/* NEW: Directional keypad (right side, vertically centered) */}
-          {showCameraFrame && (
+          {(
             <DirectionalKeypad
               baseRefAlt={baseRefAlt}
               stepAzDeg={stepAzDeg}
