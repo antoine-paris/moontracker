@@ -55,6 +55,7 @@ import PlanetSprite from "./components/stage/PlanetSprite";
 import Planet3D from "./components/stage/Planet3D"; 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { prewarmModel, MOON_RELIEF_SCALE_DEFAULT, PLANET_RELIEF_SCALE_DEFAULT } from './render/modelPrewarm';
+import PhotoFrame from "./components/stage/PhotoFrame"; // + add
 
 // Light-green Polaris marker color + equatorial coordinates
 const POLARIS_COLOR = '#86efac';
@@ -1026,7 +1027,7 @@ export default function App() {
     const projected = base
       .map(c => {
         const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-        const x = viewport.x + p.x;
+        const x = p.x; // local, PAS de + viewport.x
         const delta = Math.abs(angularDiff(c.az, refAz));
         return { ...c, x, visible: p.visibleX, delta };
       })
@@ -1045,7 +1046,6 @@ export default function App() {
       .map(({ label, az, x }) => ({ label, az, x }));
   }, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  // ADD: 16-wind secondary markers
   const visibleSecondaryCardinals = useMemo(() => {
     const primaries = new Set(['N', 'E', 'S', 'O']);
     const items: { label: string; az: number; x: number; delta: number }[] = [];
@@ -1055,7 +1055,7 @@ export default function App() {
       if (primaries.has(label)) continue;
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
       if (!p.visibleX) continue;
-      const x = viewport.x + p.x;
+      const x = p.x; // local, PAS de + viewport.x
       const delta = Math.abs(angularDiff(az, refAz));
       items.push({ label, az, x, delta });
     }
@@ -1110,28 +1110,27 @@ export default function App() {
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
   }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
 
-  // ADD: horizon body items (for CardinalMarkers)
   const bodyHorizonItems = useMemo(() => {
     const out: BodyItem[] = [];
     if (showSun) {
       const az = astro.sun.az;
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Soleil", color: "#f59e0b" });
+      if (p.visibleX) out.push({ x: p.x, az, label: "Soleil", color: "#f59e0b" }); // local
     }
     if (showMoon) {
       const az = astro.moon.az;
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Lune", color: "#93c5fd" });
+      if (p.visibleX) out.push({ x: p.x, az, label: "Lune", color: "#93c5fd" }); // local
     }
     {
       const az = polarisAltAz.azDeg;
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Polaris", color: POLARIS_COLOR });
+      if (p.visibleX) out.push({ x: p.x, az, label: "Polaris", color: POLARIS_COLOR }); // local
     }
     {
       const az = cruxAltAz.azDeg;
       const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: viewport.x + p.x, az, label: "Croix du Sud", color: CRUX_COLOR });
+      if (p.visibleX) out.push({ x: p.x, az, label: "Croix du Sud", color: CRUX_COLOR }); // local
     }
     for (const pl of planetsEphemArr) {
       const id = (pl as any).id as string;
@@ -1140,7 +1139,7 @@ export default function App() {
       const reg = PLANET_REGISTRY[id];
       if (az == null || !reg) continue;
       const pr = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (pr.visibleX) out.push({ x: viewport.x + pr.x, az, label: reg.label, color: reg.color });
+      if (pr.visibleX) out.push({ x: pr.x, az, label: reg.label, color: reg.color }); // local
     }
     return out;
   }, [
@@ -1756,6 +1755,13 @@ export default function App() {
             />
           </div>
 
+          {/* Photo frame masks (over objects, just below UI) */}
+          <PhotoFrame
+            viewport={viewport}
+            containerW={stageSize.w}
+            containerH={stageSize.h}
+            zIndex={Z.ui - 1}
+          />
           {/* Bottom telemetry cards */}
           <div
             className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
@@ -1777,15 +1783,16 @@ export default function App() {
           </div>
 
           {/* NEW: Directional keypad (right side, vertically centered) */}
-          <DirectionalKeypad
-            baseRefAlt={baseRefAlt}
-            stepAzDeg={stepAzDeg}
-            stepAltDeg={stepAltDeg}
-            setDeltaAzDeg={setDeltaAzDeg}
-            setDeltaAltDeg={setDeltaAltDeg}
-            zIndex={Z.ui + 20}
-          />
-
+          {showCameraFrame && (
+            <DirectionalKeypad
+              baseRefAlt={baseRefAlt}
+              stepAzDeg={stepAzDeg}
+              stepAltDeg={stepAltDeg}
+              setDeltaAzDeg={setDeltaAzDeg}
+              setDeltaAltDeg={setDeltaAltDeg}
+              zIndex={Z.ui + 20}
+            />
+          )}
         </main>
       </div>
     </div>

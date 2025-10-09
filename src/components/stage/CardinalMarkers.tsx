@@ -26,16 +26,15 @@ export default function CardinalMarkers({
 }: Props) {
   const yForAz = (az: number) => {
     const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
-    const y = viewport.y + (p?.y ?? Number.NaN);
+    const y = (p?.y ?? Number.NaN); // local (pas de + viewport.y)
 
     if (Number.isFinite(y)) return y;
 
-    // Fallback: clamp to nearest vertical screen edge based on relative azimuth
-    // Screen "down" corresponds to az == refAzDeg
+    // Fallback: clamp inside local viewport
     const dAzRad = (az - refAzDeg) * Math.PI / 180;
-    const dy = Math.cos(dAzRad); // sin(dAz + π/2)
+    const dy = Math.cos(dAzRad);
     const edgePad = 1;
-    return viewport.y + (dy > 0 ? viewport.h - edgePad : edgePad);
+    return (dy > 0 ? viewport.h - edgePad : edgePad);
   };
 
   // New: fallback for x when projection collapses at zenith/nadir
@@ -44,7 +43,7 @@ export default function CardinalMarkers({
     const dAzRad = (az - refAzDeg) * Math.PI / 180;
     const dx = Math.sin(dAzRad);
     const edgePad = 1;
-    return viewport.x + (dx > 0 ? viewport.w - edgePad : edgePad);
+    return (dx > 0 ? viewport.w - edgePad : edgePad); // local (pas de + viewport.x)
   };
 
   return (

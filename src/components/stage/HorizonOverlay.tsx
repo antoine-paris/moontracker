@@ -779,7 +779,7 @@ export default function HorizonOverlay({
       {/* Viewport-anchored wrapper */}
       <div
         className="absolute"
-        style={{ left: viewport.x, top: viewport.y, width: viewport.w, height: viewport.h, pointerEvents: "none" }}
+        style={{ left: 0, top: 0, width: viewport.w, height: viewport.h, pointerEvents: "none" }}
       >
         {/* Projected curves only */}
         <svg
