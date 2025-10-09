@@ -559,34 +559,29 @@ export default function App() {
   }, [date]);
 
   const utcTime = useMemo(() => {
-    return date.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+    try {
+      return (
+        new Intl.DateTimeFormat(undefined, {
+          timeZone: 'UTC',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(date) + ' UTC'
+      );
+    } catch {
+      const iso = date.toISOString(); // e.g., 2025-10-09T18:35:42.123Z
+      const hhmm = iso.slice(11, 16); // "18:35"
+      return `${hhmm} UTC`;
+    }
   }, [date]);
 
   // New: city-local time (selected location timezone)
-  const cityLocalTimeString = useMemo(() => {
+   const cityLocalTimeString = useMemo(() => {
     try {
-      return new Intl.DateTimeFormat('fr-FR', {
-        timeZone: location.timeZone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-        timeZoneName: 'short',
-      }).format(date);
+      // Use user’s locale and preferences; only fix the time zone
+      return date.toLocaleString(undefined, { timeZone: location.timeZone });
     } catch {
-      return new Intl.DateTimeFormat('fr-FR', {
-        timeZone: location.timeZone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      }).format(date);
+      return new Intl.DateTimeFormat(undefined, { timeZone: location.timeZone }).format(date);
     }
   }, [date, location.timeZone]);
 
@@ -1398,7 +1393,7 @@ export default function App() {
                 className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
                 style={{ zIndex: Z.ui }}
               >
-                {`${cityName}, ${cityLocalTimeString} (${utcTime})`}
+                {`${cityName}, ${cityLocalTimeString} heure locale (${utcTime})`}
               </div>
             )}
             {/* Overlays additionnels en mode interface cachée */}
