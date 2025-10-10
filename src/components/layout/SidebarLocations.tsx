@@ -2,7 +2,6 @@ import React, { Suspense, useEffect, useMemo, useRef, useState, useLayoutEffect 
 import appLogo from '../../assets/applogos/android-chrome-192x192.png';
 // import earthModel from '../../assets/Earth_1_12756.glb'; // removed: GLB is not a TS module
 import type { LocationOption } from '../../data/locations';
-import { searchLocations } from '../../data/locations'; // NEW
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
@@ -10,6 +9,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { getSunAndMoonAltAzDeg } from '../../astro/aeInterop';
 import { lstDeg } from '../../astro/time';
 import { altazToRaDec } from '../../astro/coords';
+import SidebarLocationsCities from './SidebarLocationsCities';
+import SidebarLocationsCoord from './SidebarLocationsCoord';
 
 // Increase sun light intensity here
 const SUN_LIGHT_INTENSITY = 10.0;
@@ -45,11 +46,6 @@ function normLng(deg: number): number {
   let x = ((deg + 180) % 360 + 360) % 360 - 180;
   // keep 180 instead of -180 for display clarity
   if (Object.is(x, -180)) x = 180;
-  return x;
-}
-function norm360(deg: number): number {
-  let x = deg % 360;
-  if (x < 0) x += 360;
   return x;
 }
 
@@ -352,45 +348,19 @@ export default function SidebarLocations({
   selectedLocation,
   onSelectLocation,
   utcMs,
-  // NEW
   activeAzDeg,
   activeAltDeg,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedLng, setSelectedLng] = useState<number>(() => Math.round(normLng(selectedLocation.lng)));
-  const [search, setSearch] = useState('');
-  const listRef = useRef<HTMLUListElement>(null);
-
-  // ref for the preselected list
-  const preListRef = useRef<HTMLUListElement>(null);
-
-  const [activeList, setActiveList] = useState<'main' | 'pre'>('main');
-
-  // user's preselected cities (empty at startup)
-  const [preselected, setPreselected] = useState<LocationOption[]>([]);
-
-  // Sort preselected from north to south
-  const preselectedSorted = useMemo(
-    () => [...preselected].sort((a, b) => b.lat - a.lat),
-    [preselected]
-  );
-
-  // preselected membership helper + add/remove actions
-  const preselectedSet = useMemo(() => new Set(preselected.map(l => l.id)), [preselected]);
-  const addPreselected = (loc: LocationOption) => {
-    setPreselected(prev => (prev.some(l => l.id === loc.id) ? prev : [...prev, loc]));
-  };
-  const removePreselected = (locId: string) => {
-    setPreselected(prev => prev.filter(l => l.id !== locId));
-  };
-
-  //  refs to measure collapsed header width
+  // refs for header measuring
   const headerRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const [collapsedWidth, setCollapsedWidth] = useState<number>(64);
+  // Nouvel état pour l’onglet actif
+  const [activeTab, setActiveTab] = useState<'cities' | 'coords'>('cities');
 
-  //  measure minimal collapsed width = padding(8*2) + logo(48) + gap(8) + toggle button width
   useLayoutEffect(() => {
     const measure = () => {
       const padding = 8 * 2;
@@ -412,9 +382,6 @@ export default function SidebarLocations({
     };
   }, []);
 
-  //  flash si impossible de naviguer (seule ville sur cette latitude)
-  const [flashNoSameLat, setFlashNoSameLat] = useState(false);
-
   // Update selectedLng when selectedLocation changes externally
   useEffect(() => {
     setSelectedLng(Math.round(normLng(selectedLocation.lng)));
@@ -426,7 +393,7 @@ export default function SidebarLocations({
     return () => document.body.classList.remove('sidebar-collapsed');
   }, [collapsed]);
 
-  // Sun light direction from UTC (subsolar point -> world-space vector)
+  // Sun light direction from UTC (depends on selected longitude)
   const sunLightPos = useMemo<[number, number, number]>(() => {
     try {
       const date = new Date(utcMs);
@@ -438,7 +405,6 @@ export default function SidebarLocations({
       const subLng = -gha;
 
       const phi = THREE.MathUtils.degToRad(subLat);
-      // Flip day/night: add +180° to yaw (keep declination intact)
       const lamDeg = subLng - selectedLng + MODEL_ROT_FIX_Y_DEG + 180;
       const lam = THREE.MathUtils.degToRad(lamDeg);
 
@@ -450,7 +416,7 @@ export default function SidebarLocations({
     } catch {
       return [3, 2, 5];
     }
-  }, [utcMs, selectedLng]); // <— now depends on selected longitude
+  }, [utcMs, selectedLng]);
 
   // Use measured collapsed width
   const width = collapsed ? collapsedWidth : 260;
@@ -482,7 +448,7 @@ export default function SidebarLocations({
       height: 48,
       borderRadius: 6,
       flex: '0 0 auto',
-      cursor: collapsed ? 'pointer' : 'default', //  clickable when collapsed
+      cursor: collapsed ? 'pointer' : 'default',
     },
     brandText: {
       fontWeight: 600,
@@ -506,7 +472,7 @@ export default function SidebarLocations({
     },
     content: {
       padding: 8,
-      overflow: 'hidden', // Changed from 'auto' to 'hidden'
+      overflow: 'hidden',
       flex: 1,
       display: 'flex',
       flexDirection: 'column',
@@ -522,407 +488,56 @@ export default function SidebarLocations({
       marginBottom: 8,
       position: 'relative',
     },
-    search: {
-      display: collapsed ? 'none' : 'block',
-      width: '100%',
-      padding: '8px 10px',
-      borderRadius: 8,
-      background: 'rgba(255,255,255,0.06)',
-      border: '1px solid rgba(255,255,255,0.12)',
-      color: '#fff',
-      outline: 'none',
-      marginBottom: 8,
-      fontSize: 14,
-    },
-    miniToolbar: {
-      display: collapsed ? 'none' : 'flex',
+    // Styles des onglets
+    tabs: {
+      display: 'flex',
+      flexDirection: 'column',
       gap: 6,
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    btn: {
-      flex: '0 0 auto',
-      padding: '6px 8px',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,0.15)',
-      background: 'transparent',
-      color: 'rgba(255,255,255,0.9)',
-      cursor: 'pointer',
-      fontSize: 13,
-    },
-    centerPill: {
       flex: 1,
-      textAlign: 'center',
-      padding: '6px 8px',
-      borderRadius: 8,
-      border: '1px solid rgba(255,255,255,0.15)',
-      background: 'rgba(255,255,255,0.03)',
-      color: 'rgba(255,255,255,0.95)',
-      fontSize: 13,
-    },
-    list: {
-      listStyle: 'none',
-      padding: 0,
-      margin: 0,
-      display: collapsed ? 'none' : 'block',
-      flex: 1,
-      overflowY: 'auto',
-      overflowX: 'hidden',
       minHeight: 0,
-      scrollbarWidth: 'thin',
-      scrollbarColor: 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)',
-    } as React.CSSProperties & {
-      scrollbarWidth?: string;
-      scrollbarColor?: string;
     },
-    itemBtn: {
-      width: '100%',
-      textAlign: 'left' as const,
-      padding: '8px 10px',
-      borderRadius: 10,
-      border:  '1px solid rgba(255,255,255,0.10)',
+    tabList: {
+      display: 'flex',
+      gap: 12,                                // espace entre onglets
+      marginBottom: 4,
+      flex: '0 0 auto',
+      alignSelf: 'stretch',
+      padding: '0 2px',
+      borderBottom: '1px solid rgba(255,255,255,0.12)', // ligne de base
       background: 'transparent',
-      color: '#fff',
+      height: 28,                             // faible hauteur
+    },
+    tabBtn: {
+      appearance: 'none',
+      background: 'transparent',
+      border: 'none',
+      color: 'rgba(255,255,255,0.85)',
       cursor: 'pointer',
-      marginBottom: 6,
       fontSize: 13,
-      transition: 'all 0.2s ease',
+      lineHeight: 1,
+      padding: '6px 2px',                     // très compact
+      height: 28,
       outline: 'none',
     },
-    sub: {
-      fontSize: 11,
-      color: 'rgba(255,255,255,0.55)',
-      marginTop: 2,
+    tabBtnActive: {
+      color: '#fff',
+      fontWeight: 600,
+      boxShadow: 'inset 0 -2px 0 0 rgba(0,150,255,0.9)', // souligné actif
     },
-
-    //  preselected list styling (same design, self-contained scroll if long)
-    preList: {
-      listStyle: 'none',
-      padding: 0,
-      margin: 0,
-      display: collapsed ? 'none' : 'block',
-      maxHeight: 180,
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      marginBottom: 8,
-      scrollbarWidth: 'thin',
-      scrollbarColor: 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)',
-    } as React.CSSProperties & { scrollbarWidth?: string; scrollbarColor?: string },
-
-    //  row to place Lat/Lng text and the +/-/trash control on the right
-    subRow: {
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      gap: 8,
-      marginTop: 2,
-    },
-
-    //  small icon-like button (rendered as span to avoid nested <button>)
-    miniIconBtn: {
-      fontSize: 11,
-      lineHeight: 1,
-      padding: '2px 6px',
-      borderRadius: 6,
-      border: '1px solid rgba(255,255,255,0.25)',
-      background: 'transparent',
-      color: 'rgba(255,255,255,0.9)',
-      cursor: 'pointer',
-      flex: '0 0 auto',
-      userSelect: 'none',
-    },
-
-    //  styles used by arrows and NESW pad
-    navDir: {
-      fontSize: 16,
-      opacity: 0.9,
-    },
-    navText: {
+    tabPanel: {
+      minHeight: 0,
       flex: 1,
-      minWidth: 0,
       overflow: 'hidden',
-      textOverflow: 'ellipsis',
-      whiteSpace: 'nowrap',
-    },
-    navPad: {
       display: 'flex',
-      gap: 8,
-      marginTop: 8,
-      width: '100%',            // ensure full row width
-      flexWrap: 'nowrap',
-    },
-    navBtn: {
-      flex: '1 1 0%',           // force equal width columns
-      minWidth: 0,              // allow shrinking below content width
-      boxSizing: 'border-box',
-      display: 'flex',
-      alignItems: 'center',
-      gap: 8,
-      padding: '8px 10px',
-      borderRadius: 10,
-      border: '1px solid rgba(255,255,255,0.15)',
-      background: 'rgba(255,255,255,0.03)',
-      color: 'rgba(255,255,255,0.95)',
-      fontSize: 13,
-      cursor: 'pointer',
+      flexDirection: 'column',
     },
   };
 
-  //  simple helper to know if we are searching
-  const isSearching = useMemo(() => search.trim().length > 0, [search]);
-
-  // UPDATED: Filter
-  // - If searching: search across ALL locations by label (ignore longitude)
-  // - If not searching: keep original filtering by rounded longitude
-  const filtered = useMemo(() => {
-    const s = search.trim().toLowerCase();
-    if (s.length > 0) {
-      //  use indexed search (fallback preserves previous behavior order if needed)
-      const hits = searchLocations(s, locations);
-      return hits.length
-        ? hits
-        : locations
-            .filter(l => l.label.toLowerCase().includes(s))
-            .sort((a, b) => b.lat - a.lat);
-    }
-    return locations
-      .filter(l => Math.round(normLng(l.lng)) === selectedLng)
-      .sort((a, b) => b.lat - a.lat);
-  }, [locations, selectedLng, search]);
-
-  const northPole: LocationOption = useMemo(() => ({
-    id: `np@${selectedLng}`,
-    label: 'Pôle Nord',
-    lat: 89,
-    lng: selectedLng,
-    timeZone: 'Etc/UTC',
-  }), [selectedLng]);
-
-  const southPole: LocationOption = useMemo(() => ({
-    id: `sp@${selectedLng}`,
-    label: 'Pôle Sud',
-    lat: -89,
-    lng: selectedLng,
-    timeZone: 'Etc/UTC',
-  }), [selectedLng]);
-
-  const decLng = () => setSelectedLng(v => normLng(v - 1));
-  const incLng = () => setSelectedLng(v => normLng(v + 1));
-
-  // Long-press handling for Ouest/Est
-  const pressRef = useRef<{ tId: number | null; iId: number | null; long: boolean; dir: 1 | -1 }>({ tId: null, iId: null, long: false, dir: 1 });
-  const clearPress = () => {
-    if (pressRef.current.tId != null) { clearTimeout(pressRef.current.tId); pressRef.current.tId = null; }
-    if (pressRef.current.iId != null) { clearInterval(pressRef.current.iId); pressRef.current.iId = null; }
-    pressRef.current.long = false;
-  };
-  const startPress = (dir: 1 | -1) => {
-    clearPress();
-    pressRef.current.dir = dir;
-    pressRef.current.tId = window.setTimeout(() => {
-      pressRef.current.long = true;
-      pressRef.current.iId = window.setInterval(() => {
-        setSelectedLng(v => normLng(v + dir * 10));
-      }, 500);
-    }, 1000);
-  };
-  const endPress = () => {
-    const wasLong = pressRef.current.long;
-    const dir = pressRef.current.dir;
-    clearPress();
-    if (!wasLong) setSelectedLng(v => normLng(v + dir * 1));
-  };
-  useEffect(() => () => clearPress(), []);
-
-  // UPDATED: Build list
-  // - When searching: no poles, only search results
-  // - When not searching: poles + filtered cities (current design)
-  const allLocations = useMemo(() => {
-    if (isSearching) return [...filtered];
-    return [northPole, ...filtered, southPole];
-  }, [northPole, filtered, southPole, isSearching]);
-
-
-  //  Compute next targets for N/S using same logic as ArrowUp/ArrowDown
-  const northTarget = useMemo(() => {
-    const atNorthPole = !isSearching && selectedLocation.id === northPole.id;
-    if (atNorthPole || allLocations.length === 0) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
-    const newIndex = currentIndex > 0 ? currentIndex - 1 : allLocations.length - 1;
-    return { loc: allLocations[newIndex], disabled: false };
-  }, [allLocations, selectedLocation, isSearching, northPole.id]);
-
-  const southTarget = useMemo(() => {
-    const atSouthPole = !isSearching && selectedLocation.id === southPole.id;
-    if (atSouthPole || allLocations.length === 0) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
-    const newIndex = currentIndex < allLocations.length - 1 ? currentIndex + 1 : 0;
-    return { loc: allLocations[newIndex], disabled: false };
-  }, [allLocations, selectedLocation, isSearching, southPole.id]);
-
-  //  Compute next targets for E/W using same logic as ArrowRight/ArrowLeft
-  const eastTarget = useMemo(() => {
-    const targetLatDeg = Math.trunc(selectedLocation.lat);
-    const sameLatCities = locations
-      .filter(l => Math.trunc(l.lat) === targetLatDeg)
-      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
-    if (sameLatCities.length <= 1) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
-    if (currentIndex === -1) currentIndex = 0;
-    const newIndex = (currentIndex + 1) % sameLatCities.length;
-    return { loc: sameLatCities[newIndex], disabled: false };
-  }, [locations, selectedLocation]);
-
-  const westTarget = useMemo(() => {
-    const targetLatDeg = Math.trunc(selectedLocation.lat);
-    const sameLatCities = locations
-      .filter(l => Math.trunc(l.lat) === targetLatDeg)
-      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
-    if (sameLatCities.length <= 1) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
-    if (currentIndex === -1) currentIndex = 0;
-    const newIndex = (currentIndex - 1 + sameLatCities.length) % sameLatCities.length;
-    return { loc: sameLatCities[newIndex], disabled: false };
-  }, [locations, selectedLocation]);
-
-
-
-  // UPDATED: Keyboard navigation also updates selectedLng and clears search when applicable
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (collapsed) return;
-
-      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-        e.preventDefault();
-
-        // NEW: If last active is preselected, navigate only within preselected (clamped, no wrap)
-        if (activeList === 'pre' && preselectedSorted.length > 0) {
-          const isDown = e.key === 'ArrowDown';
-          let idx = preselectedSorted.findIndex(l => l.id === selectedLocation.id);
-
-          if (idx === -1) {
-            // If current selection not in preselected, jump to start/end based on direction
-            idx = isDown ? 0 : preselectedSorted.length - 1;
-          } else {
-            // Clamp within bounds (no wrap)
-            idx = isDown ? Math.min(idx + 1, preselectedSorted.length - 1) : Math.max(idx - 1, 0);
-          }
-
-          const newLoc = preselectedSorted[idx];
-          if (newLoc && newLoc.id !== selectedLocation.id) {
-            setSelectedLng(Math.round(normLng(newLoc.lng)));
-            onSelectLocation(newLoc);
-            if (isSearching) setSearch('');
-          }
-
-          setTimeout(() => {
-            const selectedButton = preListRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
-            selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            selectedButton?.focus();
-          }, 0);
-
-          return; // handled
-        }
-
-        // DEFAULT: main list behavior (existing logic)
-        const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
-
-        // Block at poles (use existing flash) when not searching
-        const atNorthPole = !isSearching && selectedLocation.id === northPole.id;
-        const atSouthPole = !isSearching && selectedLocation.id === southPole.id;
-
-        if ((e.key === 'ArrowUp' && atNorthPole) || (e.key === 'ArrowDown' && atSouthPole)) {
-          setFlashNoSameLat(true);
-          setTimeout(() => setFlashNoSameLat(false), 600);
-          return;
-        }
-
-        let newIndex: number;
-        if (e.key === 'ArrowDown') {
-          newIndex = currentIndex < allLocations.length - 1 ? currentIndex + 1 : 0;
-        } else {
-          newIndex = currentIndex > 0 ? currentIndex - 1 : allLocations.length - 1;
-        }
-
-        const newLoc = allLocations[newIndex];
-        setSelectedLng(Math.round(normLng(newLoc.lng)));
-        onSelectLocation(newLoc);
-        if (isSearching) setSearch('');
-
-        setTimeout(() => {
-          const selectedButton = listRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
-          selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          selectedButton?.focus();
-        }, 0);
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-        e.preventDefault();
-        // Act like clicking the West/East quick buttons
-        const target = e.key === 'ArrowRight' ? eastTarget : westTarget;
-        if (target.disabled || !target.loc) return;
-
-        const newLoc = target.loc;
-        const newLng = Math.round(normLng(newLoc.lng));
-        setSelectedLng(newLng);
-        onSelectLocation(newLoc);
-        if (search.trim()) setSearch('');
-
-        setTimeout(() => {
-          // scroll/focus in the last active list container
-          const container = activeList === 'pre' ? preListRef.current : listRef.current;
-          const btn = container?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
-          btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-          btn?.focus();
-        }, 0);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [
-    collapsed,
-    locations,
-    selectedLocation,
-    onSelectLocation,
-    allLocations,
-    search,
-    selectedLng,
-    isSearching,
-    northPole,
-    southPole,
-    activeList,
-    preselectedSorted,
-    // NEW deps for left/right
-    eastTarget,
-    westTarget,
-  ]);
-
-  //  moveToLocation scrolls in the last active list's container
-  const moveToLocation = (newLoc: LocationOption) => {
-    const newLng = Math.round(normLng(newLoc.lng));
-    setSelectedLng(newLng);
-    onSelectLocation(newLoc);
-    if (search.trim()) setSearch('');
-    setTimeout(() => {
-      const container = activeList === 'pre' ? preListRef.current : listRef.current;
-      const btn = container?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
-      btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      btn?.focus();
-    }, 0);
-  };
-
-  
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
-      <div style={styles.header}>
+      <div style={styles.header} ref={headerRef}>
         <img
+          ref={logoRef}
           src={appLogo}
           alt="MoonTracker"
           width={48}
@@ -931,6 +546,7 @@ export default function SidebarLocations({
         />
         <span style={styles.brandText}>MoonTracker</span>
         <button
+          ref={toggleRef}
           type="button"
           aria-label={collapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
           title={collapsed ? 'Développer' : 'Réduire'}
@@ -942,7 +558,7 @@ export default function SidebarLocations({
       </div>
 
       <div style={styles.content}>
-        {/* Square GLB viewer with react-three-fiber (east-west rotation only) */}
+        {/* 3D viewer stays here */}
         <div style={styles.viewerWrap}>
           {!collapsed && (
             <Canvas
@@ -952,9 +568,7 @@ export default function SidebarLocations({
             >
               <color attach="background" args={['#000000']} />
               <ambientLight intensity={0.6} />
-              {/*  fill light driven by viewer (camera) position */}
               <pointLight position={[0, 0, 3]} intensity={VIEWER_LIGHT_INTENSITY} />
-              {/* Sun light driven by UTC-selected time and selected longitude (Y) */}
               <directionalLight position={sunLightPos} intensity={SUN_LIGHT_INTENSITY} />
               <Suspense fallback={null}>
                 <EarthScene
@@ -963,7 +577,6 @@ export default function SidebarLocations({
                   selectedLat={selectedLocation.lat}
                   selectedLocationLng={selectedLocation.lng}
                   onDragLng={setSelectedLng}
-                  //  drive arrow direction
                   activeAzDeg={activeAzDeg}
                   activeAltDeg={activeAltDeg}
                 />
@@ -972,284 +585,50 @@ export default function SidebarLocations({
           )}
         </div>
 
-        {/*  Preselected cities list (identical design, no title) */}
-        {preselected.length > 0 && (
-          <ul style={styles.preList} className="cities-list" ref={preListRef}>
-            {preselectedSorted.map(loc => (
-              <li key={`pre-${loc.id}`}>
-                <button
-                  style={{
-                    ...styles.itemBtn,
-                    background: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                    borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
-                  }}
-                  onClick={() => {
-                    setActiveList('pre'); // NEW: mark preselected as active
-                    const newLng = Math.round(normLng(loc.lng));
-                    setSelectedLng(newLng);
-                    onSelectLocation(loc);
-                    setSearch('');
-                    setTimeout(() => {
-                      const selectedButton = listRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
-                      selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                      selectedButton?.focus();
-                    }, 0);
-                  }}
-                  data-location-id={loc.id}
-                  onFocus={(e) => e.currentTarget.blur()}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {loc.id !== selectedLocation.id && (
-                      <span
-                        style={{
-                          fontSize: 16,
-                          opacity: 0.9,
-                          display: 'inline-block',
-                          transform: loc.lat > selectedLocation.lat ? 'rotate(270deg)' : 'rotate(90deg)',
-                        }}
-                      >
-                        &#x27A4;
-                      </span>
-                    )}
-                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {loc.label}
-                    </span>
-                  </div>
-                  <div style={styles.subRow}>
-                    <span style={styles.sub}>{`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}</span>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      title="Retirer de la présélection"
-                      style={styles.miniIconBtn}
-                      onClick={(e) => { e.stopPropagation(); removePreselected(loc.id); }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); removePreselected(loc.id); }
-                      }}
-                    >
-                      &#128465;
-                    </span>
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* Search city (global search) */}
-        <input
-          type="text"
-          placeholder="Rechercher une ville..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          style={styles.search}
-        />
-
-        {/* List */}
-        <ul style={styles.list} className="cities-list" ref={listRef}>
-          <style>{`
-            .cities-list::-webkit-scrollbar {
-              width: 6px;
-            }
-            .cities-list::-webkit-scrollbar-track {
-              background: rgba(255, 255, 255, 0.05);
-              border-radius: 3px;
-            }
-            .cities-list::-webkit-scrollbar-thumb {
-              background: rgba(255, 255, 255, 0.2);
-              border-radius: 3px;
-            }
-            .cities-list::-webkit-scrollbar-thumb:hover {
-              background: rgba(255, 255, 255, 0.3);
-            }
-            @keyframes flashSelected {
-              0% { box-shadow: 0 0 0 0 rgba(80,80,80,0); }
-              30% { box-shadow: 0 0 0 4px rgba(80,80,80,0.65); }
-              60% { box-shadow: 0 0 0 4px rgba(80,80,80,0.65); }
-              100% { box-shadow: 0 0 0 0 rgba(80,80,80,0); }
-            }
-            .flash-no-same-lat {
-              animation: flashSelected 600ms ease-in-out;
-            }
-          `}</style>
-
-          {/* Show poles only when NOT searching */}
-          {!isSearching && (
-            <li>
-              <button
-                className={northPole.id === selectedLocation.id && flashNoSameLat ? 'flash-no-same-lat' : undefined}
-                style={{
-                  ...styles.itemBtn,
-                  background: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  borderColor: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
-                }}
-                onClick={() => {
-                  onSelectLocation(northPole);
-                  setSelectedLng(Math.round(normLng(northPole.lng)));
-                  setSearch('');
-                  setTimeout(() => {
-                    const selectedButton = listRef.current?.querySelector(`button[data-location-id="${northPole.id}"]`) as HTMLButtonElement;
-                    selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    selectedButton?.focus();
-                  }, 0);
-                }}
-                title={`89° LAT ${selectedLng}° LNG`}
-                data-location-id={northPole.id}
-                onFocus={(e) => e.currentTarget.blur()}
-              >
-                <div>{'Pôle Nord'}</div>
-                <div style={styles.sub}>
-                  {`89.000°, ${selectedLng.toFixed(0)}°`}
-                </div>
-              </button>
-            </li>
-          )}
-
-          {filtered.map(loc => (
-            <li key={loc.id}>
-              <button
-                className={loc.id === selectedLocation.id && flashNoSameLat ? 'flash-no-same-lat' : undefined}
-                style={{
-                  ...styles.itemBtn,
-                  background: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
-                }}
-                onClick={() => {
-                  setActiveList('main');
-                  const newLng = Math.round(normLng(loc.lng));
-                  setSelectedLng(newLng);
-                  onSelectLocation(loc);
-                  setSearch('');
-                  setTimeout(() => {
-                    const selectedButton = listRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
-                    selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    selectedButton?.focus();
-                  }, 0);
-                }}
-                data-location-id={loc.id}
-                onFocus={(e) => e.currentTarget.blur()}
-              >
-                {/* Label row with directional arrow for non-selected items */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  {loc.id !== selectedLocation.id && (
-                    <span
-                      style={{
-                        ...styles.navDir,
-                        display: 'inline-block',
-                        transform: loc.lat > selectedLocation.lat ? 'rotate(270deg)' : 'rotate(90deg)',
-                      }}
-                    >
-                      &#x27A4;
-                    </span>
-                  )}
-                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {loc.label}
-                  </span>
-                </div>
-
-                {/* UPDATED: Lat/Lng + add/remove control */}
-                <div style={styles.subRow}>
-                  <span style={styles.sub}>{`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}</span>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    title={preselectedSet.has(loc.id) ? 'Retirer de la présélection' : 'Ajouter à la présélection'}
-                    style={styles.miniIconBtn}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (preselectedSet.has(loc.id)) {
-                        removePreselected(loc.id);
-                      } else {
-                        addPreselected(loc);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (preselectedSet.has(loc.id)) {
-                          removePreselected(loc.id);
-                        } else {
-                          addPreselected(loc);
-                        }
-                      }
-                    }}
-                  >
-                    {preselectedSet.has(loc.id) ? '🗑' : '+'}
-                  </span>
-                </div>
-              </button>
-            </li>
-          ))}
-
-          {!isSearching && (
-            <li>
-              <button
-                className={southPole.id === selectedLocation.id && flashNoSameLat ? 'flash-no-same-lat' : undefined}
-                style={{
-                  ...styles.itemBtn,
-                  background: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
-                  borderColor: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
-                }}
-                onClick={() => {
-                  onSelectLocation(southPole);
-                  setSelectedLng(Math.round(normLng(southPole.lng)));
-                  setSearch('');
-                  setTimeout(() => {
-                    const selectedButton = listRef.current?.querySelector(`button[data-location-id="${southPole.id}"]`) as HTMLButtonElement;
-                    selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-                    selectedButton?.focus();
-                  }, 0);
-                }}
-                title={`-89° LAT ${selectedLng}° LNG`}
-                data-location-id={southPole.id}
-                onFocus={(e) => e.currentTarget.blur()}
-              >
-                <div>{'Pôle Sud'}</div>
-                <div style={styles.sub}>
-                  {`-89.000°, ${selectedLng.toFixed(0)}°`}
-                </div>
-              </button>
-            </li>
-          )}
-        </ul>
-
-        {/*  NESW quick navigation pad */}
-        <div style={styles.navPad} role="group" aria-label="Navigation rapide NESW">
-          <button
-            type="button"
-            style={{
-              ...styles.navBtn,
-              opacity: westTarget.disabled ? 0.5 : 1,
-              cursor: westTarget.disabled ? 'default' : 'pointer',
-            }}
-            disabled={westTarget.disabled}
-            title={westTarget.loc ? `Aller à l’ouest: ${westTarget.loc.label}` : 'Aucune autre ville à cette latitude'}
-            onClick={() => westTarget.loc && moveToLocation(westTarget.loc)}
-          >
-            <span
-              style={{ ...styles.navDir, display: 'inline-block', transform: 'rotate(180deg)' }}
+        {/* Onglets: Villes / Coordonnées */}
+        <div style={styles.tabs}>
+          <div style={styles.tabList} role="tablist" aria-label="Sélection du mode de lieux">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'cities'}
+              onClick={() => setActiveTab('cities')}
+              style={{ ...styles.tabBtn, ...(activeTab === 'cities' ? styles.tabBtnActive : {}) }}
             >
-              &#x27A4;
-            </span>
-            <span style={styles.navText}>{westTarget.loc ? westTarget.loc.label : '—'}</span>
-          </button>
+              Villes
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={activeTab === 'coords'}
+              onClick={() => setActiveTab('coords')}
+              style={{ ...styles.tabBtn, ...(activeTab === 'coords' ? styles.tabBtnActive : {}) }}
+            >
+              Coordonnées
+            </button>
+          </div>
 
-          <button
-            type="button"
-            style={{
-              ...styles.navBtn,
-              opacity: eastTarget.disabled ? 0.5 : 1,
-              cursor: eastTarget.disabled ? 'default' : 'pointer',
-            }}
-            disabled={eastTarget.disabled}
-            title={eastTarget.loc ? `Aller à l’est: ${eastTarget.loc.label}` : 'Aucune autre ville à cette latitude'}
-            onClick={() => eastTarget.loc && moveToLocation(eastTarget.loc)}
-          >
-            <span style={styles.navText}>{eastTarget.loc ? eastTarget.loc.label : '—'}</span>
-            <span style={styles.navDir}>&#x27A4;</span>
-          </button>
-          
+          <div role="tabpanel" hidden={activeTab !== 'cities'} style={styles.tabPanel}>
+            <SidebarLocationsCities
+              locations={locations}
+              selectedLocation={selectedLocation}
+              selectedLng={selectedLng}
+              setSelectedLng={setSelectedLng}
+              onSelectLocation={onSelectLocation}
+              collapsed={collapsed}
+              isActive={activeTab === 'cities'}
+            />
+          </div>
+
+          <div role="tabpanel" hidden={activeTab !== 'coords'} style={styles.tabPanel}>
+            <SidebarLocationsCoord
+              selectedLocation={selectedLocation}
+              selectedLng={selectedLng}
+              setSelectedLng={setSelectedLng}
+              onSelectLocation={onSelectLocation}
+              collapsed={collapsed}
+            />
+          </div>
         </div>
       </div>
     </aside>
