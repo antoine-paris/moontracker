@@ -622,11 +622,13 @@ export default function SidebarLocations({
 
           <div role="tabpanel" hidden={activeTab !== 'coords'} style={styles.tabPanel}>
             <SidebarLocationsCoord
+              locations={locations}
               selectedLocation={selectedLocation}
               selectedLng={selectedLng}
               setSelectedLng={setSelectedLng}
               onSelectLocation={onSelectLocation}
               collapsed={collapsed}
+              isActive={activeTab === 'coords'}
             />
           </div>
         </div>
