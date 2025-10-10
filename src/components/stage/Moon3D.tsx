@@ -404,8 +404,6 @@ function Model({
            </group>
          </group>
        )}
-       {/* On re-scale uniquement le modèle GLB pour conserver son diamètre apparent */}
-       <primitive object={centeredScene} />
        {showSubsolarCone && showMoonCard && subsolar && (
         <mesh position={[subsolar.center.x, subsolar.center.y, subsolar.center.z]} quaternion={subsolar.rotation} renderOrder={12}>
           <coneGeometry args={[subsolar.baseRadius, subsolar.h, 24]} />
@@ -550,8 +548,11 @@ export default function Moon3D({
       + LABEL_GAP_FACTOR
      )
    );
-   const left = Math.round(x - canvasPx / 2);
-   const top  = Math.round(y - canvasPx / 2);
+   //const left = Math.round(x - canvasPx / 2);
+   //const top  = Math.round(y - canvasPx / 2);
+   const left = x;
+   const top  = y;
+
    const targetPx = moonPx; // utilisé par Model pour caler le diamètre du disque
  
    // (rotations de libration déjà calculées plus haut)
@@ -578,8 +579,21 @@ export default function Moon3D({
   }, [camEuler, targetPx]);
 
   return (
-    <div className="absolute pointer-events-none" style={{ left, top, width: Math.max(1, canvasPx), height: Math.max(1, canvasPx), zIndex: Z.ui - 1, overflow: 'hidden' }}>
-      <Canvas orthographic dpr={[1, 2]} gl={{ alpha: true }} onCreated={({ gl }) => {
+    <div
+      className="absolute pointer-events-none"
+      style={{
+        left,
+        top,
+        width: Math.max(1, canvasPx),
+        height: Math.max(1, canvasPx),
+        zIndex: Z.ui - 1,
+        overflow: 'hidden',
+        // Prevent jitter: center anchor and let sub-pixel coordinates be rendered smoothly
+        transform: 'translate(-50%, -50%)',
+        willChange: 'transform',
+      }}
+    >
+    <Canvas orthographic dpr={[1, 2]} gl={{ alpha: true }} onCreated={({ gl }) => {
         gl.setClearColor(new THREE.Color(0x000000), 0);
         gl.toneMappingExposure = 2.2;
       }}>

@@ -582,8 +582,8 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
   }
 
   const canvasPx = Math.floor(targetPx * (1 + extraMargin));
-  const left = Math.round(x - canvasPx / 2);
-  const top  = Math.round(y - canvasPx / 2);
+  const left = x;
+  const top  = y;
   // Debug: show all incoming props
   const debugProps = {
     id,
@@ -605,8 +605,18 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
 
   return (
     <div
-      className="absolute"
-      style={{ zIndex: Z.horizon - 1, left, top, width: canvasPx, height: canvasPx, pointerEvents: 'none', overflow: 'hidden' }}
+      className="absolute pointer-events-none"
+      style={{
+        zIndex: Z.horizon - 1,
+        left,
+        top,
+        width: canvasPx,
+        height: canvasPx,
+        overflow: 'hidden',
+        // Prevent jitter: center anchor and let sub-pixel coordinates render smoothly
+        transform: 'translate(-50%, -50%)',
+        willChange: 'transform',
+      }}
     >
       <Canvas
         orthographic
