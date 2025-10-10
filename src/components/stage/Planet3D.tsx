@@ -27,6 +27,14 @@ const LABEL_MARGIN_SCALE = 0.25;
 const AXIS_GAP_FACTOR = 0.15;
 const LABEL_GAP_FACTOR = 0.22;
 
+// épaisseurs fixes écran (pixels) pour la MoonCard
+const CARD_THICKNESS_PX = 1;  // épaisseur des traits/anneaux (px)
+const CARD_DOT_RADIUS_PX = 4; // rayon du point central (px)
+// tailles fixes écran (pixels) pour le texte et les cônes
+const LABEL_FONT_PX = 14;     // taille des lettres N/E/S/O en pixels
+const CONE_H_PX = 36;         // hauteur du cône en pixels
+const CONE_BASE_R_PX = 6;     // rayon de base du cône en pixels
+
 // Minimal/neutral GLB calibration with sensible defaults for card overlays
 type GlbCalib = {
   rotationBaseDeg: { x: number; y: number; z: number };
@@ -129,6 +137,32 @@ function Model({
     const s = Math.max(1, targetPx) / Math.max(1e-6, maxDimForScale);
     return { centeredScene: working, scale: s, radius: radiusForScale };
   }, [modelUrl, scene, reliefScale, targetPx, planetId]);
+
+  // tailles locales qui donnent une épaisseur constante en pixels à l’écran
+  // (localSize * scale => pixels; donc localSize = desiredPx / scale)
+  const cardAxisRadiusLocal = useMemo(
+    () => CARD_THICKNESS_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  const cardTorusTubeLocal = cardAxisRadiusLocal;
+  const cardDotRadiusLocal = useMemo(
+    () => CARD_DOT_RADIUS_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  // texte et cônes en taille écran fixe
+  const textFontSizeLocal = useMemo(
+    () => LABEL_FONT_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  const coneHLocal = useMemo(
+    () => CONE_H_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  const coneBaseRLocal = useMemo(
+    () => CONE_BASE_R_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+
 
   // Neutral base + user offsets + "limb" rotation on Z (keep parity with Moon3D inputs)
   const baseX = glbCalib.rotationBaseDeg.x, baseY = glbCalib.rotationBaseDeg.y, baseZ = glbCalib.rotationBaseDeg.z;
@@ -323,10 +357,10 @@ const qMeridianTorus = useMemo(() => {
 
       {showPlanetCard && (
         <group>
-          {/* Equator ring */}
+          {/* Équateur: torus plein avant */}
           <group quaternion={qEquatorTorus} renderOrder={10}>
             <mesh renderOrder={10}>
-              <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+              <torusGeometry args={[radius * RING_RADIUS_FACTOR, cardTorusTubeLocal, 16, 128]} />
               <meshBasicMaterial
                 color="#22c55e"
                 transparent
@@ -343,7 +377,7 @@ const qMeridianTorus = useMemo(() => {
           {/* Méridien central: torus plein avant */}
           <group quaternion={qMeridianTorus} renderOrder={10}>
             <mesh renderOrder={10}>
-              <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
+              <torusGeometry args={[radius * RING_RADIUS_FACTOR, cardTorusTubeLocal, 16, 128]} />
               <meshBasicMaterial
                 color="#ef4444"
                 transparent
@@ -357,50 +391,54 @@ const qMeridianTorus = useMemo(() => {
               />
             </mesh>
           </group>
-          {/* Center dot */}
+          {/* Point central bleu */}
           <mesh renderOrder={11}>
-            <sphereGeometry args={[radius * CENTER_DOT_FACTOR, 16, 16]} />
+            <sphereGeometry args={[cardDotRadiusLocal, 16, 16]} />
             <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
           </mesh>
-          {/* N axis + label */}
+          {/* Axe nord (violet) orienté sur Nord local */}
           <group renderOrder={11}>
             <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisN} renderOrder={11}>
-              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
             </mesh>
             <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
-              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
             </Billboard>
           </group>
-          {/* E, S, O axes + labels + near/reference axis */}
+          {/* Axes Est, Sud, Ouest (même style) */}
           <group renderOrder={11}>
-            {/* E */}
+            {/* Est */}
             <mesh position={[axisPosE.x, axisPosE.y, axisPosE.z]} quaternion={qAxisDiskE} renderOrder={11}>
-              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
             </mesh>
             <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
-              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
             </Billboard>
-            {/* S */}
+            {/* Sud */}
             <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
-              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
             </mesh>
             <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
-              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
             </Billboard>
-            {/* O (W) */}
+            {/* Ouest */}
             <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
-              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
             </mesh>
             <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
-              <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
             </Billboard>
-            {/* Reference axis along lon0EquatorLocal (no label) */}
+            {/* Proche Terre (sans étiquette) */}
             <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>
-              <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLenNF, 16]} />
               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
             </mesh>
           </group>
@@ -409,12 +447,14 @@ const qMeridianTorus = useMemo(() => {
 
       {showPlanetCard && showSubsolarCone && subsolar && (
         <mesh position={[subsolar.center.x, subsolar.center.y, subsolar.center.z]} quaternion={subsolar.rotation} renderOrder={12}>
+          {/* FIX: cône en taille écran fixe */}
           <coneGeometry args={[subsolar.baseRadius, subsolar.h, 24]} />
           <meshStandardMaterial color="#facc15" emissive="#fbbf24" emissiveIntensity={1.2} transparent opacity={0.95} depthTest depthWrite={false} />
         </mesh>
       )}
       {showPlanetCard && showSubsolarCone && antisolar && (
         <mesh position={[antisolar.center.x, antisolar.center.y, antisolar.center.z]} quaternion={antisolar.rotation} renderOrder={12}>
+          {/* FIX: cône en taille écran fixe */}
           <coneGeometry args={[antisolar.baseRadius, antisolar.h, 24]} />
           <meshStandardMaterial color="#1e3a8a" emissive="#1e40af" emissiveIntensity={0.6} transparent opacity={0.95} depthTest depthWrite={false} />
         </mesh>

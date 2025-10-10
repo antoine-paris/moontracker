@@ -32,8 +32,17 @@ const EARTHSHINE_INTENSITY_GAIN = 1.0;
 // Ajout: intensité de la lumière "Soleil" (directionalLight)
 const SUNLIGHT_INTENSITY = 10.0;
 
-// NEW: default scaling for texture-driven relief (displacement/bump/normal)
+//  default scaling for texture-driven relief (displacement/bump/normal)
 const RELIEF_SCALE_DEFAULT = 0.4;
+
+// épaisseurs fixes écran (pixels) pour la MoonCard
+const CARD_THICKNESS_PX = 1;  // épaisseur des traits/anneaux (px)
+const CARD_DOT_RADIUS_PX = 4; // rayon du point central (px)
+// tailles fixes écran (pixels) pour le texte et les cônes
+const LABEL_FONT_PX = 14;     // taille des lettres N/E/S/O en pixels
+const CONE_H_PX = 36;         // hauteur du cône en pixels
+const CONE_BASE_R_PX = 6;     // rayon de base du cône en pixels
+
 
 // Types et helpers (internes au fichier)
 type Props = {
@@ -145,7 +154,6 @@ function Model({
   rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
   debugMask = false, showMoonCard = false,
   sunDirWorld, showSubsolarCone = true,
-  // NEW
   reliefScale = RELIEF_SCALE_DEFAULT,
 }: {
   limbAngleDeg: number; targetPx: number; modelUrl: string;
@@ -164,6 +172,32 @@ function Model({
     const s = Math.max(1, targetPx) / Math.max(1e-6, processed.maxDim);
     return { centeredScene: processed.scene, scale: s, radius: processed.radius };
   }, [modelUrl, scene, reliefScale, targetPx]);
+
+  // tailles locales qui donnent une épaisseur constante en pixels à l’écran
+  // (localSize * scale => pixels; donc localSize = desiredPx / scale)
+  const cardAxisRadiusLocal = useMemo(
+    () => CARD_THICKNESS_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  const cardTorusTubeLocal = cardAxisRadiusLocal;
+  const cardDotRadiusLocal = useMemo(
+    () => CARD_DOT_RADIUS_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  // texte et cônes en taille écran fixe
+  const textFontSizeLocal = useMemo(
+    () => LABEL_FONT_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  const coneHLocal = useMemo(
+    () => CONE_H_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+  const coneBaseRLocal = useMemo(
+    () => CONE_BASE_R_PX / Math.max(1e-6, scale),
+    [scale]
+  );
+
    // Orientation absolue appliquée au group parent (axesHelper suit la même rotation)
    const baseX = GLB_CALIB.rotationBaseDeg.x, baseY = GLB_CALIB.rotationBaseDeg.y, baseZ = GLB_CALIB.rotationBaseDeg.z;
    const rotX = ((baseX + rotOffsetDegX) * Math.PI) / 180;
@@ -288,12 +322,12 @@ function Model({
     const qInv = quaternionFinal.clone().invert();
     const sLocal = sWorld.clone().applyQuaternion(qInv).normalize();
     const inward = sLocal.clone().negate().normalize();
-    const h = Math.max(1e-3, radius * 0.35);
-    const baseRadius = Math.max(1e-3, radius * 0.06);
+    const h = Math.max(1e-3, coneHLocal);
+    const baseRadius = Math.max(1e-3, coneBaseRLocal);
     const center = sLocal.clone().multiplyScalar(radius + h * 0.5);
     const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), inward);
     return { center, rotation, h, baseRadius } as const;
-  }, [sunDirWorld, quaternionFinal, radius]);
+  }, [sunDirWorld, quaternionFinal, radius, coneHLocal, coneBaseRLocal]);
 
   // Anti-solar (lunar midnight) cone: opposite to subsolar, same sizing/orientation logic
   const antisolar = useMemo(() => {
@@ -305,113 +339,119 @@ function Model({
     const sLocal = sWorld.clone().applyQuaternion(qInv).normalize();
     const aLocal = sLocal.clone().negate();
     const inward = aLocal.clone().negate().normalize(); // points toward center (i.e., +sLocal)
-    const h = Math.max(1e-3, radius * 0.35);
-    const baseRadius = Math.max(1e-3, radius * 0.06);
+    const h = Math.max(1e-3, coneHLocal);
+    const baseRadius = Math.max(1e-3, coneBaseRLocal);
     const center = aLocal.clone().multiplyScalar(radius + h * 0.5);
     const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), inward);
     return { center, rotation, h, baseRadius } as const;
-  }, [sunDirWorld, quaternionFinal, radius]);
+  }, [sunDirWorld, quaternionFinal, radius, coneHLocal, coneBaseRLocal]);
 
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
-       {debugMask && <axesHelper args={[targetPx * 0.6]} />}
+      {debugMask && <axesHelper args={[targetPx * 0.6]} />}
 
-       {/* Rendu principal de la Lune (déjà centré & préparé) */}
-       <primitive object={centeredScene} />
+      {/* Rendu principal de la Lune (déjà centré & préparé) */}
+      <primitive object={centeredScene} />
 
-       {showMoonCard && (
-         <group>
-           {/* Équateur: torus plein avant */}
-           <group quaternion={qEquatorTorus} renderOrder={10}>
-             <mesh renderOrder={10}>
-               <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
-               <meshBasicMaterial
-                 color="#22c55e"
-                 transparent
-                 opacity={0.95}
-                 depthTest
-                 depthWrite={false}
-                 side={THREE.DoubleSide}
-                 polygonOffset
-                 polygonOffsetFactor={-1}
-                 polygonOffsetUnits={-1}
-               />
-             </mesh>
-           </group>
-           {/* Méridien central: torus plein avant */}
-           <group quaternion={qMeridianTorus} renderOrder={10}>
-             <mesh renderOrder={10}>
-               <torusGeometry args={[radius * RING_RADIUS_FACTOR, radius * RING_TUBE_FACTOR, 16, 128]} />
-               <meshBasicMaterial
-                 color="#ef4444"
-                 transparent
-                 opacity={0.95}
-                 depthTest
-                 depthWrite={false}
-                 side={THREE.DoubleSide}
-                 polygonOffset
-                 polygonOffsetFactor={-1}
-                 polygonOffsetUnits={-1}
-               />
-             </mesh>
-           </group>
-           {/* Point central bleu */}
-           <mesh renderOrder={11}>
-             <sphereGeometry args={[radius * CENTER_DOT_FACTOR, 16, 16]} />
-             <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
-           </mesh>
-           {/* Axe nord (violet) orienté sur Nord local */}
-           <group renderOrder={11}>
-             <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisN} renderOrder={11}>
-               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-             </mesh>
-             <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
-               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
-             </Billboard>
-           </group>
-           {/* Axes Est, Sud, Ouest (même style) */}
-           <group renderOrder={11}>
-             {/* Est */}
-             <mesh position={[axisPosE.x, axisPosE.y, axisPosE.z]} quaternion={qAxisDiskE} renderOrder={11}>
-               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-             </mesh>
-             <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
-               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
-             </Billboard>
-             {/* Sud */}
-             <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
-               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-             </mesh>
-             <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
-               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
-             </Billboard>
-             {/* Ouest */}
-             <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
-               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLen, 16]} />
-               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-             </mesh>
-             <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
-               <Text position={[0, 0, 0]} fontSize={radius * N_SIZE_FACTOR} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
-             </Billboard>
-             {/* Proche Terre (sans étiquette) */}
-             <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>
-               <cylinderGeometry args={[radius * AXIS_THICKNESS_FACTOR, radius * AXIS_THICKNESS_FACTOR, axisLenNF, 16]} />
-               <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
-             </mesh>
-           </group>
-         </group>
-       )}
-       {showSubsolarCone && showMoonCard && subsolar && (
+      {showMoonCard && (
+        <group>
+          {/* Équateur: torus plein avant */}
+          <group quaternion={qEquatorTorus} renderOrder={10}>
+            <mesh renderOrder={10}>
+              <torusGeometry args={[radius * RING_RADIUS_FACTOR, cardTorusTubeLocal, 16, 128]} />
+              <meshBasicMaterial
+                color="#22c55e"
+                transparent
+                opacity={0.95}
+                depthTest
+                depthWrite={false}
+                side={THREE.DoubleSide}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+          </group>
+          {/* Méridien central: torus plein avant */}
+          <group quaternion={qMeridianTorus} renderOrder={10}>
+            <mesh renderOrder={10}>
+              <torusGeometry args={[radius * RING_RADIUS_FACTOR, cardTorusTubeLocal, 16, 128]} />
+              <meshBasicMaterial
+                color="#ef4444"
+                transparent
+                opacity={0.95}
+                depthTest
+                depthWrite={false}
+                side={THREE.DoubleSide}
+                polygonOffset
+                polygonOffsetFactor={-1}
+                polygonOffsetUnits={-1}
+              />
+            </mesh>
+          </group>
+          {/* Point central bleu */}
+          <mesh renderOrder={11}>
+            <sphereGeometry args={[cardDotRadiusLocal, 16, 16]} />
+            <meshBasicMaterial color="#38bdf8" depthTest={false} depthWrite={false} />
+          </mesh>
+          {/* Axe nord (violet) orienté sur Nord local */}
+          <group renderOrder={11}>
+            <mesh position={[axisPos.x, axisPos.y, axisPos.z]} quaternion={qAxisN} renderOrder={11}>
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
+            </Billboard>
+          </group>
+          {/* Axes Est, Sud, Ouest (même style) */}
+          <group renderOrder={11}>
+            {/* Est */}
+            <mesh position={[axisPosE.x, axisPosE.y, axisPosE.z]} quaternion={qAxisDiskE} renderOrder={11}>
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
+            </Billboard>
+            {/* Sud */}
+            <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
+            </Billboard>
+            {/* Ouest */}
+            <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLen, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+            <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
+              {/* FIX: taille de police fixe en pixels */}
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
+            </Billboard>
+            {/* Proche Terre (sans étiquette) */}
+            <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>
+              <cylinderGeometry args={[cardAxisRadiusLocal, cardAxisRadiusLocal, axisLenNF, 16]} />
+              <meshBasicMaterial color="#a78bfa" depthTest={false} depthWrite={false} />
+            </mesh>
+          </group>
+        </group>
+      )}
+      {showSubsolarCone && showMoonCard && subsolar && (
         <mesh position={[subsolar.center.x, subsolar.center.y, subsolar.center.z]} quaternion={subsolar.rotation} renderOrder={12}>
+          {/* FIX: cône en taille écran fixe */}
           <coneGeometry args={[subsolar.baseRadius, subsolar.h, 24]} />
           <meshStandardMaterial color="#facc15" emissive="#fbbf24" emissiveIntensity={1.2} transparent opacity={0.95} depthTest depthWrite={false} />
         </mesh>
       )}
       {showSubsolarCone && showMoonCard && antisolar && (
         <mesh position={[antisolar.center.x, antisolar.center.y, antisolar.center.z]} quaternion={antisolar.rotation} renderOrder={12}>
+          {/* FIX: cône en taille écran fixe */}
           <coneGeometry args={[antisolar.baseRadius, antisolar.h, 24]} />
           <meshStandardMaterial color="#1e3a8a" emissive="#1e40af" emissiveIntensity={0.6} transparent opacity={0.95} depthTest depthWrite={false} />
         </mesh>
