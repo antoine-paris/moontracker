@@ -13,7 +13,7 @@ import { altazToRaDec } from '../../astro/coords';
 
 // Increase sun light intensity here
 const SUN_LIGHT_INTENSITY = 10.0;
-// New: viewer light intensity (fill light from camera position)
+//  viewer light intensity (fill light from camera position)
 const VIEWER_LIGHT_INTENSITY = 3.0;
 
 // Location marker parameters
@@ -36,7 +36,7 @@ type Props = {
   selectedLocation: LocationOption;
   onSelectLocation: (loc: LocationOption) => void;
   utcMs: number; // + current UTC time from the app
-  // NEW: active viewing direction from App (follow mode)
+  //  active viewing direction from App (follow mode)
   activeAzDeg: number;
   activeAltDeg: number;
 };
@@ -58,7 +58,7 @@ function LocationMarker({
   lat,
   lng,
   earthRadius = 1,
-  // NEW: direction to point (az/alt from App)
+  //  direction to point (az/alt from App)
   azDeg,
   altDeg,
 }: {
@@ -132,7 +132,7 @@ function LocationMarker({
     markerRef.current.scale.set(scale, scale, scale);
   });
   
-  // NEW: Arrow (tube + cone) pointing toward active azimuth/altitude from this location
+  //  Arrow (tube + cone) pointing toward active azimuth/altitude from this location
   const arrowMeshes = useMemo(() => {
     // Local frame at the site
     const U = position.clone().normalize(); // Up (radial)
@@ -181,7 +181,7 @@ function LocationMarker({
     return { shaftCenter, headCenter, shaftLen, headLen, shaftR, headR, quat };
   }, [position, earthRadius, azDeg, altDeg]);
 
-  // NEW: color based on altitude sign (>=0 green, <0 red)
+  //  color based on altitude sign (>=0 green, <0 red)
   const arrowColor = useMemo(() => (altDeg >= 0 ? '#00ff66' : '#ff4040'), [altDeg]);
 
   return (
@@ -203,7 +203,7 @@ function LocationMarker({
       </mesh>
       
 
-      {/* NEW: Direction arrow (tube + cone) from top of city cone */}
+      {/*  Direction arrow (tube + cone) from top of city cone */}
       <mesh position={arrowMeshes.shaftCenter} quaternion={arrowMeshes.quat}>
         <cylinderGeometry args={[arrowMeshes.shaftR, arrowMeshes.shaftR, arrowMeshes.shaftLen, 12]} />
         <meshStandardMaterial
@@ -235,7 +235,7 @@ function EarthScene({
   selectedLat,
   selectedLocationLng,
   onDragLng,
-  // NEW: direction to pass down to marker
+  //  direction to pass down to marker
   activeAzDeg,
   activeAltDeg,
 }: {
@@ -361,10 +361,21 @@ export default function SidebarLocations({
   const [search, setSearch] = useState('');
   const listRef = useRef<HTMLUListElement>(null);
 
-  // NEW: user's preselected cities (empty at startup)
+  // ref for the preselected list
+  const preListRef = useRef<HTMLUListElement>(null);
+
+  const [activeList, setActiveList] = useState<'main' | 'pre'>('main');
+
+  // user's preselected cities (empty at startup)
   const [preselected, setPreselected] = useState<LocationOption[]>([]);
 
-  // NEW: preselected membership helper + add/remove actions
+  // Sort preselected from north to south
+  const preselectedSorted = useMemo(
+    () => [...preselected].sort((a, b) => b.lat - a.lat),
+    [preselected]
+  );
+
+  // preselected membership helper + add/remove actions
   const preselectedSet = useMemo(() => new Set(preselected.map(l => l.id)), [preselected]);
   const addPreselected = (loc: LocationOption) => {
     setPreselected(prev => (prev.some(l => l.id === loc.id) ? prev : [...prev, loc]));
@@ -373,13 +384,13 @@ export default function SidebarLocations({
     setPreselected(prev => prev.filter(l => l.id !== locId));
   };
 
-  // NEW: refs to measure collapsed header width
+  //  refs to measure collapsed header width
   const headerRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
   const toggleRef = useRef<HTMLButtonElement>(null);
   const [collapsedWidth, setCollapsedWidth] = useState<number>(64);
 
-  // NEW: measure minimal collapsed width = padding(8*2) + logo(48) + gap(8) + toggle button width
+  //  measure minimal collapsed width = padding(8*2) + logo(48) + gap(8) + toggle button width
   useLayoutEffect(() => {
     const measure = () => {
       const padding = 8 * 2;
@@ -401,7 +412,7 @@ export default function SidebarLocations({
     };
   }, []);
 
-  // NEW: flash si impossible de naviguer (seule ville sur cette latitude)
+  //  flash si impossible de naviguer (seule ville sur cette latitude)
   const [flashNoSameLat, setFlashNoSameLat] = useState(false);
 
   // Update selectedLng when selectedLocation changes externally
@@ -471,7 +482,7 @@ export default function SidebarLocations({
       height: 48,
       borderRadius: 6,
       flex: '0 0 auto',
-      cursor: collapsed ? 'pointer' : 'default', // NEW: clickable when collapsed
+      cursor: collapsed ? 'pointer' : 'default', //  clickable when collapsed
     },
     brandText: {
       fontWeight: 600,
@@ -584,7 +595,7 @@ export default function SidebarLocations({
       marginTop: 2,
     },
 
-    // NEW: preselected list styling (same design, self-contained scroll if long)
+    //  preselected list styling (same design, self-contained scroll if long)
     preList: {
       listStyle: 'none',
       padding: 0,
@@ -598,7 +609,7 @@ export default function SidebarLocations({
       scrollbarColor: 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)',
     } as React.CSSProperties & { scrollbarWidth?: string; scrollbarColor?: string },
 
-    // NEW: row to place Lat/Lng text and the +/-/trash control on the right
+    //  row to place Lat/Lng text and the +/-/trash control on the right
     subRow: {
       display: 'flex',
       alignItems: 'center',
@@ -607,7 +618,7 @@ export default function SidebarLocations({
       marginTop: 2,
     },
 
-    // NEW: small icon-like button (rendered as span to avoid nested <button>)
+    //  small icon-like button (rendered as span to avoid nested <button>)
     miniIconBtn: {
       fontSize: 11,
       lineHeight: 1,
@@ -621,7 +632,7 @@ export default function SidebarLocations({
       userSelect: 'none',
     },
 
-    // NEW: styles used by arrows and NESW pad
+    //  styles used by arrows and NESW pad
     navDir: {
       fontSize: 16,
       opacity: 0.9,
@@ -637,9 +648,13 @@ export default function SidebarLocations({
       display: 'flex',
       gap: 8,
       marginTop: 8,
+      width: '100%',            // ensure full row width
+      flexWrap: 'nowrap',
     },
     navBtn: {
-      flex: 1,
+      flex: '1 1 0%',           // force equal width columns
+      minWidth: 0,              // allow shrinking below content width
+      boxSizing: 'border-box',
       display: 'flex',
       alignItems: 'center',
       gap: 8,
@@ -653,7 +668,7 @@ export default function SidebarLocations({
     },
   };
 
-  // NEW: simple helper to know if we are searching
+  //  simple helper to know if we are searching
   const isSearching = useMemo(() => search.trim().length > 0, [search]);
 
   // UPDATED: Filter
@@ -662,7 +677,7 @@ export default function SidebarLocations({
   const filtered = useMemo(() => {
     const s = search.trim().toLowerCase();
     if (s.length > 0) {
-      // NEW: use indexed search (fallback preserves previous behavior order if needed)
+      //  use indexed search (fallback preserves previous behavior order if needed)
       const hits = searchLocations(s, locations);
       return hits.length
         ? hits
@@ -727,6 +742,59 @@ export default function SidebarLocations({
     return [northPole, ...filtered, southPole];
   }, [northPole, filtered, southPole, isSearching]);
 
+
+  //  Compute next targets for N/S using same logic as ArrowUp/ArrowDown
+  const northTarget = useMemo(() => {
+    const atNorthPole = !isSearching && selectedLocation.id === northPole.id;
+    if (atNorthPole || allLocations.length === 0) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
+    const newIndex = currentIndex > 0 ? currentIndex - 1 : allLocations.length - 1;
+    return { loc: allLocations[newIndex], disabled: false };
+  }, [allLocations, selectedLocation, isSearching, northPole.id]);
+
+  const southTarget = useMemo(() => {
+    const atSouthPole = !isSearching && selectedLocation.id === southPole.id;
+    if (atSouthPole || allLocations.length === 0) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
+    const newIndex = currentIndex < allLocations.length - 1 ? currentIndex + 1 : 0;
+    return { loc: allLocations[newIndex], disabled: false };
+  }, [allLocations, selectedLocation, isSearching, southPole.id]);
+
+  //  Compute next targets for E/W using same logic as ArrowRight/ArrowLeft
+  const eastTarget = useMemo(() => {
+    const targetLatDeg = Math.trunc(selectedLocation.lat);
+    const sameLatCities = locations
+      .filter(l => Math.trunc(l.lat) === targetLatDeg)
+      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
+    if (sameLatCities.length <= 1) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
+    if (currentIndex === -1) currentIndex = 0;
+    const newIndex = (currentIndex + 1) % sameLatCities.length;
+    return { loc: sameLatCities[newIndex], disabled: false };
+  }, [locations, selectedLocation]);
+
+  const westTarget = useMemo(() => {
+    const targetLatDeg = Math.trunc(selectedLocation.lat);
+    const sameLatCities = locations
+      .filter(l => Math.trunc(l.lat) === targetLatDeg)
+      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
+    if (sameLatCities.length <= 1) {
+      return { loc: null as LocationOption | null, disabled: true };
+    }
+    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
+    if (currentIndex === -1) currentIndex = 0;
+    const newIndex = (currentIndex - 1 + sameLatCities.length) % sameLatCities.length;
+    return { loc: sameLatCities[newIndex], disabled: false };
+  }, [locations, selectedLocation]);
+
+
+
   // UPDATED: Keyboard navigation also updates selectedLng and clears search when applicable
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -735,6 +803,36 @@ export default function SidebarLocations({
       if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
         e.preventDefault();
 
+        // NEW: If last active is preselected, navigate only within preselected (clamped, no wrap)
+        if (activeList === 'pre' && preselectedSorted.length > 0) {
+          const isDown = e.key === 'ArrowDown';
+          let idx = preselectedSorted.findIndex(l => l.id === selectedLocation.id);
+
+          if (idx === -1) {
+            // If current selection not in preselected, jump to start/end based on direction
+            idx = isDown ? 0 : preselectedSorted.length - 1;
+          } else {
+            // Clamp within bounds (no wrap)
+            idx = isDown ? Math.min(idx + 1, preselectedSorted.length - 1) : Math.max(idx - 1, 0);
+          }
+
+          const newLoc = preselectedSorted[idx];
+          if (newLoc && newLoc.id !== selectedLocation.id) {
+            setSelectedLng(Math.round(normLng(newLoc.lng)));
+            onSelectLocation(newLoc);
+            if (isSearching) setSearch('');
+          }
+
+          setTimeout(() => {
+            const selectedButton = preListRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
+            selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            selectedButton?.focus();
+          }, 0);
+
+          return; // handled
+        }
+
+        // DEFAULT: main list behavior (existing logic)
         const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
 
         // Block at poles (use existing flash) when not searching
@@ -766,54 +864,20 @@ export default function SidebarLocations({
         }, 0);
       } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
         e.preventDefault();
+        // Act like clicking the West/East quick buttons
+        const target = e.key === 'ArrowRight' ? eastTarget : westTarget;
+        if (target.disabled || !target.loc) return;
 
-        // Nouvelle logique : navigation parmi les villes partageant le même degré entier de latitude
-        const targetLatDeg = Math.trunc(selectedLocation.lat);
-
-        // Filtrer les villes à ± le même degré entier
-        const sameLatCities = locations
-          .filter(l => Math.trunc(l.lat) === targetLatDeg)
-          .sort((a, b) => normLng(a.lng) - normLng(b.lng));
-
-        // Si aucune ou une seule -> impossible d'avancer
-        if (sameLatCities.length <= 1) {
-          // flash visuel bref
-            setFlashNoSameLat(true);
-            setTimeout(() => setFlashNoSameLat(false), 600);
-            return;
-        }
-
-        // Trouver index actuel
-        let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
-        if (currentIndex === -1) {
-          // Si la ville actuelle n’est pas dans la liste (ex: Pôle), on se positionne sur la première
-          currentIndex = 0;
-        }
-
-        let newIndex: number;
-        if (e.key === 'ArrowRight') {
-          // Avancer vers l'est (wrap-around)
-          newIndex = (currentIndex + 1) % sameLatCities.length;
-        } else {
-          // Aller vers l'ouest (wrap-around)
-          newIndex = (currentIndex - 1 + sameLatCities.length) % sameLatCities.length;
-        }
-
-        // Si le nouvel index est identique (seul cas possible : length==1 déjà traité) on ne bouge pas
-        if (newIndex === currentIndex) {
-          setFlashNoSameLat(true);
-          setTimeout(() => setFlashNoSameLat(false), 600);
-          return;
-        }
-
-        const newLoc = sameLatCities[newIndex];
-        // Mettre à jour longitude filtrante + sélection
-        setSelectedLng(Math.round(normLng(newLoc.lng)));
+        const newLoc = target.loc;
+        const newLng = Math.round(normLng(newLoc.lng));
+        setSelectedLng(newLng);
         onSelectLocation(newLoc);
         if (search.trim()) setSearch('');
 
         setTimeout(() => {
-          const btn = listRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
+          // scroll/focus in the last active list container
+          const container = activeList === 'pre' ? preListRef.current : listRef.current;
+          const btn = container?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
           btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
           btn?.focus();
         }, 0);
@@ -822,71 +886,39 @@ export default function SidebarLocations({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [collapsed, locations, selectedLocation, onSelectLocation, search, selectedLng, isSearching, northPole, southPole]);
+  }, [
+    collapsed,
+    locations,
+    selectedLocation,
+    onSelectLocation,
+    allLocations,
+    search,
+    selectedLng,
+    isSearching,
+    northPole,
+    southPole,
+    activeList,
+    preselectedSorted,
+    // NEW deps for left/right
+    eastTarget,
+    westTarget,
+  ]);
 
-  // NEW: Helper to move selection to a given location (keeps behavior consistent)
+  //  moveToLocation scrolls in the last active list's container
   const moveToLocation = (newLoc: LocationOption) => {
     const newLng = Math.round(normLng(newLoc.lng));
     setSelectedLng(newLng);
     onSelectLocation(newLoc);
     if (search.trim()) setSearch('');
     setTimeout(() => {
-      const btn = listRef.current?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
+      const container = activeList === 'pre' ? preListRef.current : listRef.current;
+      const btn = container?.querySelector(`button[data-location-id="${newLoc.id}"]`) as HTMLButtonElement;
       btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
       btn?.focus();
     }, 0);
   };
 
-  // NEW: Compute next targets for N/S using same logic as ArrowUp/ArrowDown
-  const northTarget = useMemo(() => {
-    const atNorthPole = !isSearching && selectedLocation.id === northPole.id;
-    if (atNorthPole || allLocations.length === 0) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
-    const newIndex = currentIndex > 0 ? currentIndex - 1 : allLocations.length - 1;
-    return { loc: allLocations[newIndex], disabled: false };
-  }, [allLocations, selectedLocation, isSearching, northPole.id]);
-
-  const southTarget = useMemo(() => {
-    const atSouthPole = !isSearching && selectedLocation.id === southPole.id;
-    if (atSouthPole || allLocations.length === 0) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    const currentIndex = allLocations.findIndex(loc => loc.id === selectedLocation.id);
-    const newIndex = currentIndex < allLocations.length - 1 ? currentIndex + 1 : 0;
-    return { loc: allLocations[newIndex], disabled: false };
-  }, [allLocations, selectedLocation, isSearching, southPole.id]);
-
-  // NEW: Compute next targets for E/W using same logic as ArrowRight/ArrowLeft
-  const eastTarget = useMemo(() => {
-    const targetLatDeg = Math.trunc(selectedLocation.lat);
-    const sameLatCities = locations
-      .filter(l => Math.trunc(l.lat) === targetLatDeg)
-      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
-    if (sameLatCities.length <= 1) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
-    if (currentIndex === -1) currentIndex = 0;
-    const newIndex = (currentIndex + 1) % sameLatCities.length;
-    return { loc: sameLatCities[newIndex], disabled: false };
-  }, [locations, selectedLocation]);
-
-  const westTarget = useMemo(() => {
-    const targetLatDeg = Math.trunc(selectedLocation.lat);
-    const sameLatCities = locations
-      .filter(l => Math.trunc(l.lat) === targetLatDeg)
-      .sort((a, b) => normLng(a.lng) - normLng(b.lng));
-    if (sameLatCities.length <= 1) {
-      return { loc: null as LocationOption | null, disabled: true };
-    }
-    let currentIndex = sameLatCities.findIndex(c => c.id === selectedLocation.id);
-    if (currentIndex === -1) currentIndex = 0;
-    const newIndex = (currentIndex - 1 + sameLatCities.length) % sameLatCities.length;
-    return { loc: sameLatCities[newIndex], disabled: false };
-  }, [locations, selectedLocation]);
-
+  
   return (
     <aside style={styles.aside} aria-label="Barre latérale des lieux">
       <div style={styles.header}>
@@ -920,7 +952,7 @@ export default function SidebarLocations({
             >
               <color attach="background" args={['#000000']} />
               <ambientLight intensity={0.6} />
-              {/* New: fill light driven by viewer (camera) position */}
+              {/*  fill light driven by viewer (camera) position */}
               <pointLight position={[0, 0, 3]} intensity={VIEWER_LIGHT_INTENSITY} />
               {/* Sun light driven by UTC-selected time and selected longitude (Y) */}
               <directionalLight position={sunLightPos} intensity={SUN_LIGHT_INTENSITY} />
@@ -931,7 +963,7 @@ export default function SidebarLocations({
                   selectedLat={selectedLocation.lat}
                   selectedLocationLng={selectedLocation.lng}
                   onDragLng={setSelectedLng}
-                  // NEW: drive arrow direction
+                  //  drive arrow direction
                   activeAzDeg={activeAzDeg}
                   activeAltDeg={activeAltDeg}
                 />
@@ -940,10 +972,10 @@ export default function SidebarLocations({
           )}
         </div>
 
-        {/* NEW: Preselected cities list (identical design, no title) */}
+        {/*  Preselected cities list (identical design, no title) */}
         {preselected.length > 0 && (
-          <ul style={styles.preList} className="cities-list">
-            {preselected.map(loc => (
+          <ul style={styles.preList} className="cities-list" ref={preListRef}>
+            {preselectedSorted.map(loc => (
               <li key={`pre-${loc.id}`}>
                 <button
                   style={{
@@ -952,6 +984,7 @@ export default function SidebarLocations({
                     borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
                   }}
                   onClick={() => {
+                    setActiveList('pre'); // NEW: mark preselected as active
                     const newLng = Math.round(normLng(loc.lng));
                     setSelectedLng(newLng);
                     onSelectLocation(loc);
@@ -1082,6 +1115,7 @@ export default function SidebarLocations({
                   borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
                 }}
                 onClick={() => {
+                  setActiveList('main');
                   const newLng = Math.round(normLng(loc.lng));
                   setSelectedLng(newLng);
                   onSelectLocation(loc);
@@ -1180,7 +1214,7 @@ export default function SidebarLocations({
           )}
         </ul>
 
-        {/* NEW: NESW quick navigation pad */}
+        {/*  NESW quick navigation pad */}
         <div style={styles.navPad} role="group" aria-label="Navigation rapide NESW">
           <button
             type="button"
