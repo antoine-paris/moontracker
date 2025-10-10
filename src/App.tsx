@@ -217,10 +217,10 @@ export default function App() {
   const [fovYDeg, setFovYDeg] = useState<number>(220);
   const [linkFov, setLinkFov] = useState<boolean>(true);
   // Appareil/Zoom sélection
-  const [deviceId, setDeviceId] = useState<string>(() => DEVICES[0].id);
+  const [deviceId, setDeviceId] = useState<string>('nikon-p1000');
   const devices = useMemo(() => [{ id: CUSTOM_DEVICE_ID, label: 'Personalisé', type: 'phone', aspect: 4/3, zooms: [] } as Device, ...DEVICES], []);
   const device = useMemo(() => devices.find(d => d.id === deviceId)!, [devices, deviceId]);
-  const [zoomId, setZoomId] = useState<string>(() => DEVICES[0].zooms[0].id);
+  const [zoomId, setZoomId] = useState<string>('p1000-2000eq');
   const zoom = useMemo(() => device.zooms.find(z => z.id === zoomId) ?? device.zooms[0], [device, zoomId]);
   // Zooms visibles (si custom, afficher une focale théorique calculée depuis les sliders)
 
@@ -292,7 +292,7 @@ export default function App() {
   const [showSunCard, setShowSunCard] = useState(false);
   const [showMoonCard, setShowMoonCard] = useState(false);
   const [debugMask, setDebugMask] = useState(false);
-  const [enlargeObjects, setEnlargeObjects] = useState(true);
+  const [enlargeObjects, setEnlargeObjects] = useState(false);
   // NEW: ground (Sol) toggle
   const [showEarth, setShowEarth] = useState(false);
   // NEW: Atmosphere toggle
