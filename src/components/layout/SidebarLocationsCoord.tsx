@@ -322,10 +322,10 @@ export default function SidebarLocationsCoord({
             <input
               id="coord-lat"
               type="number"
-              step="0.01"
-              min={-90}
-              max={90}
-              value={lat}
+              step="0.001"
+              min={-89}
+              max={89}
+              value={Number.isFinite(lat) ? lat.toFixed(3) : ''}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
                 if (!Number.isFinite(v)) return;
@@ -343,10 +343,10 @@ export default function SidebarLocationsCoord({
             <input
               id="coord-lng"
               type="number"
-              step="0.01"
+              step="0.001"
               min={-180}
               max={180}
-              value={lng}
+              value={Number.isFinite(lng) ? lng.toFixed(3) : ''}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);
                 if (!Number.isFinite(v)) return;
