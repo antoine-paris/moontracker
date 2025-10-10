@@ -160,7 +160,21 @@ export const DEVICES: Device[] = [
       { id: 'apsc-50', label: '50 mm', kind: 'prime', focalMm: 50, projection: 'rectilinear' },
     ],
   },
-
+  {
+    id: 'nikon-p1000',
+    label: 'Nikon Coolpix P1000',
+    type: 'camera',
+    sensorW: 6.17, sensorH: 4.55, aspect: 4/3,
+    zooms: [
+      { id: 'p1000-24eq',   label: 'Zoom @ 24 mm eq',   kind: 'zoom', focalMm: 4.3,   projection: 'rectilinear' },
+      { id: 'p1000-50eq',   label: 'Zoom @ 50 mm eq',   kind: 'zoom', focalMm: 8.9,   projection: 'rectilinear' },
+      { id: 'p1000-100eq',  label: 'Zoom @ 100 mm eq',  kind: 'zoom', focalMm: 17.9,  projection: 'rectilinear' },
+      { id: 'p1000-300eq',  label: 'Zoom @ 300 mm eq',  kind: 'zoom', focalMm: 53.7,  projection: 'rectilinear' },
+      { id: 'p1000-1000eq', label: 'Zoom @ 1000 mm eq', kind: 'zoom', focalMm: 179,   projection: 'rectilinear' },
+      { id: 'p1000-2000eq', label: 'Zoom @ 2000 mm eq', kind: 'zoom', focalMm: 359,   projection: 'rectilinear' },
+      { id: 'p1000-3000eq', label: 'Zoom @ 3000 mm eq', kind: 'zoom', focalMm: 539,   projection: 'rectilinear' },
+    ],
+  },
   // Astro-oriented: common telescope pairings with typical sensors
   {
     id: 'astro-aps-c',
@@ -193,7 +207,7 @@ export const DEVICES: Device[] = [
       { id: 'sct-6-1500', label: 'SCT 6" (1500 mm)', kind: 'module', focalMm: 1500 },
     ],
   },
-
+  
 
 
 ];
