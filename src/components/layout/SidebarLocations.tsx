@@ -361,6 +361,18 @@ export default function SidebarLocations({
   const [search, setSearch] = useState('');
   const listRef = useRef<HTMLUListElement>(null);
 
+  // NEW: user's preselected cities (empty at startup)
+  const [preselected, setPreselected] = useState<LocationOption[]>([]);
+
+  // NEW: preselected membership helper + add/remove actions
+  const preselectedSet = useMemo(() => new Set(preselected.map(l => l.id)), [preselected]);
+  const addPreselected = (loc: LocationOption) => {
+    setPreselected(prev => (prev.some(l => l.id === loc.id) ? prev : [...prev, loc]));
+  };
+  const removePreselected = (locId: string) => {
+    setPreselected(prev => prev.filter(l => l.id !== locId));
+  };
+
   // NEW: refs to measure collapsed header width
   const headerRef = useRef<HTMLDivElement>(null);
   const logoRef = useRef<HTMLImageElement>(null);
@@ -572,40 +584,72 @@ export default function SidebarLocations({
       marginTop: 2,
     },
 
-    // NEW: NESW pad at the bottom
-    navPad: {
-      display: collapsed ? 'none' : 'grid',
-      gridTemplateColumns: '1fr 1fr',
-      gap: 6,
-      marginTop: 8,
-    },
-    navBtn: {
-      height: 44,
-      borderRadius: 10,
-      border: '1px solid rgba(255,255,255,0.15)',
-      background: 'transparent',
-      color: 'rgba(255,255,255,0.95)',
-      fontSize: 13,
+    // NEW: preselected list styling (same design, self-contained scroll if long)
+    preList: {
+      listStyle: 'none',
+      padding: 0,
+      margin: 0,
+      display: collapsed ? 'none' : 'block',
+      maxHeight: 180,
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      marginBottom: 8,
+      scrollbarWidth: 'thin',
+      scrollbarColor: 'rgba(255, 255, 255, 0.2) rgba(255, 255, 255, 0.05)',
+    } as React.CSSProperties & { scrollbarWidth?: string; scrollbarColor?: string },
+
+    // NEW: row to place Lat/Lng text and the +/-/trash control on the right
+    subRow: {
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'flex-start',
+      justifyContent: 'space-between',
       gap: 8,
-      padding: '0 10px',
-      overflow: 'hidden',
-      cursor: 'pointer',
+      marginTop: 2,
     },
-    navDir: {
+
+    // NEW: small icon-like button (rendered as span to avoid nested <button>)
+    miniIconBtn: {
+      fontSize: 11,
+      lineHeight: 1,
+      padding: '2px 6px',
+      borderRadius: 6,
+      border: '1px solid rgba(255,255,255,0.25)',
+      background: 'transparent',
+      color: 'rgba(255,255,255,0.9)',
+      cursor: 'pointer',
       flex: '0 0 auto',
+      userSelect: 'none',
+    },
+
+    // NEW: styles used by arrows and NESW pad
+    navDir: {
       fontSize: 16,
       opacity: 0.9,
     },
     navText: {
       flex: 1,
       minWidth: 0,
-      whiteSpace: 'nowrap',
       overflow: 'hidden',
       textOverflow: 'ellipsis',
-      textAlign: 'left',
+      whiteSpace: 'nowrap',
+    },
+    navPad: {
+      display: 'flex',
+      gap: 8,
+      marginTop: 8,
+    },
+    navBtn: {
+      flex: 1,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      padding: '8px 10px',
+      borderRadius: 10,
+      border: '1px solid rgba(255,255,255,0.15)',
+      background: 'rgba(255,255,255,0.03)',
+      color: 'rgba(255,255,255,0.95)',
+      fontSize: 13,
+      cursor: 'pointer',
     },
   };
 
@@ -896,6 +940,69 @@ export default function SidebarLocations({
           )}
         </div>
 
+        {/* NEW: Preselected cities list (identical design, no title) */}
+        {preselected.length > 0 && (
+          <ul style={styles.preList} className="cities-list">
+            {preselected.map(loc => (
+              <li key={`pre-${loc.id}`}>
+                <button
+                  style={{
+                    ...styles.itemBtn,
+                    background: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.1)' : 'transparent',
+                    borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
+                  }}
+                  onClick={() => {
+                    const newLng = Math.round(normLng(loc.lng));
+                    setSelectedLng(newLng);
+                    onSelectLocation(loc);
+                    setSearch('');
+                    setTimeout(() => {
+                      const selectedButton = listRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
+                      selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      selectedButton?.focus();
+                    }, 0);
+                  }}
+                  data-location-id={loc.id}
+                  onFocus={(e) => e.currentTarget.blur()}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    {loc.id !== selectedLocation.id && (
+                      <span
+                        style={{
+                          fontSize: 16,
+                          opacity: 0.9,
+                          display: 'inline-block',
+                          transform: loc.lat > selectedLocation.lat ? 'rotate(270deg)' : 'rotate(90deg)',
+                        }}
+                      >
+                        &#x27A4;
+                      </span>
+                    )}
+                    <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {loc.label}
+                    </span>
+                  </div>
+                  <div style={styles.subRow}>
+                    <span style={styles.sub}>{`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}</span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      title="Retirer de la présélection"
+                      style={styles.miniIconBtn}
+                      onClick={(e) => { e.stopPropagation(); removePreselected(loc.id); }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); removePreselected(loc.id); }
+                      }}
+                    >
+                      &#128465;
+                    </span>
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
         {/* Search city (global search) */}
         <input
           type="text"
@@ -1005,8 +1112,37 @@ export default function SidebarLocations({
                     {loc.label}
                   </span>
                 </div>
-                <div style={styles.sub}>
-                  {`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}
+
+                {/* UPDATED: Lat/Lng + add/remove control */}
+                <div style={styles.subRow}>
+                  <span style={styles.sub}>{`${loc.lat.toFixed(3)}°, ${loc.lng.toFixed(3)}°`}</span>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    title={preselectedSet.has(loc.id) ? 'Retirer de la présélection' : 'Ajouter à la présélection'}
+                    style={styles.miniIconBtn}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (preselectedSet.has(loc.id)) {
+                        removePreselected(loc.id);
+                      } else {
+                        addPreselected(loc);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (preselectedSet.has(loc.id)) {
+                          removePreselected(loc.id);
+                        } else {
+                          addPreselected(loc);
+                        }
+                      }
+                    }}
+                  >
+                    {preselectedSet.has(loc.id) ? '🗑' : '+'}
+                  </span>
                 </div>
               </button>
             </li>
