@@ -366,7 +366,6 @@ export default function TopBar({
       <div className="mx-2 sm:mx-4">
         {/* Branding supprimé: le logo et le nom sont affichés exclusivement dans la SidebarLocations */}
       </div>
-
       <div className="mx-2 sm:mx-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {/* SUIVI */}
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
@@ -485,31 +484,31 @@ export default function TopBar({
               </div>
             </div>
 
-{/* Projection selector */}
-<div className="mt-3">
-  <div className="text-xs uppercase tracking-wider text-white/60">Projection</div>
-  <div className="mt-1 flex flex-wrap gap-2">
-    {[
-      { id: 'recti-panini' as const, label: 'Rectilinéaire' },
-      { id: 'stereo-centered' as const, label: 'Stéréographique' },
-      { id: 'ortho' as const, label: 'Orthographique' },
-      //{ id: 'cylindrical' as const, label: 'Cylindrique' },
-    ].map(opt => (
-      <button
-        key={opt.id}
-        className={`px-3 py-1.5 rounded-lg border text-sm ${
-          projectionMode === opt.id
-            ? 'border-white/50 bg-white/10'
-            : 'border-white/15 text-white/80 hover:border-white/30'
-        }`}
-        onClick={() => setProjectionMode(opt.id)}
-        title={opt.label}
-      >
-        {opt.label}
-      </button>
-    ))}
-  </div>
-</div>
+            {/* Projection selector */}
+            <div className="mt-3">
+              <div className="text-xs uppercase tracking-wider text-white/60">Projection</div>
+              <div className="mt-1 flex flex-wrap gap-2">
+                {[
+                  { id: 'recti-panini' as const, label: 'Rectilinéaire' },
+                  { id: 'stereo-centered' as const, label: 'Stéréographique' },
+                  { id: 'ortho' as const, label: 'Orthographique' },
+                  //{ id: 'cylindrical' as const, label: 'Cylindrique' },
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    className={`px-3 py-1.5 rounded-lg border text-sm ${
+                      projectionMode === opt.id
+                        ? 'border-white/50 bg-white/10'
+                        : 'border-white/15 text-white/80 hover:border-white/30'
+                    }`}
+                    onClick={() => setProjectionMode(opt.id)}
+                    title={opt.label}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -555,6 +554,18 @@ export default function TopBar({
                     className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
                      title="Saisir la date et l’heure locale à votre navigateur"
                   />
+                  {/* -1 heure */}
+                  <button
+                    onClick={() => {
+                      onCommitWhenMs(currentUtcMs - 3600000);
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    title="Aller à -1 heure"
+                  >
+                    &#x21B6;
+                  </button>
+                  {/* Maintenant */}
                   <button
                     onClick={() => {
                       const nowMs = Date.now();
@@ -564,7 +575,19 @@ export default function TopBar({
                     className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title="Régler l'heure actuelle"
                   >
-                    Maintenant
+                    {/*Maintenant*/}
+                    &#128345;	
+                  </button>
+                  {/* +1 heure */}
+                  <button
+                    onClick={() => {
+                      onCommitWhenMs(currentUtcMs + 3600000);
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    title="Aller à +1 heure"
+                  >
+                    &#x21B7;
                   </button>
                 </div>
                 {/* Replace single UTC line with the required format:
@@ -588,7 +611,7 @@ export default function TopBar({
                     step={0.001}
                     value={speedMinPerSec}
                     onChange={(e) => setSpeedMinPerSec(clamp(parseFloat(e.target.value || "0"), -360, 360))}
-                     className="w-full"
+                    className="w-full"
                     title={`Vitesse de l'animation : gauche = rembobiner, droite = avancer`}
                   />
                   {/* Center tick for 0 */}
@@ -604,22 +627,29 @@ export default function TopBar({
                   </div>
                   <div
                     className="absolute left-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
-                    title="-1 h"
+                    title={`-1 min/s`}
                     onClick={() => {
-                      onCommitWhenMs(currentUtcMs - 3600000);
+                      setSpeedMinPerSec(prev => clamp(prev - 1, -360, 360));
                       }}
                   >
                     {"\u21B6"}
                   </div>
                   <div
                     className="absolute right-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
-                    title="+1 h"
+                    title="+1 min/s"
                     onClick={() => {
-                      onCommitWhenMs(currentUtcMs + 3600000);
+                      setSpeedMinPerSec(prev => clamp(prev + 1, -360, 360));
                       }}
                   >
                     {"\u21B7"}
                   </div>
+                </div>
+                {/* Affichage de la vitesse en min/s */}
+                <div
+                  className="min-w-[3rem] text-[10px] text-right text-sm text-white/70 tabular-nums"
+                  title="Vitesse de l’animation (minutes par seconde)"
+                >
+                  {Math.round(speedMinPerSec)==0 ? 'Temps réel': Math.round(speedMinPerSec) + ' min/s'} 
                 </div>
               </div>
             </div>
