@@ -27,99 +27,44 @@ type Planet = {
 };
 
 type Props = {
-  // global toggles
   showMarkers: boolean;
   showStars: boolean;
-
-  // layering
   zIndexHorizon: number;
-
-  // horizon line position
-  horizonY: number;
-
-  // body horizon markers
-  horizonMarkers: HorizonMarker[];
-
-  // Polaris and Crux horizon projections
-  polarisHorizon: HorizonPoint;
-  cruxHorizon: HorizonPoint;
-
-  // body screens + sizes
+  // horizonY?: number;                    // removed
+  // horizonMarkers?: { x: number; label: string; color: string }[]; // removed
   showSun: boolean;
-  sunScreen: ScreenPoint;
-  sunSize: SizePx;
-
+  sunScreen: { x: number; y: number; visibleX?: boolean; visibleY?: boolean };
+  sunSize: { w: number; h: number };
   showMoon: boolean;
-  moonScreen: ScreenPoint;
-  moonSize: SizePx;
-
-  // Polaris object position
-  polarisScreen: ScreenPoint;
-
-  // colors
+  moonScreen: { x: number; y: number; visibleX?: boolean; visibleY?: boolean };
+  moonSize: { w: number; h: number };
+  polarisScreen: { x: number; y: number; visibleX?: boolean; visibleY?: boolean };
   sunColor: string;
   moonColor: string;
   polarisColor: string;
   cruxColor: string;
-
-  // planets (optional)
-  showPlanets?: boolean;
-  planets?: Planet[];
+  planets: { screen: { x: number; y: number; visibleX?: boolean; visibleY?: boolean }, label: string, color: string, size: { w: number; h: number } }[];
 };
 
-export default function Markers({
-  showMarkers,
-  showStars,
-  zIndexHorizon,
-  horizonY,
-  horizonMarkers,
-  polarisHorizon,
-  cruxHorizon,
-  showSun,
-  sunScreen,
-  sunSize,
-  showMoon,
-  moonScreen,
-  moonSize,
-  polarisScreen,
-  sunColor,
-  moonColor,
-  polarisColor,
-  cruxColor,
-  // planets
-  showPlanets,
-  planets,
-}: Props) {
+export default function Markers(props: Props) {
+  const {
+    showMarkers,
+    showStars,
+    zIndexHorizon,
+    // horizonY,             // removed
+    // horizonMarkers,       // removed
+    showSun, sunScreen, sunSize,
+    showMoon, moonScreen, moonSize,
+    polarisScreen,
+    sunColor, moonColor, polarisColor, cruxColor,
+    planets,
+  } = props;
+
   if (!showMarkers) return null;
 
   return (
     <>
-      {/* Polaris/Crux horizon projections (ticks + labels) */}
-      {showStars && polarisHorizon && polarisHorizon.visibleX !== false && (
-        <div
-          style={{ position: "absolute", left: polarisHorizon.x, top: horizonY, zIndex: zIndexHorizon, pointerEvents: "none" }}
-        >
-          <div className="-translate-x-1/2">
-            <div className="w-0.5 h-3" style={{ background: polarisColor, opacity: 0.95, transform: "translateY(-50%)" }} />
-            <div className="text-[10px] leading-none mt-1 select-none" style={{ color: polarisColor, opacity: 0.95, transform: "translateY(-50%)" }}>
-              Polaris (horizon)
-            </div>
-          </div>
-        </div>
-      )}
-      {showStars && cruxHorizon && cruxHorizon.visibleX !== false && (
-        <div
-          style={{ position: "absolute", left: cruxHorizon.x, top: horizonY, zIndex: zIndexHorizon, pointerEvents: "none" }}
-        >
-          <div className="-translate-x-1/2">
-            <div className="w-0.5 h-3" style={{ background: cruxColor, opacity: 0.95, transform: "translateY(-50%)" }} />
-            <div className="text-[10px] leading-none mt-1 select-none" style={{ color: cruxColor, opacity: 0.95, transform: "translateY(-50%)" }}>
-              Crux (horizon)
-            </div>
-          </div>
-        </div>
-      )}
-
+      
       {/* Sun extremity markers + label */}
       {showSun && sunScreen.visibleX && sunScreen.visibleY && (
         <>

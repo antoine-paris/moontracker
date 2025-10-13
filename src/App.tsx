@@ -13,10 +13,12 @@ import { getAllLocations, type LocationOption } from "./data/locations";
 import { DEVICES, CUSTOM_DEVICE_ID } from "./optics/devices";
 
 // Constantes d’affichage
-import { Z, MOON_RENDER_DIAMETER, ROSE_16 } from "./render/constants";
+import { Z, MOON_RENDER_DIAMETER } from "./render/constants";
 
 // Utilitaires & formatage
 import { toDeg, toRad, norm360, angularDiff, clamp } from "./utils/math";
+import { compass16 } from "./utils/compass";
+import { altAzToVec, normalize3 } from "./utils/vec3";
 import { toDatetimeLocalInputValue, formatTimeInZone, formatDateTimeInZone, formatDeg } from "./utils/format";
 import { utcMsToZonedLocalString } from "./utils/tz";
 
@@ -28,12 +30,14 @@ import { fovRect, fovFromF35, f35FromFovBest, FOV_DEG_MIN, FOV_DEG_MAX } from ".
 import { moonApparentDiameterDeg } from "./astro/moon";
 import { sunDistanceAU, sunApparentDiameterDeg } from "./astro/sun";
 import { lstDeg } from "./astro/time";
-import { altazToRaDec, parallacticAngleDeg } from "./astro/coords";
+import { altAzFromRaDec } from "./astro/stars";
+import { computeEclipseInfo } from "./astro/eclipseHelpers";import { altazToRaDec, parallacticAngleDeg } from "./astro/coords";
 import { sampleTerminatorLUT } from "./astro/lut";
 import { sepDeg, eclipseKind } from "./astro/eclipse";
 
 // Projection
 import { projectToScreen } from "./render/projection";
+import { localUpAngleOnScreen, correctedSpriteRotationDeg } from "./render/orientation";
 import TopBar from "./components/layout/TopBar";
 import BottomTelemetry from "./components/layout/BottomTelemetry";
 import HorizonOverlay from "./components/stage/HorizonOverlay";
@@ -672,20 +676,6 @@ export default function App() {
       rotationDegPlanetScreen?: number;
     }[] = [];
 
-    // Helper ENU <-> (az,alt)
-    const altAzToVec = (azDeg: number, altDeg: number) => {
-      const az = toRad(azDeg);
-      const alt = toRad(altDeg);
-      const E = Math.cos(alt) * Math.sin(az); // East
-      const N = Math.cos(alt) * Math.cos(az); // North
-      const U = Math.sin(alt);                // Up
-      return [E, N, U] as const;
-    };
-    const norm3 = (v: readonly number[]) => {
-      const L = Math.hypot(v[0], v[1], v[2]) || 1;
-      return [v[0]/L, v[1]/L, v[2]/L] as const;
-    };
-
     for (const p of planetsEphemArr) {
       const id = (p as any).id as string;
       if (!id || !showPlanets[id]) continue;
@@ -756,15 +746,15 @@ export default function App() {
           angleToSunDeg = norm360(toDeg(alpha) + 90);                                // 0=N, 90=E
         } else {
           // Tangente locale vers le Soleil
-          const t = norm3([uS[0] - dotUS*u0[0], uS[1] - dotUS*u0[1], uS[2] - dotUS*u0[2]]);
+          const t = normalize3([uS[0] - dotUS*u0[0], uS[1] - dotUS*u0[1], uS[2] - dotUS*u0[2]]);
 
           // Pas avant (vers Soleil) et arrière (opposé)
-          const wF = norm3([
+          const wF = normalize3([
             Math.cos(EPS_RAD)*u0[0] + Math.sin(EPS_RAD)*t[0],
             Math.cos(EPS_RAD)*u0[1] + Math.sin(EPS_RAD)*t[1],
             Math.cos(EPS_RAD)*u0[2] + Math.sin(EPS_RAD)*t[2],
           ]);
-          const wB = norm3([
+          const wB = normalize3([
             Math.cos(EPS_RAD)*u0[0] - Math.sin(EPS_RAD)*t[0],
             Math.cos(EPS_RAD)*u0[1] - Math.sin(EPS_RAD)*t[1],
             Math.cos(EPS_RAD)*u0[2] - Math.sin(EPS_RAD)*t[2],
@@ -821,21 +811,14 @@ export default function App() {
       const orientationDegY = Number.isFinite(ori?.y) ? Number(ori.y) : undefined;
       const orientationDegZ = Number.isFinite(ori?.z) ? Number(ori.z) : undefined;
 
-      let localUpAnglePlanetDeg: number | undefined;
-      {
-        const eps = 0.01;
-        const p0 = projectToScreen(az, alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-        const pU = projectToScreen(az, alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-        const pD = projectToScreen(az, alt - eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-        const dxU = pU.x - p0.x, dyU = pU.y - p0.y;
-        const dxD = pD.x - p0.x, dyD = pD.y - p0.y;
-        const mU = Math.hypot(dxU, dyU);
-        const mD = Math.hypot(dxD, dyD);
-        const useDown = mD > mU;
-        let ang = Math.atan2(useDown ? dyD : dyU, useDown ? dxD : dxU) * 180 / Math.PI; // 0=→, 90=↓
-        if (useDown) ang = norm360(ang + 180); // restore “toward +alt”
-        localUpAnglePlanetDeg = ang;
-      }
+      const localUpAnglePlanetDeg = localUpAngleOnScreen(az, alt, {
+              refAz,
+              refAlt,
+              viewport: { w: viewport.w, h: viewport.h },
+              fovXDeg,
+              fovYDeg,
+              projectionMode,
+            });
 
       let rotationToHorizonDegPlanet: number | undefined;
       try {
@@ -852,8 +835,8 @@ export default function App() {
       // corrected on-screen rotation for planet (like rotationDegSunScreen)
       const rotationDegPlanetScreen =
         Number.isFinite(rotationToHorizonDegPlanet) && Number.isFinite(localUpAnglePlanetDeg)
-          ? norm360(-(-Number(rotationToHorizonDegPlanet) + (-90 - Number(localUpAnglePlanetDeg))))
-          : 0 ;
+          ? correctedSpriteRotationDeg(Number(rotationToHorizonDegPlanet), Number(localUpAnglePlanetDeg))
+          : 0;
 
 
       items.push({
@@ -889,24 +872,19 @@ export default function App() {
 
   // NEW: projection-aware local vertical angle (screen) at Moon
   const localUpAngleMoonDeg = useMemo(() => {
-    const eps = 0.01; // deg
-    const p0 = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const pU = projectToScreen(astro.moon.az, astro.moon.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const pD = projectToScreen(astro.moon.az, astro.moon.alt - eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const x0 = p0.x, y0 = p0.y;
-    const dxU = pU.x - x0, dyU = pU.y - y0;
-    const dxD = pD.x - x0, dyD = pD.y - y0;
-    const mU = Math.hypot(dxU, dyU);
-    const mD = Math.hypot(dxD, dyD);
-    const useDown = mD > mU;
-    let ang = Math.atan2(useDown ? dyD : dyU, useDown ? dxD : dxU) * 180 / Math.PI; // 0=→, 90=↓
-    if (useDown) ang = norm360(ang + 180); // rétablir la direction “vers +alt”
-    return ang;
+    return localUpAngleOnScreen(astro.moon.az, astro.moon.alt, {
+      refAz,
+      refAlt,
+      viewport: { w: viewport.w, h: viewport.h },
+      fovXDeg,
+      fovYDeg,
+      projectionMode,
+    });
   }, [astro.moon.az, astro.moon.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
 
   // NEW: corrected on-screen rotation for Moon (align local vertical with screen vertical)
   const rotationDegMoonScreen = useMemo(
-    () => -(-rotationToHorizonDegMoon + (-90 - localUpAngleMoonDeg)),
+    () => correctedSpriteRotationDeg(rotationToHorizonDegMoon, localUpAngleMoonDeg),
     [rotationToHorizonDegMoon, localUpAngleMoonDeg]
   );
 
@@ -919,24 +897,19 @@ export default function App() {
 
   // NEW: projection-aware local vertical angle (screen) at Sun
   const localUpAngleSunDeg = useMemo(() => {
-    const eps = 0.01;
-    const p0 = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const pU = projectToScreen(astro.sun.az, astro.sun.alt + eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const pD = projectToScreen(astro.sun.az, astro.sun.alt - eps, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const x0 = p0.x, y0 = p0.y;
-    const dxU = pU.x - x0, dyU = pU.y - y0;
-    const dxD = pD.x - x0, dyD = pD.y - y0;
-    const mU = Math.hypot(dxU, dyU);
-    const mD = Math.hypot(dxD, dyD);
-    const useDown = mD > mU;
-    let ang = Math.atan2(useDown ? dyD : dyU, useDown ? dxD : dxU) * 180 / Math.PI;
-    if (useDown) ang = norm360(ang + 180);
-    return ang;
+   return localUpAngleOnScreen(astro.sun.az, astro.sun.alt, {
+      refAz,
+      refAlt,
+      viewport: { w: viewport.w, h: viewport.h },
+      fovXDeg,
+      fovYDeg,
+      projectionMode,
+    });
   }, [astro.sun.az, astro.sun.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
 
   // NEW: corrected on-screen rotation for Sun
   const rotationDegSunScreen = useMemo(
-    () => -(-rotationToHorizonDegSun + (-90 - localUpAngleSunDeg)),
+    () => correctedSpriteRotationDeg(rotationToHorizonDegSun, localUpAngleSunDeg),
     [rotationToHorizonDegSun, localUpAngleSunDeg]
   );
 
@@ -953,32 +926,15 @@ export default function App() {
 
   // ADD: eclipse info used by BottomTelemetry
   const eclipse = useMemo(() => {
-    const sep = sepDeg(astro.sun.alt, astro.sun.az, astro.moon.alt, astro.moon.az);
-    const rS = (astro.sun.appDiamDeg ?? 0) / 2;
-    const rM = (astro.moon.appDiamDeg ?? 0) / 2;
-    const kind = eclipseKind(sep, rS, rM);
-    return { sep, rS, rM, kind } as const;
+    return computeEclipseInfo(
+      astro.sun.alt, astro.sun.az, astro.sun.appDiamDeg,
+      astro.moon.alt, astro.moon.az, astro.moon.appDiamDeg
+    );
   }, [astro.sun, astro.moon]);
     
   const eclipticTiltDeg = sunOrientation.eclipticTiltDeg;
   
-  // ADD: Horizon flat Y (used by Markers baseline)
-  const horizonYFlat = useMemo(
-    () => viewport.y + projectToScreen(refAz, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode).y,
-    [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]
-  );
-
-  // ADD: Simple horizon markers (Moon only by default)
-  const horizonMarkers = useMemo(() => {
-    const items: { x: number; label: string; color: string }[] = [];
-    if (showMoon) {
-      const { x, visibleX } = projectToScreen(astro.moon.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (visibleX) items.push({ x: viewport.x + x, label: "Lune", color: "#93c5fd" });
-    }
-    return items;
-  }, [showMoon, astro.moon.az, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-
-  // ADD: 4 main cardinals visible on horizon
+  // 4 main cardinals visible on horizon
   const visibleCardinals = useMemo(() => {
     const base = [
       { label: 'N' as const, az: 0 },
@@ -1033,40 +989,19 @@ export default function App() {
 
   // ADD: Polaris and Southern Cross alt/az + screen positions
   const polarisAltAz = useMemo(() => {
-    const LST = lstDeg(date, location.lng);
-    let H = LST - POLARIS_RA_DEG;
-    H = ((H + 180) % 360 + 360) % 360 - 180;
-    const φ = toRad(location.lat);
-    const δ = toRad(POLARIS_DEC_DEG);
-    const Hr = toRad(H);
-    const sinAlt = Math.sin(φ) * Math.sin(δ) + Math.cos(φ) * Math.cos(δ) * Math.cos(Hr);
-    const alt = Math.asin(clamp(sinAlt, -1, 1));
-    const cosAlt = Math.cos(alt);
-    const sinA = -Math.cos(δ) * Math.sin(Hr) / Math.max(1e-9, cosAlt);
-    const cosA = (Math.sin(δ) - Math.sin(alt) * Math.sin(φ)) / Math.max(1e-9, (cosAlt * Math.cos(φ)));
-    const A = Math.atan2(sinA, cosA);
-    return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
+    return altAzFromRaDec(date, location.lat, location.lng, POLARIS_RA_DEG, POLARIS_DEC_DEG);
   }, [date, location.lat, location.lng]);
+
   const cruxAltAz = useMemo(() => {
-    const LST = lstDeg(date, location.lng);
-    let H = LST - CRUX_CENTROID_RA_DEG;
-    H = ((H + 180) % 360 + 360) % 360 - 180;
-    const φ = toRad(location.lat);
-    const δ = toRad(CRUX_CENTROID_DEC_DEG);
-    const Hr = toRad(H);
-    const sinAlt = Math.sin(φ) * Math.sin(δ) + Math.cos(φ) * Math.cos(δ) * Math.cos(Hr);
-    const alt = Math.asin(clamp(sinAlt, -1, 1));
-    const cosAlt = Math.cos(alt);
-    const sinA = -Math.cos(δ) * Math.sin(Hr) / Math.max(1e-9, cosAlt);
-    const cosA = (Math.sin(δ) - Math.sin(alt) * Math.sin(φ)) / Math.max(1e-9, (cosAlt * Math.cos(φ)));
-    const A = Math.atan2(sinA, cosA);
-    return { altDeg: toDeg(alt), azDeg: norm360(toDeg(A)) };
+    return altAzFromRaDec(date, location.lat, location.lng, CRUX_CENTROID_RA_DEG, CRUX_CENTROID_DEC_DEG);
   }, [date, location.lat, location.lng]);
+
 
   const polarisScreen = useMemo(() => {
     const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
   }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
+  
   const cruxScreen = useMemo(() => {
     const p = projectToScreen(cruxAltAz.azDeg, cruxAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
@@ -1702,10 +1637,6 @@ export default function App() {
               showMarkers={showMarkers}
               showStars={showStars}
               zIndexHorizon={Z.horizon}
-              horizonY={horizonYFlat}
-              horizonMarkers={horizonMarkers}
-              //polarisHorizon={polarisHorizon}
-              //cruxHorizon={cruxHorizon}
               showSun={showSun}
               sunScreen={sunScreen}
               sunSize={{ w: bodySizes.sun.w, h: bodySizes.sun.h }}
@@ -1717,7 +1648,6 @@ export default function App() {
               moonColor="#93c5fd"
               polarisColor={POLARIS_COLOR}
               cruxColor={CRUX_COLOR}
-              // NEW: planets markers
               planets={planetMarkers}
             />
           </div>
@@ -1766,5 +1696,3 @@ export default function App() {
   );
 }
 
-
-function compass16(az: number): string { const idx = Math.round(norm360(az) / 22.5) % 16; return ROSE_16[idx] as string; }
