@@ -45,6 +45,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { prewarmModel, MOON_RELIEF_SCALE_DEFAULT, PLANET_RELIEF_SCALE_DEFAULT } from './render/modelPrewarm';
 import PhotoFrame from "./components/stage/PhotoFrame"; // + add
 import SpaceView from "./components/layout/SpaceView";
+import TopRightBar from "./components/layout/TopRightBar";
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -671,6 +672,279 @@ export default function App() {
     }
   }, []);
 
+  const TOP_RIGHT_BAR_W = 56; // px
+
+  // --- URL state: parse once on load, then keep URL in sync -------------------
+  const urlInitedRef = useRef(false);
+
+  // helpers
+  const parseBool = (v: string | null, def = false) => {
+    if (v == null) return def;
+    const s = v.toLowerCase();
+    return s === '1' || s === 'true' || s === 'yes' || s === 'on';
+  };
+  const parseNum = (v: string | null, def: number) => {
+    if (v == null) return def;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : def;
+  };
+  const parseEnum = <T extends string>(v: string | null, allowed: readonly T[], def: T): T => {
+    if (!v) return def;
+    const up = v.toUpperCase() as T;
+    return (allowed as readonly string[]).includes(up) ? (up as T) : def;
+  };
+  const FOLLOW_ALLOWED = ['SOLEIL','LUNE','MERCURE','VENUS','MARS','JUPITER','SATURNE','URANUS','NEPTUNE','N','E','S','O'] as const;
+  const PROJ_ALLOWED = ['recti-panini','stereo-centered','ortho','cylindrical'] as const;
+
+  // init from URL once, after locations loaded (so we can map loc ids)
+  useEffect(() => {
+    if (urlInitedRef.current) return;
+    if (locationsLoading) return; // wait for locations list
+    urlInitedRef.current = true;
+
+    const q = new URLSearchParams(window.location.search);
+
+    // Time
+    const t = q.get('t');
+    if (t) {
+      let ms = Date.parse(t);
+      if (!Number.isFinite(ms)) {
+        const n = Number(t);
+        if (Number.isFinite(n)) ms = n;
+      }
+      if (Number.isFinite(ms)) {
+        whenMsRef.current = ms!;
+        setWhenMs(ms!);
+      }
+    }
+
+    // Location by id or by lat/lng
+    const locId = q.get('loc');
+    const latQ = q.get('lat');
+    const lngQ = q.get('lng');
+    const tzQ = q.get('tz');
+    const labelQ = q.get('label');
+    if (locId) {
+      const found = locations.find(l => l.id === locId);
+      if (found) setLocation(found);
+    } else if (latQ && lngQ) {
+      const lat = Number(latQ);
+      const lng = Number(lngQ);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        const tz = tzQ || 'UTC';
+        const label = labelQ || `Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}`;
+        setLocation({
+          id: `url@${lat.toFixed(6)},${lng.toFixed(6)}`,
+          label,
+          lat,
+          lng,
+          timeZone: tz,
+        });
+      }
+    }
+
+    // Follow
+    const f = q.get('follow');
+    if (f) setFollow(parseEnum(f, FOLLOW_ALLOWED as any, 'LUNE'));
+
+    // Projection
+    const proj = q.get('proj');
+    if (proj) setProjectionMode(parseEnum(proj, PROJ_ALLOWED as any, 'recti-panini'));
+
+    // Device/zoom/focal
+    const dev = q.get('device');
+    const zm = q.get('zoom');
+    const focal = q.get('f');          // 24x36 eq mm
+    const fovx = q.get('fovx');        // degrees
+    const fovy = q.get('fovy');        // degrees
+    const link = q.get('link');
+
+    if (dev) {
+      // prefer exact known device id or custom
+      const exists = devices.some(d => d.id === dev);
+      const finalDev = exists ? dev : CUSTOM_DEVICE_ID;
+      setDeviceId(finalDev);
+      if (exists && zm && devices.find(d => d.id === finalDev)?.zooms.some(z => z.id === zm)) {
+        setZoomId(zm);
+      }
+    }
+
+    // If custom device requested or no valid device provided, allow focal/FOV control
+    const wantsCustom = (dev === CUSTOM_DEVICE_ID) || (!dev);
+    if (wantsCustom) {
+      setDeviceId(CUSTOM_DEVICE_ID);
+      setZoomId('custom-theo');
+
+      // focal → FOV (24x36 eq)
+      const fmm = focal ? Number(focal) : NaN;
+      if (Number.isFinite(fmm) && fmm > 0) {
+        const FF_W = 36, FF_H = 24;
+        const fx = 2 * Math.atan(FF_W / (2 * fmm)) * 180 / Math.PI;
+        const fy = 2 * Math.atan(FF_H / (2 * fmm)) * 180 / Math.PI;
+        setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
+        setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
+      } else {
+        // or explicit fovx/fovy
+        const fx = fovx ? Number(fovx) : NaN;
+        const fy = fovy ? Number(fovy) : NaN;
+        if (Number.isFinite(fx)) setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
+        if (Number.isFinite(fy)) setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
+      }
+      if (link) setLinkFov(parseBool(link, linkFov));
+    }
+
+    // Visibility toggles
+    const boolKeys: Array<[keyof typeof stateSetters, string]> = [
+      ['showSun', 'sun'],
+      ['showMoon', 'moon'],
+      ['showPhase', 'phase'],
+      ['earthshine', 'earthshine'],
+      ['showEarth', 'earth'],
+      ['showAtmosphere', 'atm'],
+      ['showStars', 'stars'],
+      ['showMarkers', 'markers'],
+      ['showGrid', 'grid'],
+      ['showSunCard', 'sunCard'],
+      ['showMoonCard', 'moonCard'],
+      ['enlargeObjects', 'enlarge'],
+      ['debugMask', 'debug'],
+    ];
+    // map state setters
+    const stateSetters = {
+      showSun: setShowSun,
+      showMoon: setShowMoon,
+      showPhase: setShowPhase,
+      earthshine: setEarthshine,
+      showEarth: setShowEarth,
+      showAtmosphere: setShowAtmosphere,
+      showStars: setShowStars,
+      showMarkers: setShowMarkers,
+      showGrid: setShowGrid,
+      showSunCard: setShowSunCard,
+      showMoonCard: setShowMoonCard,
+      enlargeObjects: setEnlargeObjects,
+      debugMask: setDebugMask,
+    } as const;
+    for (const [stateKey, param] of boolKeys) {
+      const v = q.get(param);
+      if (v != null) stateSetters[stateKey](parseBool(v));
+    }
+
+    // Planets selection
+    const p = q.get('planets');
+    if (p) {
+      if (p.toLowerCase() === 'none') {
+        const allFalse = Object.fromEntries(PLANETS.map(id => [String(typeof id === 'string' ? id : (id as any)?.id ?? id), false]));
+        setShowPlanets(allFalse);
+      } else if (p.toLowerCase() === 'all') {
+        const allTrue = Object.fromEntries(PLANETS.map(id => [String(typeof id === 'string' ? id : (id as any)?.id ?? id), true]));
+        setShowPlanets(allTrue);
+      } else {
+        const list = p.split(',').map(s => s.trim()).filter(Boolean);
+        setShowPlanets(prev => {
+          const next: Record<string, boolean> = { ...prev };
+          const allIds = PLANETS.map(id => String(typeof id === 'string' ? id : (id as any)?.id ?? id));
+          for (const id of allIds) next[id] = list.includes(id);
+          return next;
+        });
+      }
+    }
+
+    // Animation (optional)
+    if (q.get('play') != null) setIsAnimating(parseBool(q.get('play'), isAnimating));
+    if (q.get('spd') != null) setSpeedMinPerSec(parseNum(q.get('spd'), speedMinPerSec));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationsLoading, locations]);
+
+  // keep URL updated (shareable links)
+
+  // Build share URL string (does NOT touch the browser URL)
+  const shareUrl = useMemo(() => {
+    const q = new URLSearchParams();
+
+    // location: prefer id if known
+    const hasId = locations.find(l => l.id === location.id);
+    if (hasId) {
+      q.set('loc', location.id);
+    } else {
+      q.set('lat', String(location.lat));
+      q.set('lng', String(location.lng));
+      q.set('tz', location.timeZone || 'UTC');
+      if (location.label) q.set('label', location.label);
+    }
+
+    // time
+    q.set('t', new Date(whenMs).toISOString());
+
+    // follow
+    q.set('follow', follow);
+
+    // projection
+    q.set('proj', projectionMode);
+
+    // device/zoom or custom focal/FOV
+    q.set('device', deviceId);
+    if (deviceId === CUSTOM_DEVICE_ID) {
+      // derive 24x36 eq focal from fovX
+      const FF_W = 36;
+      const rad = (Math.PI / 180) * fovXDeg;
+      const tanHalf = Math.tan(rad / 2);
+      if (tanHalf > 0) {
+        const f = FF_W / (2 * tanHalf);
+        q.set('f', String(Math.round(f)));
+      }
+      q.set('link', linkFov ? '1' : '0');
+      // also include explicit fov for completeness
+      q.set('fovx', fovXDeg.toFixed(3));
+      q.set('fovy', fovYDeg.toFixed(3));
+    } else {
+      q.set('zoom', zoomId);
+    }
+
+    // toggles
+    q.set('sun', showSun ? '1' : '0');
+    q.set('moon', showMoon ? '1' : '0');
+    q.set('phase', showPhase ? '1' : '0');
+    q.set('earthshine', earthshine ? '1' : '0');
+    q.set('earth', showEarth ? '1' : '0');
+    q.set('atm', showAtmosphere ? '1' : '0');
+    q.set('stars', showStars ? '1' : '0');
+    q.set('markers', showMarkers ? '1' : '0');
+    q.set('grid', showGrid ? '1' : '0');
+    q.set('sunCard', showSunCard ? '1' : '0');
+    q.set('moonCard', showMoonCard ? '1' : '0');
+    q.set('enlarge', enlargeObjects ? '1' : '0');
+
+    // planets
+    const enabled = Object.entries(showPlanets).filter(([, v]) => v).map(([id]) => id);
+    const allIds = PLANETS.map(id => String(typeof id === 'string' ? id : (id as any)?.id ?? id));
+    if (enabled.length === 0) q.set('planets', 'none');
+    else if (enabled.length === allIds.length) q.set('planets', 'all');
+    else q.set('planets', enabled.join(','));
+
+    // animation (optional)
+    q.set('play', isAnimating ? '1' : '0');
+    q.set('spd', String(speedMinPerSec));
+
+    const base = `${window.location.origin}${window.location.pathname}`;
+    return `${base}?${q.toString()}${window.location.hash || ''}`;
+  }, [
+    // location/time
+    locations, location.id, location.lat, location.lng, location.timeZone, location.label,
+    whenMs,
+    // follow/projection
+    follow, projectionMode,
+    // optics
+    deviceId, zoomId, fovXDeg, fovYDeg, linkFov,
+    // toggles
+    showSun, showMoon, showPhase, earthshine, showEarth, showAtmosphere, showStars, showMarkers, showGrid,
+    showSunCard, showMoonCard, enlargeObjects,
+    // planets
+    showPlanets,
+    // animation
+    isAnimating, speedMinPerSec
+  ]);
+
   // --- JSX -------------------------------------------------------------------
   return (
     <div className="w-full h-screen bg-black text-white overflow-hidden">
@@ -699,20 +973,24 @@ export default function App() {
               )}
             </div>
           )}
-          {/* Global toggle button (top-right) */}
-          <button
-            onClick={() => setShowPanels(v => !v)}
-            className="absolute top-2 right-2 px-4 py-2 rounded-lg border border-white/20 text-white/80 hover:border-white/40 text-2xl leading-none"
-            style={{ zIndex: Z.ui + 20 }}
-            aria-label="Basculer l'interface"
-            title="Basculer l'interface"
-          >
-             {showPanels ? "\u26F6" : "\u2699"}
-          </button>
-          {/* Top UI bar */}
+
+          {/* Top-right vertical toolbar (always above SpaceView & UI) */}
+          <TopRightBar
+            showPanels={showPanels}
+            onTogglePanels={() => setShowPanels(v => !v)}
+            zIndex={Z.ui + 30}
+            shareUrl={shareUrl}
+          />
+
+          {/* Top UI bar (add right padding so it doesn't sit under the toolbar) */}
           <div
             className="absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
-            style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
+            style={{
+              zIndex: Z.ui,
+              opacity: showPanels ? 1 : 0,
+              pointerEvents: showPanels ? 'auto' : 'none',
+              paddingRight: TOP_RIGHT_BAR_W + 8,
+            }}
           >
             <TopBar
               follow={follow}
@@ -924,5 +1202,6 @@ export default function App() {
       </div>
     </div>
   );
+
 }
 
