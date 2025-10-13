@@ -656,10 +656,82 @@ export default function TopBar({
           </div>
         </div>
 
-        {/* Objets à afficher */}
+        {/* Groupe: Visibilité */}
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
-          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Objets à afficher</div>
-          <div className="flex flex-wrap gap-3">
+          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Visibilité</div>
+          <div className="mt-1 flex flex-wrap gap-3">
+            {/* Enlarge objects */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Augmenter la taille apparente des objets pour une meilleure visibilité">
+              <input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} />
+              <span>Agrandir les objets</span>
+            </label>
+            {/* Earth toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le sol (Terre)">
+              <input type="checkbox" checked={showEarth} onChange={(e) => setShowEarth(e.target.checked)} />
+              <span>Sol opaque</span>
+            </label>
+            {/* Atmosphere toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher l’effet d’atmosphère">
+              <input type="checkbox" checked={showAtmosphere} onChange={(e) => setShowAtmosphere(e.target.checked)} />
+              <span>Atmosphère</span>
+            </label>
+            {/* Moon phase */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la phase de la Lune et des planètes">
+              <input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} />
+              <span>Phases Lune/Planètes</span>
+            </label>
+            {/* Earthshine */}
+            <label
+              className="inline-flex items-center gap-2 text-sm"
+              title={showPhase ? "Afficher le clair de Terre" : "Activez « Phase de la Lune » pour autoriser le clair de Terre"}
+            >
+              <input
+                type="checkbox"
+                checked={earthshine}
+                disabled={!showPhase}
+                onChange={(e) => setEarthshine(e.target.checked)}
+              />
+              <span>Clair de Terre</span>
+            </label>
+          </div>
+
+          {/* Groupe: Espace */}
+          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">Espace</div>
+          <div className="mt-1 flex flex-wrap gap-3">
+            {/* Sun toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le Soleil">
+              <input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} />
+              <span className="text-amber-300">Soleil</span>
+            </label>
+            {/* Moon toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la Lune">
+              <input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} />
+              <span className="text-sky-300">Lune</span>
+            </label>
+            {/* Planètes */}
+            {uiPlanets.map(({ id, label }) => (
+              <label key={id} className="inline-flex items-center gap-2 text-sm" title={`Afficher ${label}`}>
+                <input
+                  type="checkbox"
+                  checked={showPlanets[id] ?? true}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setShowPlanets(prev => ({ ...prev, [id]: checked }));
+                  }}
+                />
+                <span>{label}</span>
+              </label>
+            ))}
+            {/* Stars toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le fond d’étoiles">
+              <input type="checkbox" checked={showStars} onChange={(e) => setShowStars(e.target.checked)} />
+              <span>Étoiles</span>
+            </label>
+          </div>
+
+          {/* Groupe: Assistance */}
+          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">Assistance</div>
+          <div className="mt-1 flex flex-wrap gap-3">
             {/* Grid toggle */}
             <label className="inline-flex items-center gap-2 text-sm" title="Afficher la grille de référence">
               <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />
@@ -670,123 +742,116 @@ export default function TopBar({
               <input type="checkbox" checked={showMarkers} onChange={(e) => setShowMarkers(e.target.checked)} />
               <span>Marqueurs</span>
             </label>
-            {/* Atmosphere toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher l’effet d’atmosphère">
-              <input type="checkbox" checked={showAtmosphere} onChange={(e) => setShowAtmosphere(e.target.checked)} />
-              <span>Atmosphère</span>
+            {/* Sun cardinal helper */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux sur le Soleil">
+              <input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} />
+              <span>Cardinaux Soleil</span>
             </label>
-            {/* Earth toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le sol (Terre)">
-              <input type="checkbox" checked={showEarth} onChange={(e) => setShowEarth(e.target.checked)} />
-              <span>Sol</span>
+            {/* Local cardinal helper */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux de la lune et des planètes">
+              <input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} />
+              <span>Cardinaux lune/planètes</span>
             </label>
-            {/* Stars toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le fond d’étoiles">
-              <input type="checkbox" checked={showStars} onChange={(e) => setShowStars(e.target.checked)} />
-              <span>Étoiles</span>
+            {/* Debug helper */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Activer les éléments de débogage visuel">
+              <input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} />
+              <span>Debug</span>
             </label>
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le Soleil">
-              <input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} /><span className="text-amber-300">Soleil</span>
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la Lune">
-              <input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune</span>
-            </label>
-             <label className="inline-flex items-center gap-2 text-sm" title="Afficher la phase de la Lune">
-               <input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} /><span>Phase de la Lune</span>
-             </label>
-             <label
-               className="inline-flex items-center gap-2 text-sm"
-               title={showPhase ? "Afficher le clair de Terre" : "Activez « Phase de la Lune » pour autoriser le clair de Terre"}
-             >
-               <input type="checkbox" checked={earthshine} disabled={!showPhase} onChange={(e) => setEarthshine(e.target.checked)} /><span>Clair de Terre</span>
-             </label>
-             <span className="w-px h-5 bg-white/10 mx-1" />
-             <label className="inline-flex items-center gap-2 text-sm" title="Afficher le repère cardinal par rapport au Soleil">
-               <input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span>
-             </label>
-             <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux locaux">
-               <input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal local</span>
-             </label>
-             <label className="inline-flex items-center gap-2 text-sm" title="Activer les éléments de débogage visuel">
-               <input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug</span>
-             </label>
-             <span className="w-px h-5 bg-white/10 mx-1" />
-             <label className="inline-flex items-center gap-2 text-sm" title="Augmenter la taille apparente des objets pour une meilleure visibilité">
-               <input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span>
-             </label>
-
-             {/* per-planet toggles */}
-             <span className="w-px h-5 bg-white/10 mx-1" />
-             {uiPlanets.map(({ id, label }) => (
-               <label key={id} className="inline-flex items-center gap-2 text-sm" title={`Afficher ${label}`}>
-                 <input
-                   type="checkbox"
-                   checked={showPlanets[id] ?? true}
-                   onChange={(e) => {
-                     const checked = e.target.checked;
-                     setShowPlanets(prev => ({ ...prev, [id]: checked }));
-                   }}
-                 />
-                 <span>{label}</span>
-               </label>
-             ))}
           </div>
+
+
           {debugMask && (
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
-               <label className="flex items-center gap-2">
-                 <span>Rot X</span>
-                 <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={rotOffsetDegX}
-                   onChange={e => {
-                     const v = Number(e.target.value);
-                     if (Number.isFinite(v)) setRotOffsetDegX(clamp(v, -180, 180));
-                   }} />
-               </label>
-               <label className="flex items-center gap-2">
-                 <span>Rot Y</span>
-                 <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={rotOffsetDegY}
-                   onChange={e => {
-                     const v = Number(e.target.value);
-                     if (Number.isFinite(v)) setRotOffsetDegY(clamp(v, -180, 180));
-                   }} />
-               </label>
-               <label className="flex items-center gap-2">
-                 <span>Rot Z</span>
-                 <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={rotOffsetDegZ}
-                   onChange={e => {
-                     const v = Number(e.target.value);
-                     if (Number.isFinite(v)) setRotOffsetDegZ(clamp(v, -180, 180));
-                   }} />
-               </label>
-             </div>
-           )}
+              <label className="flex items-center gap-2">
+                <span>Rot X</span>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5"
+                  value={rotOffsetDegX}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setRotOffsetDegX(clamp(v, -180, 180));
+                  }}
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span>Rot Y</span>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5"
+                  value={rotOffsetDegY}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setRotOffsetDegY(clamp(v, -180, 180));
+                  }}
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span>Rot Z</span>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5"
+                  value={rotOffsetDegZ}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setRotOffsetDegZ(clamp(v, -180, 180));
+                  }}
+                />
+              </label>
+            </div>
+          )}
           {debugMask && (
-             <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
-               <label className="flex items-center gap-2">
-                 <span>Cam X</span>
-                 <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={camRotDegX}
-                   onChange={e => {
-                     const v = Number(e.target.value);
-                     if (Number.isFinite(v)) setCamRotDegX(clamp(v, -180, 180));
-                   }} />
-               </label>
-               <label className="flex items-center gap-2">
-                 <span>Cam Y</span>
-                 <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={camRotDegY}
-                   onChange={e => {
-                     const v = Number(e.target.value);
-                     if (Number.isFinite(v)) setCamRotDegY(clamp(v, -180, 180));
-                   }} />
-               </label>
-               <label className="flex items-center gap-2">
-                 <span>Cam Z</span>
-                 <input type="number" min={-180} max={180} className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5" value={camRotDegZ}
-                   onChange={e => {
-                     const v = Number(e.target.value);
-                     if (Number.isFinite(v)) setCamRotDegZ(clamp(v, -180, 180));
-                   }} />
-               </label>
-             </div>
-           )}
+            <div className="mt-2 grid grid-cols-3 gap-2 text-xs text-white/70">
+              <label className="flex items-center gap-2">
+                <span>Cam X</span>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5"
+                  value={camRotDegX}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setCamRotDegX(clamp(v, -180, 180));
+                  }}
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span>Cam Y</span>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5"
+                  value={camRotDegY}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setCamRotDegY(clamp(v, -180, 180));
+                  }}
+                />
+              </label>
+              <label className="flex items-center gap-2">
+                <span>Cam Z</span>
+                <input
+                  type="number"
+                  min={-180}
+                  max={180}
+                  className="w-16 bg-black/30 border border-white/10 rounded px-1 py-0.5"
+                  value={camRotDegZ}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    if (Number.isFinite(v)) setCamRotDegZ(clamp(v, -180, 180));
+                  }}
+                />
+              </label>
+            </div>
+          )}
         </div>
       </div>
      

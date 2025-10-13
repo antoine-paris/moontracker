@@ -590,44 +590,7 @@ export default function App() {
 
   
 
-  // NEW: Atmosphere gradient colors from Sun altitude
-  const atmosphereGradient = useMemo(() => {
-    // Sun altitude in degrees
-    const alt = astro.sun.alt ?? 0;
-
-    // Night/day blend: 0 at alt<=-6°, 1 at alt>=45°
-    const dayBlend = clamp((alt + 6) / (10 + 6), 0, 1);
-
-    // Warmth (sunset/sunrise glow) strongest near horizon (|alt|≈0°), fades by ~8°
-    const warm = clamp(1 - Math.abs(alt) / 4, 0, 1);
-
-    // Base colors (night → day)
-    const topNight = { r: 3, g: 7, b: 17 };      // very dark blue
-    const topDay   = { r: 91, g: 188, b: 255 };  // sky blue
-    const horNight = { r: 0, g: 0, b: 0 };       // black
-    const horDay   = { r: 191, g: 227, b: 255 }; // pale sky near horizon
-    const warmCol  = { r: 255, g: 122, b: 40 };  // orange glow
-
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-    const mix = (c1: any, c2: any, t: number) => ({
-      r: Math.round(lerp(c1.r, c2.r, t)),
-      g: Math.round(lerp(c1.g, c2.g, t)),
-      b: Math.round(lerp(c1.b, c2.b, t)),
-    });
-    const toHex = (c: any) =>
-      `#${[c.r, c.g, c.b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
-
-    const topBase = mix(topNight, topDay, dayBlend);
-    const horBase = mix(horNight, horDay, dayBlend);
-
-    // Add warm tint near horizon during twilight/low sun
-    const topColor = toHex(mix(topBase, warmCol, 0.15 * warm));
-    const horizonColor = toHex(mix(horBase, warmCol, 0.60 * warm));
-
-    // Build CSS gradient (from horizon up to top)
-    const css = `linear-gradient(to top, ${horizonColor}, ${topColor})`;
-    return css;
-  }, [astro.sun.alt]);
+  
 
   // Reference azimuth & altitude (follow mode)
   const baseRefAz = useMemo(() => followAltAz.az,  [followAltAz]);
@@ -1299,7 +1262,7 @@ export default function App() {
             aria-label="Basculer l'interface"
             title="Basculer l'interface"
           >
-            {"\u2922"}
+             {showPanels ? "\u26F6" : "\u2699"}
           </button>
           {/* Top UI bar */}
           <div
@@ -1513,7 +1476,6 @@ export default function App() {
               </div>
             )}
 
-            {/* NEW: Atmosphere layer (behind Stars) */}
             {showAtmosphere && (
               <div
                 className="absolute"
@@ -1526,7 +1488,11 @@ export default function App() {
                   pointerEvents: 'none',
                 }}
               >
-                <Athmosphere viewport={viewport} gradient={atmosphereGradient} />
+                <Athmosphere
+                  viewport={viewport}
+                  // Le composant calcule désormais son dégradé en interne
+                  sunAltDeg={astro.sun.alt}
+                />
               </div>
             )}
 
