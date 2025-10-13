@@ -12,12 +12,11 @@ import { getAllLocations, type LocationOption } from "./data/locations";
 import { DEVICES, CUSTOM_DEVICE_ID } from "./optics/devices";
 
 // Constantes d’affichage
-import { Z, MOON_RENDER_DIAMETER } from "./render/constants";
+import { Z } from "./render/constants";
 
 // Utilitaires & formatage
-import { toDeg, toRad, norm360, clamp } from "./utils/math";
+import { norm360, clamp } from "./utils/math";
 import { compass16 } from "./utils/compass";
-import { altAzToVec, normalize3 } from "./utils/vec3";
 import { toDatetimeLocalInputValue, formatDeg } from "./utils/format";
 import { utcMsToZonedLocalString } from "./utils/tz";
 
@@ -29,51 +28,25 @@ import { fovRect, fovFromF35, f35FromFovBest, FOV_DEG_MIN, FOV_DEG_MAX } from ".
 import { moonApparentDiameterDeg } from "./astro/moon";
 import { sunApparentDiameterDeg } from "./astro/sun";
 import { lstDeg } from "./astro/time";
-import { altAzFromRaDec } from "./astro/stars";
 import { computeEclipseInfo } from "./astro/eclipseHelpers";import { altazToRaDec, parallacticAngleDeg } from "./astro/coords";
 import { sampleTerminatorLUT } from "./astro/lut";
-import { sepDeg  } from "./astro/eclipse";
 
 // Projection
 import { projectToScreen } from "./render/projection";
-import { localUpAngleOnScreen, correctedSpriteRotationDeg } from "./render/orientation";
 import TopBar from "./components/layout/TopBar";
 import BottomTelemetry from "./components/layout/BottomTelemetry";
-import HorizonOverlay from "./components/stage/HorizonOverlay";
-import CardinalMarkers, { type BodyItem } from "./components/stage/CardinalMarkers";
-import SunSprite from "./components/stage/SunSprite";
-import MoonSprite from "./components/stage/MoonSprite";
-import Moon3D from "./components/stage/Moon3D";
 
 // Import du logo (Vite)
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
-import Stars from "./components/stage/Stars"; // + add
-import Markers from "./components/stage/Markers";
 import DirectionalKeypad from "./components/stage/DirectionalKeypad";
-import Grid from "./components/stage/grid";
-import Athmosphere from "./components/stage/Athmosphere"; // + add
-import { PLANETS, PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "./render/planetRegistry";
+import { PLANETS, PLANET_REGISTRY } from "./render/planetRegistry";
 import { getPlanetsEphemerides } from "./astro/planets";
-import { getPlanetOrientationAngles, type PlanetId } from "./astro/planets";
-import PlanetSprite from "./components/stage/PlanetSprite";
-import Planet3D from "./components/stage/Planet3D"; 
+import { type PlanetId } from "./astro/planets";
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { prewarmModel, MOON_RELIEF_SCALE_DEFAULT, PLANET_RELIEF_SCALE_DEFAULT } from './render/modelPrewarm';
 import PhotoFrame from "./components/stage/PhotoFrame"; // + add
+import SpaceView from "./components/layout/SpaceView";
 
-// Light-green Polaris marker color + equatorial coordinates
-const POLARIS_COLOR = '#86efac';
-const POLARIS_RA_DEG = 37.952917;
-const POLARIS_DEC_DEG = 89.264167;
-// Southern Cross marker color + centroid equatorial coordinates (avg of Acrux, Mimosa, Gacrux, Imai)
-const CRUX_COLOR = '#a78bfa';
-const CRUX_CENTROID_RA_DEG = 187.539271;
-const CRUX_CENTROID_DEC_DEG = -59.6625;
-
-// Seuils de rendu Lune (pixels)
-const MOON_DOT_PX = 5;        // < 5 px => simple point gris
-const MOON_3D_SWITCH_PX = 50; // >= 50 px => rendu 3D
-const PLANET_3D_SWITCH_PX = 100;
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -408,7 +381,6 @@ export default function App() {
   }, [follow, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, followPlanetId, planetsById, date, location.lat, location.lng]);
 
 
-
   /*
   - "Rectilinear + Panini" (for Photographic simulation) : rectilinear + Panini for ultra-wide, plus fisheye variants when the selected module is fisheye.
   - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
@@ -581,326 +553,21 @@ export default function App() {
   const refAz = useMemo(() => norm360(baseRefAz + deltaAzDeg), [baseRefAz, deltaAzDeg]);
   const refAlt = useMemo(() => clamp(baseRefAlt + deltaAltDeg, -89.9, 89.9), [baseRefAlt, deltaAltDeg]);
 
-  // Screen positions
-  const bodySizes = useMemo(() => {
-    // Obtenir l’échelle locale px/deg au centre (rayon nul, pour ne pas influencer la visibilite)
-    const centerSun = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const centerMoon = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const pxPerDegXSun = centerSun.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
-    const pxPerDegYSun = centerSun.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
-    const pxPerDegXMoon = centerMoon.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
-    const pxPerDegYMoon = centerMoon.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
-    const sunW = enlargeObjects ? MOON_RENDER_DIAMETER : astro.sun.appDiamDeg * pxPerDegXSun;
-    const sunH = enlargeObjects ? MOON_RENDER_DIAMETER : astro.sun.appDiamDeg * pxPerDegYSun;
-    const moonW = enlargeObjects ? MOON_RENDER_DIAMETER : astro.moon.appDiamDeg * pxPerDegXMoon;
-    const moonH = enlargeObjects ? MOON_RENDER_DIAMETER : astro.moon.appDiamDeg * pxPerDegYMoon;
-    const sunR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(sunW, sunH)) / 2;
-    const moonR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(moonW, moonH)) / 2;
-    return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
-  }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAz, refAlt, enlargeObjects, projectionMode]);
-
-  // Diamètre apparent de la Lune en pixels (indépendant de enlargeObjects)
-  const moonApparentPx = useMemo(() => {
-    const p = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    const pxPerDegX = p.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
-    const pxPerDegY = p.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
-    const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
-    return (astro.moon.appDiamDeg ?? 0) * pxPerDeg;
-  }, [astro.moon.az, astro.moon.alt, astro.moon.appDiamDeg, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-
-  // Sélection du mode de rendu de la Lune
-  const moonRenderMode = useMemo<'dot' | 'sprite' | '3d'>(() => {
-    if (enlargeObjects) return '3d';
-    if (!Number.isFinite(moonApparentPx)) return 'sprite';
-    if (moonApparentPx < MOON_DOT_PX) return 'dot';
-    if (moonApparentPx < MOON_3D_SWITCH_PX) return 'sprite';
-    return '3d';
-  }, [enlargeObjects, moonApparentPx]);
-
-  const moonRenderModeEffective = glbLoading && moonRenderMode === '3d' ? 'sprite' : moonRenderMode;
-
-  const sunScreen = useMemo(() => {
-    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.sun.r, fovXDeg, fovYDeg, projectionMode);
-    return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
-  }, [astro.sun, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.sun, projectionMode]);
-  const moonScreen = useMemo(() => {
-    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAz, viewport.w, viewport.h, refAlt, bodySizes.moon.r, fovXDeg, fovYDeg, projectionMode);
-    return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
-  }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.moon, projectionMode]);
-
-  // Per-planet render info (screen position, size px, phase fraction, angle to Sun)
-  const planetsRender = useMemo(() => {
-    if (!planetsEphemArr?.length) return [];
-    const items: {
-      id: string;
-      x: number; y: number;
-      visibleX?: boolean; visibleY?: boolean;
-      sizePx: number;
-      color: string;
-      phaseFrac: number;
-      angleToSunDeg: number;
-      mode: 'dot' | 'sprite' | '3d';
-      distAU: number;
-      rotationDeg: number;
-      planetAltDeg: number;
-      planetAzDeg: number;
-      orientationDegX?: number;
-      orientationDegY?: number;
-      orientationDegZ?: number;
-      localUpAnglePlanetDeg?: number;
-      rotationToHorizonDegPlanet?: number;
-      rotationDegPlanetScreen?: number;
-    }[] = [];
-
-    for (const p of planetsEphemArr) {
-      const id = (p as any).id as string;
-      if (!id || !showPlanets[id]) continue;
-
-      const reg = PLANET_REGISTRY[id];
-      const color = reg?.color ?? '#9ca3af';
-
-      const alt = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
-      const az  = ((p as any).azDeg  ?? (p as any).az ) as number | undefined;
-      if (alt == null || az == null) continue;
-
-      // Projection au centre de la planète
-      const proj = projectToScreen(
-        az, alt,
-        refAz,
-        viewport.w, viewport.h,
-        refAlt,
-        0,
-        fovXDeg, fovYDeg,
-        projectionMode
-      );
-
-      if (!proj.visibleX || !proj.visibleY) continue;
-      if (!Number.isFinite(proj.x) || !Number.isFinite(proj.y)) continue;
-
-      const screen = {
-        x: viewport.x + proj.x,
-        y: viewport.y + proj.y,
-        visibleX: proj.visibleX,
-        visibleY: proj.visibleY,
-      };
-
-      // Echelle locale px/deg
-      const pxPerDegX = proj.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
-      const pxPerDegY = proj.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
-      const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
-
-      // Diamètre apparent (si fourni)
-      const appDiamDeg = Number((p as any).appDiamDeg ?? 0);
-
-      // Taille à l’écran
-      let sizePx = enlargeObjects ? MOON_RENDER_DIAMETER : (Number(appDiamDeg) > 0 ? appDiamDeg * pxPerDeg : 0);
-      const hasValidSize = Number.isFinite(sizePx) && sizePx > 0;
-      if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
-
-      // Mode rendu
-      const mode: 'dot' | 'sprite' | '3d' =
-        enlargeObjects
-          ? '3d'
-          : (!hasValidSize || sizePx < PLANET_DOT_MIN_PX
-              ? 'dot'
-              : (sizePx >= PLANET_3D_SWITCH_PX ? '3d' : 'sprite'));
-
-      // Distance (AU) si dispo
-      const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
-
-      // --- Projection-aware: choisir le pas (±EPS) qui bouge le plus à l'écran ---
-      let angleToSunDeg: number;
-      {
-        const u0 = altAzToVec(az, alt);
-        const uS = altAzToVec(astro.sun.az, astro.sun.alt);
-        const dotUS = u0[0]*uS[0] + u0[1]*uS[1] + u0[2]*uS[2];
-
-        const EPS_RAD = toRad(0.05); // ~0.05°
-        if (1 - Math.abs(dotUS) < 1e-9) {
-          // Quasi colinéaire: repli direct écran→écran
-          const alpha = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x); // 0=→, 90=↓
-          angleToSunDeg = norm360(toDeg(alpha) + 90);                                // 0=N, 90=E
-        } else {
-          // Tangente locale vers le Soleil
-          const t = normalize3([uS[0] - dotUS*u0[0], uS[1] - dotUS*u0[1], uS[2] - dotUS*u0[2]]);
-
-          // Pas avant (vers Soleil) et arrière (opposé)
-          const wF = normalize3([
-            Math.cos(EPS_RAD)*u0[0] + Math.sin(EPS_RAD)*t[0],
-            Math.cos(EPS_RAD)*u0[1] + Math.sin(EPS_RAD)*t[1],
-            Math.cos(EPS_RAD)*u0[2] + Math.sin(EPS_RAD)*t[2],
-          ]);
-          const wB = normalize3([
-            Math.cos(EPS_RAD)*u0[0] - Math.sin(EPS_RAD)*t[0],
-            Math.cos(EPS_RAD)*u0[1] - Math.sin(EPS_RAD)*t[1],
-            Math.cos(EPS_RAD)*u0[2] - Math.sin(EPS_RAD)*t[2],
-          ]);
-
-          const altF = toDeg(Math.asin(wF[2]));
-          const azF  = norm360(toDeg(Math.atan2(wF[0], wF[1])));
-          const altB = toDeg(Math.asin(wB[2]));
-          const azB  = norm360(toDeg(Math.atan2(wB[0], wB[1])));
-
-          const pF = projectToScreen(azF, altF, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-          const pB = projectToScreen(azB, altB, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-
-          const xF = viewport.x + pF.x, yF = viewport.y + pF.y;
-          const xB = viewport.x + pB.x, yB = viewport.y + pB.y;
-
-          const dxF = xF - screen.x, dyF = yF - screen.y;
-          const dxB = xB - screen.x, dyB = yB - screen.y;
-
-          const mF = Math.hypot(dxF, dyF);
-          const mB = Math.hypot(dxB, dyB);
-
-          // Choisir le pas qui “décroche” du bord
-          const useBack = mB > mF;
-          const alpha = Math.atan2(useBack ? dyB : dyF, useBack ? dxB : dxF); // 0=→, 90=↓
-          let deg = norm360(toDeg(alpha) + 90);                              // 0=N, 90=E
-
-          // Si on a dû prendre le pas arrière, corriger de 180° pour retrouver la direction “vers le Soleil”
-          if (useBack) deg = norm360(deg + 180);
-
-          // Repli si les deux déplacements sont quasi nuls (clamp aux bords)
-          if (Math.max(mF, mB) < 1e-6) {
-            const a = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x);
-            deg = norm360(toDeg(a) + 90);
-          }
-
-          angleToSunDeg = deg;
-        }
-      }
-
-      // Fraction éclairée (approx) via séparation apparente
-      let phaseFrac = Number((p as any).phaseFraction);
-      if (!Number.isFinite(phaseFrac)) {
-        const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
-        phaseFrac = clamp((1 + Math.cos((sep * Math.PI) / 180)) / 2, 0, 1);
-      } else {
-        phaseFrac = clamp(phaseFrac, 0, 1);
-      }
-      // Rotation du sprite: 0=→, donc -90 depuis 0=N
-      const rotationDeg = angleToSunDeg - 90;
-      const ori = (p as any).orientationXYZDeg;
-      const orientationDegX = Number.isFinite(ori?.x) ? Number(ori.x) : undefined;
-      const orientationDegY = Number.isFinite(ori?.y) ? Number(ori.y) : undefined;
-      const orientationDegZ = Number.isFinite(ori?.z) ? Number(ori.z) : undefined;
-
-      const localUpAnglePlanetDeg = localUpAngleOnScreen(az, alt, {
-              refAz,
-              refAlt,
-              viewport: { w: viewport.w, h: viewport.h },
-              fovXDeg,
-              fovYDeg,
-              projectionMode,
-            });
-
-      let rotationToHorizonDegPlanet: number | undefined;
-      try {
-        const po = getPlanetOrientationAngles(date, location.lat, location.lng, id as PlanetId);
-        rotationToHorizonDegPlanet =
-          (po as any)?.rotationToHorizonDegPlanetNorth ??
-          (po as any)?.rotationToHorizonDegPlanet ??
-          (po as any)?.rotationToHorizonDeg ??
-          undefined;
-      } catch {
-        // ignore if unavailable
-      }
-
-      // corrected on-screen rotation for planet (like rotationDegSunScreen)
-      const rotationDegPlanetScreen =
-        Number.isFinite(rotationToHorizonDegPlanet) && Number.isFinite(localUpAnglePlanetDeg)
-          ? correctedSpriteRotationDeg(Number(rotationToHorizonDegPlanet), Number(localUpAnglePlanetDeg))
-          : 0;
-
-
-      items.push({
-        id,
-        x: screen.x, y: screen.y,
-        visibleX: screen.visibleX, visibleY: screen.visibleY,
-        sizePx,
-        color,
-        phaseFrac,
-        angleToSunDeg,
-        mode,
-        distAU,
-        rotationDeg,
-        planetAltDeg: alt,
-        planetAzDeg: az,
-        orientationDegX,
-        orientationDegY,
-        orientationDegZ,
-        localUpAnglePlanetDeg,
-        rotationToHorizonDegPlanet,
-        rotationDegPlanetScreen,
-      });
-    }
-    items.sort((a, b) => b.distAU - a.distAU);
-    return items;
-  }, [planetsEphemArr, showPlanets, refAz, 
-    viewport.w, viewport.h, viewport.x, viewport.y, refAlt, 
-    fovXDeg, fovYDeg, projectionMode, 
-    enlargeObjects, astro.sun.az, astro.sun.alt, 
-    sunScreen.y, sunScreen.x, date, location.lat, location.lng]);
-
+    
   const moonOrientation = useMemo(
     () => getMoonOrientationAngles(date, location.lat, location.lng),
     [date, location.lat, location.lng]
   );
   const rotationToHorizonDegMoon = moonOrientation.rotationToHorizonDegMoonNorth;
 
-  // projection-aware local vertical angle (screen) at Moon
-  const localUpAngleMoonDeg = useMemo(() => {
-    return localUpAngleOnScreen(astro.moon.az, astro.moon.alt, {
-      refAz,
-      refAlt,
-      viewport: { w: viewport.w, h: viewport.h },
-      fovXDeg,
-      fovYDeg,
-      projectionMode,
-    });
-  }, [astro.moon.az, astro.moon.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
-
-  // corrected on-screen rotation for Moon (align local vertical with screen vertical)
-  const rotationDegMoonScreen = useMemo(
-    () => correctedSpriteRotationDeg(rotationToHorizonDegMoon, localUpAngleMoonDeg),
-    [rotationToHorizonDegMoon, localUpAngleMoonDeg]
-  );
-
   const sunOrientation = useMemo(
     () => getSunOrientationAngles(date, location.lat, location.lng),
     [date, location.lat, location.lng]
   );
   
-  const rotationToHorizonDegSun = sunOrientation.rotationToHorizonDegSolarNorth;
-
-  // projection-aware local vertical angle (screen) at Sun
-  const localUpAngleSunDeg = useMemo(() => {
-   return localUpAngleOnScreen(astro.sun.az, astro.sun.alt, {
-      refAz,
-      refAlt,
-      viewport: { w: viewport.w, h: viewport.h },
-      fovXDeg,
-      fovYDeg,
-      projectionMode,
-    });
-  }, [astro.sun.az, astro.sun.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
-
-  // corrected on-screen rotation for Sun
-  const rotationDegSunScreen = useMemo(
-    () => correctedSpriteRotationDeg(rotationToHorizonDegSun, localUpAngleSunDeg),
-    [rotationToHorizonDegSun, localUpAngleSunDeg]
-  );
-
   const sunOnMoonInfo = useMemo(() => sunOnMoon(date), [date]);
   const brightLimbAngleDeg = useMemo(() => sunOnMoonInfo.bearingDeg, [sunOnMoonInfo]);
   const sunDeclinationDeg = useMemo(() => sunOnMoonInfo.declinationDeg, [sunOnMoonInfo]);
-  const maskAngleBase = useMemo(() => norm360(brightLimbAngleDeg - 90), [brightLimbAngleDeg]);
-  const maskAngleDeg = useMemo(() => {
-    const litVecAngle = norm360(maskAngleBase + 90);
-    let d = norm360(litVecAngle - brightLimbAngleDeg); if (d > 180) d = 360 - d;
-    return d > 90 ? norm360(maskAngleBase + 180) : maskAngleBase;
-  }, [maskAngleBase, brightLimbAngleDeg]);
   const phaseFraction = astro.illum.fraction ?? 0;
 
   // eclipse info used by BottomTelemetry
@@ -913,82 +580,7 @@ export default function App() {
     
   const eclipticTiltDeg = sunOrientation.eclipticTiltDeg;
   
-  // Polaris and Southern Cross alt/az + screen positions
-  const polarisAltAz = useMemo(() => {
-    return altAzFromRaDec(date, location.lat, location.lng, POLARIS_RA_DEG, POLARIS_DEC_DEG);
-  }, [date, location.lat, location.lng]);
-
-  const cruxAltAz = useMemo(() => {
-    return altAzFromRaDec(date, location.lat, location.lng, CRUX_CENTROID_RA_DEG, CRUX_CENTROID_DEC_DEG);
-  }, [date, location.lat, location.lng]);
-
-  const polarisScreen = useMemo(() => {
-    const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
-  }, [polarisAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-  
-  const cruxScreen = useMemo(() => {
-    const p = projectToScreen(cruxAltAz.azDeg, cruxAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-    return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
-  }, [cruxAltAz, refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-
-  const bodyHorizonItems = useMemo(() => {
-    const out: BodyItem[] = [];
-    if (showSun) {
-      const az = astro.sun.az;
-      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: p.x, az, label: "Soleil", color: "#f59e0b" }); // local
-    }
-    if (showMoon) {
-      const az = astro.moon.az;
-      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: p.x, az, label: "Lune", color: "#93c5fd" }); // local
-    }
-    {
-      const az = polarisAltAz.azDeg;
-      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: p.x, az, label: "Polaris", color: POLARIS_COLOR }); // local
-    }
-    {
-      const az = cruxAltAz.azDeg;
-      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (p.visibleX) out.push({ x: p.x, az, label: "Croix du Sud", color: CRUX_COLOR }); // local
-    }
-    for (const pl of planetsEphemArr) {
-      const id = (pl as any).id as string;
-      if (!showPlanets[id]) continue;
-      const az = ((pl as any).azDeg ?? (pl as any).az) as number;
-      const reg = PLANET_REGISTRY[id];
-      if (az == null || !reg) continue;
-      const pr = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (pr.visibleX) out.push({ x: pr.x, az, label: reg.label, color: reg.color }); // local
-    }
-    return out;
-  }, [
-    showSun, showMoon,
-    astro.sun.az, astro.moon.az,
-    polarisAltAz.azDeg, cruxAltAz.azDeg,
-    planetsEphemArr, showPlanets,
-    refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode
-  ]);
-
-  // planets screen markers for Markers overlay
-  const planetMarkers = useMemo(() => {
-    // Use planetsRender so sizePx matches the on-screen rendered size
-    return planetsRender
-      .filter(pr => pr.visibleX && pr.visibleY)
-      .map(pr => {
-        const S = Math.max(1, Math.round(pr.sizePx));
-        const reg = PLANET_REGISTRY[pr.id];
-        return {
-          screen: { x: pr.x, y: pr.y, visibleX: pr.visibleX, visibleY: pr.visibleY },
-          label: reg?.label ?? pr.id,
-          color: reg?.color ?? pr.color,
-          size: { w: S, h: S },
-        };
-      });
-  }, [planetsRender]);
-
+    
   // Animation loop 
   useEffect(() => {
     if (!isAnimating) {
@@ -1261,307 +853,39 @@ export default function App() {
               </>
             )}
 
-            <div
-              className="absolute"
-              style={{
-                zIndex: Z.horizon,           // above Sun/Moon (-2/-1), below markers (=Z.horizon)
-                left: viewport.x,
-                top: viewport.y,
-                width: viewport.w,
-                height: viewport.h,
-                pointerEvents: 'none',
-              }}
-            >
-              <HorizonOverlay
-                viewport={viewport}
-                // projection context
-                refAzDeg={refAz}
-                refAltDeg={refAlt}
-                fovXDeg={fovXDeg}
-                fovYDeg={fovYDeg}
-                projectionMode={projectionMode}
-                // visual toggles
-                showEarth={showEarth}
-                // debug mask passthrough
-                debugMask={debugMask}
-              />
-               {/* Cardinal markers on horizon (now projected) */}
-              {(
-                <CardinalMarkers
-                  viewport={viewport}
-                  refAzDeg={refAz}
-                  refAltDeg={refAlt}
-                  fovXDeg={fovXDeg}
-                  fovYDeg={fovYDeg}
-                  projectionMode={projectionMode}
-                  bodyItems={bodyHorizonItems}
-                />
-              )}
-            </div>
-
-            {/* Grid overlay (above atmosphere/stars, below Sun/Moon) */}
-            {showGrid && (
-              <div
-                className="absolute"
-                style={{
-                  zIndex: Z.horizon - 3,
-                  left: viewport.x,
-                  top: viewport.y,
-                  width: viewport.w,
-                  height: viewport.h,
-                  pointerEvents: 'none',
-                }}
-              >
-                <Grid
-                  viewport={viewport}
-                  refAzDeg={refAz}
-                  refAltDeg={refAlt}
-                  fovXDeg={fovXDeg}
-                  fovYDeg={fovYDeg}
-                  // NEW
-                  projectionMode={projectionMode}
-                />
-              </div>
-            )}
-
-            {showAtmosphere && (
-              <div
-                className="absolute"
-                style={{
-                  zIndex: Z.horizon - 20, // was Z.horizon - 8, keep it below stars and everything else
-                  left: viewport.x,
-                  top: viewport.y,
-                  width: viewport.w,
-                  height: viewport.h,
-                  pointerEvents: 'none',
-                }}
-              >
-                <Athmosphere
-                  viewport={viewport}
-                  // Le composant calcule désormais son dégradé en interne
-                  sunAltDeg={astro.sun.alt}
-                />
-              </div>
-            )}
-
-            {/* Stars layer (above atmosphere, below Sun/Moon) */}
-            {showStars && (
-              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 5, pointerEvents: 'none' }}>
-                <Stars
-                  utcMs={whenMs}
-                  latDeg={location.lat}
-                  lngDeg={location.lng}
-                  refAzDeg={refAz}
-                  refAltDeg={refAlt}
-                  fovXDeg={fovXDeg}
-                  fovYDeg={fovYDeg}
-                  viewport={viewport}
-                  debug={debugMask}
-                  enlargeObjects={enlargeObjects}
-                  showMarkers={showMarkers}
-                  // NEW
-                  projectionMode={projectionMode}
-                />
-              </div>
-            )}
-
-            {/* Ensure bodies are above the atmosphere */}
-            {showSun && (
-              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
-                <SunSprite
-                  x={sunScreen.x}
-                  y={sunScreen.y}
-                  visibleX={sunScreen.visibleX}
-                  visibleY={sunScreen.visibleY}
-                  rotationDeg={rotationDegSunScreen}
-                  showCard={showSunCard}
-                  wPx={bodySizes.sun.w}
-                  hPx={bodySizes.sun.h}
-                />
-              </div>
-            )}
-
-            {/* Moon auto: dot (<5px), 2D sprite (5–50px), 3D (>=50px) */}
-            {showMoon && !glbLoading && moonRenderModeEffective === 'dot' && moonScreen.visibleX && moonScreen.visibleY && (
-              <div
-                className="absolute"
-                style={{
-                  zIndex: Z.horizon - 2,
-                  left: moonScreen.x - 2,
-                  top: moonScreen.y - 2,
-                  width: 4,
-                  height: 4,
-                  borderRadius: '9999px',
-                  background: '#9ca3af',
-                  pointerEvents: 'none',
-                }}
-              />
-            )}
-
-            {showMoon && !glbLoading && moonRenderModeEffective === 'sprite' && (
-              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
-                <MoonSprite
-                  x={moonScreen.x} y={moonScreen.y}
-                  visibleX={moonScreen.visibleX} visibleY={moonScreen.visibleY}
-                  rotationDeg={rotationDegMoonScreen}
-                  showPhase={showPhase}
-                  earthshine={earthshine}
-                  debugMask={debugMask}
-                  showCard={showMoonCard}
-                  phaseFraction={phaseFraction}
-                  brightLimbAngleDeg={brightLimbAngleDeg}
-                  maskAngleDeg={maskAngleDeg}
-                  wPx={bodySizes.moon.w}
-                  hPx={bodySizes.moon.h}
-                />
-              </div>
-            )}
-
-            {showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
-              <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }}>
-                <Moon3D
-                  x={moonScreen.x}
-                  y={moonScreen.y}
-                  wPx={bodySizes.moon.w}
-                  hPx={bodySizes.moon.h}
-                  moonAltDeg={astro.moon.alt}
-                  moonAzDeg={astro.moon.az}
-                  sunAltDeg={astro.sun.alt}
-                  sunAzDeg={astro.sun.az}
-                  limbAngleDeg={rotationDegMoonScreen * -1}
-                  librationTopo={astro.moon.librationTopo}
-                  debugMask={debugMask}
-                  rotOffsetDegX={rotOffsetDegX}
-                  rotOffsetDegY={rotOffsetDegY}
-                  rotOffsetDegZ={rotOffsetDegZ}
-                  camRotDegX={camRotDegX}
-                  camRotDegY={camRotDegY}
-                  camRotDegZ={camRotDegZ}
-                  showPhase={showPhase}
-                  showMoonCard={showMoonCard}
-                  illumFraction={phaseFraction}
-                  brightLimbAngleDeg={brightLimbAngleDeg}
-                  earthshine={earthshine}
-                />
-              </div>
-            )}
-
-            {/* Planets rendering (dot or sprite) */}
-            {planetsRender.map(p => {
-              if (!p.visibleX || !p.visibleY) return null;
-              if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
-              const S = Math.max(4, Math.round(p.sizePx));
-              const half = S / 2;
-              const offscreen =
-                p.x + half < viewport.x ||
-                p.x - half > viewport.x + viewport.w ||
-                p.y + half < viewport.y ||
-                p.y - half > viewport.y + viewport.h;
-              if (offscreen) return null;
-
-              const isFartherThanSun =
-                Number.isFinite(astro.sun.distAU) && Number.isFinite(p.distAU)
-                  ? (p.distAU as number) > (astro.sun.distAU as number)
-                  : true;
-              const z = isFartherThanSun ? Z.horizon - 3 : Z.horizon - 2;
-
-              // Downgrade 3D planets to sprite while GLBs still loading
-              const effectiveMode = glbLoading && p.mode === '3d' ? 'sprite' : p.mode;
-
-              if (effectiveMode === 'dot') {
-                return (
-                  <div
-                    key={p.id}
-                    className="absolute"
-                    style={{
-                      zIndex: z,
-                      left: p.x - half,
-                      top: p.y - half,
-                      width: S,
-                      height: S,
-                      borderRadius: '9999px',
-                      background: p.color,
-                      pointerEvents: 'none',
-                    }}
-                  />
-                );
-              }
-
-              if (effectiveMode === 'sprite') {
-                return (
-                  <PlanetSprite
-                    key={p.id}
-                    planetId={p.id}
-                    x={p.x}
-                    y={p.y}
-                    visibleX={true}
-                    visibleY={true}
-                    rotationDeg={p.rotationDegPlanetScreen}
-                    angleToSunDeg={p.rotationDegPlanetScreen}
-                    phaseFraction={p.phaseFrac}
-                    wPx={S}
-                    hPx={S}
-                    color={p.color}
-                    debugMask={debugMask}
-                    brightLimbAngleDeg={p.angleToSunDeg}
-                    zIndex={z}
-                    orientationDegX={p.orientationDegX}
-                  />
-                );
-              }
-
-              // effectiveMode === '3d' (only when glbLoading === false)
-              return (
-                <div key={p.id} className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }}>
-                  <Planet3D
-                    id={p.id as PlanetId}
-                    x={p.x}
-                    y={p.y}
-                    wPx={S}
-                    hPx={S}
-                    planetAltDeg={p.planetAltDeg}
-                    planetAzDeg={p.planetAzDeg}
-                    sunAltDeg={astro.sun.alt}
-                    sunAzDeg={astro.sun.az}
-                    limbAngleDeg={-p.rotationDeg}
-                    rotationDeg={p.rotationDegPlanetScreen}
-                    brightLimbAngleDeg={p.angleToSunDeg}
-                    orientationDegX={p.orientationDegX}
-                    orientationDegY={p.orientationDegY}
-                    orientationDegZ={p.orientationDegZ}
-                    debugMask={debugMask}
-                    rotOffsetDegX={rotOffsetDegX}
-                    rotOffsetDegY={rotOffsetDegY}
-                    rotOffsetDegZ={rotOffsetDegZ}
-                    camRotDegX={camRotDegX}
-                    camRotDegY={camRotDegY}
-                    camRotDegZ={camRotDegZ}
-                    showPhase={showPhase}
-                    showPlanetCard={showMoonCard}
-                    illumFraction={p.phaseFrac}
-                    showSubsolarCone={true}
-                  />
-                </div>
-              );
-            })}
-
-            {/* Markers (horizon ticks, body extents, labels, Polaris/Crux) */}
-            <Markers
-              showMarkers={showMarkers}
+            {/* All sky rendering moved to SpaceView */}
+            <SpaceView
+              date={date}
+              utcMs={whenMs}
+              latDeg={location.lat}
+              lngDeg={location.lng}
+              viewport={viewport}
+              refAzDeg={refAz}
+              refAltDeg={refAlt}
+              fovXDeg={fovXDeg}
+              fovYDeg={fovYDeg}
+              projectionMode={projectionMode}
+              showEarth={showEarth}
+              showGrid={showGrid}
+              showAtmosphere={showAtmosphere}
               showStars={showStars}
-              zIndexHorizon={Z.horizon}
+              showMarkers={showMarkers}
               showSun={showSun}
-              sunScreen={sunScreen}
-              sunSize={{ w: bodySizes.sun.w, h: bodySizes.sun.h }}
               showMoon={showMoon}
-              moonScreen={moonScreen}
-              moonSize={{ w: bodySizes.moon.w, h: bodySizes.moon.h }}
-              polarisScreen={polarisScreen}
-              sunColor="#f59e0b"
-              moonColor="#93c5fd"
-              polarisColor={POLARIS_COLOR}
-              cruxColor={CRUX_COLOR}
-              planets={planetMarkers}
+              showPhase={showPhase}
+              earthshine={earthshine}
+              showSunCard={showSunCard}
+              showMoonCard={showMoonCard}
+              debugMask={debugMask}
+              enlargeObjects={enlargeObjects}
+              glbLoading={glbLoading}
+              showPlanets={showPlanets}
+              rotOffsetDegX={rotOffsetDegX}
+              rotOffsetDegY={rotOffsetDegY}
+              rotOffsetDegZ={rotOffsetDegZ}
+              camRotDegX={camRotDegX}
+              camRotDegY={camRotDegY}
+              camRotDegZ={camRotDegZ}
             />
           </div>
 
