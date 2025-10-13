@@ -44,8 +44,10 @@ function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number) {
   return (toDeg(θ) + 360) % 360;
 }
 
-function dir8Fr(bearing: number): 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SO' | 'O' | 'NO' {
-  const dirs: Array<'N'|'NE'|'E'|'SE'|'S'|'SO'|'O'|'NO'> = ['N','NE','E','SE','S','SO','O','NO'];
+function dir8Fr(bearing: number): 'Nord' | 'Nord-Est' | 'Est' | 'Sud-Est' | 'Sud' | 'Sud-Ouest' | 'Ouest' | 'Nord-Ouest' {
+  const dirs: Array<'Nord'|'Nord-Est'|'Est'|'Sud-Est'|'Sud'|'Sud-Ouest'|'Ouest'|'Nord-Ouest'> = [
+    'Nord','Nord-Est','Est','Sud-Est','Sud','Sud-Ouest','Ouest','Nord-Ouest'
+  ];
   const idx = Math.round(((bearing % 360) / 45)) % 8;
   return dirs[idx];
 }
@@ -113,14 +115,13 @@ export default function SidebarLocationsCoord({
       suppressNextSyncRef.current = false;
       return;
     }
-    // Ignore placeholder during async load
+    // Ignore placeholder durant le chargement
     if (selectedLocation.id === 'loading') return;
     updateSrcRef.current = 'sync';
     setLat(selectedLocation.lat);
     setLng(selectedLocation.lng);
     updateSrcRef.current = 'idle';
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedLocation.id]);
+  }, [selectedLocation.id, selectedLocation.lat, selectedLocation.lng]);
 
   // Nearest city to current coordinates
   const nearest = useMemo(() => {
@@ -205,6 +206,7 @@ export default function SidebarLocationsCoord({
       flexDirection: 'column',
       gap: 8,
       opacity: collapsed ? 0.85 : 1,
+      minHeight: '100%',
     },
     rowGroup: {
       display: 'flex',
@@ -263,8 +265,31 @@ export default function SidebarLocationsCoord({
       textShadow: '0 0 6px rgba(80,160,255,0.6)',
     },
     nearCity: {
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.8)',
+      fontSize: 11,
+      fontWeight: 400,
+      lineHeight: 2.35,
+      color: 'rgba(255,255,255,0.9)',
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      display: 'block',
+      maxWidth: '100%',
+    },
+    nearCityWrap: {
+      width: '100%',
+    },
+    nearCityCity: {
+      display: 'block',
+      textAlign: 'center',
+      fontSize: 13,
+      fontWeight: 600,
+      lineHeight: 2.35,
+      color: 'rgba(255,255,255,0.95)',
+      marginTop: 2,
+      whiteSpace: 'normal',
+      overflowWrap: 'anywhere',
+      wordBreak: 'break-word',
+      maxWidth: '100%',
     },
     padWrap: {
       display: 'grid',
@@ -289,15 +314,24 @@ export default function SidebarLocationsCoord({
       userSelect: 'none',
     },
     padSpacer: { width: 36, height: 36 },
+    footerNote: {
+      marginTop: 'auto',
+      fontSize: 11,
+      color: 'rgba(255,255,255,0.6)',
+    },
   };
 
-  const formatNearCity = useMemo(() => {
-    if (!nearest) return '';
+  const nearCityParts = useMemo((): { line1: string; city: string } => {
+    if (!nearest) return { line1: '', city: '' };
     const km = Math.round(nearest.km);
-    if (!Number.isFinite(km)) return '';
-    if (km <= 0) return `${nearest.city.label}`; // remove “0 km de …”
+    if (!Number.isFinite(km)) return { line1: '', city: '' };
+    if (km <= 0) return { line1: '', city: `${nearest.city.label}` };
     const dir = dir8Fr(nearest.bearingFromCity);
-    return `à ${km}km au ${dir} de ${nearest.city.label}`;
+    const prep = (dir === 'Est' || dir === 'Ouest') ? 'à l’' : 'au ';
+    return {
+      line1: `à ${km}km ${prep}${dir} de `,
+      city: `${nearest.city.label} (*)`,
+    };
   }, [nearest]);
 
   const move100 = (bearing: number) => {
@@ -362,10 +396,17 @@ export default function SidebarLocationsCoord({
       </div>
 
       {/* Nearest city hint */}
-      <div style={styles.row}>
-        <span style={styles.nearCity}>
-          {formatNearCity || '—'}
-        </span>
+      <div style={{ ...styles.row, alignItems: 'flex-start', width: '100%' }}>
+        <div style={styles.nearCityWrap}>
+          {nearCityParts.line1 ? (
+            <span style={styles.nearCity}>{nearCityParts.line1}</span>
+          ) : null}
+          {nearCityParts.city ? (
+            <span style={styles.nearCityCity}>{nearCityParts.city}</span>
+          ) : (
+            !nearCityParts.line1 && <span style={styles.nearCity}>—</span>
+          )}
+        </div>
       </div>
 
       {/* Move pad (100 km steps) */}
@@ -389,6 +430,10 @@ export default function SidebarLocationsCoord({
           <span style={{ transform: 'rotate(90deg)', display: 'inline-block' }}>&#x27A4;</span>
         </button>
         <div style={styles.padSpacer} />
+      </div>
+
+      <div style={styles.footerNote}>
+        (*) Ville de + de 100 000 habitants la plus proche
       </div>
     </div>
   );
