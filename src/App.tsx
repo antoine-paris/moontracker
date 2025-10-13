@@ -23,7 +23,6 @@ import { utcMsToZonedLocalString } from "./utils/tz";
 // Optique / FOV
 import { fovRect, fovFromF35, f35FromFovBest, FOV_DEG_MIN, FOV_DEG_MAX } from "./optics/fov";
 
-
 // Astro
 import { moonApparentDiameterDeg } from "./astro/moon";
 import { sunApparentDiameterDeg } from "./astro/sun";
@@ -46,7 +45,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { prewarmModel, MOON_RELIEF_SCALE_DEFAULT, PLANET_RELIEF_SCALE_DEFAULT } from './render/modelPrewarm';
 import PhotoFrame from "./components/stage/PhotoFrame"; // + add
 import SpaceView from "./components/layout/SpaceView";
-
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -203,7 +201,7 @@ export default function App() {
   // Parsed date
   const date = useMemo(() => new Date(whenMs), [whenMs]);
 
-// Astronomical positions
+  // Astronomical positions
   const astro = useMemo(() => {
      const { lat, lng } = location || PLACEHOLDER_LOCATION;
      // Use combined alt/az fetch to reuse MakeTime/Observer
@@ -240,8 +238,7 @@ export default function App() {
      };
    }, [date, location]);
 
-
- const zoomOptions = useMemo(() => {
+  const zoomOptions = useMemo(() => {
     if (deviceId === CUSTOM_DEVICE_ID) {
       // Use full-frame (24x36) aspect for 35mm-equivalent
       const FULL_FRAME_ASPECT = 36 / 24; // 3:2
@@ -329,7 +326,6 @@ export default function App() {
     }
   }, [selectedAnyPlanets, selectedPlanetIds, date, location.lat, location.lng]);
 
-
   // quick lookup by id
   const planetsById = useMemo(() => {
     const m: Record<string, any> = {};
@@ -380,14 +376,12 @@ export default function App() {
     return { az: 0, alt: 0 };
   }, [follow, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, followPlanetId, planetsById, date, location.lat, location.lng]);
 
-
   /*
   - "Rectilinear + Panini" (for Photographic simulation) : rectilinear + Panini for ultra-wide, plus fisheye variants when the selected module is fisheye.
   - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
   - "Orthographic" (for All-sky context) : orthographic (hemisphere) 
   */
   const [projectionMode, setProjectionMode] = useState<'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical'>('recti-panini');
-  
 
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
@@ -737,7 +731,6 @@ export default function App() {
               linkFov={linkFov}
               setLinkFov={setLinkFov}
               viewport={viewport}
-              when={when}
               onCommitWhenMs={(ms) => { whenMsRef.current = ms; setWhenMs(ms); }}
               setIsAnimating={setIsAnimating}
               isAnimating={isAnimating}

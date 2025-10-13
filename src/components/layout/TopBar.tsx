@@ -2,8 +2,7 @@ import React, { useMemo } from "react";
 import type { FollowMode } from "../../types";
 import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
-import { degToSlider, sliderToDeg, FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
-import { zonedLocalToUtcMs } from "../../utils/tz";
+import { FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
 // planets registry for UI toggles
 import { PLANETS } from "../../render/planetRegistry";
 import { PLANET_REGISTRY } from "../../render/planetRegistry";
@@ -11,9 +10,6 @@ import { PLANET_REGISTRY } from "../../render/planetRegistry";
 export type Viewport = { x: number; y: number; w: number; h: number };
 
 type Props = {
-  debug: boolean;
-  onDebugChange: (value: boolean) => void;
-
   follow: FollowMode;
   setFollow: (f: FollowMode) => void;
 
@@ -34,9 +30,6 @@ type Props = {
 
   viewport: Viewport;
 
-  when: string;
-  whenInput: string;
-  setWhenInput: (v: string) => void;
   onCommitWhenMs: (ms: number) => void;
   setIsAnimating: (v: boolean) => void;
   isAnimating: boolean;
@@ -75,41 +68,33 @@ type Props = {
   currentUtcMs: number;
   cityName: string;
 
-  // Earth toggle
   showEarth: boolean;
   setShowEarth: (v: boolean) => void;
 
-  // Atmosphere toggle
   showAtmosphere: boolean;
   setShowAtmosphere: (v: boolean) => void;
 
-  // Stars toggle
   showStars: boolean;
   setShowStars: (v: boolean) => void;
 
-  // Markers toggle
   showMarkers: boolean;
   setShowMarkers: (v: boolean) => void;
 
-  // Grid toggle
   showGrid: boolean;
   setShowGrid: (v: boolean) => void;
 
-  // Projection mode
   projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
   setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical') => void;
 
-  // Planets visibility
   showPlanets: Record<string, boolean>;
   setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 };
 
 export default function TopBar({
-  debug, onDebugChange,
   follow, setFollow,
   devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
   fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
-  viewport, when, whenInput, setWhenInput, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
+  viewport, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
   showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase,
   rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
   camRotDegX, setCamRotDegX, camRotDegY, setCamRotDegY, camRotDegZ, setCamRotDegZ,
@@ -119,17 +104,12 @@ export default function TopBar({
   enlargeObjects, setEnlargeObjects,
   currentUtcMs,
   cityName,
-  // NEW
   showEarth, setShowEarth,
   showAtmosphere, setShowAtmosphere,
   showStars, setShowStars,
-  // NEW
   showMarkers, setShowMarkers,
-  // NEW
   showGrid, setShowGrid,
-  // NEW
   projectionMode, setProjectionMode,
-  // NEW
   showPlanets, setShowPlanets,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
