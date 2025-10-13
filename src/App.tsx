@@ -1,12 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 // Astronomy-Engine wrapper centralisé
-import { getSunAltAzDeg, getMoonAltAzDeg, getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg, getSunOrientationAngles } from "./astro/aeInterop";
+import { getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg, getSunOrientationAngles } from "./astro/aeInterop";
 import { getMoonOrientationAngles } from "./astro/aeInterop";
 
 // Types
 import type { FollowMode } from "./types";
 import type { Device, ZoomModule } from "./optics/types";
-import type { Astro as TelemetryAstro } from "./components/layout/BottomTelemetry";
  
 // Données
 import { getAllLocations, type LocationOption } from "./data/locations";
@@ -16,10 +15,10 @@ import { DEVICES, CUSTOM_DEVICE_ID } from "./optics/devices";
 import { Z, MOON_RENDER_DIAMETER } from "./render/constants";
 
 // Utilitaires & formatage
-import { toDeg, toRad, norm360, angularDiff, clamp } from "./utils/math";
+import { toDeg, toRad, norm360, clamp } from "./utils/math";
 import { compass16 } from "./utils/compass";
 import { altAzToVec, normalize3 } from "./utils/vec3";
-import { toDatetimeLocalInputValue, formatTimeInZone, formatDateTimeInZone, formatDeg } from "./utils/format";
+import { toDatetimeLocalInputValue, formatDeg } from "./utils/format";
 import { utcMsToZonedLocalString } from "./utils/tz";
 
 // Optique / FOV
@@ -28,12 +27,12 @@ import { fovRect, fovFromF35, f35FromFovBest, FOV_DEG_MIN, FOV_DEG_MAX } from ".
 
 // Astro
 import { moonApparentDiameterDeg } from "./astro/moon";
-import { sunDistanceAU, sunApparentDiameterDeg } from "./astro/sun";
+import { sunApparentDiameterDeg } from "./astro/sun";
 import { lstDeg } from "./astro/time";
 import { altAzFromRaDec } from "./astro/stars";
 import { computeEclipseInfo } from "./astro/eclipseHelpers";import { altazToRaDec, parallacticAngleDeg } from "./astro/coords";
 import { sampleTerminatorLUT } from "./astro/lut";
-import { sepDeg, eclipseKind } from "./astro/eclipse";
+import { sepDeg  } from "./astro/eclipse";
 
 // Projection
 import { projectToScreen } from "./render/projection";
@@ -41,11 +40,11 @@ import { localUpAngleOnScreen, correctedSpriteRotationDeg } from "./render/orien
 import TopBar from "./components/layout/TopBar";
 import BottomTelemetry from "./components/layout/BottomTelemetry";
 import HorizonOverlay from "./components/stage/HorizonOverlay";
-import CardinalMarkers, { type CardinalItem, type BodyItem } from "./components/stage/CardinalMarkers";
+import CardinalMarkers, { type BodyItem } from "./components/stage/CardinalMarkers";
 import SunSprite from "./components/stage/SunSprite";
 import MoonSprite from "./components/stage/MoonSprite";
 import Moon3D from "./components/stage/Moon3D";
-import StageCanvas from "./components/stage/StageCanvas";
+
 // Import du logo (Vite)
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 import Stars from "./components/stage/Stars"; // + add
@@ -66,7 +65,7 @@ import PhotoFrame from "./components/stage/PhotoFrame"; // + add
 const POLARIS_COLOR = '#86efac';
 const POLARIS_RA_DEG = 37.952917;
 const POLARIS_DEC_DEG = 89.264167;
-// NEW: Southern Cross marker color + centroid equatorial coordinates (avg of Acrux, Mimosa, Gacrux, Imai)
+// Southern Cross marker color + centroid equatorial coordinates (avg of Acrux, Mimosa, Gacrux, Imai)
 const CRUX_COLOR = '#a78bfa';
 const CRUX_CENTROID_RA_DEG = 187.539271;
 const CRUX_CENTROID_DEC_DEG = -59.6625;
@@ -81,11 +80,11 @@ export default function App() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
 
-  // New: dynamic locations loaded from CSV
+  // dynamic locations loaded from CSV
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [locationsLoading, setLocationsLoading] = useState<boolean>(true);
 
-  // NEW: GLB preload (Moon, Earth, planets)
+  // GLB preload (Moon, Earth, planets)
   const [glbLoading, setGlbLoading] = useState<boolean>(false);
   const [glbProgress, setGlbProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
 
@@ -297,13 +296,13 @@ export default function App() {
   const [showMoonCard, setShowMoonCard] = useState(false);
   const [debugMask, setDebugMask] = useState(false);
   const [enlargeObjects, setEnlargeObjects] = useState(false);
-  // NEW: ground (Sol) toggle
+  // ground (Sol) toggle
   const [showEarth, setShowEarth] = useState(false);
-  // NEW: Atmosphere toggle
+  // Atmosphere toggle
   const [showAtmosphere, setShowAtmosphere] = useState(false);
   const [showStars, setShowStars] = useState(false); // + add
   const [showMarkers, setShowMarkers] = useState(false); 
-  // NEW: grid toggle
+  // grid toggle
   const [showGrid, setShowGrid] = useState(false);
 
   const [showPlanets, setShowPlanets] = useState<Record<string, boolean>>(
@@ -319,7 +318,7 @@ export default function App() {
     [showPlanets]
   );
 
-  // NEW: map FollowMode -> planet id (registry)
+  // map FollowMode -> planet id (registry)
   const followPlanetId = useMemo<PlanetId | null>(() => {
     switch (follow) {
       case 'MERCURE': return 'Mercury';
@@ -358,7 +357,7 @@ export default function App() {
   }, [selectedAnyPlanets, selectedPlanetIds, date, location.lat, location.lng]);
 
 
-  // NEW: quick lookup by id
+  // quick lookup by id
   const planetsById = useMemo(() => {
     const m: Record<string, any> = {};
     for (const p of planetsEphemArr) {
@@ -367,7 +366,7 @@ export default function App() {
     return m;
   }, [planetsEphemArr]);
   
-  // NEW: Follow target alt/az (sun/moon direct, planets from cache or one-off ephemeris)
+  // Follow target alt/az (sun/moon direct, planets from cache or one-off ephemeris)
   const followAltAz = useMemo(() => {
     switch (follow) {
       case 'SOLEIL': return { az: astro.sun.az,  alt: astro.sun.alt };
@@ -396,7 +395,7 @@ export default function App() {
         0,
         undefined,
         [followPlanetId] as any
-      );0
+      );
       const it = Array.isArray(res) ? res[0] : (res as any)?.[followPlanetId];
       const az = it?.azDeg ?? it?.az;
       const alt = it?.altDeg ?? it?.alt;
@@ -410,7 +409,6 @@ export default function App() {
 
 
 
-  // NEW: Projection mode (Step 1 - selection only)
   /*
   - "Rectilinear + Panini" (for Photographic simulation) : rectilinear + Panini for ultra-wide, plus fisheye variants when the selected module is fisheye.
   - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
@@ -431,7 +429,7 @@ export default function App() {
     return (parts[1] ?? parts[0]).trim();
   }, [location]);
 
-  // NEW: view deltas (added by directional keypad)
+  // view deltas (added by directional keypad)
   const [deltaAzDeg, setDeltaAzDeg] = useState(0);
   const [deltaAltDeg, setDeltaAltDeg] = useState(0);
   const stepAzDeg = useMemo(() => 0.05 * fovXDeg, [fovXDeg]);
@@ -450,8 +448,6 @@ export default function App() {
   const lastTsRef = useRef<number | null>(null);
   const whenMsRef = useRef<number>(whenMs);
   const runningRef = useRef<boolean>(false);
-
-  // handleWhenChange supprimé: la saisie est gérée via whenInput + validation au blur
 
   // Resize (use ResizeObserver so stage fills space during sidebar animation)
   useEffect(() => {
@@ -549,20 +545,6 @@ export default function App() {
   }, [linkFov, viewport, fovXDeg, fovYDeg]);
 
   
-
-  // Browser local time and UTC time strings
-  const browserLocalTime = useMemo(() => {
-    return date.toLocaleString('fr-FR', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false
-    });
-  }, [date]);
-
   const utcTime = useMemo(() => {
     try {
       return (
@@ -580,8 +562,8 @@ export default function App() {
     }
   }, [date]);
 
-  // New: city-local time (selected location timezone)
-   const cityLocalTimeString = useMemo(() => {
+  // city-local time (selected location timezone)
+  const cityLocalTimeString = useMemo(() => {
     try {
       // Use user’s locale and preferences; only fix the time zone
       return date.toLocaleString(undefined, { timeZone: location.timeZone });
@@ -591,15 +573,9 @@ export default function App() {
   }, [date, location.timeZone]);
 
   
-
-  
-
-  
-
   // Reference azimuth & altitude (follow mode)
   const baseRefAz = useMemo(() => followAltAz.az,  [followAltAz]);
   const baseRefAlt = useMemo(() => followAltAz.alt, [followAltAz]);
-
 
   // Final ref with keypad deltas applied
   const refAz = useMemo(() => norm360(baseRefAz + deltaAzDeg), [baseRefAz, deltaAzDeg]);
@@ -639,7 +615,7 @@ export default function App() {
     if (moonApparentPx < MOON_DOT_PX) return 'dot';
     if (moonApparentPx < MOON_3D_SWITCH_PX) return 'sprite';
     return '3d';
-  }, [moonApparentPx]);
+  }, [enlargeObjects, moonApparentPx]);
 
   const moonRenderModeEffective = glbLoading && moonRenderMode === '3d' ? 'sprite' : moonRenderMode;
 
@@ -652,7 +628,7 @@ export default function App() {
     return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
   }, [astro.moon, refAz, refAlt, viewport, fovXDeg, fovYDeg, bodySizes.moon, projectionMode]);
 
-  // NEW: Per-planet render info (screen position, size px, phase fraction, angle to Sun)
+  // Per-planet render info (screen position, size px, phase fraction, angle to Sun)
   const planetsRender = useMemo(() => {
     if (!planetsEphemArr?.length) return [];
     const items: {
@@ -779,7 +755,7 @@ export default function App() {
 
           // Choisir le pas qui “décroche” du bord
           const useBack = mB > mF;
-          let alpha = Math.atan2(useBack ? dyB : dyF, useBack ? dxB : dxF); // 0=→, 90=↓
+          const alpha = Math.atan2(useBack ? dyB : dyF, useBack ? dxB : dxF); // 0=→, 90=↓
           let deg = norm360(toDeg(alpha) + 90);                              // 0=N, 90=E
 
           // Si on a dû prendre le pas arrière, corriger de 180° pour retrouver la direction “vers le Soleil”
@@ -796,7 +772,6 @@ export default function App() {
       }
 
       // Fraction éclairée (approx) via séparation apparente
-      const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
       let phaseFrac = Number((p as any).phaseFraction);
       if (!Number.isFinite(phaseFrac)) {
         const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
@@ -862,7 +837,11 @@ export default function App() {
     }
     items.sort((a, b) => b.distAU - a.distAU);
     return items;
-   }, [planetsEphemArr, showPlanets, refAz, viewport.w, viewport.h, viewport.x, viewport.y, refAlt, fovXDeg, fovYDeg, projectionMode, enlargeObjects, astro.sun.alt, astro.sun.az, sunScreen.y, sunScreen.x]);
+  }, [planetsEphemArr, showPlanets, refAz, 
+    viewport.w, viewport.h, viewport.x, viewport.y, refAlt, 
+    fovXDeg, fovYDeg, projectionMode, 
+    enlargeObjects, astro.sun.az, astro.sun.alt, 
+    sunScreen.y, sunScreen.x, date, location.lat, location.lng]);
 
   const moonOrientation = useMemo(
     () => getMoonOrientationAngles(date, location.lat, location.lng),
@@ -870,7 +849,7 @@ export default function App() {
   );
   const rotationToHorizonDegMoon = moonOrientation.rotationToHorizonDegMoonNorth;
 
-  // NEW: projection-aware local vertical angle (screen) at Moon
+  // projection-aware local vertical angle (screen) at Moon
   const localUpAngleMoonDeg = useMemo(() => {
     return localUpAngleOnScreen(astro.moon.az, astro.moon.alt, {
       refAz,
@@ -882,7 +861,7 @@ export default function App() {
     });
   }, [astro.moon.az, astro.moon.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
 
-  // NEW: corrected on-screen rotation for Moon (align local vertical with screen vertical)
+  // corrected on-screen rotation for Moon (align local vertical with screen vertical)
   const rotationDegMoonScreen = useMemo(
     () => correctedSpriteRotationDeg(rotationToHorizonDegMoon, localUpAngleMoonDeg),
     [rotationToHorizonDegMoon, localUpAngleMoonDeg]
@@ -895,7 +874,7 @@ export default function App() {
   
   const rotationToHorizonDegSun = sunOrientation.rotationToHorizonDegSolarNorth;
 
-  // NEW: projection-aware local vertical angle (screen) at Sun
+  // projection-aware local vertical angle (screen) at Sun
   const localUpAngleSunDeg = useMemo(() => {
    return localUpAngleOnScreen(astro.sun.az, astro.sun.alt, {
       refAz,
@@ -907,7 +886,7 @@ export default function App() {
     });
   }, [astro.sun.az, astro.sun.alt, refAz, refAlt, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
 
-  // NEW: corrected on-screen rotation for Sun
+  // corrected on-screen rotation for Sun
   const rotationDegSunScreen = useMemo(
     () => correctedSpriteRotationDeg(rotationToHorizonDegSun, localUpAngleSunDeg),
     [rotationToHorizonDegSun, localUpAngleSunDeg]
@@ -924,7 +903,7 @@ export default function App() {
   }, [maskAngleBase, brightLimbAngleDeg]);
   const phaseFraction = astro.illum.fraction ?? 0;
 
-  // ADD: eclipse info used by BottomTelemetry
+  // eclipse info used by BottomTelemetry
   const eclipse = useMemo(() => {
     return computeEclipseInfo(
       astro.sun.alt, astro.sun.az, astro.sun.appDiamDeg,
@@ -934,60 +913,7 @@ export default function App() {
     
   const eclipticTiltDeg = sunOrientation.eclipticTiltDeg;
   
-  // 4 main cardinals visible on horizon
-  const visibleCardinals = useMemo(() => {
-    const base = [
-      { label: 'N' as const, az: 0 },
-      { label: 'E' as const, az: 90 },
-      { label: 'S' as const, az: 180 },
-      { label: 'O' as const, az: 270 },
-    ];
-    const projected = base
-      .map(c => {
-        const p = projectToScreen(c.az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-        const x = p.x; // local, PAS de + viewport.x
-        const delta = Math.abs(angularDiff(c.az, refAz));
-        return { ...c, x, visible: p.visibleX, delta };
-      })
-      .filter(c => c.visible);
-
-    const EPS = 1;
-    const dedup: typeof projected = [];
-    for (const it of projected) {
-      const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
-      if (idx === -1) dedup.push(it);
-      else if (it.delta < dedup[idx].delta) dedup[idx] = it;
-    }
-
-    return dedup
-      .sort((a, b) => a.x - b.x)
-      .map(({ label, az, x }) => ({ label, az, x }));
-  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-
-  const visibleSecondaryCardinals = useMemo(() => {
-    const primaries = new Set(['N', 'E', 'S', 'O']);
-    const items: { label: string; az: number; x: number; delta: number }[] = [];
-    for (let i = 0; i < 16; i++) {
-      const az = i * 22.5;
-      const label = compass16(az);
-      if (primaries.has(label)) continue;
-      const p = projectToScreen(az, 0, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
-      if (!p.visibleX) continue;
-      const x = p.x; // local, PAS de + viewport.x
-      const delta = Math.abs(angularDiff(az, refAz));
-      items.push({ label, az, x, delta });
-    }
-    const EPS = 6;
-    const dedup: typeof items = [];
-    for (const it of items) {
-      const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
-      if (idx === -1) dedup.push(it);
-      else if (it.delta < dedup[idx].delta) dedup[idx] = it;
-    }
-    return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
-  }, [refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode]);
-
-  // ADD: Polaris and Southern Cross alt/az + screen positions
+  // Polaris and Southern Cross alt/az + screen positions
   const polarisAltAz = useMemo(() => {
     return altAzFromRaDec(date, location.lat, location.lng, POLARIS_RA_DEG, POLARIS_DEC_DEG);
   }, [date, location.lat, location.lng]);
@@ -995,7 +921,6 @@ export default function App() {
   const cruxAltAz = useMemo(() => {
     return altAzFromRaDec(date, location.lat, location.lng, CRUX_CENTROID_RA_DEG, CRUX_CENTROID_DEC_DEG);
   }, [date, location.lat, location.lng]);
-
 
   const polarisScreen = useMemo(() => {
     const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAz, viewport.w, viewport.h, refAlt, 0, fovXDeg, fovYDeg, projectionMode);
@@ -1047,7 +972,7 @@ export default function App() {
     refAz, refAlt, viewport, fovXDeg, fovYDeg, projectionMode
   ]);
 
-  // ADD: planets screen markers for Markers overlay
+  // planets screen markers for Markers overlay
   const planetMarkers = useMemo(() => {
     // Use planetsRender so sizePx matches the on-screen rendered size
     return planetsRender
@@ -1064,8 +989,7 @@ export default function App() {
       });
   }, [planetsRender]);
 
-  // --- Animation Loop (RESTORED) ---------------------------------------------------
-  // Animation loop (restore)
+  // Animation loop 
   useEffect(() => {
     if (!isAnimating) {
       if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
@@ -1254,31 +1178,22 @@ export default function App() {
               debugMask={debugMask}
               setDebugMask={setDebugMask}
               timeZone={location.timeZone}
-
               enlargeObjects={enlargeObjects}
               setEnlargeObjects={setEnlargeObjects}
               currentUtcMs={whenMs}
-              // NEW: pass the ground toggle to TopBar
               showEarth={showEarth}
               setShowEarth={setShowEarth}
-              // NEW: pass atmosphere toggle
               showAtmosphere={showAtmosphere}
               setShowAtmosphere={setShowAtmosphere}
-              // NEW: pass stars toggle
               showStars={showStars}
               setShowStars={setShowStars}
-              // NEW: pass markers toggle
               showMarkers={showMarkers}
               setShowMarkers={setShowMarkers}
-              // NEW: pass grid toggle
               showGrid={showGrid}
               setShowGrid={setShowGrid}
-              // New: pass selected city name for label
               cityName={cityName}
-              // NEW: pass projection mode
               projectionMode={projectionMode}
               setProjectionMode={setProjectionMode}
-              // NEW: planets toggles
               showPlanets={showPlanets}
               setShowPlanets={setShowPlanets}
             />
@@ -1367,7 +1282,7 @@ export default function App() {
                 projectionMode={projectionMode}
                 // visual toggles
                 showEarth={showEarth}
-                // NEW: debug mask passthrough
+                // debug mask passthrough
                 debugMask={debugMask}
               />
                {/* Cardinal markers on horizon (now projected) */}
@@ -1379,14 +1294,12 @@ export default function App() {
                   fovXDeg={fovXDeg}
                   fovYDeg={fovYDeg}
                   projectionMode={projectionMode}
-                  items={visibleCardinals as CardinalItem[]}
-                  secondaryItems={visibleSecondaryCardinals}
                   bodyItems={bodyHorizonItems}
                 />
               )}
             </div>
 
-            {/* NEW: Grid overlay (above atmosphere/stars, below Sun/Moon) */}
+            {/* Grid overlay (above atmosphere/stars, below Sun/Moon) */}
             {showGrid && (
               <div
                 className="absolute"
@@ -1431,7 +1344,7 @@ export default function App() {
               </div>
             )}
 
-            {/* NEW: Stars layer (above atmosphere, below Sun/Moon) */}
+            {/* Stars layer (above atmosphere, below Sun/Moon) */}
             {showStars && (
               <div className="absolute inset-0" style={{ zIndex: Z.horizon - 5, pointerEvents: 'none' }}>
                 <Stars
@@ -1533,7 +1446,7 @@ export default function App() {
               </div>
             )}
 
-            {/* NEW: Planets rendering (dot or sprite) */}
+            {/* Planets rendering (dot or sprite) */}
             {planetsRender.map(p => {
               if (!p.visibleX || !p.visibleY) return null;
               if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return null;
@@ -1672,14 +1585,14 @@ export default function App() {
               sunDeclinationDeg={sunDeclinationDeg}
               earthshine={earthshine}
               showMoon3D={true}
-              // New: pass eclipse info to the Sun card
+              // pass eclipse info to the Sun card
               eclipse={eclipse}
-              // NEW: pass ecliptic tilt vs horizon at Sun
+              // pass ecliptic tilt vs horizon at Sun
               eclipticTiltDeg={eclipticTiltDeg}
             />
           </div>
 
-          {/* NEW: Directional keypad (right side, vertically centered) */}
+          {/* Directional keypad (right side, vertically centered) */}
           {(
             <DirectionalKeypad
               baseRefAlt={baseRefAlt}

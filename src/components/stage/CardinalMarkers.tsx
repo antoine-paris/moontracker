@@ -1,6 +1,8 @@
 import React from "react";
 import { Z } from "../../render/constants";
 import { projectToScreen } from "../../render/projection";
+import { compass16 } from "../../utils/compass";
+import { angularDiff } from "../../utils/math";
 
 export type CardinalItem = { label: 'N' | 'E' | 'S' | 'O'; x: number; az: number };
 export type SecondaryCardinalItem = { label: string; x: number; az: number };
@@ -15,14 +17,13 @@ type Props = {
   fovYDeg: number;
   projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
 
-  items: CardinalItem[];
-  secondaryItems?: SecondaryCardinalItem[];
+  // Only keep bodyItems coming from parent; cardinals are computed here
   bodyItems?: BodyItem[];
 };
 
 export default function CardinalMarkers({
   viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
-  items, secondaryItems, bodyItems
+  bodyItems
 }: Props) {
   const yForAz = (az: number) => {
     const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
@@ -46,9 +47,63 @@ export default function CardinalMarkers({
     return (dx > 0 ? viewport.w - edgePad : edgePad); // local (pas de + viewport.x)
   };
 
+  // Compute primary N/E/S/O markers (dedup on x)
+  const primaryItems: CardinalItem[] = React.useMemo(() => {
+    const base = [
+      { label: 'N' as const, az: 0 },
+      { label: 'E' as const, az: 90 },
+      { label: 'S' as const, az: 180 },
+      { label: 'O' as const, az: 270 },
+    ];
+    const projected = base
+      .map(c => {
+        const p = projectToScreen(c.az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+        const x = p.x; // local
+        const delta = Math.abs(angularDiff(c.az, refAzDeg));
+        return { ...c, x, visible: p.visibleX, delta };
+      })
+      .filter(c => c.visible);
+
+    const EPS = 1;
+    const dedup: typeof projected = [];
+    for (const it of projected) {
+      const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
+      if (idx === -1) dedup.push(it);
+      else if (it.delta < dedup[idx].delta) dedup[idx] = it;
+    }
+
+    return dedup
+      .sort((a, b) => a.x - b.x)
+      .map(({ label, az, x }) => ({ label, az, x }));
+  }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+
+  // Compute secondary 16-wind markers (dedup on x, skip primaries)
+  const secondaryItems: SecondaryCardinalItem[] = React.useMemo(() => {
+    const primaries = new Set(['N', 'E', 'S', 'O']);
+    const items: { label: string; az: number; x: number; delta: number }[] = [];
+    for (let i = 0; i < 16; i++) {
+      const az = i * 22.5;
+      const label = compass16(az);
+      if (primaries.has(label)) continue;
+      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      if (!p.visibleX) continue;
+      const x = p.x; // local
+      const delta = Math.abs(angularDiff(az, refAzDeg));
+      items.push({ label, az, x, delta });
+    }
+    const EPS = 6;
+    const dedup: typeof items = [];
+    for (const it of items) {
+      const idx = dedup.findIndex(d => Math.abs(d.x - it.x) <= EPS);
+      if (idx === -1) dedup.push(it);
+      else if (it.delta < dedup[idx].delta) dedup[idx] = it;
+    }
+    return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
+  }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+
   return (
     <>
-      {items.map((c, i) => {
+      {primaryItems.map((c, i) => {
         const y = yForAz(c.az);
         const x = xForAz(c.x, c.az);
         return (
@@ -63,7 +118,7 @@ export default function CardinalMarkers({
           </div>
         );
       })}
-       {secondaryItems?.map((c, i) => {
+      {secondaryItems.map((c, i) => {
         const y = yForAz(c.az);
         const x = xForAz(c.x, c.az);
         return (
