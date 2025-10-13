@@ -4,7 +4,7 @@ import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
 import { degToSlider, sliderToDeg, FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
 import { zonedLocalToUtcMs } from "../../utils/tz";
-// NEW: planets registry for UI toggles
+// planets registry for UI toggles
 import { PLANETS } from "../../render/planetRegistry";
 import { PLANET_REGISTRY } from "../../render/planetRegistry";
 
@@ -75,31 +75,31 @@ type Props = {
   currentUtcMs: number;
   cityName: string;
 
-  // NEW: Earth toggle
+  // Earth toggle
   showEarth: boolean;
   setShowEarth: (v: boolean) => void;
 
-  // NEW: Atmosphere toggle
+  // Atmosphere toggle
   showAtmosphere: boolean;
   setShowAtmosphere: (v: boolean) => void;
 
-  // NEW: Stars toggle
+  // Stars toggle
   showStars: boolean;
   setShowStars: (v: boolean) => void;
 
-  // NEW: Markers toggle
+  // Markers toggle
   showMarkers: boolean;
   setShowMarkers: (v: boolean) => void;
 
-  // NEW: Grid toggle
+  // Grid toggle
   showGrid: boolean;
   setShowGrid: (v: boolean) => void;
 
-  // NEW: Projection mode
+  // Projection mode
   projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
   setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical') => void;
 
-  // NEW: Planets visibility
+  // Planets visibility
   showPlanets: Record<string, boolean>;
   setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 };
@@ -158,7 +158,7 @@ export default function TopBar({
     return currentDate.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
   }, [currentDate]);
 
-  // New: City-local time based on selected location's time zone
+  // City-local time based on selected location's time zone
   const cityLocalTimeString = useMemo(() => {
     try {
       return new Intl.DateTimeFormat('fr-FR', {
@@ -352,7 +352,7 @@ export default function TopBar({
     setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
   };
 
-  // NEW: normalize planets to {id,label} for UI
+  // normalize planets to {id,label} for UI
   const uiPlanets = useMemo(() => {
     return PLANETS.map((p: any) => {
       const id = (typeof p === 'string') ? p : (p?.id ?? String(p));
@@ -380,6 +380,22 @@ export default function TopBar({
               <button key={opt}
                 className={`px-3 py-1.5 rounded-lg border text-sm ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
                 onClick={() => setFollow(opt)}
+                title={
+                  opt === 'SOLEIL' ? 'Suivre le Soleil'
+                  : opt === 'LUNE' ? 'Suivre la Lune'
+                  : opt === 'MERCURE' ? 'Suivre Mercure'
+                  : opt === 'VENUS' ? 'Suivre Vénus'
+                  : opt === 'MARS' ? 'Suivre Mars'
+                  : opt === 'JUPITER' ? 'Suivre Jupiter'
+                  : opt === 'SATURNE' ? 'Suivre Saturne'
+                  : opt === 'URANUS' ? 'Suivre Uranus'
+                  : opt === 'NEPTUNE' ? 'Suivre Neptune'
+                  : opt === 'N' ? 'Suivre le Nord'
+                  : opt === 'E' ? 'Suivre l’Est'
+                  : opt === 'S' ? 'Suivre le Sud'
+                  : opt === 'O' ? 'Suivre l’Ouest'
+                  : `Suivre ${opt}`
+                }
               >
                 {opt === 'SOLEIL' ? <span>&#9728;</span>
                 : opt === 'LUNE' ? <span>&#127762;</span>
@@ -415,13 +431,16 @@ export default function TopBar({
                   }
                 }}
                 className="min-w-[10rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
+                 title="Sélectionner l’appareil"
               >
                 {devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
 
               {/* When custom device is selected, replace the zoom select with a clean, live-updating label (no “Focale théorique”) */}
               {deviceId === CUSTOM_DEVICE_ID ? (
-                <div className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm text-white/80">
+                <div className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm text-white/80"
+                  title={`${Math.round(currentFocalMm)} mm (équivalent 24x36)`}
+                >
                   {`${Math.round(currentFocalMm)} mm (eq. 24x36)`}
                 </div>
               ) : (
@@ -429,13 +448,14 @@ export default function TopBar({
                   value={zoomId}
                   onChange={(e) => setZoomId(e.target.value)}
                   className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
+                  title="Sélectionner l’objectif/zoom"
                 >
                   {zoomOptions.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
                 </select>
               )}
             </div>
 
-            {/* REPLACED: two FOV sliders + link with a single focal-length slider */}
+            {/*  FOV sliders + link with a single focal-length slider */}
             <div className="mt-2 flex items-center gap-2">
               <span className="text-sm">f</span>
               <div className="flex flex-col items-center flex-1 min-w-0">
@@ -447,20 +467,25 @@ export default function TopBar({
                   value={focalMmToSlider(currentFocalMm)}
                   onChange={(e) => setFovFromFocal(sliderToFocalMm(Number(e.target.value)))}
                   className="w-full"
+                  title={`Focale: ${Math.round(currentFocalMm)} mm (équivalent 24x36)`}
                 />
-                <div className="mt-0.5 text-[10px] text-white/70 text-center w-full">
+                <div className="mt-0.5 text-[10px] text-white/70 text-center w-full"
+                  title="Focale calculée depuis le champ de vision horizontal"
+                >
                   {`${Math.round(currentFocalMm)} mm (eq. 24x36)`}
                 </div>
               </div>
               <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
-                <div className="text-[12px] text-white/70">
+                <div className="text-[12px] text-white/70"
+                  title="Champ de vision (horizontal ↔ et vertical ↕)"
+                >
                   {`${"\u2194"} ${(fovXDeg >= 1 ? fovXDeg.toFixed(1) : fovXDeg.toFixed(2))}°`}&nbsp;&nbsp;
                   {`${"\u2195"} ${(fovYDeg >= 1 ? fovYDeg.toFixed(1) : fovYDeg.toFixed(2))}°`}
                 </div>
               </div>
             </div>
 
-{/* NEW: Projection selector */}
+{/* Projection selector */}
 <div className="mt-3">
   <div className="text-xs uppercase tracking-wider text-white/60">Projection</div>
   <div className="mt-1 flex flex-wrap gap-2">
@@ -528,6 +553,7 @@ export default function TopBar({
                       }
                     }}
                     className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
+                     title="Saisir la date et l’heure locale à votre navigateur"
                   />
                   <button
                     onClick={() => {
@@ -549,7 +575,11 @@ export default function TopBar({
               </div>
               <div className="mt-2 mb-1 text-xs uppercase tracking-wider text-white/50">Animation</div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsAnimating(!isAnimating)} className={`px-3 py-2 rounded-lg border text-sm ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}>{isAnimating ? "Pause" : "Lecture"}</button>
+                <button onClick={() => setIsAnimating(!isAnimating)} className={`px-3 py-2 rounded-lg border text-sm ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
+                  title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
+                  >
+                    {isAnimating ? "Pause" : "Lecture"}
+                </button>
                 <div className="relative flex-1">
                   <input
                     type="range"
@@ -559,6 +589,7 @@ export default function TopBar({
                     value={speedMinPerSec}
                     onChange={(e) => setSpeedMinPerSec(clamp(parseFloat(e.target.value || "0"), -360, 360))}
                      className="w-full"
+                    title={`Vitesse de l'animation : gauche = rembobiner, droite = avancer`}
                   />
                   {/* Center tick for 0 */}
                   <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -567,6 +598,7 @@ export default function TopBar({
                   <div
                     className="absolute left-1/2 top-full -translate-x-1/2 mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer"
                     onClick={() => { setSpeedMinPerSec(1/60); setIsAnimating(true); }}
+                    title="Animer en temps réel"
                   >
                     Temps réel
                   </div>
@@ -598,46 +630,65 @@ export default function TopBar({
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Objets à afficher</div>
           <div className="flex flex-wrap gap-3">
-            {/* NEW: Grid toggle */}
-            <label className="inline-flex items-center gap-2 text-sm">
+            {/* Grid toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la grille de référence">
               <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />
               <span>Grille</span>
             </label>
-            {/* NEW: Markers toggle */}
-            <label className="inline-flex items-center gap-2 text-sm">
+            {/* Markers toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les marqueurs (repères)">
               <input type="checkbox" checked={showMarkers} onChange={(e) => setShowMarkers(e.target.checked)} />
               <span>Marqueurs</span>
             </label>
-            {/* NEW: Atmosphere toggle */}
-            <label className="inline-flex items-center gap-2 text-sm">
+            {/* Atmosphere toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher l’effet d’atmosphère">
               <input type="checkbox" checked={showAtmosphere} onChange={(e) => setShowAtmosphere(e.target.checked)} />
               <span>Atmosphère</span>
             </label>
-            {/* NEW: Earth toggle */}
-            <label className="inline-flex items-center gap-2 text-sm">
+            {/* Earth toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le sol (Terre)">
               <input type="checkbox" checked={showEarth} onChange={(e) => setShowEarth(e.target.checked)} />
               <span>Sol</span>
             </label>
-            {/* NEW: Stars toggle */}
-            <label className="inline-flex items-center gap-2 text-sm">
+            {/* Stars toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le fond d’étoiles">
               <input type="checkbox" checked={showStars} onChange={(e) => setShowStars(e.target.checked)} />
               <span>Étoiles</span>
             </label>
-            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} /><span className="text-amber-300">Soleil</span></label>
-            <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune</span></label>
-             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} /><span>Phase de la Lune</span></label>
-             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={earthshine} disabled={!showPhase} onChange={(e) => setEarthshine(e.target.checked)} /><span>Clair de Terre</span></label>
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le Soleil">
+              <input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} /><span className="text-amber-300">Soleil</span>
+            </label>
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la Lune">
+              <input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} /><span className="text-sky-300">Lune</span>
+            </label>
+             <label className="inline-flex items-center gap-2 text-sm" title="Afficher la phase de la Lune">
+               <input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} /><span>Phase de la Lune</span>
+             </label>
+             <label
+               className="inline-flex items-center gap-2 text-sm"
+               title={showPhase ? "Afficher le clair de Terre" : "Activez « Phase de la Lune » pour autoriser le clair de Terre"}
+             >
+               <input type="checkbox" checked={earthshine} disabled={!showPhase} onChange={(e) => setEarthshine(e.target.checked)} /><span>Clair de Terre</span>
+             </label>
              <span className="w-px h-5 bg-white/10 mx-1" />
-             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span></label>
-             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal local</span></label>
-             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug</span></label>
+             <label className="inline-flex items-center gap-2 text-sm" title="Afficher le repère cardinal par rapport au Soleil">
+               <input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} /><span>Cardinal Soleil</span>
+             </label>
+             <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux locaux">
+               <input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} /><span>Cardinal local</span>
+             </label>
+             <label className="inline-flex items-center gap-2 text-sm" title="Activer les éléments de débogage visuel">
+               <input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} /><span>Debug</span>
+             </label>
              <span className="w-px h-5 bg-white/10 mx-1" />
-             <label className="inline-flex items-center gap-2 text-sm"><input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span></label>
+             <label className="inline-flex items-center gap-2 text-sm" title="Augmenter la taille apparente des objets pour une meilleure visibilité">
+               <input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} /><span>Agrandir les objets</span>
+             </label>
 
-             {/* NEW: per-planet toggles */}
+             {/* per-planet toggles */}
              <span className="w-px h-5 bg-white/10 mx-1" />
              {uiPlanets.map(({ id, label }) => (
-               <label key={id} className="inline-flex items-center gap-2 text-sm">
+               <label key={id} className="inline-flex items-center gap-2 text-sm" title={`Afficher ${label}`}>
                  <input
                    type="checkbox"
                    checked={showPlanets[id] ?? true}
