@@ -60,6 +60,13 @@ function shortFloat(n: number, decimals = 1): string {
   return s.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1');
 }
 
+// NEW: parse integer that might be base36 (compact) or decimal (legacy)
+function parseIntB36OrDec(s: string): number {
+  if (/^\d+$/.test(s)) return Number(s);
+  const n = parseInt(s, 36);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 // Normalize longitude to [-180,180], with 180 instead of -180 for consistency
 function normLng(lon: number) {
   let x = ((lon + 180) % 360 + 360) % 360 - 180;
@@ -87,8 +94,6 @@ function parseEnum<T extends string>(v: string | null, allowed: readonly T[], de
 
 const FOLLOW_ALLOWED = ['SOLEIL','LUNE','MERCURE','VENUS','MARS','JUPITER','SATURNE','URANUS','NEPTUNE','N','E','S','O'] as const;
 const PROJ_LIST = ['recti-panini','stereo-centered','ortho','cylindrical'] as const;
-
-type DeviceLike = Device;
 
 // Bit positions for packed toggles
 const ToggleBits = {
@@ -374,7 +379,8 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setDeviceId(CUSTOM_DEVICE_ID);
     setZoomId('custom-theo');
 
-    const fmm = focal ? Number(focal) : NaN;
+    // CHANGED: accept base36 (compact) or decimal for 'f'
+    const fmm = focal ? parseIntB36OrDec(focal) : NaN;
     if (Number.isFinite(fmm) && fmm > 0) {
       // focal → FOV (24x36 eq)
       const FF_W = 36, FF_H = 24;
