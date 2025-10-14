@@ -894,7 +894,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         <>
           {/* Top center: location/time */}
           <div
-            className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+            className="absolute right-2 top-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
             {overlayInfoString}
@@ -932,7 +932,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             className="absolute top-2 left-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
-            {cameraLabel ?? ''}
+            {enlargeObjects ? cameraLabel + ' (Taille des objets exagérée)'  : cameraLabel ?? '' }
           </div>
 
           {/* Gauche centrée: Altitude observateur (refAltDeg) */}
