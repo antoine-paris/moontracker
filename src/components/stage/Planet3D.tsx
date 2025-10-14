@@ -1,6 +1,6 @@
 import React, { Suspense, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { useGLTF, OrthographicCamera, Text, Billboard } from '@react-three/drei'
+import { Canvas, useFrame } from '@react-three/fiber';
+import { useGLTF, OrthographicCamera, Text, Billboard, Preload } from '@react-three/drei'
 import * as THREE from 'three';
 import { Z } from '../../render/constants';
 import type { PlanetId } from '../../astro/planets';
@@ -67,7 +67,8 @@ function Model({
   orientationDegX,
   orientationDegY,
   orientationDegZ,
-  planetId,                 // + add
+  planetId,                 
+  onMounted,  
 }: {
   targetPx: number;
   modelUrl: string;
@@ -85,7 +86,8 @@ function Model({
   orientationDegX?: number;
   orientationDegY?: number;
   orientationDegZ?: number;
-  planetId?: PlanetId;       // + add
+  planetId?: PlanetId; 
+  onMounted?: () => void; 
 }) {
   const { scene } = useGLTF(modelUrl);
 
@@ -350,6 +352,10 @@ const qMeridianTorus = useMemo(() => {
     [diskWestLocalR, radius, axisLen]
   );
 
+  React.useEffect(() => {
+    // Suspense has resolved, the model subtree is mounted
+    onMounted?.();
+  }, [onMounted]);
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternion}>
       {debugMask && <axesHelper args={[targetPx * 0.6]} />}
@@ -463,6 +469,27 @@ const qMeridianTorus = useMemo(() => {
   );
 }
 
+// Add this small helper (fires after 2 frames)
+function FirstFrameReady({ armed, onReady }: { armed: boolean; onReady?: () => void }) {
+  const fired = React.useRef(false);
+  const frames = React.useRef(0);
+  useFrame(() => {
+    if (!armed || fired.current) return;
+    frames.current += 1;
+    if (frames.current >= 2) {
+      fired.current = true;
+      onReady?.();
+    }
+  });
+  React.useEffect(() => {
+    // reset when re-arming
+    if (!armed) {
+      frames.current = 0;
+      fired.current = false;
+    }
+  }, [armed]);
+  return null;
+}
 export default function Planet3D({
   id,
   x, y, wPx, hPx,
@@ -483,7 +510,8 @@ export default function Planet3D({
   orientationDegX,
   orientationDegY,
   orientationDegZ,
-}: Props) {
+  onReady, // NEW
+}: Props & { onReady?: () => void }) {
   const reg = PLANET_REGISTRY[id] as any;
   const renderCfg = (reg?.render) || {};
   const modelUrl = modelUrlOverride || reg?.modelUrl;
@@ -643,6 +671,13 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
 
   //JSON.stringify(debugProps.lim, null, 2);
 
+
+  const [modelMounted, setModelMounted] = React.useState(false);
+  React.useEffect(() => {
+    // re-arm when model URL changes (or id changes)
+    setModelMounted(false);
+  }, [modelUrl, id]);
+
   return (
     <div
       className="absolute pointer-events-none"
@@ -667,6 +702,9 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
           gl.toneMappingExposure = 2.2;
         }}
       >
+        {/* Preload models/materials/shaders for this canvas */}
+        <Preload all />
+
         <OrthographicCamera
           makeDefault
           left={-canvasPx / 2}
@@ -684,8 +722,8 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
           </>
         ) : (
           <>
-          <ambientLight intensity={ambientFillIntensity} />
-          <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={sunlightIntensity} />
+            <ambientLight intensity={ambientFillIntensity} />
+            <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={sunlightIntensity} />
           </>
         )}
         <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="#b0b0b0" /></mesh>}>
@@ -706,9 +744,13 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
             orientationDegX={orientationDegX}
             orientationDegY={orientationDegY}
             orientationDegZ={orientationDegZ}
-            planetId={id}             // + pass id
+            planetId={id}
+            onMounted={() => setModelMounted(true)}  // NEW
           />
         </Suspense>
+
+        {/* Signal ready after a couple of frames */}
+        <FirstFrameReady armed={modelMounted} onReady={onReady} />
       </Canvas>
       {debugMask && (
         <div

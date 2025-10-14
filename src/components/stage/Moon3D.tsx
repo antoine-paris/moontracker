@@ -1,5 +1,5 @@
 import React, { Suspense, useMemo } from 'react';
-import { Canvas } from '@react-three/fiber';
+import { Canvas, useFrame  } from '@react-three/fiber';
 import { useGLTF, OrthographicCamera, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
 import { Z } from '../../render/constants';
@@ -75,6 +75,8 @@ type Props = {
   earthshine?: boolean;
   // NEW: scale factor for texture-based relief (displacement/bump/normal)
   reliefScale?: number;
+  // notify parent when the 3D canvas has rendered a couple of frames
+  onReady?: () => void;
 };
 
 type Vec3 = [number, number, number];
@@ -155,6 +157,7 @@ function Model({
   debugMask = false, showMoonCard = false,
   sunDirWorld, showSubsolarCone = true,
   reliefScale = RELIEF_SCALE_DEFAULT,
+  onMounted,
 }: {
   limbAngleDeg: number; targetPx: number; modelUrl: string;
   librationTopo?: { latDeg: number; lonDeg: number; paDeg: number };
@@ -162,6 +165,7 @@ function Model({
   debugMask?: boolean; showMoonCard?: boolean;
   sunDirWorld?: [number, number, number]; showSubsolarCone?: boolean;
   reliefScale?: number;
+  onMounted?: () => void;
 }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   const { scene } = useGLTF(modelUrl);
@@ -346,6 +350,7 @@ function Model({
     return { center, rotation, h, baseRadius } as const;
   }, [sunDirWorld, quaternionFinal, radius, coneHLocal, coneBaseRLocal]);
 
+  React.useEffect(() => { onMounted?.(); }, [onMounted]);
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
       {debugMask && <axesHelper args={[targetPx * 0.6]} />}
@@ -458,7 +463,26 @@ function Model({
       )}
      </group>
    );
+   
  }
+
+ // Helper: calls onReady after 2 rendered frames once 'armed' becomes true
+function ReadyPing({ armed, onReady }: { armed: boolean; onReady?: () => void }) {
+  const frames = React.useRef(0);
+  const done = React.useRef(false);
+  useFrame(() => {
+    if (!armed || done.current) return;
+    frames.current += 1;
+    if (frames.current >= 2) {
+      done.current = true;
+      onReady?.();
+    }
+  });
+  React.useEffect(() => {
+    if (!armed) { frames.current = 0; done.current = false; }
+  }, [armed]);
+  return null;
+}
 
 export default function Moon3D({
   x, y, wPx, hPx,
@@ -477,6 +501,7 @@ export default function Moon3D({
   earthshine = false,
   // NEW: allow overriding from parent
   reliefScale = MOON_RELIEF_SCALE_DEFAULT,
+  onReady,
 }: Props) {
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 
@@ -618,6 +643,8 @@ export default function Moon3D({
     return [pos.x, pos.y, pos.z];
   }, [camEuler, targetPx]);
 
+  const [modelMounted, setModelMounted] = React.useState(false);
+  
   return (
     <div
       className="absolute pointer-events-none"
@@ -700,8 +727,10 @@ export default function Moon3D({
              showSubsolarCone={showSubsolarCone}
              // NEW: pass through to materials
              reliefScale={reliefScale}
+             onMounted={() => setModelMounted(true)}
            />
         </Suspense>
+        <ReadyPing armed={modelMounted} onReady={onReady} />
       </Canvas>
       {debugMask ? (
          <div style={{ position: 'absolute', left: 8, top: 8, color: '#fff', background: 'rgba(0,0,0,0.55)', padding: '6px 8px', fontSize: 12, lineHeight: 1.3, borderRadius: 4 }}>

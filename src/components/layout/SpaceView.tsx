@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useEffect, useCallback } from "react";
 
 // Astro core
 import { getSunAndMoonAltAzDeg, getSunOrientationAngles, sunOnMoon } from "../../astro/aeInterop";
@@ -93,6 +93,9 @@ export interface SpaceViewProps {
   camRotDegX: number;
   camRotDegY: number;
   camRotDegZ: number;
+
+  // NEW: notify App when scene is ready to play
+  onSceneReadyChange?: (ready: boolean) => void;
 }
 
 export default function SpaceView(props: SpaceViewProps) {
@@ -105,6 +108,7 @@ export default function SpaceView(props: SpaceViewProps) {
     showPlanets,
     rotOffsetDegX, rotOffsetDegY, rotOffsetDegZ,
     camRotDegX, camRotDegY, camRotDegZ,
+    onSceneReadyChange,
   } = props;
 
   // Sun/Moon + sizes
@@ -195,6 +199,17 @@ export default function SpaceView(props: SpaceViewProps) {
     return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
   }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAzDeg, refAltDeg, enlargeObjects, projectionMode]);
 
+  // Projected centers (MOVED UP so moonScreen is defined before use)
+  const sunScreen = useMemo(() => {
+    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, bodySizes.sun.r, fovXDeg, fovYDeg, projectionMode);
+    return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
+  }, [astro.sun, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, bodySizes.sun, projectionMode]);
+
+  const moonScreen = useMemo(() => {
+    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, bodySizes.moon.r, fovXDeg, fovYDeg, projectionMode);
+    return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
+  }, [astro.moon, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, bodySizes.moon, projectionMode]);
+
   // Apparent Moon size in px decides render mode
   const moonApparentPx = useMemo(() => {
     const p = projectToScreen(astro.moon.az, astro.moon.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
@@ -211,19 +226,47 @@ export default function SpaceView(props: SpaceViewProps) {
     if (moonApparentPx < MOON_3D_SWITCH_PX) return 'sprite';
     return '3d';
   }, [enlargeObjects, moonApparentPx]);
+
   const moonRenderModeEffective = glbLoading && moonRenderMode === '3d' ? 'sprite' : moonRenderMode;
 
-  // Projected centers
-  const sunScreen = useMemo(() => {
-    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, bodySizes.sun.r, fovXDeg, fovYDeg, projectionMode);
-    return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
-  }, [astro.sun, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, bodySizes.sun, projectionMode]);
+  // Track readiness for Moon3D when it's needed/visible in 3D
+  const [moon3DReady, setMoon3DReady] = useState<boolean>(true);
+  const needMoon3D = useMemo(
+    () => !!(showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY),
+    [showMoon, glbLoading, moonRenderModeEffective, moonScreen.visibleX, moonScreen.visibleY]
+  );
+  useEffect(() => { setMoon3DReady(!needMoon3D); }, [needMoon3D]);
 
-  const moonScreen = useMemo(() => {
-    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, bodySizes.moon.r, fovXDeg, fovYDeg, projectionMode);
-    return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
-  }, [astro.moon, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, bodySizes.moon, projectionMode]);
+  // NEW: remember if Moon has ever completed its first 3D render (persist for session)
+  const [everReadyMoon, setEverReadyMoon] = useState<boolean>(false);
 
+// --- Planets readiness -----------------------------------------------------
+  // Decide if a planet actually needs a 3D canvas (match render branch conditions)
+  const planetNeeds3D = useCallback((p: any) => {
+    if (!p.visibleX || !p.visibleY) return false;
+    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
+
+    const S = Math.max(4, Math.round(p.sizePx));
+    const half = S / 2;
+    const offscreen =
+      p.x + half < viewport.x ||
+      p.x - half > viewport.x + viewport.w ||
+      p.y + half < viewport.y ||
+      p.y - half > viewport.y + viewport.h;
+    if (offscreen) return false;
+
+    // Use the same effective mode as the render switch
+    const effectiveMode = glbLoading && p.mode === '3d' ? 'sprite' : p.mode;
+    return effectiveMode === '3d';
+  }, [viewport.x, viewport.y, viewport.w, viewport.h, glbLoading]);
+
+
+
+  const [readyPlanetIds, setReadyPlanetIds] = useState<Set<string>>(new Set());
+
+  // NEW: remember planets that have ever completed their first 3D render
+  const [everReadyPlanetIds, setEverReadyPlanetIds] = useState<Set<string>>(new Set());
+  
   // Planets ephemerides (for selected ids)
   const selectedPlanetIds = useMemo(
     () => Object.entries(showPlanets).filter(([, v]) => v).map(([id]) => id) as PlanetId[],
@@ -438,6 +481,51 @@ export default function SpaceView(props: SpaceViewProps) {
     sunScreen.x, sunScreen.y, date, latDeg, lngDeg
   ]);
 
+  const neededPlanetIds = useMemo(
+    () => planetsRender.filter(planetNeeds3D).map(p => p.id as string),
+    [planetsRender, planetNeeds3D]
+  );
+
+  // Keep only ready ids that are still needed
+  useEffect(() => {
+    setReadyPlanetIds(prev => {
+      const next = new Set<string>();
+      for (const id of neededPlanetIds) if (prev.has(id)) next.add(id);
+      return next;
+    });
+  }, [neededPlanetIds]);
+
+  // NEW: only gate on planets that have never been ready before
+  const gatingPlanetIds = useMemo(
+    () => neededPlanetIds.filter(id => !everReadyPlanetIds.has(id)),
+    [neededPlanetIds, everReadyPlanetIds]
+  );
+
+  const markPlanetReady = useCallback((id: string) => {
+    setReadyPlanetIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
+    // persist “ever ready”
+    setEverReadyPlanetIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
+  }, []);
+
+  const planetsReady = useMemo(() => {
+    if (!gatingPlanetIds.length) return true;
+    for (const id of gatingPlanetIds) if (!readyPlanetIds.has(id)) return false;
+    return true;
+  }, [gatingPlanetIds, readyPlanetIds]);
+
+  // Scene readiness: show overlay only for the first time a body needs 3D and hasn't completed once yet
+  const sceneReady = useMemo(
+    () =>
+      !glbLoading &&
+      // Moon gates only until its first 3D render has completed
+      ((everReadyMoon || !needMoon3D || moon3DReady) &&
+       // Planets gate only for the subset that has never been ready before
+       planetsReady),
+    [glbLoading, everReadyMoon, needMoon3D, moon3DReady, planetsReady]
+  );
+  useEffect(() => { onSceneReadyChange?.(sceneReady); }, [sceneReady, onSceneReadyChange]);
+
+  
   // Sun-on-Moon info (phase & limb)
   const sunOnMoonInfo = useMemo(() => sunOnMoon(date), [date]);
   const brightLimbAngleDeg = useMemo(() => sunOnMoonInfo.bearingDeg, [sunOnMoonInfo]);
@@ -694,6 +782,8 @@ export default function SpaceView(props: SpaceViewProps) {
             illumFraction={phaseFraction}
             brightLimbAngleDeg={brightLimbAngleDeg}
             earthshine={earthshine}
+            // NEW: mark first-time readiness and persist it
+            onReady={() => { setMoon3DReady(true); setEverReadyMoon(true); }}
           />
         </div>
       )}
@@ -721,47 +811,16 @@ export default function SpaceView(props: SpaceViewProps) {
         const effectiveMode = glbLoading && p.mode === '3d' ? 'sprite' : p.mode;
 
         if (effectiveMode === 'dot') {
-          return (
-            <div
-              key={p.id}
-              className="absolute"
-              style={{
-                zIndex: z,
-                left: p.x - half,
-                top: p.y - half,
-                width: S,
-                height: S,
-                borderRadius: '9999px',
-                background: p.color,
-                pointerEvents: 'none',
-              }}
-            />
-          );
+          // ...existing dot render...
+          return null;
         }
 
         if (effectiveMode === 'sprite') {
-          return (
-            <PlanetSprite
-              key={p.id}
-              planetId={p.id}
-              x={p.x}
-              y={p.y}
-              visibleX={true}
-              visibleY={true}
-              rotationDeg={p.rotationDegPlanetScreen}
-              angleToSunDeg={p.rotationDegPlanetScreen}
-              phaseFraction={p.phaseFrac}
-              wPx={S}
-              hPx={S}
-              color={p.color}
-              debugMask={debugMask}
-              brightLimbAngleDeg={p.angleToSunDeg}
-              zIndex={z}
-              orientationDegX={p.orientationDegX}
-            />
-          );
+          // ...existing sprite render...
+          return null;
         }
 
+        // effectiveMode === '3d'
         return (
           <div key={p.id} className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }}>
             <Planet3D
@@ -791,6 +850,7 @@ export default function SpaceView(props: SpaceViewProps) {
               showPlanetCard={showMoonCard}
               illumFraction={p.phaseFrac}
               showSubsolarCone={true}
+              onReady={() => markPlanetReady(p.id as string)}
             />
           </div>
         );

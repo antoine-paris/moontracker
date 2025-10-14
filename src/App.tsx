@@ -62,6 +62,9 @@ export default function App() {
   const [glbLoading, setGlbLoading] = useState<boolean>(false);
   const [glbProgress, setGlbProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
 
+  // NEW: Scene readiness state
+  const [sceneReady, setSceneReady] = useState<boolean>(false);
+
   useEffect(() => {
     let cancelled = false;
     const urls = new Set<string>();
@@ -621,7 +624,7 @@ export default function App() {
     
   // Animation loop 
   useEffect(() => {
-    if (!isAnimating) {
+    if (!isAnimating || !sceneReady) {
       if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
       lastTsRef.current = null;
@@ -651,7 +654,7 @@ export default function App() {
       rafIdRef.current = null;
       lastTsRef.current = null;
     };
-  }, [isAnimating, speedMinPerSec]);
+  }, [isAnimating, speedMinPerSec, sceneReady]);
 
   // --- Dev-time test cases ---------------------------------------------------
   useEffect(() => {
@@ -858,6 +861,13 @@ export default function App() {
               )}
             </div>
           )}
+          {/* NEW: Modal while the first 3D frame(s) are rendering */}
+          {!locationsLoading && !glbLoading && !sceneReady && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80 text-sm pointer-events-none"
+                 style={{ zIndex: Z.ui + 40 }}>
+              Rendu de la scène en cours…
+            </div>
+          )}
 
           {/* Top-right vertical toolbar (always above SpaceView & UI) */}
           <TopRightBar
@@ -1046,6 +1056,8 @@ export default function App() {
               camRotDegX={camRotDegX}
               camRotDegY={camRotDegY}
               camRotDegZ={camRotDegZ}
+              // NEW: receive readiness from scene
+              onSceneReadyChange={setSceneReady}
             />
           </div>
 
