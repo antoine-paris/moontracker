@@ -579,12 +579,13 @@ export default function Stars({
       />
 
       {/* Keep Southern Cross marker as SVG portal */}
-      {showMarkers && cruxCross && createPortal(
+      {/* Crux overlay now rendered directly in subtree */}
+      {showMarkers && cruxCross && (
         <div
           style={{
             position: "absolute",
-            left: anchorPos.left,
-            top: anchorPos.top,
+            left: viewport.x,
+            top: viewport.y,
             width: viewport.w,
             height: viewport.h,
             pointerEvents: "none",
@@ -616,8 +617,7 @@ export default function Stars({
               Croix du Sud
             </text>
           </svg>
-        </div>,
-        document.body
+        </div>
       )}
     </>
   );

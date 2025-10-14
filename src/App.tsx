@@ -1025,103 +1025,65 @@ export default function App() {
 
           {/* Stage canvas */}
           <div ref={stageRef} className="absolute inset-0">
-            {/* Overlay info when tools are hidden */}
-            {!showPanels && (
-              <div
-                className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-                style={{ zIndex: Z.ui }}
-              >
-                {/* was: {`${cityName}, ${cityLocalTimeString} heure locale (${utcTime})`} */}
-                {`${overlayPlaceString}, ${cityLocalTimeString} heure locale (${utcTime})`}
-              </div>
-            )}
-            {/* Overlays additionnels en mode interface cachée */}
-            {!showPanels && (
-              <>
-                {/* Bas centré: Azimut observateur (refAz) */}
-                <div
-                  className="absolute left-1/2 bottom-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-                  style={{ zIndex: Z.ui }}
-                >
-                  {`Azimut : ${Number(refAz).toFixed(1)}° - ${compass16(refAz)}`}
-                </div>
-
-                {/* Bas droite: Lune ou sous l'horizon (marge demi-diamètre) */}
-                <div
-                  className="absolute right-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-                  style={{ zIndex: Z.ui }}
-                >
-                  {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
-                    ? "Lune sous l'horizon"
-                    : `Lune Alt. ${formatDeg(astro.moon.alt, 0)} Az ${formatDeg(astro.moon.az, 1)} (${compass16(astro.moon.az)})`}
-                </div>
-
-                {/* Bas gauche: Soleil ou sous l'horizon (marge demi-diamètre) */}
-                <div
-                  className="absolute left-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-                  style={{ zIndex: Z.ui }}
-                >
-                  {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
-                    ? "Soleil sous l'horizon"
-                    : `Soleil Alt. ${formatDeg(astro.sun.alt, 0)} Az ${formatDeg(astro.sun.az, 1)} (${compass16(astro.sun.az)})`}
-                </div>
-
-                {/* Haut gauche: Appareil et zoom */}
-                <div
-                  className="absolute top-2 left-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-                  style={{ zIndex: Z.ui }}
-                >
-                  {deviceId === CUSTOM_DEVICE_ID
-                    ? (zoomOptions[0]?.label ?? '')
-                    : `${device.label} — ${zoom?.label ?? ''}`}
-                </div>
-
-                {/* Droite centrée: Altitude observateur (refAlt) */}
-                <div
-                  className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-                  style={{ zIndex: Z.ui }}
-                >
-                  {`Altitude : ${formatDeg(refAlt, 0)}`}
-                </div>
-              </>
-            )}
 
             {/* All sky rendering moved to SpaceView */}
-            <SpaceView
-              ref={spaceViewRef}
-              date={date}
-              utcMs={whenMs}
-              latDeg={location.lat}
-              lngDeg={location.lng}
-              viewport={viewport}
-              refAzDeg={refAz}
-              refAltDeg={refAlt}
-              fovXDeg={fovXDeg}
-              fovYDeg={fovYDeg}
-              projectionMode={projectionMode}
-              showEarth={showEarth}
-              showGrid={showGrid}
-              showAtmosphere={showAtmosphere}
-              showStars={showStars}
-              showMarkers={showMarkers}
-              showSun={showSun}
-              showMoon={showMoon}
-              showPhase={showPhase}
-              earthshine={earthshine}
-              showSunCard={showSunCard}
-              showMoonCard={showMoonCard}
-              debugMask={debugMask}
-              enlargeObjects={enlargeObjects}
-              glbLoading={glbLoading}
-              showPlanets={showPlanets}
-              rotOffsetDegX={rotOffsetDegX}
-              rotOffsetDegY={rotOffsetDegY}
-              rotOffsetDegZ={rotOffsetDegZ}
-              camRotDegX={camRotDegX}
-              camRotDegY={camRotDegY}
-              camRotDegZ={camRotDegZ}
-              onSceneReadyChange={setSceneReady}
-            />
+            <div ref={stageRef} className="absolute inset-0">
+              {/* SpaceView clipped to PhotoFrame viewport */}
+              <div
+                className="absolute"
+                style={{
+                  left: viewport.x,
+                  top: viewport.y,
+                  width: viewport.w,
+                  height: viewport.h,
+                  overflow: 'hidden',
+                }}
+              >
+              <SpaceView
+                ref={spaceViewRef}
+                date={date}
+                utcMs={whenMs}
+                latDeg={location.lat}
+                lngDeg={location.lng}
+                // Important: pass a viewport local to this container (0,0)
+                viewport={{ x: 0, y: 0, w: viewport.w, h: viewport.h }}
+                refAzDeg={refAz}
+                refAltDeg={refAlt}
+                fovXDeg={fovXDeg}
+                fovYDeg={fovYDeg}
+                projectionMode={projectionMode}
+                showEarth={showEarth}
+                showGrid={showGrid}
+                showAtmosphere={showAtmosphere}
+                showStars={showStars}
+                showMarkers={showMarkers}
+                showSun={showSun}
+                showMoon={showMoon}
+                showPhase={showPhase}
+                earthshine={earthshine}
+                showSunCard={showSunCard}
+                showMoonCard={showMoonCard}
+                debugMask={debugMask}
+                enlargeObjects={enlargeObjects}
+                glbLoading={glbLoading}
+                showPlanets={showPlanets}
+                rotOffsetDegX={rotOffsetDegX}
+                rotOffsetDegY={rotOffsetDegY}
+                rotOffsetDegZ={rotOffsetDegZ}
+                camRotDegX={camRotDegX}
+                camRotDegY={camRotDegY}
+                camRotDegZ={camRotDegZ}
+                onSceneReadyChange={setSceneReady}
+                // NEW: show SpaceView HUD when panels are hidden
+                showHud={!showPanels}
+                // NEW: camera/zoom label to render inside SpaceView
+                cameraLabel={deviceId === CUSTOM_DEVICE_ID
+                  ? (zoomOptions[0]?.label ?? '') 
+                  : `${device.label} — ${zoom?.label ?? ''}`}
+                overlayInfoString={`${overlayPlaceString}, ${cityLocalTimeString} heure locale (${utcTime})`}
+              />
+              </div>
+            </div>
           </div>
 
           {/* Photo frame masks (over objects, just below UI) */}

@@ -20,6 +20,9 @@ import { localUpAngleOnScreen, correctedSpriteRotationDeg } from "../../render/o
 // Render constants & registry
 import { Z, MOON_RENDER_DIAMETER } from "../../render/constants";
 import { PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "../../render/planetRegistry";
+// NEW: imports to format HUD values
+import { formatDeg } from "../../utils/format";
+import { compass16 } from "../../utils/compass";
 
 // Stage layers
 import HorizonOverlay from "../stage/HorizonOverlay";
@@ -96,6 +99,13 @@ export interface SpaceViewProps {
 
   // NEW: notify App when scene is ready to play
   onSceneReadyChange?: (ready: boolean) => void;
+
+  // NEW: Show the extra HUD (shown when App panels are hidden)
+  showHud?: boolean;
+
+  // NEW: camera/zoom label to display
+  cameraLabel?: string;
+  overlayInfoString?: string;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
@@ -109,6 +119,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     rotOffsetDegX, rotOffsetDegY, rotOffsetDegZ,
     camRotDegX, camRotDegY, camRotDegZ,
     onSceneReadyChange,
+    // NEW
+    showHud,
+    cameraLabel,
+    overlayInfoString,
   } = props;
 
   // Sun/Moon + sizes
@@ -874,6 +888,62 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         cruxColor={CRUX_COLOR}
         planets={planetMarkers}
       />
+
+      {/* NEW: Additional overlays when App panels are hidden (HUD) */}
+      {showHud && (
+        <>
+          {/* Top center: location/time */}
+          <div
+            className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+            style={{ zIndex: Z.ui }}
+          >
+            {overlayInfoString}
+          </div>
+          {/* Bas centré: Azimut observateur (refAzDeg) */}
+          <div
+            className="absolute left-1/2 bottom-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+            style={{ zIndex: Z.ui }}
+          >
+            {`Azimut : ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg)}`}
+          </div>
+
+          {/* Bas droite: Lune ou sous l'horizon (marge demi-diamètre) */}
+          <div
+            className="absolute right-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+            style={{ zIndex: Z.ui }}
+          >
+            {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
+              ? "Lune sous l'horizon"
+              : `Lune Alt. ${formatDeg(astro.moon.alt, 0)} Az ${formatDeg(astro.moon.az, 1)} (${compass16(astro.moon.az)})`}
+          </div>
+
+          {/* Bas gauche: Soleil ou sous l'horizon (marge demi-diamètre) */}
+          <div
+            className="absolute left-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+            style={{ zIndex: Z.ui }}
+          >
+            {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
+              ? "Soleil sous l'horizon"
+              : `Soleil Alt. ${formatDeg(astro.sun.alt, 0)} Az ${formatDeg(astro.sun.az, 1)} (${compass16(astro.sun.az)})`}
+          </div>
+
+          {/* Haut gauche: Appareil et zoom */}
+          <div
+            className="absolute top-2 left-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+            style={{ zIndex: Z.ui }}
+          >
+            {cameraLabel ?? ''}
+          </div>
+
+          {/* Gauche centrée: Altitude observateur (refAltDeg) */}
+          <div
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
+            style={{ zIndex: Z.ui }}
+          >
+            {`Altitude : ${formatDeg(refAltDeg, 0)}`}
+          </div>
+        </>
+      )}
     </div>
   );
 });
