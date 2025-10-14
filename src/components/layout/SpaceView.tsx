@@ -333,6 +333,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const az  = ((p as any).azDeg  ?? (p as any).az ) as number | undefined;
       if (alt == null || az == null) continue;
 
+      // Project center (may be outside)
       const proj = projectToScreen(
         az, alt,
         refAzDeg,
@@ -342,23 +343,17 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         fovXDeg, fovYDeg,
         projectionMode
       );
-
-      if (!proj.visibleX || !proj.visibleY) continue;
       if (!Number.isFinite(proj.x) || !Number.isFinite(proj.y)) continue;
 
-      const screen = {
-        x: viewport.x + proj.x,
-        y: viewport.y + proj.y,
-        visibleX: proj.visibleX,
-        visibleY: proj.visibleY,
-      };
+      const screenX = viewport.x + proj.x;
+      const screenY = viewport.y + proj.y;
 
       const pxPerDegX = proj.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
       const pxPerDegY = proj.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
       const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
 
       const appDiamDeg = Number((p as any).appDiamDeg ?? 0);
-      let sizePx = enlargeObjects ? MOON_RENDER_DIAMETER : (Number(appDiamDeg) > 0 ? appDiamDeg * pxPerDeg : 0);
+      let sizePx = enlargeObjects ? MOON_RENDER_DIAMETER : (appDiamDeg > 0 ? appDiamDeg * pxPerDeg : 0);
       const hasValidSize = Number.isFinite(sizePx) && sizePx > 0;
       if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
 
@@ -371,7 +366,13 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
       const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
 
-      // direction to Sun on-screen (projection-aware)
+      // Extended visibility: keep while disk intersects viewport
+      const half = sizePx / 2;
+      const intersectsX = !(screenX + half < viewport.x || screenX - half > viewport.x + viewport.w);
+      const intersectsY = !(screenY + half < viewport.y || screenY - half > viewport.y + viewport.h);
+      if (!intersectsX && !intersectsY) continue; // fully off in both axes
+
+      // Direction of Sun on screen (unchanged)
       let angleToSunDeg: number;
       {
         const u0 = altAzToVec(az, alt);
@@ -380,7 +381,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
         const EPS_RAD = toRad(0.05);
         if (1 - Math.abs(dotUS) < 1e-9) {
-          const alpha = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x);
+          const alpha = Math.atan2(sunScreen.y - screenY, sunScreen.x - screenX);
           angleToSunDeg = norm360(toDeg(alpha) + 90);
         } else {
           const t = normalize3([uS[0] - dotUS*u0[0], uS[1] - dotUS*u0[1], uS[2] - dotUS*u0[2]]);
@@ -406,8 +407,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           const xF = viewport.x + pF.x, yF = viewport.y + pF.y;
           const xB = viewport.x + pB.x, yB = viewport.y + pB.y;
 
-          const dxF = xF - screen.x, dyF = yF - screen.y;
-          const dxB = xB - screen.x, dyB = yB - screen.y;
+          const dxF = xF - screenX, dyF = yF - screenY;
+          const dxB = xB - screenX, dyB = yB - screenY;
 
           const mF = Math.hypot(dxF, dyF);
           const mB = Math.hypot(dxB, dyB);
@@ -417,14 +418,13 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           let deg = norm360(toDeg(alpha) + 90);
           if (useBack) deg = norm360(deg + 180);
           if (Math.max(mF, mB) < 1e-6) {
-            const a = Math.atan2(sunScreen.y - screen.y, sunScreen.x - screen.x);
+            const a = Math.atan2(sunScreen.y - screenY, sunScreen.x - screenX);
             deg = norm360(toDeg(a) + 90);
           }
           angleToSunDeg = deg;
         }
       }
 
-      // phase fraction (approx)
       let phaseFrac = Number((p as any).phaseFraction);
       if (!Number.isFinite(phaseFrac)) {
         const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
@@ -457,7 +457,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           (po as any)?.rotationToHorizonDegPlanet ??
           (po as any)?.rotationToHorizonDeg ??
           undefined;
-      } catch { /* ignore */ }
+      } catch {}
 
       const rotationDegPlanetScreen =
         Number.isFinite(rotationToHorizonDegPlanet) && Number.isFinite(localUpAnglePlanetDeg)
@@ -466,8 +466,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
       items.push({
         id,
-        x: screen.x, y: screen.y,
-        visibleX: screen.visibleX, visibleY: screen.visibleY,
+        x: screenX, y: screenY,
+        visibleX: intersectsX,
+        visibleY: intersectsY,
         sizePx,
         color,
         phaseFrac,
@@ -486,7 +487,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       });
     }
 
-    // draw farther (beyond Sun) below nearer
     items.sort((a, b) => b.distAU - a.distAU);
     return items;
   }, [
@@ -712,7 +712,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             fovYDeg={fovYDeg}
             viewport={viewport}
             debug={debugMask}
-            enlargeObjects={enlargeObjects}
+            enlargeObjects={false}
             showMarkers={showMarkers}
             projectionMode={projectionMode}
           />
