@@ -695,11 +695,15 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
     >
       <Canvas
         orthographic
+        //frameloop="always"                // force un rendu continu
         dpr={[1, 2]}
-        gl={{ alpha: true }}
-        onCreated={({ gl }) => {
+        gl={{ alpha: true, preserveDrawingBuffer: true }}   // <-- important pour la capture
+        onCreated={({ gl, invalidate }) => {
           gl.setClearColor(new THREE.Color(0x000000), 0);
           gl.toneMappingExposure = 2.2;
+          // force un rendu initial pour éviter une capture avant premier draw
+          invalidate?.();
+          requestAnimationFrame(() => invalidate?.());
         }}
       >
         {/* Preload models/materials/shaders for this canvas */}

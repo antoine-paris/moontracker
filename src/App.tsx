@@ -73,7 +73,6 @@ export default function App() {
     const node = spaceViewRef.current;
     if (!node) return;
 
-    // Tente de (re)mettre le focus sur le document
     if (!document.hasFocus()) {
       window.focus?.();
       await new Promise(r => setTimeout(r, 0));
@@ -82,12 +81,17 @@ export default function App() {
     const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
     const opts = { pixelRatio, backgroundColor: '#000' as const };
 
-    // write() immédiat (dans le geste), génération de blob différée
+    // petit helper: attendre 2 frames pour laisser peindre les canvases WebGL
+    const waitTwoFrames = async () =>
+      new Promise<void>(res => requestAnimationFrame(() => requestAnimationFrame(() => res())));
+
     const writeDeferred = async (mime: 'image/png' | 'image/jpeg') => {
       const ClipboardItemAny = (window as any).ClipboardItem;
       if (!navigator.clipboard?.write || !ClipboardItemAny) return false;
 
       const genBlob = async () => {
+        // attendre 2 frames juste avant la capture
+        await waitTwoFrames();
         const dataUrl = mime === 'image/png'
           ? await toPng(node, opts)
           : await toJpeg(node, { ...opts, quality: 0.92 });
@@ -105,10 +109,11 @@ export default function App() {
     };
 
     try {
-      // 1) PNG (souvent mieux supporté), 2) JPEG, 3) fallback téléchargement
       if (await writeDeferred('image/png')) return;
       if (await writeDeferred('image/jpeg')) return;
 
+      // fallback: téléchargement
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
       const dataUrl = await toJpeg(node, { ...opts, quality: 0.92 });
       const a = document.createElement('a');
       a.href = dataUrl;
