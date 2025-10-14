@@ -1,5 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { LocationOption } from '../../data/locations';
+import {
+  clampLat,
+  normLng,
+  haversineKm,
+  bearingDeg,
+  dir8FullFr,
+  moveDest,
+  capNSDistanceKm,
+} from '../../utils/geo';
 
 type Props = {
   locations: LocationOption[];
@@ -10,88 +19,6 @@ type Props = {
   collapsed: boolean;
   isActive: boolean;
 };
-
-function clampLat(x: number) {
-  return Math.max(-90, Math.min(90, x));
-}
-function normLng(deg: number): number {
-  let x = ((deg + 180) % 360 + 360) % 360 - 180;
-  if (Object.is(x, -180)) x = 180;
-  return x;
-}
-
-// Great-circle helpers
-const R_EARTH_KM = 6371;
-const LAT_CAP_DEG = 89;
-function toRad(d: number) { return (d * Math.PI) / 180; }
-function toDeg(r: number) { return (r * 180) / Math.PI; }
-
-function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const φ1 = toRad(lat1), φ2 = toRad(lat2);
-  const Δφ = toRad(lat2 - lat1);
-  const Δλ = toRad(lon2 - lon1);
-  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R_EARTH_KM * c;
-}
-
-function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const φ1 = toRad(lat1), φ2 = toRad(lat2);
-  const λ1 = toRad(lon1), λ2 = toRad(lon2);
-  const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
-  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
-  const θ = Math.atan2(y, x);
-  return (toDeg(θ) + 360) % 360;
-}
-
-function dir8Fr(bearing: number): 'Nord' | 'Nord-Est' | 'Est' | 'Sud-Est' | 'Sud' | 'Sud-Ouest' | 'Ouest' | 'Nord-Ouest' {
-  const dirs: Array<'Nord'|'Nord-Est'|'Est'|'Sud-Est'|'Sud'|'Sud-Ouest'|'Ouest'|'Nord-Ouest'> = [
-    'Nord','Nord-Est','Est','Sud-Est','Sud','Sud-Ouest','Ouest','Nord-Ouest'
-  ];
-  const idx = Math.round(((bearing % 360) / 45)) % 8;
-  return dirs[idx];
-}
-
-function moveDest(latDeg: number, lngDeg: number, distanceKm: number, bearingDegIn: number) {
-  const δ = distanceKm / R_EARTH_KM;
-  const θ = toRad(bearingDegIn);
-  const φ1 = toRad(latDeg);
-  const λ1 = toRad(lngDeg);
-  const sinφ1 = Math.sin(φ1), cosφ1 = Math.cos(φ1);
-  const sinδ = Math.sin(δ), cosδ = Math.cos(δ);
-
-  const sinφ2 = sinφ1 * cosδ + cosφ1 * sinδ * Math.cos(θ);
-  const φ2 = Math.asin(Math.max(-1, Math.min(1, sinφ2)));
-
-  const y = Math.sin(θ) * sinδ * cosφ1;
-  const x = cosδ - sinφ1 * sinφ2;
-  const λ2 = λ1 + Math.atan2(y, x);
-
-  let lat2 = toDeg(φ2);
-  let lng2 = toDeg(λ2);
-  lat2 = clampLat(lat2);
-  lng2 = normLng(lng2);
-  return { lat: lat2, lng: lng2 };
-}
-
-// Limit NS move so latitude stays within ±89°
-function capNSDistanceKm(latDeg: number, distanceKm: number, bearingDegIn: number) {
-  const b = ((bearingDegIn % 360) + 360) % 360;
-  if (b !== 0 && b !== 180) return distanceKm; // only cap for N/S
-  const φ1 = toRad(latDeg);
-  const φCap = toRad(LAT_CAP_DEG);
-  const δWanted = distanceKm / R_EARTH_KM;
-  let maxδ = 0;
-  if (b === 0) {
-    // North: φ2 = φ1 + δ ≤ φCap → δ ≤ φCap - φ1
-    maxδ = Math.max(0, φCap - φ1);
-  } else {
-    // South: φ2 = φ1 - δ ≥ -φCap → δ ≤ φ1 + φCap
-    maxδ = Math.max(0, φ1 + φCap);
-  }
-  const δAdj = Math.min(δWanted, maxδ);
-  return δAdj * R_EARTH_KM;
-}
 
 export default function SidebarLocationsCoord({
   locations,
@@ -326,7 +253,7 @@ export default function SidebarLocationsCoord({
     const km = Math.round(nearest.km);
     if (!Number.isFinite(km)) return { line1: '', city: '' };
     if (km <= 0) return { line1: '', city: `${nearest.city.label}` };
-    const dir = dir8Fr(nearest.bearingFromCity);
+    const dir = dir8FullFr(nearest.bearingFromCity);
     const prep = (dir === 'Est' || dir === 'Ouest') ? 'à l’' : 'au ';
     return {
       line1: `à ${km}km ${prep}${dir} de `,
