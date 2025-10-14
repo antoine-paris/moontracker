@@ -47,6 +47,7 @@ import PhotoFrame from "./components/stage/PhotoFrame"; // + add
 import SpaceView from "./components/layout/SpaceView";
 import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
+import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -178,9 +179,18 @@ export default function App() {
 
   // If user deletes current city externally (rare), auto-fix
   useEffect(() => {
-    if (location.id === 'loading') return;
-    if (location.id.startsWith('np@') || location.id.startsWith('sp@')) return;
+    // keep custom/ephemeral IDs as-is
+    if (
+      location.id === 'loading' ||
+      location.id.startsWith('np@') ||
+      location.id.startsWith('sp@') ||
+      location.id.startsWith('g@') ||
+      location.id.startsWith('url@')
+    ) {
+      return;
+    }
     if (locations.length && !locations.find(l => l.id === location.id)) {
+      // fallback to first known location (or any policy you prefer)
       setLocation(locations[0]);
     }
   }, [locations, location.id]);
@@ -396,6 +406,38 @@ export default function App() {
     const parts = (location?.label ?? '').split('—');
     return (parts[1] ?? parts[0]).trim();
   }, [location]);
+
+  // Build overlay location string:
+  // - If current lat/lng match the canonical city coords → "City"
+  // - Else → "Lat: X.XXX Lng: X.XXX (123 km SO de City)"
+  const overlayPlaceString = useMemo(() => {
+    const EPS = 1e-9;
+    const canonical = locations.find(l => l.id === location.id);
+    const coordsMatch =
+      !!canonical &&
+      Math.abs(location.lat - canonical.lat) <= EPS &&
+      Math.abs(normLngGeo(location.lng) - normLngGeo(canonical.lng)) <= EPS;
+
+    if (canonical && coordsMatch) {
+      return cityName;
+    }
+
+    if (!locations.length) {
+      return `Lat: ${location.lat.toFixed(3)} Lng: ${location.lng.toFixed(3)}`;
+    }
+
+    let best = locations[0];
+    let bestD = Number.POSITIVE_INFINITY;
+    for (const c of locations) {
+      const d = haversineKm(location.lat, location.lng, c.lat, c.lng);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    const km = Math.round(bestD);
+    const dir = dir8AbbrevFr(bearingDeg(best.lat, best.lng, location.lat, location.lng));
+    const nearestCityName = labelToCity(best.label);
+
+    return `Lat: ${location.lat.toFixed(3)} Lng: ${location.lng.toFixed(3)} (${km} km ${dir} de ${nearestCityName})`;
+  }, [location.id, location.lat, location.lng, locations, cityName]);
 
   // view deltas (added by directional keypad)
   const [deltaAzDeg, setDeltaAzDeg] = useState(0);
@@ -728,6 +770,9 @@ export default function App() {
       setIsAnimating,
       speedMinPerSec,
       setSpeedMinPerSec,
+      // ADD: DirectionalKeypad deltas from URL
+      setDeltaAzDeg,
+      setDeltaAltDeg,
     });
   }, [locationsLoading, locations]); // keep same gating as before
 
@@ -768,6 +813,9 @@ export default function App() {
       allPlanetIds,
       isAnimating,
       speedMinPerSec,
+      // ADD: DirectionalKeypad deltas
+      deltaAzDeg,
+      deltaAltDeg,
     });
   }, [
     locations, location, whenMs,
@@ -777,7 +825,9 @@ export default function App() {
     showSunCard, showMoonCard, enlargeObjects, debugMask,
     showPanels,
     showPlanets,
-    isAnimating, speedMinPerSec, allPlanetIds
+    isAnimating, speedMinPerSec, allPlanetIds,
+    // ADD: deltas
+    deltaAzDeg, deltaAltDeg,
   ]);
 
   // --- JSX -------------------------------------------------------------------
@@ -905,7 +955,8 @@ export default function App() {
                 className="absolute left-1/2 top-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
                 style={{ zIndex: Z.ui }}
               >
-                {`${cityName}, ${cityLocalTimeString} heure locale (${utcTime})`}
+                {/* was: {`${cityName}, ${cityLocalTimeString} heure locale (${utcTime})`} */}
+                {`${overlayPlaceString}, ${cityLocalTimeString} heure locale (${utcTime})`}
               </div>
             )}
             {/* Overlays additionnels en mode interface cachée */}

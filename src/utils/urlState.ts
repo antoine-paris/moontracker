@@ -60,6 +60,13 @@ function shortFloat(n: number, decimals = 1): string {
   return s.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1');
 }
 
+// Normalize longitude to [-180,180], with 180 instead of -180 for consistency
+function normLng(lon: number) {
+  let x = ((lon + 180) % 360 + 360) % 360 - 180;
+  if (Object.is(x, -180)) x = 180;
+  return x;
+}
+
 function parseBool(v: string | null, def = false) {
   if (v == null) return def;
   const s = v.toLowerCase();
@@ -207,6 +214,10 @@ export type UrlInitArgs = {
   setIsAnimating: (b: boolean) => void;
   speedMinPerSec: number;
   setSpeedMinPerSec: (n: number) => void;
+
+  // DirectionalKeypad deltas
+  setDeltaAzDeg: (n: number) => void;
+  setDeltaAltDeg: (n: number) => void;
 };
 
 export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
@@ -220,6 +231,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setShowPanels,
     allPlanetIds, setShowPlanets,
     isAnimating, setIsAnimating, speedMinPerSec, setSpeedMinPerSec,
+    setDeltaAzDeg, setDeltaAltDeg,
   } = args;
 
   // Compact time: t = base36 unix seconds
@@ -248,32 +260,15 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     }
   }
 
-  // Compact location: l=id or g=geohash; fallback to old loc/lat,lng
-  const lId = q.get('l') ?? q.get('loc');
+  // Compact location: prefer explicit lat/lng, else g=geohash, else l=id
   const gh = q.get('g');
+  const lId = q.get('l') ?? q.get('loc');
   const tzQ = q.get('tz');
-  const labelQ = q.get('label'); // keep supporting old
+  const labelQ = q.get('label'); // legacy
   const latQ = q.get('lat');
   const lngQ = q.get('lng');
 
-  if (lId) {
-    const found = locations.find(l => l.id === lId);
-    if (found) setLocation(found);
-  } else if (gh) {
-    try {
-      const { lat, lon } = geohashDecode(gh);
-      const tz = tzQ || 'UTC';
-      setLocation({
-        id: `g@${gh}`,
-        label: labelQ || `Lat ${lat.toFixed(4)}, Lng ${lon.toFixed(4)}`,
-        lat,
-        lng: lon,
-        timeZone: tz,
-      });
-    } catch {
-      // ignore if invalid, fallback next
-    }
-  } else if (latQ && lngQ) {
+  if (latQ && lngQ) {
     const lat = Number(latQ);
     const lng = Number(lngQ);
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
@@ -287,6 +282,23 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         timeZone: tz,
       });
     }
+  } else if (gh) {
+    try {
+      const { lat, lon } = geohashDecode(gh);
+      const tz = tzQ || 'UTC';
+      setLocation({
+        id: `g@${gh}`,
+        label: labelQ || `Lat ${lat.toFixed(4)}, Lng ${lon.toFixed(4)}`,
+        lat,
+        lng: lon,
+        timeZone: tz,
+      });
+    } catch {
+      // ignore invalid geohash, fallback next
+    }
+  } else if (lId) {
+    const found = locations.find(l => l.id === lId);
+    if (found) setLocation(found);
   }
 
   // Follow: compact F=index(base36) else old 'follow'
@@ -298,6 +310,20 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
   } else {
     const f = q.get('follow');
     if (f) setFollow(parseEnum(f, FOLLOW_ALLOWED as any, 'LUNE'));
+  }
+
+  // DirectionalKeypad deltas (degrees)
+  {
+    const da = q.get('da');
+    const dh = q.get('dh');
+    if (da != null) {
+      const v = Number(da);
+      if (Number.isFinite(v)) setDeltaAzDeg(v);
+    }
+    if (dh != null) {
+      const v = Number(dh);
+      if (Number.isFinite(v)) setDeltaAltDeg(v);
+    }
   }
 
   // Projection: compact p=index(base36) else old 'proj'
@@ -453,13 +479,19 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     }
   }
 
-  // Speed (compact first)
-  const s = q.get('s');
-  if (s != null) {
-    const v = fromB36Int(s);
+  // Speed (precise decimal first, then compact/int legacy, then verbose)
+  const sr = q.get('sr'); // precise decimal speed
+  if (sr != null) {
+    const v = Number(sr);
     if (Number.isFinite(v)) setSpeedMinPerSec(v);
-  } else if (q.get('spd') != null) {
-    setSpeedMinPerSec(parseNum(q.get('spd'), speedMinPerSec));
+  } else {
+    const s = q.get('s');
+    if (s != null) {
+      const v = fromB36Int(s);
+      if (Number.isFinite(v)) setSpeedMinPerSec(v);
+    } else if (q.get('spd') != null) {
+      setSpeedMinPerSec(parseNum(q.get('spd'), speedMinPerSec));
+    }
   }
 }
 
@@ -510,6 +542,10 @@ export type BuildShareUrlArgs = {
   isAnimating: boolean;
   speedMinPerSec: number;
 
+  // DirectionalKeypad deltas
+  deltaAzDeg: number;
+  deltaAltDeg: number;
+
   baseUrl?: string;
   appendHash?: string;
 };
@@ -524,20 +560,34 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
     showPanels,
     showPlanets, allPlanetIds,
     isAnimating, speedMinPerSec,
+    // NEW
+    deltaAzDeg, deltaAltDeg,
     baseUrl, appendHash,
   } = args;
 
   const q = new URLSearchParams();
 
-  // location: prefer compact l=id if known, else g=geohash (+tz if not UTC)
-  const hasId = locations.find(l => l.id === location.id);
-  if (hasId) {
+  // location:
+  // - If id matches a known city AND coordinates are exactly the canonical ones → l=id
+  // - Else → g=geohash(9) + lat/lng decimals (+tz if not UTC)
+  const matchById = locations.find(l => l.id === location.id);
+  const coordsMatch =
+    !!matchById &&
+    Math.abs(location.lat - matchById.lat) <= 1e-9 &&
+    Math.abs(normLng(location.lng) - normLng(matchById.lng)) <= 1e-9;
+
+  if (matchById && coordsMatch) {
     q.set('l', location.id);
   } else {
-    const gh = geohashEncode(location.lat, location.lng, 7);
+    // precise numeric coords for exact reproduction
+    q.set('lat', location.lat.toFixed(6));
+    q.set('lng', location.lng.toFixed(6));
+    // compact/geohash for backwards compatibility and brevity
+    const gh = geohashEncode(location.lat, location.lng, 9);
     q.set('g', gh);
-    if (location.timeZone && location.timeZone !== 'UTC') q.set('tz', location.timeZone);
-    // label omitted for compactness
+    if (location.timeZone && location.timeZone !== 'UTC') {
+      q.set('tz', location.timeZone);
+    }
   }
 
   // time: base36 unix seconds
@@ -587,8 +637,13 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
   else if (pMask === allMask) q.set('pl', 'a');
   else q.set('pl', toB36Int(pMask));
 
-  // speed as base36
-  q.set('s', toB36Int(speedMinPerSec));
+  // speed: precise decimal + legacy compact
+  q.set('sr', shortFloat(speedMinPerSec, 6));         // precise
+  q.set('s', toB36Int(Math.round(speedMinPerSec)));   // legacy
+
+  // DirectionalKeypad deltas: only include when non-zero (keep URL short)
+  if (Math.abs(deltaAzDeg) > 1e-6) q.set('da', shortFloat(deltaAzDeg, 3));
+  if (Math.abs(deltaAltDeg) > 1e-6) q.set('dh', shortFloat(deltaAltDeg, 3));
 
   const base = baseUrl ?? `${window.location.origin}${window.location.pathname}`;
   const hash = appendHash ?? (window.location.hash || '');
