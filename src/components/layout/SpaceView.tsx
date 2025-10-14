@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect, useCallback } from "react";
+import React, { useMemo, useState, useEffect, useCallback, forwardRef } from "react";
 
 // Astro core
 import { getSunAndMoonAltAzDeg, getSunOrientationAngles, sunOnMoon } from "../../astro/aeInterop";
@@ -98,7 +98,7 @@ export interface SpaceViewProps {
   onSceneReadyChange?: (ready: boolean) => void;
 }
 
-export default function SpaceView(props: SpaceViewProps) {
+export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
   const {
     date, utcMs, latDeg, lngDeg,
     viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
@@ -607,7 +607,7 @@ export default function SpaceView(props: SpaceViewProps) {
   }, [planetsRender]);
 
   return (
-    <div className="absolute inset-0">
+    <div ref={ref} className="absolute inset-0">
       {/* Horizon & Cardinal markers */}
       <div
         className="absolute"
@@ -876,4 +876,4 @@ export default function SpaceView(props: SpaceViewProps) {
       />
     </div>
   );
-}
+});

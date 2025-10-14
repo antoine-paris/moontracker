@@ -48,11 +48,15 @@ import SpaceView from "./components/layout/SpaceView";
 import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
+import { toJpeg, toPng } from 'html-to-image';
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
+
+  // NEW: ref to SpaceView root
+  const spaceViewRef = useRef<HTMLDivElement | null>(null);
 
   // dynamic locations loaded from CSV
   const [locations, setLocations] = useState<LocationOption[]>([]);
@@ -64,6 +68,58 @@ export default function App() {
 
   // NEW: Scene readiness state
   const [sceneReady, setSceneReady] = useState<boolean>(false);
+
+  const handleCopyJpeg = React.useCallback(async () => {
+    const node = spaceViewRef.current;
+    if (!node) return;
+
+    // Tente de (re)mettre le focus sur le document
+    if (!document.hasFocus()) {
+      window.focus?.();
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
+    const opts = { pixelRatio, backgroundColor: '#000' as const };
+
+    // write() immédiat (dans le geste), génération de blob différée
+    const writeDeferred = async (mime: 'image/png' | 'image/jpeg') => {
+      const ClipboardItemAny = (window as any).ClipboardItem;
+      if (!navigator.clipboard?.write || !ClipboardItemAny) return false;
+
+      const genBlob = async () => {
+        const dataUrl = mime === 'image/png'
+          ? await toPng(node, opts)
+          : await toJpeg(node, { ...opts, quality: 0.92 });
+        const res = await fetch(dataUrl);
+        return await res.blob();
+      };
+
+      try {
+        await navigator.clipboard.write([new ClipboardItemAny({ [mime]: genBlob() })]);
+        return true;
+      } catch (err) {
+        console.warn('clipboard.write failed:', err);
+        return false;
+      }
+    };
+
+    try {
+      // 1) PNG (souvent mieux supporté), 2) JPEG, 3) fallback téléchargement
+      if (await writeDeferred('image/png')) return;
+      if (await writeDeferred('image/jpeg')) return;
+
+      const dataUrl = await toJpeg(node, { ...opts, quality: 0.92 });
+      const a = document.createElement('a');
+      a.href = dataUrl;
+      a.download = 'spaceview.jpg';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    } catch (e) {
+      console.error('Capture/Clipboard error:', e);
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -878,6 +934,8 @@ export default function App() {
             // NEW: wire play/pause
             isAnimating={isAnimating}
             onToggleAnimating={() => setIsAnimating(v => !v)}
+            // NEW: wire T1
+            onCopyJpeg={handleCopyJpeg}
           />
 
           {/* Top UI bar (add right padding so it doesn't sit under the toolbar) */}
@@ -1025,6 +1083,7 @@ export default function App() {
 
             {/* All sky rendering moved to SpaceView */}
             <SpaceView
+              ref={spaceViewRef}
               date={date}
               utcMs={whenMs}
               latDeg={location.lat}
@@ -1056,7 +1115,6 @@ export default function App() {
               camRotDegX={camRotDegX}
               camRotDegY={camRotDegY}
               camRotDegZ={camRotDegZ}
-              // NEW: receive readiness from scene
               onSceneReadyChange={setSceneReady}
             />
           </div>

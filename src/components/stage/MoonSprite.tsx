@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
-import { Z, NASA_IMG } from "../../render/constants";
+import { Z } from "../../render/constants";
 import { sampleTerminatorLUT } from "../../astro/lut";
+import moonImg from "../../assets/moon.2709.jpg";
 
 type Props = {
   x: number; y: number;
@@ -106,7 +107,7 @@ export default function MoonSprite(props: Props) {
 
         {showPhase && (<circle cx="312" cy="312" r="312" fill="#0b0b0b" clipPath={clipUrl} />)}
         {showPhase && earthshine && (<circle cx="312" cy="312" r="312" fill={earthFillUrl} clipPath={clipUrl} mask={darkMaskUrl} />)}
-        <image href={NASA_IMG} x={-53} y={-53} width={730} height={730} clipPath={clipUrl} mask={showPhase ? litMaskUrl : undefined} preserveAspectRatio="xMidYMid slice" style={{ filter: "brightness(0.9)" }} />
+        <image href={moonImg} x={-53} y={-53} width={730} height={730} clipPath={clipUrl} mask={showPhase ? litMaskUrl : undefined} preserveAspectRatio="xMidYMid slice" style={{ filter: "brightness(0.9)" }} />
       </svg>
 
       {debugMask && (

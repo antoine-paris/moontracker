@@ -4,14 +4,16 @@ type Props = {
   showPanels: boolean;
   onTogglePanels: () => void;
   zIndex?: number;
-  shareUrl: string; // added
-  // NEW: animation control
+  shareUrl: string;
   isAnimating: boolean;
   onToggleAnimating: () => void;
+  // NEW
+  onCopyJpeg: () => void;
 };
 
-export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000, shareUrl, isAnimating, onToggleAnimating }: Props) {
+export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000, shareUrl, isAnimating, onToggleAnimating, onCopyJpeg }: Props) {
   const [copied, setCopied] = React.useState(false);
+  const [captured, setCaptured] = React.useState(false);
 
   const copyUrl = async () => {
     const url = shareUrl || window.location.href;
@@ -63,14 +65,28 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
         {copied ? "✓" : "🔗"}
       </button>
 
-      {/* TBD buttons (placeholders) */}
+      {/* T1: Capture -> JPG/PNG -> Clipboard */}
       <button
-        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 opacity-50 cursor-not-allowed"
-        title="À venir"
-        aria-label="Fonction à venir"
+        onPointerDown={async (e) => {
+          e.preventDefault();
+          try {
+            await Promise.resolve(onCopyJpeg());
+            setCaptured(true); // stay ✓ until shareUrl changes
+            setTimeout(() => setCaptured(false), 1500);
+          } catch {
+            // ignore
+          }
+        }}
+        // Empêche un second déclenchement via click après pointerdown
+        onClick={(e) => e.preventDefault()}
+        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+        title={captured ? "Image copiée !" : "Copier l’image (JPG/PNG) du rendu"}
+        aria-label="Copier l’image du rendu"
       >
-        T1
+        {captured ? "✓" : "📷"}
       </button>
+
+      {/* T2 (placeholder) */}
       <button
         className="w-10 h-10 rounded-md border border-white/30 bg-black/50 opacity-50 cursor-not-allowed"
         title="À venir"

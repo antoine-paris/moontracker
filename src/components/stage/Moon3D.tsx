@@ -660,10 +660,19 @@ export default function Moon3D({
         willChange: 'transform',
       }}
     >
-    <Canvas orthographic dpr={[1, 2]} gl={{ alpha: true }} onCreated={({ gl }) => {
+    <Canvas
+      orthographic
+      dpr={[1, 2]}
+      frameloop="always"                // force un rendu continu
+      gl={{ alpha: true, preserveDrawingBuffer: true }}
+      onCreated={({ gl, invalidate }) => {
         gl.setClearColor(new THREE.Color(0x000000), 0);
         gl.toneMappingExposure = 2.2;
-      }}>
+        // garantit un (re)rendu même si le mode global est "demand"
+        invalidate();
+        requestAnimationFrame(() => invalidate());
+      }}
+    >
         <OrthographicCamera
            makeDefault
            left={-canvasPx / 2}
