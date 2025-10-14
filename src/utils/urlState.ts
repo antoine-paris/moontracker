@@ -379,23 +379,33 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setDeviceId(CUSTOM_DEVICE_ID);
     setZoomId('custom-theo');
 
-    // CHANGED: accept base36 (compact) or decimal for 'f'
-    const fmm = focal ? parseIntB36OrDec(focal) : NaN;
-    if (Number.isFinite(fmm) && fmm > 0) {
-      // focal → FOV (24x36 eq)
-      const FF_W = 36, FF_H = 24;
-      const fx = 2 * Math.atan(FF_W / (2 * fmm)) * 180 / Math.PI;
-      const fy = 2 * Math.atan(FF_H / (2 * fmm)) * 180 / Math.PI;
-      setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
-      setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
+    // Read link flag first
+    const linkFlag = link != null ? parseBool(link, linkFov) : linkFov;
+    setLinkFov(linkFlag);
+
+    const fxQ = fovx ? Number(fovx) : NaN;
+    const fyQ = fovy ? Number(fovy) : NaN;
+
+    if (!linkFlag && (Number.isFinite(fxQ) || Number.isFinite(fyQ))) {
+      // Preserve asymmetric FOV when unlinking
+      if (Number.isFinite(fxQ)) setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
+      if (Number.isFinite(fyQ)) setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
     } else {
-      // or explicit fovx/fovy
-      const fx = fovx ? Number(fovx) : NaN;
-      const fy = fovy ? Number(fovy) : NaN;
-      if (Number.isFinite(fx)) setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
-      if (Number.isFinite(fy)) setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
+      // accept base36 (compact) or decimal for 'f'
+      const fmm = focal ? parseIntB36OrDec(focal) : NaN;
+      if (Number.isFinite(fmm) && fmm > 0) {
+        // focal → FOV (24x36 eq)
+        const FF_W = 36, FF_H = 24;
+        const fx = 2 * Math.atan(FF_W / (2 * fmm)) * 180 / Math.PI;
+        const fy = 2 * Math.atan(FF_H / (2 * fmm)) * 180 / Math.PI;
+        setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
+        setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
+      } else {
+        // fallback to explicit x/y if provided
+        if (Number.isFinite(fxQ)) setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
+        if (Number.isFinite(fyQ)) setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
+      }
     }
-    if (link != null) setLinkFov(parseBool(link, linkFov));
   }
 
   // Visibility toggles + panels + animation (compact bitmask first)
@@ -610,18 +620,21 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
   // device/zoom or custom focal/FOV
   q.set('d', deviceId);
   if (deviceId === CUSTOM_DEVICE_ID) {
-    // derive 24x36 eq focal from fovX
-    const FF_W = 36;
-    const rad = (Math.PI / 180) * fovXDeg;
-    const tanHalf = Math.tan(rad / 2);
-    if (tanHalf > 0) {
-      const f = FF_W / (2 * tanHalf);
-      q.set('f', toB36Int(Math.round(f))); // base36 for shorter
-    }
+    // Always persist linkFov
+    q.set('k', linkFov ? '1' : '0');
+
     if (linkFov) {
-      q.set('k', '1'); // linkFov only when true
+      // derive 24x36 eq focal from horizontal FOV (compact)
+      const FF_W = 36;
+      const rad = (Math.PI / 180) * fovXDeg;
+      const tanHalf = Math.tan(rad / 2);
+      if (tanHalf > 0) {
+        const f = FF_W / (2 * tanHalf);
+        q.set('f', toB36Int(Math.round(f))); // base36 for shorter
+      }
+      // no x/y when linked
     } else {
-      // include explicit fov for completeness when unlinking
+      // unlink: preserve asymmetric FOVs; omit 'f'
       q.set('x', shortFloat(fovXDeg, 1));
       q.set('y', shortFloat(fovYDeg, 1));
     }
