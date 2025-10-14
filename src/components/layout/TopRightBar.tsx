@@ -14,6 +14,7 @@ type Props = {
 export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000, shareUrl, isAnimating, onToggleAnimating, onCopyJpeg }: Props) {
   const [copied, setCopied] = React.useState(false);
   const [captured, setCaptured] = React.useState(false);
+  const [isCapturing, setIsCapturing] = React.useState(false);
 
   const copyUrl = async () => {
     const url = shareUrl || window.location.href;
@@ -67,23 +68,28 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
 
       {/* T1: Capture -> JPG/PNG -> Clipboard */}
       <button
+        disabled={isCapturing}
         onPointerDown={async (e) => {
           e.preventDefault();
+          if (isCapturing) return;
+          setIsCapturing(true);
           try {
             await Promise.resolve(onCopyJpeg());
-            setCaptured(true); // stay ✓ until shareUrl changes
+            setCaptured(true); // show ✓
             setTimeout(() => setCaptured(false), 1500);
           } catch {
             // ignore
+          } finally {
+            setIsCapturing(false);
           }
         }}
         // Empêche un second déclenchement via click après pointerdown
         onClick={(e) => e.preventDefault()}
-        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
-        title={captured ? "Image copiée !" : "Copier l’image (JPG/PNG) du rendu"}
-        aria-label="Copier l’image du rendu"
+        className={`w-10 h-10 rounded-md border border-white/30 bg-black/50 ${isCapturing ? 'cursor-wait' : 'hover:bg-black/70'}`}
+        title={captured ? "Image copiée !" : isCapturing ? "Capture en cours…" : "Copier l’image (JPG/PNG) du rendu"}
+        aria-label={captured ? "Image copiée" : isCapturing ? "Capture en cours" : "Copier l’image du rendu"}
       >
-        {captured ? "✓" : "📷"}
+        {isCapturing ? "⏳" : captured ? "✓" : "📷"}
       </button>
 
       {/* T2 (placeholder) */}
