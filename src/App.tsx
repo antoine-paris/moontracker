@@ -865,6 +865,9 @@ export default function App() {
             onTogglePanels={() => setShowPanels(v => !v)}
             zIndex={Z.ui + 30}
             shareUrl={shareUrl}
+            // NEW: wire play/pause
+            isAnimating={isAnimating}
+            onToggleAnimating={() => setIsAnimating(v => !v)}
           />
 
           {/* Top UI bar (add right padding so it doesn't sit under the toolbar) */}
