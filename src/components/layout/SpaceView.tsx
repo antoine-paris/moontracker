@@ -125,6 +125,13 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     overlayInfoString,
   } = props;
 
+
+  const domainFromBrowser = useMemo(() => {
+    if (typeof window === 'undefined' || !window?.location) return 'MoonTracker';
+    const hn = window.location.hostname || '';
+    return hn.replace(/^www\./, '') || 'MoonTracker';
+  }, []);
+
   // Sun/Moon + sizes
   const astro = useMemo(() => {
     const both = getSunAndMoonAltAzDeg(date, latDeg, lngDeg);
@@ -892,7 +899,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       {/* NEW: Additional overlays when App panels are hidden (HUD) */}
       {showHud && (
         <>
-          {/* Top center: location/time */}
+          {/* Top right: location/time */}
           <div
             className="absolute right-2 top-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
@@ -932,7 +939,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             className="absolute top-2 left-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
-            {enlargeObjects ? cameraLabel + ' (Taille des objets exagérée)'  : cameraLabel ?? '' }
+            <div className="flex flex-col leading-tight">
+              <div>Simulation {domainFromBrowser}</div>
+              {cameraLabel ? <div>{cameraLabel}</div> : null}
+              {enlargeObjects ? <div>(Taille des objets exagérée artificiellement)</div> : null}
+            </div>
           </div>
 
           {/* Gauche centrée: Altitude observateur (refAltDeg) */}
