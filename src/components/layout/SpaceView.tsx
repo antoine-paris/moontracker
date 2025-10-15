@@ -125,6 +125,15 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     overlayInfoString,
   } = props;
 
+  // Split "Place, Date..." into two lines
+  const overlaySplit = useMemo(() => {
+    const s = overlayInfoString ?? '';
+    const i = s.indexOf(',');
+    if (i >= 0) {
+      return { place: s.slice(0, i).trim(), date: s.slice(i + 1).trim() };
+    }
+    return { place: s, date: '' };
+  }, [overlayInfoString]);
 
   const domainFromBrowser = useMemo(() => {
     if (typeof window === 'undefined' || !window?.location) return 'MoonTracker';
@@ -947,7 +956,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             className="absolute right-2 top-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
-            {overlayInfoString}
+            <div className="flex flex-col leading-tight items-end text-right">
+              <div>{overlaySplit.place}</div>
+              {overlaySplit.date ? <div>{overlaySplit.date}</div> : null}
+            </div>
           </div>
           {/* Bas centré: Azimut observateur (refAzDeg) */}
           <div
