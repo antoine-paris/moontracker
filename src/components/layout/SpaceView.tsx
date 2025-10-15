@@ -1006,7 +1006,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
-            {`Altitude : ${formatDeg(refAltDeg, 0)}`}
+             Altitude : <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
           </div>
         </>
       )}
