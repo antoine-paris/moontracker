@@ -7,7 +7,6 @@ type Props = {
   shareUrl: string;
   isAnimating: boolean;
   onToggleAnimating: () => void;
-  // NEW
   onCopyJpeg: () => void;
 };
 

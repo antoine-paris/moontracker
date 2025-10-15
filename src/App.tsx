@@ -55,7 +55,7 @@ export default function App() {
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
 
-  // NEW: ref to SpaceView root
+  // ref to SpaceView root
   const spaceViewRef = useRef<HTMLDivElement | null>(null);
 
   // dynamic locations loaded from CSV
@@ -66,7 +66,7 @@ export default function App() {
   const [glbLoading, setGlbLoading] = useState<boolean>(false);
   const [glbProgress, setGlbProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
 
-  // NEW: Scene readiness state
+  // Scene readiness state
   const [sceneReady, setSceneReady] = useState<boolean>(false);
 
     const handleCopyJpeg = React.useCallback(async () => {
@@ -451,7 +451,7 @@ export default function App() {
   // Toggle for locations sidebar
   // const [showLocations, setShowLocations] = useState(true); // - remove
   // Toggle UI tool/info panels (top and bottom)
-  const [showPanels, setShowPanels] = useState(true);
+  const [showPanels, setShowPanels] = useState(false);
   // City label derived from location label (format "Pays — Ville")
   const cityName = useMemo(() => {
     const parts = (location?.label ?? '').split('—');
@@ -781,9 +781,18 @@ export default function App() {
   useEffect(() => {
     if (urlInitedRef.current) return;
     if (locationsLoading) return; // wait for locations list
-    urlInitedRef.current = true;
+    
+    const search = typeof window !== 'undefined' ? (window.location.search ?? '') : '';
+    const hasQuery =
+      !!search &&
+      search !== '?' &&
+      new URLSearchParams(search).toString().length > 0;
 
-    const q = new URLSearchParams(window.location.search);
+    // Mark as initialized even if no query, so startup defaults stay untouched
+    urlInitedRef.current = true;
+    if (!hasQuery) return;
+
+    const q = new URLSearchParams(search);
     parseUrlIntoState(q, {
       whenMsRef,
       setWhenMs,
@@ -813,7 +822,6 @@ export default function App() {
       setShowMoonCard,
       setEnlargeObjects,
       setDebugMask,
-      // ADD: showPanels from URL
       setShowPanels,
       allPlanetIds,
       setShowPlanets,
@@ -821,11 +829,10 @@ export default function App() {
       setIsAnimating,
       speedMinPerSec,
       setSpeedMinPerSec,
-      // ADD: DirectionalKeypad deltas from URL
       setDeltaAzDeg,
       setDeltaAltDeg,
     });
-  }, [locationsLoading, locations]); // keep same gating as before
+  }, [locationsLoading, locations]);
 
   // keep URL updated (shareable links)
 
@@ -909,7 +916,7 @@ export default function App() {
               )}
             </div>
           )}
-          {/* NEW: Modal while the first 3D frame(s) are rendering */}
+          {/* Modal while the first 3D frame(s) are rendering */}
           {!locationsLoading && !glbLoading && !sceneReady && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80 text-sm pointer-events-none"
                  style={{ zIndex: Z.ui + 40 }}>
@@ -923,10 +930,10 @@ export default function App() {
             onTogglePanels={() => setShowPanels(v => !v)}
             zIndex={Z.ui + 30}
             shareUrl={shareUrl}
-            // NEW: wire play/pause
+            // wire play/pause
             isAnimating={isAnimating}
             onToggleAnimating={() => setIsAnimating(v => !v)}
-            // NEW: wire T1
+            // wire T1
             onCopyJpeg={handleCopyJpeg}
           />
 
@@ -1061,9 +1068,9 @@ export default function App() {
                 camRotDegY={camRotDegY}
                 camRotDegZ={camRotDegZ}
                 onSceneReadyChange={setSceneReady}
-                // NEW: show SpaceView HUD when panels are hidden
+                // show SpaceView HUD when panels are hidden
                 showHud={!showPanels}
-                // NEW: camera/zoom label to render inside SpaceView
+                // camera/zoom label to render inside SpaceView
                 cameraLabel={deviceId === CUSTOM_DEVICE_ID
                   ? (zoomOptions[0]?.label ?? '') 
                   : `${device.label} — ${zoom?.label ?? ''}`}
