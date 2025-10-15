@@ -211,12 +211,20 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const pxPerDegYSun = centerSun.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
     const pxPerDegXMoon = centerMoon.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
     const pxPerDegYMoon = centerMoon.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
-    const sunW = enlargeObjects ? MOON_RENDER_DIAMETER : astro.sun.appDiamDeg * pxPerDegXSun;
-    const sunH = enlargeObjects ? MOON_RENDER_DIAMETER : astro.sun.appDiamDeg * pxPerDegYSun;
-    const moonW = enlargeObjects ? MOON_RENDER_DIAMETER : astro.moon.appDiamDeg * pxPerDegXMoon;
-    const moonH = enlargeObjects ? MOON_RENDER_DIAMETER : astro.moon.appDiamDeg * pxPerDegYMoon;
-    const sunR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(sunW, sunH)) / 2;
-    const moonR = (enlargeObjects ? MOON_RENDER_DIAMETER : Math.max(moonW, moonH)) / 2;
+
+    const sunWCalc = (astro.sun.appDiamDeg ?? 0) * pxPerDegXSun;
+    const sunHCalc = (astro.sun.appDiamDeg ?? 0) * pxPerDegYSun;
+    const sunW = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, sunWCalc) : sunWCalc;
+    const sunH = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, sunHCalc) : sunHCalc;
+
+    const moonWCalc = (astro.moon.appDiamDeg ?? 0) * pxPerDegXMoon;
+    const moonHCalc = (astro.moon.appDiamDeg ?? 0) * pxPerDegYMoon;
+    const moonW = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, moonWCalc) : moonWCalc;
+    const moonH = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, moonHCalc) : moonHCalc;
+
+    const sunR = Math.max(sunW, sunH) / 2;
+    const moonR = Math.max(moonW, moonH) / 2;
+
     return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
   }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAzDeg, refAltDeg, enlargeObjects, projectionMode]);
 
@@ -360,8 +368,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
 
       const appDiamDeg = Number((p as any).appDiamDeg ?? 0);
-      let sizePx = enlargeObjects ? MOON_RENDER_DIAMETER : (appDiamDeg > 0 ? appDiamDeg * pxPerDeg : 0);
-      const hasValidSize = Number.isFinite(sizePx) && sizePx > 0;
+      const computedSize = appDiamDeg > 0 ? appDiamDeg * pxPerDeg : 0;
+
+      let sizePx = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, computedSize) : computedSize;
+      const hasValidSize = Number.isFinite(computedSize) && computedSize > 0;
       if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
 
       const mode: 'dot' | 'sprite' | '3d' =
@@ -370,6 +380,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           : (!hasValidSize || sizePx < PLANET_DOT_MIN_PX
               ? 'dot'
               : (sizePx >= PLANET_3D_SWITCH_PX ? '3d' : 'sprite'));
+
 
       const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
 
@@ -832,13 +843,45 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         const effectiveMode = glbLoading && p.mode === '3d' ? 'sprite' : p.mode;
 
         if (effectiveMode === 'dot') {
-          // ...existing dot render...
-          return null;
+          return (
+            <div
+              key={p.id}
+              className="absolute"
+              style={{
+                zIndex: z,
+                left: p.x - half,
+                top: p.y - half,
+                width: S,
+                height: S,
+                borderRadius: '9999px',
+                background: p.color,
+                pointerEvents: 'none',
+              }}
+            />
+          );
         }
 
         if (effectiveMode === 'sprite') {
-          // ...existing sprite render...
-          return null;
+          return (
+            <PlanetSprite
+              key={p.id}
+              planetId={p.id}
+              x={p.x}
+              y={p.y}
+              visibleX={true}
+              visibleY={true}
+              rotationDeg={p.rotationDegPlanetScreen}
+              angleToSunDeg={p.rotationDegPlanetScreen}
+              phaseFraction={p.phaseFrac}
+              wPx={S}
+              hPx={S}
+              color={p.color}
+              debugMask={debugMask}
+              brightLimbAngleDeg={p.angleToSunDeg}
+              zIndex={z}
+              orientationDegX={p.orientationDegX}
+            />
+          );
         }
 
         // effectiveMode === '3d'
