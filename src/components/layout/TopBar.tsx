@@ -6,6 +6,8 @@ import { FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
 // planets registry for UI toggles
 import { PLANETS } from "../../render/planetRegistry";
 import { PLANET_REGISTRY } from "../../render/planetRegistry";
+// NEW: projection helpers
+import { getValidProjectionModes, pickIdealProjection } from "../../render/projection";
 
 export type Viewport = { x: number; y: number; w: number; h: number };
 
@@ -83,8 +85,8 @@ type Props = {
   showGrid: boolean;
   setShowGrid: (v: boolean) => void;
 
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
-  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical') => void;
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear';
+  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear') => void;
 
   showPlanets: Record<string, boolean>;
   setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
@@ -341,6 +343,102 @@ export default function TopBar({
     });
   }, []);
   
+
+  // Projections valides pour le FOV courant
+  const validProjectionModes = React.useMemo(
+    () => getValidProjectionModes(fovXDeg, fovYDeg, viewport.w, viewport.h),
+    [fovXDeg, fovYDeg, viewport.w, viewport.h]
+  );
+
+  // Auto-switch sur la projection idéale à chaque changement de W/H affichable
+  // et changement de focale (donc FOV).
+  React.useEffect(() => {
+    const next = pickIdealProjection(
+      fovXDeg,
+      fovYDeg,
+      projectionMode,
+      viewport.w,
+      viewport.h,
+      'force-ideal' // ignorer l’actuelle et choisir l’idéale
+    );
+    if (next !== projectionMode) {
+      setProjectionMode(next);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fovXDeg, fovYDeg, viewport.w, viewport.h]);
+
+
+  // Icônes SVG pour les projections
+  type ProjectionId = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear';
+  const ProjectionIcon: React.FC<{ id: ProjectionId; active?: boolean; label?: string }> = ({ id, active = false, label }) => {
+    const stroke = 'currentColor';
+    const strokeWidth = 1.5;
+    const common = { fill: 'none', stroke, strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+    return (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        role="img"
+        aria-hidden={label ? undefined : true}
+        className="shrink-0 pointer-events-none select-none" // make SVG fully pass-through for clicks
+      >
+        {label ? <title>{label}</title> : null}
+
+
+        {/* Recti/Panini: cadre rectangulaire + grille à lignes droites */}
+        {id === 'recti-panini' && (
+          <>
+            <rect x="3" y="5" width="18" height="14" rx="2" {...common} />
+            <path d="M9 5v14M15 5v14M3 10h18M3 14h18" {...common} />
+          </>
+        )}
+
+        {/* Stéréographique: cercle 'fisheye' + méridiens/parallèles courbés */}
+        {id === 'stereo-centered' && (
+          <>
+            <circle cx="12" cy="12" r="8" {...common} />
+            <path d="M4 12c2.5-4 13.5-4 16 0M4 12c2.5 4 13.5 4 16 0" {...common} />
+            <path d="M12 4c-4 2.5-4 13.5 0 16M12 4c4 2.5 4 13.5 0 16" {...common} />
+          </>
+        )}
+
+        {/* Orthographique: cercle inscrit dans un carré */}
+        {id === 'ortho' && (
+          <>
+            <rect x="4" y="4" width="16" height="16" rx="2" {...common} />
+            <circle cx="12" cy="12" r="6.5" {...common} />
+          </>
+        )}
+
+        {/* Cylindrique: rectangle + arcs supérieur/inférieur (section de cylindre) + méridiens verticaux */}
+        {id === 'cylindrical' && (
+          <>
+            <rect x="3" y="5" width="18" height="14" rx="2" {...common} />
+            {/* arcs haut/bas */}
+            <path d="M5 8c3-3 11-3 14 0" {...common} />
+            <path d="M5 16c3 3 11 3 14 0" {...common} />
+            {/* méridiens */}
+            <path d="M9 5v14M15 5v14" {...common} />
+            {/* équateur */}
+            <path d="M3 12h18" {...common} />
+          </>
+        )}
+
+        {/* Rectilinéaire (perspective pure): lignes droites et diagonales (vanishing) */}
+        {id === 'rectilinear' && (
+          <>
+            <rect x="3" y="5" width="18" height="14" rx="2" {...common} />
+            {/* croix centrale */}
+            <path d="M12 5v14M3 12h18" {...common} />
+            {/* diagonales */}
+            <path d="M3 5l18 14M21 5L3 19" {...common} />
+          </>
+        )}
+      </svg>
+    );
+  };
+
   return (
     <>
       <div className="mx-2 sm:mx-4">
@@ -466,29 +564,44 @@ export default function TopBar({
 
             {/* Projection selector */}
             <div className="mt-3">
-              <div className="text-xs uppercase tracking-wider text-white/60">Projection</div>
-              <div className="mt-1 flex flex-wrap gap-2">
-                {[
-                  { id: 'recti-panini' as const, label: 'Rectilinéaire' },
-                  { id: 'stereo-centered' as const, label: 'Stéréographique' },
-                  { id: 'ortho' as const, label: 'Orthographique' },
-                  //{ id: 'cylindrical' as const, label: 'Cylindrique' },
-                ].map(opt => (
-                  <button
-                    key={opt.id}
-                    className={`px-3 py-1.5 rounded-lg border text-sm ${
-                      projectionMode === opt.id
-                        ? 'border-white/50 bg-white/10'
-                        : 'border-white/15 text-white/80 hover:border-white/30'
-                    }`}
-                    onClick={() => setProjectionMode(opt.id)}
-                    title={opt.label}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
+                <div className="text-xs uppercase tracking-wider text-white/60">Projection</div>
+                <div className="mt-1 flex flex-wrap gap-2">
+                  {[ {id: 'recti-panini' as const, label: 'Recti-Panini' },
+                    { id: 'rectilinear' as const, label: 'Recti-Perspective' },
+                    { id: 'stereo-centered' as const, label: 'Stéréo-Centré' },
+                    { id: 'ortho' as const, label: 'Orthographique' },
+                    { id: 'cylindrical' as const, label: 'Cylindrique' },
+                  ].map(opt => {
+                    const isAllowed = validProjectionModes.includes(opt.id);
+                    const isActive = projectionMode === opt.id;
+                    return (
+                      <button
+                        key={opt.id}
+                        type="button" // ensure it's not a submit button inside forms
+                        disabled={!isAllowed}
+                        className={`px-3 py-1.5 rounded-lg border text-sm ${
+                          isActive
+                            ? 'border-white/50 bg-white/10'
+                            : isAllowed
+                              ? 'border-white/15 text-white/80 hover:border-white/30'
+                              : 'border-white/10 text-white/40 opacity-50 cursor-not-allowed'
+                        }`}
+                        onClick={() => {
+                          if (!isAllowed) return;
+                          setProjectionMode(opt.id);
+                        }}
+                        title={opt.label}
+                        aria-label={opt.label}
+                        aria-disabled={!isAllowed}
+                      >
+                        <span className="inline-flex items-center">
+                          <ProjectionIcon id={opt.id} active={isActive} /* label removed to avoid duplicate title */ />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
           </div>
         </div>
 

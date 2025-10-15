@@ -1,6 +1,10 @@
 // Camera-based projection with selectable projection modes.
 
-type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
+
+
+// --- OLD: Full projection implementation (kept for reference) ---
+
+type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear';
 
 function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
 function toRad(d: number) { return (d * Math.PI) / 180; }
@@ -103,6 +107,20 @@ export function projectToScreen(
     sy = halfH - v2;
     // Visible if within the specified FOV window
     visible = Math.abs(lon) <= (thetaX + 1e-9) && Math.abs(lat) <= (thetaY + 1e-9);
+  } else if (projectionMode === 'rectilinear') {
+    // Perspective pure: lignes droites préservées, FOV < 180°
+    const thetaXR = clamp((fovXDeg || 1) / 2, 0.1, 89.9) * Math.PI / 180;
+    const thetaYR = clamp((fovYDeg || 1) / 2, 0.1, 89.9) * Math.PI / 180;
+    const fx = halfW / Math.tan(thetaXR);
+    const fy = halfH / Math.tan(thetaYR);
+    const denom = zCam;
+    visible = denom > 1e-6;
+    if (visible) {
+      const u = fx * (xCam / denom);
+      const v2 = fy * (yCam / denom);
+      sx = halfW + u;
+      sy = halfH - v2;
+    }
   } else {
     // recti-panini: rectilinear for narrow FOV, Panini-like for ultra-wide
     const minFov = Math.min(fovXDeg, fovYDeg);
@@ -148,4 +166,128 @@ export function projectToScreen(
   const pxPerDegY = height / Math.max(1e-9, fovYDeg);
 
   return { x: sx, y: sy, visibleX, visibleY, pxPerDegX, pxPerDegY } as const;
+}
+
+// --- NEW: Valid projections and ideal choice helpers ---
+
+/**
+ * Retourne les projections valides pour un FOV horizontal/vertical donné (en degrés).
+ * Les heuristiques suivantes évitent les cas impossibles ou trop déformants:
+ * - rectilinear: ≤ 140° sur chaque axe
+ * - recti-panini: ≤ 175° sur chaque axe
+ * - stereo-centered: ≤ 175° sur chaque axe
+ * - ortho: ≤ 180° sur chaque axe (hémisphère avant)
+ * - cylindrical: H ≤ 360°, V ≤ 180°
+ * On peut prendre en compte l’aspect (viewport W/H) pour favoriser le panoramique.
+ */
+export function getValidProjectionModes(
+  widthDeg: number,
+  heightDeg: number,
+  viewportW?: number,
+  viewportH?: number
+): ProjectionMode[] {
+  const w = clamp(Math.abs(widthDeg || 0), 0.1, 360);
+  const h = clamp(Math.abs(heightDeg || 0), 0.1, 360);
+
+  // Seuils réglables
+  const MAX_RECTILINEAR = 140;
+  const MAX_PANINI = 175;
+  const MAX_STEREO = 175;
+  const MAX_ORTHO = 180;
+  const MAX_CYL_H = 360;
+  const MAX_CYL_V = 180;
+
+  const out: ProjectionMode[] = [];
+
+  // Rectilinear (perspective)
+  if (w <= MAX_RECTILINEAR && h <= MAX_RECTILINEAR) {
+    out.push('rectilinear');
+  }
+
+  // Recti-Panini (hybride)
+  if (w <= MAX_PANINI && h <= MAX_PANINI) {
+    out.push('recti-panini');
+  }
+
+  // Stéréographique
+  if (w <= MAX_STEREO && h <= MAX_STEREO) {
+    out.push('stereo-centered');
+  }
+
+  // Orthographique (hémisphère avant)
+  if (w <= MAX_ORTHO && h <= MAX_ORTHO) {
+    out.push('ortho');
+  }
+
+  // Cylindrique (panoramique)
+  if (w <= MAX_CYL_H && h <= MAX_CYL_V) {
+    out.push('cylindrical');
+  }
+
+  // Petit bonus: si l’aspect est très large, on s’assure que le mode cylindrique
+  // est proposé (sans retirer les autres).
+  const aspect = Number(viewportW) > 0 && Number(viewportH) > 0 ? (Number(viewportW) / Number(viewportH)) : NaN;
+  if (!Number.isNaN(aspect) && aspect > 1.8 && !out.includes('cylindrical') && w <= MAX_CYL_H && h <= MAX_CYL_V) {
+    out.push('cylindrical');
+  }
+
+  return out;
+}
+
+/**
+ * Choisit une projection "idéale" pour (WidthDeg, HeightDeg).
+ * Strategy:
+ * - 'keep-if-valid' (par défaut): conserve `current` si encore valide.
+ * - 'force-ideal': ignore `current` et choisit la meilleure selon les heuristiques.
+ */
+export function pickIdealProjection(
+  widthDeg: number,
+  heightDeg: number,
+  current?: ProjectionMode,
+  viewportW?: number,
+  viewportH?: number,
+  strategy: 'keep-if-valid' | 'force-ideal' = 'keep-if-valid'
+): ProjectionMode {
+  const valid = getValidProjectionModes(widthDeg, heightDeg, viewportW, viewportH);
+  const w = Math.abs(widthDeg);
+  const h = Math.abs(heightDeg);
+  const minFov = Math.min(w, h);
+  const maxFov = Math.max(w, h);
+  const aspect = Number(viewportW) > 0 && Number(viewportH) > 0 ? (Number(viewportW) / Number(viewportH)) : 1;
+
+  if (strategy === 'keep-if-valid' && current && valid.includes(current)) {
+    return current;
+  }
+
+  // Heuristiques de choix:
+  // - Panoramique H > 180°: cylindrique si dispo.
+  if (w > 180 && valid.includes('cylindrical')) return 'cylindrical';
+
+  // - Tout-ciel / quasi hémisphérique: ortho stabilise l’horizon
+  if (minFov >= 170 && valid.includes('ortho')) return 'ortho';
+
+  // - Ultra grand angle: privilégier stéréo, puis panini
+  if (maxFov >= 140) {
+    if (valid.includes('stereo-centered')) return 'stereo-centered';
+    if (valid.includes('recti-panini')) return 'recti-panini';
+  }
+
+  // - Grand angle: panini avant perspective
+  if (maxFov >= 110) {
+    if (valid.includes('recti-panini')) return 'recti-panini';
+    if (valid.includes('stereo-centered')) return 'stereo-centered';
+  }
+
+  // - Aspect très large: favoriser le cylindre si pertinent
+  if (aspect > 2.8 && valid.includes('cylindrical')) return 'cylindrical';
+
+  // - Étroit: perspective pure
+  if (valid.includes('rectilinear')) return 'rectilinear';
+
+  // Sinon: premiers valides en ordre de préférence bateau
+  const preference: ProjectionMode[] = ['recti-panini', 'stereo-centered', 'ortho', 'cylindrical', 'rectilinear'];
+  for (const m of preference) if (valid.includes(m)) return m;
+
+  // Fallback
+  return valid[0] ?? 'recti-panini';
 }
