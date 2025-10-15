@@ -85,8 +85,8 @@ type Props = {
   showGrid: boolean;
   setShowGrid: (v: boolean) => void;
 
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear';
-  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear') => void;
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
+  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon') => void;
 
   showPlanets: Record<string, boolean>;
   setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
@@ -351,7 +351,7 @@ export default function TopBar({
   );
 
   // Auto-switch sur la projection idéale à chaque changement de W/H affichable
-  // et changement de focale (donc FOV).
+  // et changement de focale (donc FOV) — sans écraser un mode valide provenant de l’URL.
   React.useEffect(() => {
     const next = pickIdealProjection(
       fovXDeg,
@@ -359,7 +359,7 @@ export default function TopBar({
       projectionMode,
       viewport.w,
       viewport.h,
-      'force-ideal' // ignorer l’actuelle et choisir l’idéale
+      'keep-if-valid' // conserve la projection actuelle si elle reste valide
     );
     if (next !== projectionMode) {
       setProjectionMode(next);
@@ -368,8 +368,9 @@ export default function TopBar({
   }, [fovXDeg, fovYDeg, viewport.w, viewport.h]);
 
 
+
   // Icônes SVG pour les projections
-  type ProjectionId = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear';
+  type ProjectionId = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
   const ProjectionIcon: React.FC<{ id: ProjectionId; active?: boolean; label?: string }> = ({ id, active = false, label }) => {
     const stroke = 'currentColor';
     const strokeWidth = 1.5;
@@ -411,7 +412,7 @@ export default function TopBar({
           </>
         )}
 
-        {/* Cylindrique: rectangle + arcs supérieur/inférieur (section de cylindre) + méridiens verticaux */}
+{/* Cylindrique: rectangle + arcs supérieur/inférieur (section de cylindre) + méridiens verticaux */}
         {id === 'cylindrical' && (
           <>
             <rect x="3" y="5" width="18" height="14" rx="2" {...common} />
@@ -422,6 +423,18 @@ export default function TopBar({
             <path d="M9 5v14M15 5v14" {...common} />
             {/* équateur */}
             <path d="M3 12h18" {...common} />
+          </>
+        )}
+        {/* Cylindrique horizon: horizon plat + méridiens, verrouillé sur le 'up' monde */}
+        {id === 'cylindrical-horizon' && (
+          <>
+            <rect x="3" y="5" width="18" height="14" rx="2" {...common} />
+            {/* méridiens */}
+            <path d="M9 5v14M15 5v14" {...common} />
+            {/* horizon plat */}
+            <path d="M3 12h18" {...common} />
+            {/* petit indicateur 'up' (flèche vers le haut) */}
+            <path d="M12 8V6M12 6l-1.5 1.5M12 6l1.5 1.5" {...common} />
           </>
         )}
 
@@ -571,6 +584,7 @@ export default function TopBar({
                     { id: 'stereo-centered' as const, label: 'Stéréo-Centré' },
                     { id: 'ortho' as const, label: 'Orthographique' },
                     { id: 'cylindrical' as const, label: 'Cylindrique' },
+                    { id: 'cylindrical-horizon' as const, label: 'Cylindrique (Horizon)' },
                   ].map(opt => {
                     const isAllowed = validProjectionModes.includes(opt.id);
                     const isActive = projectionMode === opt.id;

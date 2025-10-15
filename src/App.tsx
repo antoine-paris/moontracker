@@ -444,7 +444,7 @@ export default function App() {
   - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
   - "Orthographic" (for All-sky context) : orthographic (hemisphere) 
   */
-  const [projectionMode, setProjectionMode] = useState<'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical'>('recti-panini');
+  const [projectionMode, setProjectionMode] = useState<'recti-panini' | 'rectilinear' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'cylindrical-horizon'>('recti-panini');
 
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;
@@ -498,6 +498,10 @@ export default function App() {
 
   // Reset keypad deltas whenever follow target changes
   useEffect(() => {
+    if (suppressNextDeltaResetRef.current) { 
+      suppressNextDeltaResetRef.current = false;
+      return;
+    }
     setDeltaAzDeg(0);
     setDeltaAltDeg(0);
   }, [follow]);
@@ -770,6 +774,7 @@ export default function App() {
 
   // --- URL state: parse once on load, then keep URL in sync -------------------
   const urlInitedRef = useRef(false);
+  const suppressNextDeltaResetRef = useRef(false); // <— NEW
 
   // Compute once: list of all planet ids (for URL parse/build utilities)
   const allPlanetIds = useMemo(
@@ -793,6 +798,10 @@ export default function App() {
     if (!hasQuery) return;
 
     const q = new URLSearchParams(search);
+
+    // Ignore the next follow→delta reset triggered by URL parsing
+    suppressNextDeltaResetRef.current = true; // <— NEW
+
     parseUrlIntoState(q, {
       whenMsRef,
       setWhenMs,

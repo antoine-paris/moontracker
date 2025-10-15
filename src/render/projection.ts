@@ -4,7 +4,7 @@
 
 // --- OLD: Full projection implementation (kept for reference) ---
 
-type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear';
+type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
 
 function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
 function toRad(d: number) { return (d * Math.PI) / 180; }
@@ -27,6 +27,12 @@ function altAzToVec(azDeg: number, altDeg: number) {
   const y = ca * Math.cos(az); // North
   const z = sa;                // Up
   return [x, y, z] as const;
+}
+// NEW: wrap to [-pi, pi]
+function wrapPI(rad: number) {
+  let t = (rad + Math.PI) % (2 * Math.PI);
+  if (t < 0) t += 2 * Math.PI;
+  return t - Math.PI;
 }
 
 export function projectToScreen(
@@ -121,6 +127,24 @@ export function projectToScreen(
       sx = halfW + u;
       sy = halfH - v2;
     }
+  } else if (projectionMode === 'cylindrical-horizon') {
+    // Horizon-locked cylindrical (world-up): x=ΔAz(world), y=Alt(world)
+    const az = toRad(azDeg);
+    const alt = toRad(altDeg);
+    const refAz = toRad(refAzDeg);
+    const refAlt = toRad(refAltDeg);
+    const dLon = wrapPI(az - refAz);
+    const dLat = alt - refAlt;
+
+    const fx = halfW / Math.max(1e-9, thetaX);
+    const fy = halfH / Math.max(1e-9, thetaY);
+
+    const u = fx * dLon;
+    const v2 = fy * dLat;
+    sx = halfW + u;
+    sy = halfH - v2;
+
+    visible = Math.abs(dLon) <= (thetaX + 1e-9) && Math.abs(dLat) <= (thetaY + 1e-9);
   } else {
     // recti-panini: rectilinear for narrow FOV, Panini-like for ultra-wide
     const minFov = Math.min(fovXDeg, fovYDeg);
@@ -222,6 +246,7 @@ export function getValidProjectionModes(
   // Cylindrique (panoramique)
   if (w <= MAX_CYL_H && h <= MAX_CYL_V) {
     out.push('cylindrical');
+    out.push('cylindrical-horizon'); // horizon-flat variant
   }
 
   // Petit bonus: si l’aspect est très large, on s’assure que le mode cylindrique
@@ -284,8 +309,11 @@ export function pickIdealProjection(
   // - Étroit: perspective pure
   if (valid.includes('rectilinear')) return 'rectilinear';
 
+  // Panoramique: privilégier l’horizon plat si dispo
+  if (w >= 140 && valid.includes('cylindrical-horizon')) return 'cylindrical-horizon';
+
   // Sinon: premiers valides en ordre de préférence bateau
-  const preference: ProjectionMode[] = ['recti-panini', 'stereo-centered', 'ortho', 'cylindrical', 'rectilinear'];
+  const preference: ProjectionMode[] = ['cylindrical-horizon', 'recti-panini', 'stereo-centered', 'ortho', 'cylindrical', 'rectilinear'];
   for (const m of preference) if (valid.includes(m)) return m;
 
   // Fallback

@@ -93,7 +93,8 @@ function parseEnum<T extends string>(v: string | null, allowed: readonly T[], de
 }
 
 const FOLLOW_ALLOWED = ['SOLEIL','LUNE','MERCURE','VENUS','MARS','JUPITER','SATURNE','URANUS','NEPTUNE','N','E','S','O'] as const;
-const PROJ_LIST = ['recti-panini','stereo-centered','ortho','cylindrical'] as const;
+// Garder l'ordre initial des 4 premiers pour compatibilité des indices 'p'
+const PROJ_LIST = ['recti-panini','stereo-centered','ortho','cylindrical','rectilinear','cylindrical-horizon'] as const;
 
 // Bit positions for packed toggles
 const ToggleBits = {
@@ -190,7 +191,7 @@ export type UrlInitArgs = {
 
   // enums
   setFollow: (f: FollowMode) => void;
-  setProjectionMode: (p: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical') => void;
+  setProjectionMode: (p: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical'|'rectilinear'|'cylindrical-horizon') => void;
 
   // toggles
   setShowSun: (b: boolean) => void;
@@ -520,7 +521,7 @@ export type BuildShareUrlArgs = {
 
   // enums
   follow: FollowMode;
-  projectionMode: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical';
+  projectionMode: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical'|'rectilinear'|'cylindrical-horizon';
 
   // optics
   deviceId: string;
