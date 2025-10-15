@@ -47,8 +47,8 @@ const CRUX_CENTROID_DEC_DEG = -59.6625;
 
 // Moon render thresholds (px)
 const MOON_DOT_PX = 5;
-const MOON_3D_SWITCH_PX = 50;
-const PLANET_3D_SWITCH_PX = 100;
+const MOON_3D_SWITCH_PX = 20;
+const PLANET_3D_SWITCH_PX = 20;
 
 export type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
 
