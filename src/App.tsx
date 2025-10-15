@@ -48,7 +48,7 @@ import SpaceView from "./components/layout/SpaceView";
 import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
-import { toPng } from 'html-to-image';
+import { copyAndDownloadNodeAsPng } from './utils/capture';
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -69,45 +69,11 @@ export default function App() {
   // Scene readiness state
   const [sceneReady, setSceneReady] = useState<boolean>(false);
 
-    const handleCopyJpeg = React.useCallback(async () => {
+  const handleCopyJpeg = React.useCallback(async () => {
     const node = spaceViewRef.current;
     if (!node) return;
-
-    if (!document.hasFocus()) {
-      window.focus?.();
-      await new Promise(r => setTimeout(r, 0));
-    }
-
-    const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
-    const opts = { pixelRatio, backgroundColor: '#000' as const };
-
-    const waitTwoFrames = async () =>
-      new Promise<void>(res => requestAnimationFrame(() => requestAnimationFrame(() => res())));
-
     try {
-      await waitTwoFrames();
-      const dataUrl = await toPng(node, opts);
-
-      // Copy to clipboard (best-effort)
-      const ClipboardItemAny = (window as any).ClipboardItem;
-      if (navigator.clipboard?.write && ClipboardItemAny) {
-        try {
-          const blob = await (await fetch(dataUrl)).blob();
-          await navigator.clipboard.write([
-            new ClipboardItemAny({ 'image/png': blob })
-          ]);
-        } catch (err) {
-          console.warn('clipboard.write failed:', err);
-        }
-      }
-
-      // Always download PNG
-      const a = document.createElement('a');
-      a.href = dataUrl;
-      a.download = 'spaceview.png';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      await copyAndDownloadNodeAsPng(node, { filename: 'spaceview.png' });
     } catch (e) {
       console.error('Capture/Clipboard error:', e);
     }
