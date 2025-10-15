@@ -48,7 +48,7 @@ import SpaceView from "./components/layout/SpaceView";
 import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
-import { toJpeg, toPng } from 'html-to-image';
+import { toPng } from 'html-to-image';
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -69,7 +69,7 @@ export default function App() {
   // NEW: Scene readiness state
   const [sceneReady, setSceneReady] = useState<boolean>(false);
 
-  const handleCopyJpeg = React.useCallback(async () => {
+    const handleCopyJpeg = React.useCallback(async () => {
     const node = spaceViewRef.current;
     if (!node) return;
 
@@ -81,43 +81,30 @@ export default function App() {
     const pixelRatio = Math.min(2, window.devicePixelRatio || 1);
     const opts = { pixelRatio, backgroundColor: '#000' as const };
 
-    // petit helper: attendre 2 frames pour laisser peindre les canvases WebGL
     const waitTwoFrames = async () =>
       new Promise<void>(res => requestAnimationFrame(() => requestAnimationFrame(() => res())));
 
-    const writeDeferred = async (mime: 'image/png' | 'image/jpeg') => {
-      const ClipboardItemAny = (window as any).ClipboardItem;
-      if (!navigator.clipboard?.write || !ClipboardItemAny) return false;
-
-      const genBlob = async () => {
-        // attendre 2 frames juste avant la capture
-        await waitTwoFrames();
-        const dataUrl = mime === 'image/png'
-          ? await toPng(node, opts)
-          : await toJpeg(node, { ...opts, quality: 0.92 });
-        const res = await fetch(dataUrl);
-        return await res.blob();
-      };
-
-      try {
-        await navigator.clipboard.write([new ClipboardItemAny({ [mime]: genBlob() })]);
-        return true;
-      } catch (err) {
-        console.warn('clipboard.write failed:', err);
-        return false;
-      }
-    };
-
     try {
-      if (await writeDeferred('image/png')) return;
-      if (await writeDeferred('image/jpeg')) return;
+      await waitTwoFrames();
+      const dataUrl = await toPng(node, opts);
 
-      // fallback: téléchargement
-      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
-      const dataUrl = await toJpeg(node, { ...opts, quality: 0.92 });
+      // Copy to clipboard (best-effort)
+      const ClipboardItemAny = (window as any).ClipboardItem;
+      if (navigator.clipboard?.write && ClipboardItemAny) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          await navigator.clipboard.write([
+            new ClipboardItemAny({ 'image/png': blob })
+          ]);
+        } catch (err) {
+          console.warn('clipboard.write failed:', err);
+        }
+      }
+
+      // Always download PNG
       const a = document.createElement('a');
       a.href = dataUrl;
-      a.download = 'spaceview.jpg';
+      a.download = 'spaceview.png';
       document.body.appendChild(a);
       a.click();
       a.remove();
