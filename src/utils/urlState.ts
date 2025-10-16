@@ -96,6 +96,9 @@ const FOLLOW_ALLOWED = ['SOLEIL','LUNE','MERCURE','VENUS','MARS','JUPITER','SATU
 // Garder l'ordre initial des 4 premiers pour compatibilité des indices 'p'
 const PROJ_LIST = ['recti-panini','stereo-centered','ortho','cylindrical','rectilinear','cylindrical-horizon'] as const;
 
+// NEW: timelapse units (order matters for compact header)
+const TL_UNITS = ['hour', 'day', 'month', 'lunar-fraction', 'synodic-fraction'] as const;
+
 // Bit positions for packed toggles
 const ToggleBits = {
   sun: 0,
@@ -224,6 +227,14 @@ export type UrlInitArgs = {
   // DirectionalKeypad deltas
   setDeltaAzDeg: (n: number) => void;
   setDeltaAltDeg: (n: number) => void;
+
+  // NEW: timelapse setters + start-ref
+  setTimeLapseEnabled: (b: boolean) => void;
+  setTimeLapsePeriodMs: (n: number) => void;
+  setTimeLapseStepValue: (n: number) => void;
+  setTimeLapseStepUnit: (u: typeof TL_UNITS[number]) => void;
+  setTimeLapseLoopAfter: (n: number) => void;
+  timeLapseStartMsRef: React.MutableRefObject<number>;
 };
 
 export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
@@ -238,7 +249,8 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     allPlanetIds, setShowPlanets,
     isAnimating, setIsAnimating, speedMinPerSec, setSpeedMinPerSec,
     setDeltaAzDeg, setDeltaAltDeg,
-  } = args;
+    setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef,
+} = args;
 
   // Compact time: t = base36 unix seconds
   const t = q.get('t');
@@ -510,6 +522,33 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       setSpeedMinPerSec(parseNum(q.get('spd'), speedMinPerSec));
     }
   }
+
+  // NEW: Timelapse compact param: tl = H.P.S.L.T (base36 segments)
+  // H = (unitIndex<<1)|enabled, unitIndex in TL_UNITS
+  const tl = q.get('tl');
+  if (tl) {
+    const parts = tl.split('.');
+    if (parts.length >= 5) {
+      const h = fromB36Int(parts[0]);
+      const p = parseIntB36OrDec(parts[1]); // period ms
+      const s = parseIntB36OrDec(parts[2]); // step value
+      const l = parseIntB36OrDec(parts[3]); // loop after
+      const t0ms = timeFromB36(parts[4]);   // start time (ms)
+
+      if (Number.isFinite(h)) {
+        const enabled = !!(h & 1);
+        const unitIdx = (h >> 1) & 0x7;
+        const unit = TL_UNITS[unitIdx] ?? TL_UNITS[0];
+
+        setTimeLapseEnabled(enabled);
+        if (Number.isFinite(p)) setTimeLapsePeriodMs(Math.max(1, p));
+        if (Number.isFinite(s)) setTimeLapseStepValue(Math.max(1, s));
+        setTimeLapseStepUnit(unit as any);
+        if (Number.isFinite(l)) setTimeLapseLoopAfter(Math.max(0, l));
+        if (Number.isFinite(t0ms)) timeLapseStartMsRef.current = t0ms;
+      }
+    }
+  }
 }
 
 export type BuildShareUrlArgs = {
@@ -563,6 +602,13 @@ export type BuildShareUrlArgs = {
   deltaAzDeg: number;
   deltaAltDeg: number;
 
+  timeLapseEnabled: boolean;
+  timeLapsePeriodMs: number;
+  timeLapseStepValue: number;
+  timeLapseStepUnit: typeof TL_UNITS[number];
+  timeLapseLoopAfter: number;
+  timeLapseStartMs: number;
+
   baseUrl?: string;
   appendHash?: string;
 };
@@ -577,12 +623,24 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
     showPanels,
     showPlanets, allPlanetIds,
     isAnimating, speedMinPerSec,
-    // NEW
     deltaAzDeg, deltaAltDeg,
+    timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter, timeLapseStartMs,
     baseUrl, appendHash,
   } = args;
 
   const q = new URLSearchParams();
+
+  // NEW: timelapse compact param (always include to keep share deterministic)
+  {
+    const unitIdx = Math.max(0, (Array.prototype.indexOf.call(TL_UNITS, timeLapseStepUnit) as number));
+    const header = (unitIdx << 1) | (timeLapseEnabled ? 1 : 0);
+    const P = toB36Int(Math.max(1, Math.round(timeLapsePeriodMs || 1)));
+    const S = toB36Int(Math.max(1, Math.round(timeLapseStepValue || 1)));
+    const L = toB36Int(Math.max(0, Math.round(timeLapseLoopAfter || 0)));
+    const T = timeToB36(timeLapseStartMs);
+    q.set('tl', `${toB36Int(header)}.${P}.${S}.${L}.${T}`);
+  }
+
 
   // location:
   // - If id matches a known city AND coordinates are exactly the canonical ones → l=id

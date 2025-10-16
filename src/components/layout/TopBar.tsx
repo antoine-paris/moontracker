@@ -938,8 +938,6 @@ export default function TopBar({
                     title="Nombre d’images avant retour au début (0 = pas de boucle)"
                   />
                   <span className="text-sm text-white/80">images</span>
-
-
                 </div>
               </div>
               {/* --- /Time-lapse --- */}

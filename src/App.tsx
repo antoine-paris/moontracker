@@ -938,6 +938,12 @@ export default function App() {
       setSpeedMinPerSec,
       setDeltaAzDeg,
       setDeltaAltDeg,
+      setTimeLapseEnabled,
+      setTimeLapsePeriodMs,
+      setTimeLapseStepValue,
+      setTimeLapseStepUnit,
+      setTimeLapseLoopAfter,
+      timeLapseStartMsRef: tlStartWhenMsRef,
     });
   }, [locationsLoading, locations]);
 
@@ -979,6 +985,12 @@ export default function App() {
       speedMinPerSec,
       deltaAzDeg,
       deltaAltDeg,
+      timeLapseEnabled,
+      timeLapsePeriodMs,
+      timeLapseStepValue,
+      timeLapseStepUnit,
+      timeLapseLoopAfter,
+      timeLapseStartMs: tlStartWhenMsRef.current,
     });
   }, [
     locations, location, whenMs,
@@ -990,6 +1002,7 @@ export default function App() {
     showPlanets,
     isAnimating, speedMinPerSec, allPlanetIds,
     deltaAzDeg, deltaAltDeg,
+    timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter,
   ]);
 
   // --- JSX -------------------------------------------------------------------
