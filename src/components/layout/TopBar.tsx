@@ -90,6 +90,22 @@ type Props = {
 
   showPlanets: Record<string, boolean>;
   setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+
+  // --- NEW: Time-lapse controls ---
+  timeLapseEnabled: boolean;
+  setTimeLapseEnabled: (v: boolean) => void;
+  timeLapsePeriodMs: number;
+  setTimeLapsePeriodMs: (n: number) => void;
+  timeLapseStepValue: number;
+  setTimeLapseStepValue: (n: number) => void;
+  timeLapseStepUnit: 'hour' | 'day' | 'month' | 'lunar-fraction' | 'synodic-fraction';
+  setTimeLapseStepUnit: (u: 'hour' | 'day' | 'month' | 'lunar-fraction' | 'synodic-fraction') => void;
+  timeLapseLoopAfter: number; // 0 => no loop
+  setTimeLapseLoopAfter: (n: number) => void;
+
+  onTimeLapsePrevFrame: () => void;
+  onTimeLapseNextFrame: () => void;
+  timeLapseStartMs: number;
 };
 
 export default function TopBar({
@@ -113,6 +129,15 @@ export default function TopBar({
   showGrid, setShowGrid,
   projectionMode, setProjectionMode,
   showPlanets, setShowPlanets,
+
+  // --- NEW: Time-lapse controls ---
+  timeLapseEnabled, setTimeLapseEnabled,
+  timeLapsePeriodMs, setTimeLapsePeriodMs,
+  timeLapseStepValue, setTimeLapseStepValue,
+  timeLapseStepUnit, setTimeLapseStepUnit,
+  timeLapseLoopAfter, setTimeLapseLoopAfter,
+  onTimeLapsePrevFrame, onTimeLapseNextFrame,
+  timeLapseStartMs,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -121,6 +146,8 @@ export default function TopBar({
     { label: "1 sec/s", value: 60 },
     { label: "Temps réel", value: 1/60 },
   ], []);
+
+  
 
   // Browser local time and UTC time
   const currentDate = useMemo(() => new Date(currentUtcMs), [currentUtcMs]);
@@ -135,6 +162,12 @@ export default function TopBar({
     const seconds = String(currentDate.getSeconds()).padStart(2, '0');
     return `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
   }, [currentDate]);
+
+  // Format the timelapse start time in city timezone and UTC
+  const tlStartLabel = React.useMemo(() => {
+    const d = new Date(timeLapseStartMs);
+    return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
+  }, [timeLapseStartMs]);
 
   const utcTime = useMemo(() => {
     return currentDate.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
@@ -242,6 +275,44 @@ export default function TopBar({
   const [localDateTimeInput, setLocalDateTimeInput] = React.useState(browserLocalTimeString);
   const [isEditing, setIsEditing] = React.useState(false);
   
+  // --- NEW: Local editable strings for Time-lapse integer fields ---
+  const [tlPeriodStr, setTlPeriodStr] = React.useState(String(timeLapsePeriodMs));
+  const [tlStepValueStr, setTlStepValueStr] = React.useState(String(Math.max(1, Math.round(timeLapseStepValue || 1))));
+  const [tlLoopAfterStr, setTlLoopAfterStr] = React.useState(String(timeLapseLoopAfter));
+
+  const [editingTlPeriod, setEditingTlPeriod] = React.useState(false);
+  const [editingTlStep, setEditingTlStep] = React.useState(false);
+  const [editingTlLoop, setEditingTlLoop] = React.useState(false);
+
+  React.useEffect(() => { if (!editingTlPeriod) setTlPeriodStr(String(timeLapsePeriodMs)); }, [timeLapsePeriodMs, editingTlPeriod]);
+  React.useEffect(() => { if (!editingTlStep) setTlStepValueStr(String(Math.max(1, Math.round(timeLapseStepValue || 1)))); }, [timeLapseStepValue, editingTlStep]);
+  React.useEffect(() => { if (!editingTlLoop) setTlLoopAfterStr(String(timeLapseLoopAfter)); }, [timeLapseLoopAfter, editingTlLoop]);
+
+  const sanitizeInt = (s: string, min: number, max?: number, fallback?: number) => {
+    const n = parseInt(s, 10);
+    if (!Number.isFinite(n)) return fallback ?? min;
+    let v = n;
+    if (max != null) v = Math.min(v, max);
+    v = Math.max(v, min);
+    return v;
+  };
+
+  const commitTlPeriod = () => {
+    const v = sanitizeInt(tlPeriodStr, 1, 1000, timeLapsePeriodMs);
+    setTimeLapsePeriodMs(v);
+    setTlPeriodStr(String(v));
+  };
+  const commitTlStep = () => {
+    const v = sanitizeInt(tlStepValueStr, 1, undefined, Math.max(1, Math.round(timeLapseStepValue || 1)));
+    setTimeLapseStepValue(v);
+    setTlStepValueStr(String(v));
+  };
+  const commitTlLoop = () => {
+    const v = sanitizeInt(tlLoopAfterStr, 0, undefined, timeLapseLoopAfter);
+    setTimeLapseLoopAfter(v);
+    setTlLoopAfterStr(String(v));
+  };
+
   // Update local input when UTC time changes externally (e.g., from animation)
   // but only if user is not currently editing
   React.useEffect(() => {
@@ -759,6 +830,119 @@ export default function TopBar({
                   {Math.round(speedMinPerSec)==0 ? 'Temps réel': Math.round(speedMinPerSec) + ' min/s'} 
                 </div>
               </div>
+
+              {/* --- NEW: Time-lapse section --- */}
+              <div className="mt-3">
+                <div className="text-xs uppercase tracking-wider text-white/60">Time-lapse</div>
+                  <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3" title="Heure de départ du time-lapse">
+                  Depuis {tlStartLabel}
+                </div>
+
+                {/* Step value (integer) + unit */}
+                <div className="mt-1 flex items-center gap-2 w-full">
+                  <label className="inline-flex items-center gap-2 text-sm" title="Activer le mode time-lapse (ignore la vitesse de l’animation)">
+                    <input
+                      type="checkbox"
+                      checked={timeLapseEnabled}
+                      onChange={(e) => setTimeLapseEnabled(e.target.checked)}
+                    />
+                  </label>
+                  <span className="w-20 text-sm text-white/80">
+                    Saut de {timeLapseStepUnit == 'synodic-fraction' ? ' 1 /' : '   '} 
+                    {timeLapseStepUnit == 'lunar-fraction' ? ' 1 /' : '   '}
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    min={1}
+                    step={1}
+                    className="w-12 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
+                    value={tlStepValueStr}
+                    onChange={(e) => setTlStepValueStr(e.target.value)}
+                    onFocus={() => setEditingTlStep(true)}
+                    onBlur={() => { setEditingTlStep(false); commitTlStep(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { commitTlStep(); (e.target as HTMLInputElement).blur(); }
+                      if (e.key === 'Escape') { setTlStepValueStr(String(Math.max(1, Math.round(timeLapseStepValue || 1)))); (e.target as HTMLInputElement).blur(); }
+                    }}
+                    title="Valeur entière du saut par image"
+                  />
+                  <select
+                    className="flex-1 min-w-0 bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
+                    value={timeLapseStepUnit}
+                    onChange={(e) => setTimeLapseStepUnit(e.target.value as any)}
+                    title="Unité du saut (UTC) appliqué entre images"
+                  >
+                    <option value="hour">heure</option>
+                    <option value="day">jour</option>
+                    <option value="month">mois</option>
+                    <option value="synodic-fraction">jour lunaire</option>
+                    <option value="lunar-fraction">cycle lunaire sidéral</option>
+                  </select>
+                                    <button
+                    type="button"
+                    className="ml-1 px-2 py-1 rounded border border-white/20 bg-white/10 hover:bg-white/15 text-sm"
+                    onClick={onTimeLapsePrevFrame}
+                    title="Image précédente (↶)"
+                  >
+                    ↶
+                  </button>
+                  <button
+                    type="button"
+                    className="px-2 py-1 rounded border border-white/20 bg-white/10 hover:bg-white/15 text-sm"
+                    onClick={onTimeLapseNextFrame}
+                    title="Image suivante (↷)"
+                  >
+                    ↷
+                  </button>
+                </div>
+
+                {/* Period per frame (integer, safe while editing) */}
+                <div className="mt-1 flex items-center gap-3 flex-wrap">
+                  <span className="text-sm text-white/80">toutes les</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    min={1}
+                    max={1000}
+                    step={1}
+                    className="w-16 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
+                    value={tlPeriodStr}
+                    onChange={(e) => setTlPeriodStr(e.target.value)}
+                    onFocus={() => setEditingTlPeriod(true)}
+                    onBlur={() => { setEditingTlPeriod(false); commitTlPeriod(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { commitTlPeriod(); (e.target as HTMLInputElement).blur(); }
+                      if (e.key === 'Escape') { setTlPeriodStr(String(timeLapsePeriodMs)); (e.target as HTMLInputElement).blur(); }
+                    }}
+                    title="Période entre images (en millisecondes, 1 à 1000)"
+                  />
+                  <span className="text-sm text-white/80">ms pendant</span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    pattern="\d*"
+                    min={0}
+                    step={1}
+                    className="w-16 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
+                    value={tlLoopAfterStr}
+                    onChange={(e) => setTlLoopAfterStr(e.target.value)}
+                    onFocus={() => setEditingTlLoop(true)}
+                    onBlur={() => { setEditingTlLoop(false); commitTlLoop(); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { commitTlLoop(); (e.target as HTMLInputElement).blur(); }
+                      if (e.key === 'Escape') { setTlLoopAfterStr(String(timeLapseLoopAfter)); (e.target as HTMLInputElement).blur(); }
+                    }}
+                    title="Nombre d’images avant retour au début (0 = pas de boucle)"
+                  />
+                  <span className="text-sm text-white/80">images</span>
+
+
+                </div>
+              </div>
+              {/* --- /Time-lapse --- */}
             </div>
           </div>
         </div>

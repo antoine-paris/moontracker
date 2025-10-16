@@ -478,6 +478,68 @@ export default function App() {
   const whenMsRef = useRef<number>(whenMs);
   const runningRef = useRef<boolean>(false);
 
+  // --- Time-lapse state (UNCOMMENTED) ---
+  const [timeLapseEnabled, setTimeLapseEnabled] = useState<boolean>(false);
+  const [timeLapsePeriodMs, setTimeLapsePeriodMs] = useState<number>(200); // 1..1000
+  const [timeLapseStepValue, setTimeLapseStepValue] = useState<number>(1);  // integer step value
+  const [timeLapseStepUnit, setTimeLapseStepUnit] =
+    useState<'hour' | 'day' | 'month' | 'lunar-fraction' | 'synodic-fraction'>('hour');
+  const [timeLapseLoopAfter, setTimeLapseLoopAfter] = useState<number>(0); // 0 => no loop
+
+  // Track source of time changes to detect user commits
+  const lastChangeSourceRef = useRef<'user' | 'anim' | 'manual' | null>(null);
+
+  // When user commits a new date/time from TopBar (also update ref)
+  const handleCommitWhenMs = React.useCallback((ms: number) => {
+    lastChangeSourceRef.current = 'user';
+    whenMsRef.current = ms;
+    setWhenMs(ms);
+  }, []);
+
+  // Refs for Time-lapse engine
+  const tlAccumRef = useRef<number>(0);
+  const tlStartWhenMsRef = useRef<number>(whenMs);
+  const tlFramesRef = useRef<number>(0);
+
+  // Reset TL counters when enabled (set start ONCE when enabling)
+  useEffect(() => {
+    if (timeLapseEnabled) {
+      tlAccumRef.current = 0;
+      tlStartWhenMsRef.current = whenMs; // capture current time as TL start
+      tlFramesRef.current = 0;
+    }
+  }, [timeLapseEnabled]); // CHANGED: removed whenMs from deps
+
+  // Reset counters when loop size or step parameters change
+  useEffect(() => {
+    tlAccumRef.current = 0;
+    tlFramesRef.current = 0;
+    // keep tlStartWhenMsRef as the recorded start of run
+  }, [timeLapseLoopAfter, timeLapseStepValue, timeLapseStepUnit]);
+
+  // Also reset TL run cadence when pressing Play in TL mode (do not change start time)
+  useEffect(() => {
+    if (isAnimating && timeLapseEnabled) {
+      tlAccumRef.current = 0;
+      // keep tlStartWhenMsRef.current unchanged
+      // keep tlFramesRef.current unchanged
+    }
+  }, [isAnimating, timeLapseEnabled]);
+
+
+  // If user committed a new date/time, reset TL run start (only for TL mode)
+  useEffect(() => {
+    if (!timeLapseEnabled) { lastChangeSourceRef.current = null; return; }
+    if (lastChangeSourceRef.current === 'user') {
+      tlStartWhenMsRef.current = whenMs;
+      tlAccumRef.current = 0;
+      tlFramesRef.current = 0;
+    }
+    lastChangeSourceRef.current = null;
+  }, [whenMs, timeLapseEnabled]);
+
+
+
   // Resize (use ResizeObserver so stage fills space during sidebar animation)
   useEffect(() => {
     const update = () => {
@@ -627,6 +689,77 @@ export default function App() {
     
   const eclipticTiltDeg = sunOrientation.eclipticTiltDeg;
   
+  const stepTimeLapseOnce = React.useCallback((sign: 1 | -1) => {
+    const SYNODIC_DAYS = 29.530588853;
+    const SIDEREAL_DAYS = 27.321661;
+    const AVG_MONTH_DAYS = 30.436875;
+    const DAY_MS = 86400000;
+    const addUTCMonthsMs = (ms: number, months: number) => {
+      const nInt = months < 0 ? Math.ceil(months) : Math.trunc(months);
+      const frac = months - nInt;
+      const d = new Date(ms);
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const dom = d.getUTCDate();
+      const hh = d.getUTCHours(), mm = d.getUTCMinutes(), ss = d.getUTCSeconds(), msu = d.getUTCMilliseconds();
+      const targetMonth = m + nInt;
+      const lastDom = new Date(Date.UTC(y, targetMonth + 1, 0)).getUTCDate();
+      const safeDom = Math.min(dom, lastDom);
+      const intMs = Date.UTC(y, targetMonth, safeDom, hh, mm, ss, msu);
+      const fracMs = frac * AVG_MONTH_DAYS * DAY_MS;
+      return intMs + fracMs;
+    };
+    const applyStep = (ms: number, s: 1 | -1) => {
+      const v = Math.max(1, Math.round(timeLapseStepValue || 1));
+      switch (timeLapseStepUnit) {
+        case 'hour':  return ms + s * v * 3600000;
+        case 'day':   return ms + s * v * DAY_MS;
+        case 'month': return addUTCMonthsMs(ms, s * v);
+        case 'lunar-fraction': {
+          const deltaMs = (SIDEREAL_DAYS * DAY_MS) / v;
+          return ms + s * deltaMs;
+        }
+        case 'synodic-fraction': {
+          const deltaMs = (SYNODIC_DAYS * DAY_MS) / v;
+          return ms + s * deltaMs;
+        }
+      }
+    };
+
+    // Clamp with no loop on manual stepping
+    const loopCount = Math.max(0, Math.trunc(timeLapseLoopAfter || 0));
+    const maxIndex = loopCount > 0 ? loopCount - 1 : Number.POSITIVE_INFINITY;
+
+    // Current frame index since tlStartWhenMsRef
+    let idx = tlFramesRef.current ?? 0;
+
+    // If loop is defined, stop at ends
+    if (loopCount > 0) {
+      if (sign > 0 && idx >= maxIndex) {
+        // stay on last frame
+        return;
+      }
+      if (sign < 0 && idx <= 0) {
+        // stay on first frame
+        return;
+      }
+    }
+
+    let next = whenMsRef.current;
+    if (sign > 0) {
+      next = applyStep(next, +1);
+      idx = idx + 1;
+    } else {
+      next = applyStep(next, -1);
+      idx = idx - 1;
+    }
+
+    tlFramesRef.current = idx;
+    whenMsRef.current = next;
+    lastChangeSourceRef.current = 'manual';
+    setWhenMs(next);
+  }, [timeLapseStepUnit, timeLapseStepValue, timeLapseLoopAfter]);
+ 
     
   // Animation loop 
   useEffect(() => {
@@ -637,9 +770,48 @@ export default function App() {
       runningRef.current = false;
       return;
     }
-    // Continue from current whenMsRef (do not reset here)
     lastTsRef.current = null;
     runningRef.current = true;
+
+    const SYNODIC_DAYS = 29.530588853; // phase-to-phase
+    const SIDEREAL_DAYS = 27.321661;   // sidereal orbit
+    const AVG_MONTH_DAYS = 30.436875;
+    const DAY_MS = 86400000;
+
+    const addUTCMonthsMs = (ms: number, months: number) => {
+      const nInt = months < 0 ? Math.ceil(months) : Math.trunc(months);
+      const frac = months - nInt;
+      const d = new Date(ms);
+      const y = d.getUTCFullYear();
+      const m = d.getUTCMonth();
+      const dom = d.getUTCDate();
+      const hh = d.getUTCHours(), mm = d.getUTCMinutes(), ss = d.getUTCSeconds(), msu = d.getUTCMilliseconds();
+      const targetMonth = m + nInt;
+      const lastDom = new Date(Date.UTC(y, targetMonth + 1, 0)).getUTCDate();
+      const safeDom = Math.min(dom, lastDom);
+      const intMs = Date.UTC(y, targetMonth, safeDom, hh, mm, ss, msu);
+      const fracMs = frac * AVG_MONTH_DAYS * DAY_MS;
+      return intMs + fracMs;
+    };
+
+    // IMPLEMENTED: apply one TL step
+    const stepOnce = (ms: number): number => {
+      const v = Math.max(1, Math.round(timeLapseStepValue || 1));
+      switch (timeLapseStepUnit) {
+        case 'hour':  return ms + v * 3600000;
+        case 'day':   return ms + v * DAY_MS;
+        case 'month': return addUTCMonthsMs(ms, v);
+        case 'lunar-fraction': {
+          const deltaMs = (SIDEREAL_DAYS * DAY_MS) / v;
+          return ms + deltaMs;
+        }
+        case 'synodic-fraction': {
+          const deltaMs = (SYNODIC_DAYS * DAY_MS) / v;
+          return ms + deltaMs;
+        }
+      }
+    };
+
     const tick = (ts: number) => {
       if (!runningRef.current) return;
       if (lastTsRef.current == null) {
@@ -647,12 +819,37 @@ export default function App() {
       } else {
         const dtSec = (ts - lastTsRef.current) / 1000;
         lastTsRef.current = ts;
-        const rate = clamp(speedMinPerSec, -360, 360);
-        whenMsRef.current += dtSec * rate * 60 * 1000;
-        setWhenMs(whenMsRef.current);
+
+                if (timeLapseEnabled) {
+          tlAccumRef.current += dtSec * 1000;
+          let didSet = false;
+          while (tlAccumRef.current >= timeLapsePeriodMs) {
+            tlAccumRef.current -= timeLapsePeriodMs;
+            whenMsRef.current = stepOnce(whenMsRef.current);
+            tlFramesRef.current += 1;
+            didSet = true;
+
+            if (timeLapseLoopAfter > 0 && tlFramesRef.current >= timeLapseLoopAfter) {
+              whenMsRef.current = tlStartWhenMsRef.current;
+              tlFramesRef.current = 0;
+              tlAccumRef.current = 0; // IMPORTANT: drop residual so next frame starts cleanly
+              didSet = true;
+              break; // avoid overshoot within same tick
+            }
+          }
+          if (didSet) {
+            lastChangeSourceRef.current = 'anim';
+            setWhenMs(whenMsRef.current);
+          }
+        } else {
+          whenMsRef.current += dtSec * clamp(speedMinPerSec, -360, 360) * 60 * 1000;
+          lastChangeSourceRef.current = 'anim';
+          setWhenMs(whenMsRef.current);
+        }
       }
       if (runningRef.current) rafIdRef.current = requestAnimationFrame(tick);
     };
+
     rafIdRef.current = requestAnimationFrame(tick);
     return () => {
       runningRef.current = false;
@@ -660,7 +857,16 @@ export default function App() {
       rafIdRef.current = null;
       lastTsRef.current = null;
     };
-  }, [isAnimating, speedMinPerSec, sceneReady]);
+  }, [
+    isAnimating,
+    sceneReady,
+    speedMinPerSec,
+    timeLapseEnabled,
+    timeLapsePeriodMs,
+    timeLapseStepValue,
+    timeLapseStepUnit,
+    timeLapseLoopAfter,
+  ]);
 
   const TOP_RIGHT_BAR_W = 56; // px
 
@@ -862,7 +1068,7 @@ export default function App() {
               linkFov={linkFov}
               setLinkFov={setLinkFov}
               viewport={viewport}
-              onCommitWhenMs={(ms) => { whenMsRef.current = ms; setWhenMs(ms); }}
+              onCommitWhenMs={handleCommitWhenMs}
               setIsAnimating={setIsAnimating}
               isAnimating={isAnimating}
               speedMinPerSec={speedMinPerSec}
@@ -912,7 +1118,22 @@ export default function App() {
               setProjectionMode={setProjectionMode}
               showPlanets={showPlanets}
               setShowPlanets={setShowPlanets}
-            />
+
+              timeLapseEnabled={timeLapseEnabled}
+              setTimeLapseEnabled={setTimeLapseEnabled}
+              timeLapsePeriodMs={timeLapsePeriodMs}
+              setTimeLapsePeriodMs={setTimeLapsePeriodMs}
+              timeLapseStepValue={timeLapseStepValue}
+              setTimeLapseStepValue={setTimeLapseStepValue}
+              timeLapseStepUnit={timeLapseStepUnit}
+              setTimeLapseStepUnit={setTimeLapseStepUnit}
+              timeLapseLoopAfter={timeLapseLoopAfter}
+              setTimeLapseLoopAfter={setTimeLapseLoopAfter}
+              onTimeLapsePrevFrame={() => stepTimeLapseOnce(-1)}
+              onTimeLapseNextFrame={() => stepTimeLapseOnce(+1)}
+              timeLapseStartMs={tlStartWhenMsRef.current}
+
+          />
           </div>
 
           {/* Stage canvas */}
