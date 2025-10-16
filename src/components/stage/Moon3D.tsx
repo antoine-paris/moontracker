@@ -488,7 +488,6 @@ export default function Moon3D({
   x, y, wPx, hPx,
   moonAltDeg, moonAzDeg, sunAltDeg, sunAzDeg, limbAngleDeg,
   librationTopo,
-  // modelUrl = '/src/assets/moon-nasa-gov-4720-1k.glb',
   modelUrl = new URL('../../assets/moon-nasa-gov-4720-1k.glb', import.meta.url).href,
   debugMask = false,
   rotOffsetDegX = 0, rotOffsetDegY = 0, rotOffsetDegZ = 0,
@@ -499,7 +498,6 @@ export default function Moon3D({
   brightLimbAngleDeg,
   showSubsolarCone = true,
   earthshine = false,
-  // NEW: allow overriding from parent
   reliefScale = MOON_RELIEF_SCALE_DEFAULT,
   onReady,
 }: Props) {
@@ -575,50 +573,60 @@ export default function Moon3D({
     return [d.x, d.y, d.z];
   }, [baseLightPos]);
 
-     // Rotations (en degrés) dues à la libration appliquées au modèle: Ry(-lon), Rx(+lat), Rz=0
-   const libLonDegNorm = (() => {
-     if (!librationTopo) return 0;
-     const d = ((librationTopo.lonDeg + 180) % 360 + 360) % 360 - 180;
-     return d;
-   })();
-   const libRotXDeg = librationTopo ? librationTopo.latDeg : 0;
-   const libRotYDeg = librationTopo ? -libLonDegNorm : 0;
-   const libRotZDeg = 0;
-   const tiltHint = librationTopo
-     ? (libRotXDeg > 0
-         ? 'pôle Nord légèrement “penché” vers l’observateur'
-         : libRotXDeg < 0
-           ? 'pôle Sud légèrement “penché” vers l’observateur'
-           : 'sans bascule nord/sud notable')
-     : '—';
-   const eastHint = librationTopo
-     ? (libLonDegNorm > 0
-         ? 'on fait tourner le globe pour amener l’Est vers nous'
-         : libLonDegNorm < 0
-           ? 'on fait tourner le globe pour amener l’Ouest vers nous'
-           : 'sans biais est/ouest notable')
-     : '—';
+  // Rotations (en degrés) dues à la libration appliquées au modèle: Ry(-lon), Rx(+lat), Rz=0
+  const libLonDegNorm = (() => {
+    if (!librationTopo) return 0;
+    const d = ((librationTopo.lonDeg + 180) % 360 + 360) % 360 - 180;
+    return d;
+  })();
+  const libRotXDeg = librationTopo ? librationTopo.latDeg : 0;
+  const libRotYDeg = librationTopo ? -libLonDegNorm : 0;
+  const libRotZDeg = 0;
+  const tiltHint = librationTopo
+    ? (libRotXDeg > 0
+        ? 'pôle Nord légèrement “penché” vers l’observateur'
+        : libRotXDeg < 0
+          ? 'pôle Sud légèrement “penché” vers l’observateur'
+          : 'sans bascule nord/sud notable')
+    : '—';
+  const eastHint = librationTopo
+    ? (libLonDegNorm > 0
+        ? 'on fait tourner le globe pour amener l’Est vers nous'
+        : libLonDegNorm < 0
+          ? 'on fait tourner le globe pour amener l’Ouest vers nous'
+          : 'sans biais est/ouest notable')
+    : '—';
+  
   if (tooSmall) return null;
- 
-   // Diamètre souhaité du disque lunaire (pixels)
-   const moonPx = Math.floor(Math.min(wPx, hPx));
-   // Taille du Canvas: disque + marge pour les marqueurs aux deux extrémités
-   const canvasPx = Math.floor(
-     moonPx * (
-       1
+
+  // Diamètre souhaité du disque lunaire (pixels)
+  const moonPx = Math.floor(Math.min(wPx, hPx));
+  const targetPx = moonPx; // utilisé par Model pour caler le diamètre du disque
+
+  // Taille de Canvas souhaitée (disque + marge pour card/axes)
+  const desiredCanvasPx = Math.floor(
+    moonPx * (
+      1
       + (RING_RADIUS_FACTOR - 1)
       + AXIS_LEN_FACTOR
       + AXIS_GAP_FACTOR
       + N_SIZE_FACTOR
       + LABEL_GAP_FACTOR
-     )
-   );
-   //const left = Math.round(x - canvasPx / 2);
-   //const top  = Math.round(y - canvasPx / 2);
-   const left = x;
-   const top  = y;
+    )
+  );
 
-   const targetPx = moonPx; // utilisé par Model pour caler le diamètre du disque
+  // Grow-only canvas to avoid 1-frame frustum/backbuffer mismatch
+  const [canvasPx, setCanvasPx] = React.useState<number>(() => Math.max(16, desiredCanvasPx));
+  React.useLayoutEffect(() => {
+    // grow immediately, never shrink
+    if (desiredCanvasPx > canvasPx) setCanvasPx(desiredCanvasPx);
+  }, [desiredCanvasPx, canvasPx]);
+
+  // Center on (x,y) with translate to keep sub-pixel smoothness
+  const left = x;
+  const top  = y;
+
+  // const targetPx = moonPx; // utilisé par Model pour caler le diamètre du disque
  
    // (rotations de libration déjà calculées plus haut)
  
@@ -647,97 +655,93 @@ export default function Moon3D({
   
   return (
     <div
-      className="absolute pointer-events-none"
       style={{
+        position: 'absolute',
         left,
         top,
         width: Math.max(1, canvasPx),
         height: Math.max(1, canvasPx),
         zIndex: Z.ui - 1,
         overflow: 'hidden',
-        // Prevent jitter: center anchor and let sub-pixel coordinates be rendered smoothly
         transform: 'translate(-50%, -50%)',
         willChange: 'transform',
       }}
     >
-    <Canvas
-      orthographic
-      dpr={[1, 2]}
-      frameloop="always"                // force un rendu continu
-      gl={{ alpha: true, preserveDrawingBuffer: true }}
-      onCreated={({ gl, invalidate }) => {
-        gl.setClearColor(new THREE.Color(0x000000), 0);
-        gl.toneMappingExposure = 2.2;
-        // garantit un (re)rendu même si le mode global est "demand"
-        invalidate();
-        requestAnimationFrame(() => invalidate());
-      }}
-    >
+      <Canvas
+        orthographic
+        dpr={[1, 2]}
+        frameloop="always"
+        gl={{ alpha: true, preserveDrawingBuffer: true }}
+        onCreated={({ gl, invalidate }) => {
+          gl.setClearColor(new THREE.Color(0x000000), 0);
+          gl.toneMappingExposure = 2.2;
+          invalidate();
+          requestAnimationFrame(() => invalidate());
+        }}
+      >
         <OrthographicCamera
-           makeDefault
-           left={-canvasPx / 2}
-           right={canvasPx / 2}
-           top={canvasPx / 2}
-           bottom={-canvasPx / 2}
-           near={-2000}
-           far={2000}
-           position={[0, 0, 100]}
-           // FIX: use radians via camEuler again
-           rotation={[camEuler.x, camEuler.y, camEuler.z]}
-         />
-         {/* Lumières (plein si phase désactivée) */}
-         {!showPhase ? (
-           <>
-             <ambientLight intensity={1.2} />
-             {/* Six directions cardinales autour de l’objet */}
-             <directionalLight position={[ 1,  0,  0]} intensity={3.5} />
-             <directionalLight position={[-1,  0,  0]} intensity={3.5} />
-             <directionalLight position={[ 0,  1,  0]} intensity={3.5} />
-             <directionalLight position={[ 0, -1,  0]} intensity={3.5} />
-             <directionalLight position={[ 0,  0,  1]} intensity={3.5} />
-             <directionalLight position={[ 0,  0, -1]} intensity={3.5} />
-             {/* Huit directions diagonales */}
-             <directionalLight position={[ 1,  1,  1]} intensity={2.0} />
-             <directionalLight position={[ 1,  1, -1]} intensity={2.0} />
-             <directionalLight position={[ 1, -1,  1]} intensity={2.0} />
-             <directionalLight position={[ 1, -1, -1]} intensity={2.0} />
-             <directionalLight position={[-1,  1,  1]} intensity={2.0} />
-             <directionalLight position={[-1,  1, -1]} intensity={2.0} />
-             <directionalLight position={[-1, -1,  1]} intensity={2.0} />
-             <directionalLight position={[-1, -1, -1]} intensity={2.0} />
-           </>
-         ) : (
-           <>
-             <hemisphereLight args={[0x888888, 0x111111, 1.2]} />
-             <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={SUNLIGHT_INTENSITY} />
-             <ambientLight intensity={0.8} />
-             {earthFillIntensity > 0 && (
-               // Remplacement: directionalLight pour le "clair de terre" (pas d'atténuation 1/r²)
-               <directionalLight
-                 position={earthFillPos}      // placé côté observateur
-                 color="#9999ff"              // léger bleu
-                 intensity={earthFillIntensity}
-               />
-             )}
-           </>
-         )}
-        <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="rgba(176, 176, 176, 0.45)" /></mesh>}>
-           <Model
-             limbAngleDeg={limbAngleDeg}
-             targetPx={targetPx}
-             modelUrl={modelUrl}
-             librationTopo={librationTopo}
-             rotOffsetDegX={rotOffsetDegX}
-             rotOffsetDegY={rotOffsetDegY}
-             rotOffsetDegZ={rotOffsetDegZ}
-             debugMask={debugMask}
-             showMoonCard={showMoonCard}
-             sunDirWorld={sunDirWorld}
-             showSubsolarCone={showSubsolarCone}
-             // NEW: pass through to materials
-             reliefScale={reliefScale}
-             onMounted={() => setModelMounted(true)}
-           />
+          makeDefault
+          left={-canvasPx / 2}
+          right={canvasPx / 2}
+          top={canvasPx / 2}
+          bottom={-canvasPx / 2}
+          near={-2000}
+          far={2000}
+          position={[0, 0, 100]}
+          rotation={[camEuler.x, camEuler.y, camEuler.z]}
+        />
+        {/* Lumières (plein si phase désactivée) */}
+        {!showPhase ? (
+          <>
+            <ambientLight intensity={1.2} />
+            {/* Six directions cardinales autour de l’objet */}
+            <directionalLight position={[ 1,  0,  0]} intensity={3.5} />
+            <directionalLight position={[-1,  0,  0]} intensity={3.5} />
+            <directionalLight position={[ 0,  1,  0]} intensity={3.5} />
+            <directionalLight position={[ 0, -1,  0]} intensity={3.5} />
+            <directionalLight position={[ 0,  0,  1]} intensity={3.5} />
+            <directionalLight position={[ 0,  0, -1]} intensity={3.5} />
+            {/* Huit directions diagonales */}
+            <directionalLight position={[ 1,  1,  1]} intensity={2.0} />
+            <directionalLight position={[ 1,  1, -1]} intensity={2.0} />
+            <directionalLight position={[ 1, -1,  1]} intensity={2.0} />
+            <directionalLight position={[ 1, -1, -1]} intensity={2.0} />
+            <directionalLight position={[-1,  1,  1]} intensity={2.0} />
+            <directionalLight position={[-1,  1, -1]} intensity={2.0} />
+            <directionalLight position={[-1, -1,  1]} intensity={2.0} />
+            <directionalLight position={[-1, -1, -1]} intensity={2.0} />
+          </>
+        ) : (
+          <>
+            <hemisphereLight args={[0x888888, 0x111111, 1.2]} />
+            <directionalLight position={[sunDirWorld[0], sunDirWorld[1], sunDirWorld[2]]} intensity={SUNLIGHT_INTENSITY} />
+            <ambientLight intensity={0.8} />
+            {earthFillIntensity > 0 && (
+              // Remplacement: directionalLight pour le "clair de terre" (pas d'atténuation 1/r²)
+              <directionalLight
+                position={earthFillPos}      // placé côté observateur
+                color="#9999ff"              // léger bleu
+                intensity={earthFillIntensity}
+              />
+            )}
+          </>
+        )}
+        <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="rgba(176,176,176,0.45)" /></mesh>}>
+          <Model
+            limbAngleDeg={limbAngleDeg}
+            targetPx={targetPx}     // model rescales each tick; canvas stays stable
+            modelUrl={modelUrl}
+            librationTopo={librationTopo}
+            rotOffsetDegX={rotOffsetDegX}
+            rotOffsetDegY={rotOffsetDegY}
+            rotOffsetDegZ={rotOffsetDegZ}
+            debugMask={debugMask}
+            showMoonCard={showMoonCard}
+            sunDirWorld={sunDirWorld}
+            showSubsolarCone={true}
+            reliefScale={reliefScale}
+            onMounted={() => setModelMounted(true)}
+          />
         </Suspense>
         <ReadyPing armed={modelMounted} onReady={onReady} />
       </Canvas>

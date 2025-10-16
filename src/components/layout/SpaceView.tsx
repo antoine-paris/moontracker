@@ -214,8 +214,21 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
   // Sizes at local px/deg scale for Sun/Moon
   const bodySizes = useMemo(() => {
-    const centerSun = projectToScreen(astro.sun.az, astro.sun.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
-    const centerMoon = projectToScreen(astro.moon.az, astro.moon.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+    // Use sizeRadiusPx = 0 when computing px/deg; passing bodySizes.* here causes a 2-pass jump
+    const centerSun = projectToScreen(
+      astro.sun.az, astro.sun.alt, refAzDeg,
+      viewport.w, viewport.h,
+      refAltDeg,
+      0,                      // FIX: was bodySizes.sun.r
+      fovXDeg, fovYDeg, projectionMode
+    );
+    const centerMoon = projectToScreen(
+      astro.moon.az, astro.moon.alt, refAzDeg,
+      viewport.w, viewport.h,
+      refAltDeg,
+      0,                      // FIX: was bodySizes.moon.r
+      fovXDeg, fovYDeg, projectionMode
+    );
     const pxPerDegXSun = centerSun.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
     const pxPerDegYSun = centerSun.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
     const pxPerDegXMoon = centerMoon.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
