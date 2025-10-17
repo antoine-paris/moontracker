@@ -669,7 +669,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       {/* Earth - render before horizon */}
       {showEarth && (
         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 0, pointerEvents: 'none' }}>
-          TEST TEST TEST 15
           <Earth
             viewport={viewport}
             refAzDeg={refAzDeg}
@@ -681,6 +680,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             latDeg={latDeg}
             lngDeg={lngDeg}
             showEarth={showEarth}
+            debugMask={debugMask}
           />
         </div>
       )}
@@ -706,7 +706,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             fovYDeg={fovYDeg}
             projectionMode={projectionMode}
             showEarth={showEarth}
-            debugMask={debugMask}
+            debugMask={false}
           />
           <CardinalMarkers
             viewport={viewport}

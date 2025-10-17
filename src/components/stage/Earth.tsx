@@ -21,7 +21,7 @@ type Props = {
   refAltDeg: number;
   fovXDeg: number;
   fovYDeg: number;
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
+  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
   showEarth?: boolean;
   debugMask?: boolean;
 };
@@ -173,16 +173,6 @@ export default function Earth({
 
     return { bottomSegs: segsBottom };
   };
-
-  const { frontSegs, backSegs } = useMemo(
-    () => buildHorizonFrontBackPaths(0),
-    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
-  );
-
-  const { bottomSegs } = useMemo(
-    () => buildPrimeVerticalPaths(),
-    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
-  );
 
   const buildGroundUnionPathFront = (): string | null => {
     const proj = (az: number, alt: number) =>
@@ -436,6 +426,32 @@ export default function Earth({
     return d;
   };
 
+  // Memoize the segments separately
+  const { frontSegs, backSegs } = useMemo(
+    () => buildHorizonFrontBackPaths(0),
+    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+  );
+
+  const { bottomSegs } = useMemo(
+    () => buildPrimeVerticalPaths(),
+    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+  );
+
+  // Build debug paths for horizon lines
+  const horizonFrontPath = useMemo(() => {
+    if (!debugMask || !frontSegs?.length) return null;
+    return frontSegs.map(seg =>
+      seg.reduce((acc, q, idx) => acc + `${idx ? "L" : "M"} ${q.x.toFixed(2)} ${q.y.toFixed(2)} `, "")
+    ).join("").trim();
+  }, [debugMask, frontSegs]);
+
+  const horizonBackPath = useMemo(() => {
+    if (!debugMask || !backSegs?.length) return null;
+    return backSegs.map(seg =>
+      seg.reduce((acc, q, idx) => acc + `${idx ? "L" : "M"} ${q.x.toFixed(2)} ${q.y.toFixed(2)} `, "")
+    ).join("").trim();
+  }, [debugMask, backSegs]);
+
   const simplifyFlat = fovXDeg <= FLAT_FOV_X_THRESHOLD || fovYDeg <= FLAT_FOV_Y_THRESHOLD;
 
   const flatHorizon = useMemo(() => {
@@ -450,18 +466,15 @@ export default function Earth({
 
   const unionPathFront = useMemo(
     () => (showEarth && !simplifyFlat ? buildGroundUnionPathFront() : null),
-    [showEarth, simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, frontSegs, bottomSegs]
+    [showEarth, simplifyFlat, frontSegs, bottomSegs]
   );
   
   const unionPathBack = useMemo(
     () => (showEarth && !simplifyFlat ? buildGroundUnionPathBack() : null),
-    [showEarth, simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, backSegs, bottomSegs]
+    [showEarth, simplifyFlat, backSegs, bottomSegs]
   );
 
-  
   if (!showEarth) return null;
-
-  console.log('Earth render:', { simplifyFlat, flatHorizon, unionPathFront, unionPathBack });
 
   return (
     <div
@@ -474,6 +487,7 @@ export default function Earth({
         className="absolute"
         style={{ left: 0, top: 0, zIndex: Z.horizon - 25, overflow: "visible" }}
       >
+        {/* Ground fill - simplified flat mode */}
         {simplifyFlat && flatHorizon && (
           <rect
             x={0}
@@ -484,6 +498,7 @@ export default function Earth({
           />
         )}
 
+        {/* Ground fill - back hemisphere */}
         {!simplifyFlat && unionPathBack && projectionMode !== "ortho" && (
           <path
             d={unionPathBack}
@@ -493,12 +508,41 @@ export default function Earth({
           />
         )}
 
+        {/* Ground fill - front hemisphere */}
         {!simplifyFlat && unionPathFront && (
           <path
             d={unionPathFront}
             fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
             stroke={COLOR_HZ_FRONT}
             strokeWidth={debugMask ? 2 : 0}
+          />
+        )}
+
+        {/* Debug: horizon lines */}
+        {debugMask && horizonBackPath && projectionMode !== "ortho" && (
+          <path 
+            d={horizonBackPath} 
+            stroke={COLOR_HZ_BACK} 
+            strokeWidth={1} 
+            fill="none" 
+          />
+        )}
+        {debugMask && horizonFrontPath && (
+          <path 
+            d={horizonFrontPath} 
+            stroke={COLOR_HZ_FRONT} 
+            strokeWidth={1.5} 
+            fill="none" 
+          />
+        )}
+        {debugMask && simplifyFlat && flatHorizon && (
+          <line
+            x1={0}
+            y1={flatHorizon.y}
+            x2={viewport.w}
+            y2={flatHorizon.y}
+            stroke={COLOR_HZ_FRONT}
+            strokeWidth={1.5}
           />
         )}
       </svg>
