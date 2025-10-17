@@ -72,7 +72,7 @@ export function moveDest(latDeg: number, lngDeg: number, distanceKm: number, bea
 }
 
 // Limit NS move so latitude stays within ±89°
-export const LAT_CAP_DEG = 89;
+export const LAT_CAP_DEG = 89.999;
 export function capNSDistanceKm(latDeg: number, distanceKm: number, bearingDegIn: number) {
   const b = ((bearingDegIn % 360) + 360) % 360;
   if (b !== 0 && b !== 180) return distanceKm; // only cap for N/S

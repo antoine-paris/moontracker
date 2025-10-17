@@ -249,8 +249,31 @@ export default function SidebarLocationsCoord({
   };
 
   const nearCityParts = useMemo((): { line1: string; city: string } => {
+    // Poles special-casing (latitude near the extremes)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      if (lat >= 80) {
+        const d = haversineKm(lat, lng, 90, lng);
+        const km = Math.round(d);
+        if (Number.isFinite(km)) 
+          if (km==0)
+            return { line1: '', city: `Proche Pôle Nord` };
+          else
+            return { line1: '', city: `${km} km du Pôle Nord` };
+      }
+      if (lat <= -60) {
+        const d = haversineKm(lat, lng, -90, lng);
+        const km = Math.round(d);
+        if (Number.isFinite(km)) 
+          if (km==0)
+            return { line1: '', city: `Proche Pôle Sud` };
+          else
+            return { line1: '', city: `${km} km du Pôle Sud` };
+      }
+    }
+
     if (!nearest) return { line1: '', city: '' };
     const km = Math.round(nearest.km);
+
     if (!Number.isFinite(km)) return { line1: '', city: '' };
     if (km <= 0) return { line1: '', city: `${nearest.city.label}` };
     const dir = dir8FullFr(nearest.bearingFromCity);
@@ -259,7 +282,7 @@ export default function SidebarLocationsCoord({
       line1: `à ${km}km ${prep}${dir} de `,
       city: `${nearest.city.label} (*)`,
     };
-  }, [nearest]);
+  }, [nearest, lat, lng]);
 
   const move100 = (bearing: number) => {
     const kmBase = 100;
@@ -284,8 +307,8 @@ export default function SidebarLocationsCoord({
               id="coord-lat"
               type="number"
               step="0.001"
-              min={-89}
-              max={89}
+              min={-89.999}
+              max={89.999}
               value={Number.isFinite(lat) ? lat.toFixed(3) : ''}
               onChange={(e) => {
                 const v = parseFloat(e.target.value);

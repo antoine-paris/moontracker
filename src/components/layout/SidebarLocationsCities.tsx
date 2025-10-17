@@ -183,7 +183,7 @@ export default function SidebarLocationsCities({
   const northPole: LocationOption = useMemo(() => ({
     id: `np@${selectedLng}`,
     label: 'Pôle Nord',
-    lat: 89,
+    lat: 89.999,
     lng: selectedLng,
     timeZone: 'Etc/UTC',
   }), [selectedLng]);
@@ -191,7 +191,7 @@ export default function SidebarLocationsCities({
   const southPole: LocationOption = useMemo(() => ({
     id: `sp@${selectedLng}`,
     label: 'Pôle Sud',
-    lat: -89,
+    lat: -89.999,
     lng: selectedLng,
     timeZone: 'Etc/UTC',
   }), [selectedLng]);
@@ -462,12 +462,12 @@ export default function SidebarLocationsCities({
                   selectedButton?.focus();
                 }, 0);
               }}
-              title={`89° LAT ${selectedLng}° LNG`}
+              title={`${northPole.lat.toFixed(3)}° LAT ${selectedLng}° LNG`}
               data-location-id={northPole.id}
               onFocus={(e) => e.currentTarget.blur()}
             >
               <div>{'Pôle Nord'}</div>
-              <div style={styles.sub}>{`89.000°, ${selectedLng.toFixed(0)}°`}</div>
+              <div style={styles.sub}>{`${northPole.lat.toFixed(3)}°, ${selectedLng.toFixed(0)}°`}</div>
             </button>
           </li>
         )}
@@ -566,12 +566,12 @@ export default function SidebarLocationsCities({
                   selectedButton?.focus();
                 }, 0);
               }}
-              title={`-89° LAT ${selectedLng}° LNG`}
+              title={`${southPole.lat.toFixed(1)}° LAT ${selectedLng}° LNG`}
               data-location-id={southPole.id}
               onFocus={(e) => e.currentTarget.blur()}
             >
               <div>{'Pôle Sud'}</div>
-              <div style={styles.sub}>{`-89.000°, ${selectedLng.toFixed(0)}°`}</div>
+              <div style={styles.sub}>{`${southPole.lat.toFixed(3)}°, ${selectedLng.toFixed(0)}°`}</div>
             </button>
           </li>
         )}

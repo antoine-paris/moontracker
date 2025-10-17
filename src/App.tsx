@@ -427,6 +427,23 @@ export default function App() {
   // - Else → "Lat: X.XXX Lng: X.XXX (123 km SO de City)"
   const overlayPlaceString = useMemo(() => {
     const EPS = 1e-9;
+
+    // Poles special case: show distance to the pole
+    if (location.lat >= 80) {
+      const km = Math.round(haversineKm(location.lat, location.lng, 90, 0));
+      if (km==0)
+        return 'Proche Pôle Nord';
+      else
+        return `${km} km du Pôle Nord`;
+    }
+    if (location.lat <= -60) {
+      const km = Math.round(haversineKm(location.lat, location.lng, -90, 0));
+      if (km==0)
+        return 'Proche Pôle Sud';
+      else
+        return `${km} km du Pôle Sud`;
+    }
+
     const canonical = locations.find(l => l.id === location.id);
     const coordsMatch =
       !!canonical &&
@@ -453,6 +470,8 @@ export default function App() {
 
     return `Lat: ${location.lat.toFixed(3)} Lng: ${location.lng.toFixed(3)} (${km} km ${dir} de ${nearestCityName})`;
   }, [location.id, location.lat, location.lng, locations, cityName]);
+
+
 
   // view deltas (added by directional keypad)
   const [deltaAzDeg, setDeltaAzDeg] = useState(0);
