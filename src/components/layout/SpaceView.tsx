@@ -74,6 +74,8 @@ export interface SpaceViewProps {
   showStars: boolean;
   showMarkers: boolean;
 
+  showHorizon: boolean;
+
   showSun: boolean;
   showMoon: boolean;
   showPhase: boolean;
@@ -123,6 +125,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     showHud,
     cameraLabel,
     overlayInfoString,
+    showHorizon,
   } = props;
 
   // Split "Place, Date..." into two lines
@@ -663,37 +666,39 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   return (
     <div ref={ref} className="absolute inset-0">
       {/* Horizon & Cardinal markers */}
-      <div
-        className="absolute"
-        style={{
-          zIndex: Z.horizon,
-          left: viewport.x,
-          top: viewport.y,
-          width: viewport.w,
-          height: viewport.h,
-          pointerEvents: 'none',
-        }}
-      >
-        <HorizonOverlay
-          viewport={viewport}
-          refAzDeg={refAzDeg}
-          refAltDeg={refAltDeg}
-          fovXDeg={fovXDeg}
-          fovYDeg={fovYDeg}
-          projectionMode={projectionMode}
-          showEarth={showEarth}
-          debugMask={debugMask}
-        />
-        <CardinalMarkers
-          viewport={viewport}
-          refAzDeg={refAzDeg}
-          refAltDeg={refAltDeg}
-          fovXDeg={fovXDeg}
-          fovYDeg={fovYDeg}
-          projectionMode={projectionMode}
-          bodyItems={bodyHorizonItems}
-        />
-      </div>
+      {showHorizon && (
+        <div
+          className="absolute"
+          style={{
+            zIndex: Z.horizon,
+            left: viewport.x,
+            top: viewport.y,
+            width: viewport.w,
+            height: viewport.h,
+            pointerEvents: 'none',
+          }}
+        >
+          <HorizonOverlay
+            viewport={viewport}
+            refAzDeg={refAzDeg}
+            refAltDeg={refAltDeg}
+            fovXDeg={fovXDeg}
+            fovYDeg={fovYDeg}
+            projectionMode={projectionMode}
+            showEarth={showEarth}
+            debugMask={debugMask}
+          />
+          <CardinalMarkers
+            viewport={viewport}
+            refAzDeg={refAzDeg}
+            refAltDeg={refAltDeg}
+            fovXDeg={fovXDeg}
+            fovYDeg={fovYDeg}
+            projectionMode={projectionMode}
+            bodyItems={bodyHorizonItems}
+          />
+        </div>
+      )}
 
       {/* Grid */}
       {showGrid && (

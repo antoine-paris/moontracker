@@ -297,10 +297,12 @@ export default function App() {
   const [showEarth, setShowEarth] = useState(false);
   // Atmosphere toggle
   const [showAtmosphere, setShowAtmosphere] = useState(false);
-  const [showStars, setShowStars] = useState(false); // + add
+  const [showStars, setShowStars] = useState(false); 
   const [showMarkers, setShowMarkers] = useState(false); 
   // grid toggle
   const [showGrid, setShowGrid] = useState(false);
+
+  const [showHorizon, setShowHorizon] = useState(true);
 
   const [showPlanets, setShowPlanets] = useState<Record<string, boolean>>(
     () => {
@@ -1137,6 +1139,8 @@ export default function App() {
               currentUtcMs={whenMs}
               showEarth={showEarth}
               setShowEarth={setShowEarth}
+              showHorizon={showHorizon}
+              setShowHorizon={setShowHorizon}
               showAtmosphere={showAtmosphere}
               setShowAtmosphere={setShowAtmosphere}
               showStars={showStars}
@@ -1201,6 +1205,7 @@ export default function App() {
                 showAtmosphere={showAtmosphere}
                 showStars={showStars}
                 showMarkers={showMarkers}
+                showHorizon={showHorizon}
                 showSun={showSun}
                 showMoon={showMoon}
                 showPhase={showPhase}

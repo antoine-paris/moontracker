@@ -67,6 +67,9 @@ type Props = {
   timeZone: string;
   enlargeObjects: boolean;
   setEnlargeObjects: (v: boolean) => void;
+  showHorizon: boolean;
+  setShowHorizon: (v: boolean) => void;
+
   currentUtcMs: number;
   cityName: string;
 
@@ -120,6 +123,7 @@ export default function TopBar({
   showSunCard, setShowSunCard, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
   timeZone,
   enlargeObjects, setEnlargeObjects,
+  showHorizon, setShowHorizon,
   currentUtcMs,
   cityName,
   showEarth, setShowEarth,
@@ -483,7 +487,7 @@ export default function TopBar({
           </>
         )}
 
-{/* Cylindrique: rectangle + arcs supérieur/inférieur (section de cylindre) + méridiens verticaux */}
+        {/* Cylindrique: rectangle + arcs supérieur/inférieur (section de cylindre) + méridiens verticaux */}
         {id === 'cylindrical' && (
           <>
             <rect x="3" y="5" width="18" height="14" rx="2" {...common} />
@@ -831,7 +835,7 @@ export default function TopBar({
                 </div>
               </div>
 
-              {/* --- NEW: Time-lapse section --- */}
+              {/* --- Time-lapse section --- */}
               <div className="mt-3">
                 <div className="text-xs uppercase tracking-wider text-white/60">Time-lapse</div>
                   <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3" title="Heure de départ du time-lapse">
@@ -953,6 +957,15 @@ export default function TopBar({
             <label className="inline-flex items-center gap-2 text-sm" title="Augmenter la taille apparente des objets pour une meilleure visibilité">
               <input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} />
               <span>Agrandir les objets</span>
+            </label>
+            {/* Horizons toggle */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la ligne d’horizon et les marqueurs d’horizon">
+              <input
+                type="checkbox"
+                checked={showHorizon}
+                onChange={(e) => setShowHorizon(e.target.checked)}
+              />
+              <span>Horizons</span>
             </label>
             {/* Earth toggle */}
             <label className="inline-flex items-center gap-2 text-sm" title="Afficher le sol (Terre)">
