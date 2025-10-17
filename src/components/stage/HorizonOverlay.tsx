@@ -7,10 +7,7 @@ const COLOR_BOTTOM = "hsla(127, 100%, 66%, 0.90)";     // bottomPath
 const COLOR_TOP = "rgba(85, 185, 244, 0.9)";         // topPath
 const COLOR_HZ_FRONT = "hsla(0, 93%, 52%, 0.90)";  // horizon in front of viewer
 const COLOR_HZ_BACK = "hsla(61, 91%, 50%, 1.00)";   // horizon behind viewer
-const COLOR_GROUND_FRONT = "rgba(19, 246, 72, 0.53)";
-const COLOR_GROUND_BACK = "#f6131387";
 const COLOR_MARKER = "#b9b4b4e6";  // horizon in front of viewer
-const COLOR_GROUND = "hsla(125, 64%, 12%, 1.00)";
 
 // Flat-mode thresholds (≈ 33mm on full-frame: ~58° horizontal, ~40° vertical)
 const FLAT_FOV_X_THRESHOLD = 58;
@@ -371,370 +368,8 @@ export default function HorizonOverlay({
   const bottomPathId = "alt-bottom-path";
   const bottomLabelPathId = "alt-bottom-label-path";
 
-  const buildGroundunionPathFront = (): string | null => {
-    // Short-hand projection wrapper for the current viewport and camera parameters
-    const proj = (az: number, alt: number) =>
-      projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
-
-    // Predicate to check if a projected point has finite screen coordinates
-    const finite = (p: any) => Number.isFinite(p.x) && Number.isFinite(p.y);
-    // Helper to flatten a list of polyline segments into a single point array
-    const flatten = (segs: Pt[][]) => segs.flat();
-    // Squared Euclidean distance between two points (avoids sqrt)
-    const dist2 = (a: Pt, b: Pt) => { const dx = a.x - b.x, dy = a.y - b.y; return dx * dx + dy * dy; };
-    // Find the index of the point in pts that is closest to p (by squared distance)
-    const nearestIdx = (pts: Pt[], p: Pt) => {
-      let mi = 0, md = Infinity;
-      for (let i = 0; i < pts.length; i++) {
-        const d = dist2(pts[i], p);
-        if (d < md) { md = d; mi = i; }
-      }
-      return mi;
-    };
-    // Take the forward slice from i0 to i1 (wrapping if i0 > i1) over a circular sequence
-    const sliceForward = (pts: Pt[], i0: number, i1: number) => {
-      if (!pts.length) return [] as Pt[];
-      if (i0 <= i1) return pts.slice(i0, i1 + 1);
-      return [...pts.slice(i0), ...pts.slice(0, i1 + 1)];
-    };
-    // Compute the average y of a polyline to decide which one is visually lower
-    const meanY = (pts: Pt[]) => pts.reduce((s, p) => s + p.y, 0) / Math.max(1, pts.length);
-
-    // Extract the horizon-front polyline points by flattening its segments
-    const hPts = flatten(frontSegs || []);
-    // If insufficient data, return nothing
-    if (hPts.length < 2) return null;
-
-    // Branch for orthographic projection: the visible Earth edge is the limb, not the bottom prime-vertical arc
-    if (projectionMode === "ortho") {
-      // Use safe refAlt in camera direction computation
-      const C = altAzToVec(refAltDegSafe, refAzDeg);
-      // World up axis
-      const zAxis = [0, 0, 1] as const;
-      // Vector perpendicular to C in the horizontal plane (for limb basis)
-      let a = cross(C, zAxis); // perpendicular to C
-      // Check degeneracy when C aligns with zAxis
-      const aLen = Math.hypot(a[0], a[1], a[2]);
-      // Fallback to an arbitrary axis if degenerate
-      if (aLen < 1e-6) a = [1, 0, 0]; // fallback if C // z
-      // Normalize a with an inline normalizer to avoid capturing outer helpers
-      const an = ((v: number[]) => { const m = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0]/m, v[1]/m, v[2]/m]; })(a as unknown as number[]);
-      // Build the second limb basis vector orthogonal to both C and a
-      const b = norm(cross(C, an));
-
-      // Number of samples around the limb (full circle)
-      const steps = 720;
-      // Angular step in degrees
-      const step = 360 / steps;
-      // Screen-space jump threshold squared to split limb segments on seams
-      const maxJump2 = Math.pow(0.3 * Math.hypot(viewport.w, viewport.h), 2);
-      // Accumulator for limb polyline segments
-      const limbSegs: Pt[][] = [];
-      // Current limb segment under construction
-      let curr: Pt[] = [];
-      // Previous projected limb point
-      let prev: Pt | null = null;
-
-      // Sweep around the limb great circle defined by vectors an and b
-      for (let t = 0; t <= 360 + 1e-9; t += step) {
-        // Precompute cos/sin at angle t
-        const ct = Math.cos(t * DEG), st = Math.sin(t * DEG);
-        // Build 3D direction on the limb plane (dot(v, C) = 0)
-        const v = [an[0] * ct + b[0] * st, an[1] * ct + b[1] * st, an[2] * ct + b[2] * st] as const;
-        // Convert to alt-az for projection
-        const { alt, az } = vecToAltAz(v);
-        // Project the limb point
-        const p = proj(az, alt);
-        // Check if the projection is finite
-        const isFinite = finite(p);
-        // If not finite, close current segment and reset
-        if (!isFinite) {
-          if (curr.length) limbSegs.push(curr);
-          curr = [];
-          prev = null;
-          continue;
-        }
-        // Wrap projected coordinates into a point
-        const pt = { x: p.x, y: p.y };
-        // If we have a previous point, test for large jump to split segments
-        if (prev) {
-          const dx = pt.x - prev.x, dy = pt.y - prev.y;
-          if (dx * dx + dy * dy > maxJump2) {
-            if (curr.length) limbSegs.push(curr);
-            curr = [];
-            prev = null;
-          }
-        }
-        // Append to current limb segment
-        curr.push(pt);
-        // Update previous limb point
-        prev = pt;
-      }
-      // Push the last limb segment if any
-      if (curr.length) limbSegs.push(curr);
-
-      // Flatten limb segments into a single list of points
-      const lPts = flatten(limbSegs);
-      // If limb cannot be built, abort
-      if (lPts.length < 2) return null;
-
-      // Analytic intersection azimuths of the horizon (z=0) and limb (dot(v, C)=0)
-      // Solve sin(az)*cx + cos(az)*cy = 0 -> az = atan2(-cy, cx) and az+180
-      const cx = C[0], cy = C[1];
-      // First intersection azimuth in [0,360)
-      const azI1Deg = (Math.atan2(-cy, cx) * RAD + 360) % 360;
-      // Second intersection azimuth, opposite side
-      const azI2Deg = (azI1Deg + 180) % 360;
-
-      // Project both intersection points (alt=0 on horizon)
-      const pI1 = proj(azI1Deg, 0);
-      const pI2 = proj(azI2Deg, 0);
-      // If any is not finite, we cannot form a valid polygon
-      if (!finite(pI1) || !finite(pI2)) return null;
-
-      // Wrap the intersection screen points
-      const I1: Pt = { x: pI1.x, y: pI1.y };
-      const I2: Pt = { x: pI2.x, y: pI2.y };
-
-      // Find horizon indices closest to the intersections
-      const hI1 = nearestIdx(hPts, I1);
-      const hI2 = nearestIdx(hPts, I2);
-      // Extract the forward horizon slice from I1 to I2 (inclusive)
-      const hSeg = sliceForward(hPts, hI1, hI2);
-      // Abort if not enough points for a polygon edge
-      if (hSeg.length < 2) return null;
-
-      // Find limb indices closest to the intersections
-      const lI1 = nearestIdx(lPts, I1);
-      const lI2 = nearestIdx(lPts, I2);
-      // Candidate limb arc going one way (I2 -> I1)
-      const limbArcA = sliceForward(lPts, lI2, lI1);
-      // Candidate limb arc going the other way (I1 -> I2)
-      const limbArcB = sliceForward(lPts, lI1, lI2);
-      // Pick the visually lower arc (greater mean y in screen coordinates)
-      const bottomArc = meanY(limbArcA) > meanY(limbArcB) ? limbArcA : limbArcB;
-      // Abort if the chosen arc lacks points
-      if (bottomArc.length < 2) return null;
-
-      // Ensure the horizon segment is above the bottom arc (to avoid inverted fill)
-      if (!(meanY(hSeg) < meanY(bottomArc))) return null;
-
-      // Start building a closed SVG path: move to I1
-      let d = `M ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
-      // Draw horizon segment I1 -> ... -> I2
-      for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-      // Explicitly include I2 to close the horizon side
-      d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      // Draw limb bottom arc back from I2 -> ... -> I1
-      for (const p of bottomArc) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-      // Close the polygon
-      d += "Z";
-      // Return the final path string
-      return d;
-    }
-
-    // Non-orthographic branch: approximate ground by bottom prime-vertical arc between refAz±90 intersections
-    const pI1 = proj(refAzDeg - 90, 0);
-    const pI2 = proj(refAzDeg + 90, 0);
-    // If intersections are not finite, we cannot fill the ground
-    if (!finite(pI1) || !finite(pI2)) return null;
-
-    // Wrap screen-space intersections
-    const I1: Pt = { x: pI1.x, y: pI1.y };
-    const I2: Pt = { x: pI2.x, y: pI2.y };
-
-    // Locate nearest points on the horizon to intersections
-    const hI1 = nearestIdx(hPts, I1);
-    const hI2 = nearestIdx(hPts, I2);
-    // Extract the forward horizon slice from I1 to I2
-    const hSeg = sliceForward(hPts, hI1, hI2);
-
-    // Flatten the bottom prime-vertical segments for the bottom edge
-    const bPts = flatten(bottomSegs || []);
-    // Validate we have enough points on both edges
-    if (bPts.length < 2 || hSeg.length < 2) return null;
-
-    // Locate nearest points on the bottom arc to intersections
-    const bI1 = nearestIdx(bPts, I1);
-    const bI2 = nearestIdx(bPts, I2);
-    // Extract the bottom arc slice from I2 back to I1
-    const bSeg = sliceForward(bPts, bI2, bI1);
-    
-    // Ensure horizon is above the bottom arc (standard screen y-down convention)
-    if (!(meanY(hSeg) < meanY(bSeg))) return null;
-
-    // Start the closed path at I1
-    let d = `M ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
-    // Draw the horizon edge from I1 to I2
-    for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-    // Add the I2 vertex
-    d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-    // Draw the bottom arc back to I1
-    for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-    // Close the polygon
-    d += "Z";
-    // Return the union polygon path string
-    
-    return d;
-  };
-
-  const buildGroundunionPathBack = (): string | null => {
-    const proj = (az: number, alt: number) =>
-      projectToScreen(az, alt, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
-
-    const finite = (p: any) => Number.isFinite(p.x) && Number.isFinite(p.y);
-    const flatten = (segs: Pt[][]) => segs.flat();
-    const dist2 = (a: Pt, b: Pt) => { const dx = a.x - b.x, dy = a.y - b.y; return dx * dx + dy * dy; };
-
-    // --- use raw backSegs (do NOT flatten yet) ---
-    const horizonSegs = backSegs || [];
-    if (!horizonSegs.length) return null;
-
-    const pI1 = proj(refAzDeg - 90, 0);
-    const pI2 = proj(refAzDeg + 90, 0);
-    if (!finite(pI1) || !finite(pI2)) return null;
-
-    const I1: Pt = { x: pI1.x, y: pI1.y };
-    const I2: Pt = { x: pI2.x, y: pI2.y };
-
-    // Find nearest point (segment + index) for an intersection
-    const nearestOnSegs = (pt: Pt) => {
-      let best = { seg: -1, idx: -1, d: Infinity };
-      for (let s = 0; s < horizonSegs.length; s++) {
-        const seg = horizonSegs[s];
-        for (let i = 0; i < seg.length; i++) {
-          const d = dist2(seg[i], pt);
-            if (d < best.d) best = { seg: s, idx: i, d };
-        }
-      }
-      return best;
-    };
-
-    const i1 = nearestOnSegs(I1);
-    const i2 = nearestOnSegs(I2);
-    if (i1.seg < 0 || i2.seg < 0) return null;
-
-    // Traverse from (s0,i0) forward (wrapping segments) until reaching (s1,i1)
-    const collectArc = (s0: number, i0: number, s1: number, i1_: number): Pt[] => {
-      const arc: Pt[] = [];
-      const nSegs = horizonSegs.length;
-      let s = s0;
-      let i = i0;
-      let guard = 0;
-      while (guard++ < 10000) {
-        const seg = horizonSegs[s];
-        for (; i < seg.length; i++) {
-          arc.push(seg[i]);
-          if (s === s1 && i === i1_) return arc;
-        }
-        s = (s + 1) % nSegs;
-        i = 0;
-      }
-      return arc; // fallback (possibly incomplete)
-    };
-
-    // Build both directions: I1 -> I2 and I2 -> I1 (wrapped)
-    const arc12 = collectArc(i1.seg, i1.idx, i2.seg, i2.idx);
-    const arc21 = collectArc(i2.seg, i2.idx, i1.seg, i1.idx);
-
-    // Simple polyline length
-    const polyLen = (pts: Pt[]) => {
-      let L = 0;
-      for (let k = 1; k < pts.length; k++) {
-        const dx = pts[k].x - pts[k - 1].x;
-        const dy = pts[k].y - pts[k - 1].y;
-        L += Math.hypot(dx, dy);
-      }
-      return L;
-    };
-
-    // Pick longer arc as the true back horizon span
-    let hSeg = polyLen(arc12) >= polyLen(arc21) ? arc12 : arc21;
-
-    // Ensure it actually contains more than 2 points; otherwise keep the other if bigger
-    if (hSeg.length <= 2) hSeg = arc12.length > arc21.length ? arc12 : arc21;
-    if (hSeg.length < 2) return null;
-
-    
-    // Bottom arc from bottom prime-vertical segments (still flattened)
-    const bPts = flatten(bottomSegs || []);
-    if (bPts.length < 2) return null;
-
-    // Nearest indices for bottom intersections
-    const nearestIdx = (pts: Pt[], p: Pt) => {
-      let mi = 0, md = Infinity;
-      for (let k = 0; k < pts.length; k++) {
-        const d = dist2(pts[k], p);
-        if (d < md) { md = d; mi = k; }
-      }
-      return mi;
-    };
-    const bI1 = nearestIdx(bPts, I1);
-    const bI2 = nearestIdx(bPts, I2);
-
-    const sliceForward = (pts: Pt[], i0: number, i1: number) => {
-      if (!pts.length) return [] as Pt[];
-      if (i0 <= i1) return pts.slice(i0, i1 + 1);
-      return [...pts.slice(i0), ...pts.slice(0, i1 + 1)];
-    };
-
-    const bSeg = sliceForward(bPts, bI2, bI1); // reverse direction to close polygon
-    if (bSeg.length < 2) return null;
-
-    const meanY = (pts: Pt[]) => pts.reduce((s, p) => s + p.y, 0) / Math.max(1, pts.length);
-    //if ((meanY(hSeg) < meanY(bSeg))) return null;
-
-    // Build path
-    let d = `M ${I1.x.toFixed(2)} ${I1.y.toFixed(2)} `;
-    // console.log("hSeg", meanY(hSeg));
-    // console.log("bSeg", meanY(bSeg));
-    // console.log("vporth", viewport.h.toFixed(2));
-    // console.log("topPathHighest", topPathHighest.y.toFixed(2));
-    if ((meanY(hSeg) > meanY(bSeg))){      
-      // The Back horizon at the bottom of the screen
-      //console.log("back horizon at bottom of screen");
-      for (let i = hSeg.length - 1; i >= 0; i--) {
-          const p = hSeg[i];
-          d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-        }
-      d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-    } else if (meanY(hSeg) > 0 && (meanY(hSeg) < meanY(bSeg)) ||
-              (meanY(bSeg) < 0 || meanY(hSeg) < 0 )){
-      // The Back horizon surround scene
-      //console.log("back horizon surround scene");
-      d += `L ${I1.x.toFixed(2)} ${viewport.h.toFixed(2)} `;
-      d += `L ${viewport.w.toFixed(2)} ${viewport.h.toFixed(2)} `;
-      d += `L ${I2.x.toFixed(2)} ${I2.y.toFixed(2)} `;
-      for (const p of bSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-      if (refAltDegSafe > 10 || refAltDegSafe < -10) 
-        {
-        d += `L ${I1.x.toFixed(2)} 0.00 `; //top
-        d += `L 0.00 0.00 `; //top
-        d += `L ${viewport.w.toFixed(2)} 0.00 `; //top
-        for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;
-      }
-    /*}
-    else if (meanY(bSeg) < 0 || meanY(hSeg) < 0 ) {
-      // The Back horizon appear on top of the screen 
-      console.log("back horizon at top of the screen ");
-      d += `L ${I1.x.toFixed(2)} 0.00 `; //top
-      d += `L 0.00 0.00 `; //top
-      d += `L ${viewport.w.toFixed(2)} 0.00 `; //top
-      for (const p of hSeg) d += `L ${p.x.toFixed(2)} ${p.y.toFixed(2)} `;*/
-    }else {
-      // console.log("back horizon at ?");
-    }
-    d += "Z";
-    return d;
-  };
-
-
-
-  // Enable simplified flat rendering for narrow FOVs (telephoto-ish)
   const simplifyFlat = fovXDeg <= FLAT_FOV_X_THRESHOLD || fovYDeg <= FLAT_FOV_Y_THRESHOLD;
 
-  // Compute a flat horizon line Y and which side is "ground" (below/above)
   const flatHorizon = useMemo(() => {
     if (!simplifyFlat) return null as { y: number; groundBelow: boolean } | null;
     const p = projectToScreen(
@@ -764,16 +399,6 @@ export default function HorizonOverlay({
     return { y, groundBelow };
   }, [simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
 
-    // Only build ground union paths if Earth rendering is enabled (memoized)
-  const unionPathFront = useMemo(
-    () => (showEarth && !simplifyFlat ? buildGroundunionPathFront() : null),
-    [showEarth, simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, frontSegs, bottomSegs]
-  );
-  const unionPathBack = useMemo(
-    () => (showEarth && !simplifyFlat ? buildGroundunionPathBack() : null),
-    [showEarth, simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, backSegs, bottomSegs]
-  );
-
   return (
     <>
       {/* Viewport-anchored wrapper */}
@@ -797,16 +422,6 @@ export default function HorizonOverlay({
           {/* Simplified flat rendering for narrow FOVs */}
           {simplifyFlat && flatHorizon && (
             <>
-              {/* Flat ground as a rectangle */}
-              {showEarth && (
-                <rect
-                  x={0}
-                  y={flatHorizon.groundBelow ? flatHorizon.y : 0}
-                  width={viewport.w}
-                  height={flatHorizon.groundBelow ? (viewport.h - flatHorizon.y) : flatHorizon.y}
-                  fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
-                />
-              )}
               {/* Flat horizon line */}
               <line
                 x1={0}
@@ -819,30 +434,11 @@ export default function HorizonOverlay({
             </>
           )}
 
-          {/* Back ground polygon (only when showEarth), disabled in flat mode */}
-          {!simplifyFlat && showEarth && unionPathBack && projectionMode !== "ortho" && (
-            <path
-              d={unionPathBack}
-              fill={debugMask ? COLOR_GROUND_BACK : COLOR_GROUND}
-              stroke={COLOR_HZ_BACK}
-              strokeWidth={debugMask ? 1.5 : 0}
-            />
-          )}
-
-          {/* Front ground polygon (only when showEarth), disabled in flat mode */}
-          {!simplifyFlat && showEarth && unionPathFront && (
-            <path
-              d={unionPathFront}
-              fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
-              stroke={COLOR_HZ_FRONT}
-              strokeWidth={debugMask ? 2 : 0}
-            />
-          )}
-
-          {/* Horizon split paths, disabled in flat mode */}
+          {/* Back horizon path, disabled in flat mode */}
           {!simplifyFlat && projectionMode !== "ortho" && horizonBackPath && (
             <path d={horizonBackPath} stroke={debugMask ? COLOR_HZ_BACK : COLOR_MARKER} strokeWidth={1} fill="none" />
           )}
+          {/* Front horizon path */}
           {!simplifyFlat && horizonFrontPath && (
             <path d={horizonFrontPath} stroke={debugMask ? COLOR_HZ_FRONT : COLOR_MARKER} strokeWidth={1.5} fill="none" />
           )}
@@ -873,7 +469,7 @@ export default function HorizonOverlay({
     </>
   );
 }
-     
+
 
 
 

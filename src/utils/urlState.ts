@@ -55,10 +55,6 @@ function toB36Int(n: number): string { return Math.round(n).toString(36); }
 function fromB36Int(s: string): number { const n = parseInt(s, 36); return Number.isFinite(n) ? n : NaN; }
 function timeToB36(ms: number): string { return toB36Int(Math.floor(ms / 1000)); }
 function timeFromB36(s: string): number { const sec = fromB36Int(s); return Number.isFinite(sec) ? sec * 1000 : NaN; }
-function shortFloat(n: number, decimals = 1): string {
-  const s = n.toFixed(decimals);
-  return s.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1');
-}
 
 // NEW: parse integer that might be base36 (compact) or decimal (legacy)
 function parseIntB36OrDec(s: string): number {
@@ -116,6 +112,7 @@ const ToggleBits = {
   debug: 12,
   panels: 13,
   play: 14,
+  horizon: 15,
 } as const;
 
 function packTogglesToMask(t: {
@@ -132,6 +129,7 @@ function packTogglesToMask(t: {
   showMoonCard: boolean;
   enlargeObjects: boolean;
   debugMask: boolean;
+  showHorizon: boolean;
 }, showPanels: boolean, isAnimating: boolean): number {
   let m = 0;
   if (t.showSun) m |= 1 << ToggleBits.sun;
@@ -147,6 +145,7 @@ function packTogglesToMask(t: {
   if (t.showMoonCard) m |= 1 << ToggleBits.moonCard;
   if (t.enlargeObjects) m |= 1 << ToggleBits.enlarge;
   if (t.debugMask) m |= 1 << ToggleBits.debug;
+  if (t.showHorizon) m |= 1 << ToggleBits.horizon;
   if (showPanels) m |= 1 << ToggleBits.panels;
   if (isAnimating) m |= 1 << ToggleBits.play;
   return m >>> 0;
@@ -167,6 +166,7 @@ function unpackMaskToToggles(mask: number) {
     moonCard: !!(mask & (1 << ToggleBits.moonCard)),
     enlarge: !!(mask & (1 << ToggleBits.enlarge)),
     debug: !!(mask & (1 << ToggleBits.debug)),
+    horizon: !!(mask & (1 << ToggleBits.horizon)),
     panels: !!(mask & (1 << ToggleBits.panels)),
     play: !!(mask & (1 << ToggleBits.play)),
   };
@@ -206,6 +206,7 @@ export type UrlInitArgs = {
   setShowStars: (b: boolean) => void;
   setShowMarkers: (b: boolean) => void;
   setShowGrid: (b: boolean) => void;
+  setShowHorizon: (b: boolean) => void;
   setShowSunCard: (b: boolean) => void;
   setShowMoonCard: (b: boolean) => void;
   setEnlargeObjects: (b: boolean) => void;
@@ -240,58 +241,42 @@ export type UrlInitArgs = {
 export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
   const {
     whenMsRef, setWhenMs,
-    locations, location, setLocation,
+    locations, setLocation,
     devices, CUSTOM_DEVICE_ID, setDeviceId, setZoomId, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
     setFollow, setProjectionMode,
     setShowSun, setShowMoon, setShowPhase, setEarthshine, setShowEarth, setShowAtmosphere, setShowStars, setShowMarkers, setShowGrid,
+    setShowHorizon,
     setShowSunCard, setShowMoonCard, setEnlargeObjects, setDebugMask,
     setShowPanels,
     allPlanetIds, setShowPlanets,
-    isAnimating, setIsAnimating, speedMinPerSec, setSpeedMinPerSec,
+    setIsAnimating, setSpeedMinPerSec,
     setDeltaAzDeg, setDeltaAltDeg,
     setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef,
-} = args;
+  } = args;
 
-  // Compact time: t = base36 unix seconds
+  // Time: base36 unix seconds
   const t = q.get('t');
   if (t) {
-    let ms: number | undefined;
-    // Old formats: ISO or decimal ms
-    const isDigits = /^[0-9]+$/.test(t);
-    const looksMsDecimal = isDigits && t.length >= 12;
-    const looksB36 = /^[0-9a-z]+$/i.test(t) && !t.includes('-') && !t.includes(':') && !looksMsDecimal;
-    if (looksB36) {
-      const maybe = timeFromB36(t);
-      if (Number.isFinite(maybe)) ms = maybe;
-    }
-    if (ms == null) {
-      let parsed = Date.parse(t);
-      if (!Number.isFinite(parsed)) {
-        const n = Number(t);
-        if (Number.isFinite(n)) parsed = n;
-      }
-      if (Number.isFinite(parsed)) ms = parsed;
-    }
-    if (ms != null) {
-      whenMsRef.current = ms!;
-      setWhenMs(ms!);
+    const ms = timeFromB36(t);
+    if (Number.isFinite(ms)) {
+      whenMsRef.current = ms;
+      setWhenMs(ms);
     }
   }
 
-  // Compact location: prefer explicit lat/lng, else g=geohash, else l=id
-  const gh = q.get('g');
-  const lId = q.get('l') ?? q.get('loc');
-  const tzQ = q.get('tz');
-  const labelQ = q.get('label'); // legacy
+  // Location: lat/lng, geohash, or id
   const latQ = q.get('lat');
   const lngQ = q.get('lng');
+  const gh = q.get('g');
+  const lId = q.get('l');
+  const tzQ = q.get('tz');
 
   if (latQ && lngQ) {
     const lat = Number(latQ);
     const lng = Number(lngQ);
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
       const tz = tzQ || 'UTC';
-      const label = labelQ || `Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}`;
+      const label = `Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}`;
       setLocation({
         id: `url@${lat.toFixed(6)},${lng.toFixed(6)}`,
         label,
@@ -306,76 +291,54 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       const tz = tzQ || 'UTC';
       setLocation({
         id: `g@${gh}`,
-        label: labelQ || `Lat ${lat.toFixed(4)}, Lng ${lon.toFixed(4)}`,
+        label: `Lat ${lat.toFixed(4)}, Lng ${lon.toFixed(4)}`,
         lat,
         lng: lon,
         timeZone: tz,
       });
     } catch {
-      // ignore invalid geohash, fallback next
+      // ignore invalid geohash
     }
   } else if (lId) {
     const found = locations.find(l => l.id === lId);
     if (found) setLocation(found);
   }
 
-  // Follow: compact F=index(base36) else old 'follow'
+  // Follow: F=index(base36)
   const F = q.get('F');
   if (F != null) {
     const idx = fromB36Int(F);
     const v = FOLLOW_ALLOWED[idx as keyof typeof FOLLOW_ALLOWED] as FollowMode | undefined;
     if (v) setFollow(v);
-  } else {
-    const f = q.get('follow');
-    if (f) setFollow(parseEnum(f, FOLLOW_ALLOWED as any, 'LUNE'));
   }
 
-  // DirectionalKeypad deltas (degrees)
-  {
-    const da = q.get('da');
-    const dh = q.get('dh');
-    if (da != null) {
-      const v = Number(da);
-      if (Number.isFinite(v)) setDeltaAzDeg(v);
-    }
-    if (dh != null) {
-      const v = Number(dh);
-      if (Number.isFinite(v)) setDeltaAltDeg(v);
-    }
+  // DirectionalKeypad deltas
+  const da = q.get('da');
+  const dh = q.get('dh');
+  if (da != null) {
+    const v = Number(da);
+    if (Number.isFinite(v)) setDeltaAzDeg(v);
+  }
+  if (dh != null) {
+    const v = Number(dh);
+    if (Number.isFinite(v)) setDeltaAltDeg(v);
   }
 
-  // Projection: compact p=index(base36) else old 'proj'
+  // Projection: p=index(base36)
   const pIdx = q.get('p');
   if (pIdx != null) {
     const idx = fromB36Int(pIdx);
     const v = PROJ_LIST[idx as keyof typeof PROJ_LIST];
     if (v) setProjectionMode(v);
-  } else {
-    const proj = q.get('proj');
-    if (proj && (PROJ_LIST as readonly string[]).includes(proj)) setProjectionMode(proj as any);
   }
 
-  // Device / zoom / focal / FOV (compact first)
-  const devShort = q.get('d');
-  const zoomShort = q.get('z');
-  const focalShort = q.get('f');
-  const fovxShort = q.get('x');
-  const fovyShort = q.get('y');
-  const linkShort = q.get('k'); // linkFov
-
-  const devOld = q.get('device');
-  const zmOld = q.get('zoom');
-  const focalOld = q.get('f');   // 24x36 eq mm
-  const fovxOld = q.get('fovx'); // degrees
-  const fovyOld = q.get('fovy'); // degrees
-  const linkOld = q.get('link');
-
-  const dev = devShort ?? devOld;
-  const zm = zoomShort ?? zmOld;
-  const focal = focalShort ?? focalOld;
-  const fovx = fovxShort ?? fovxOld;
-  const fovy = fovyShort ?? fovyOld;
-  const link = linkShort ?? linkOld;
+  // Device / zoom / focal / FOV
+  const dev = q.get('d');
+  const zm = q.get('z');
+  const focal = q.get('f');
+  const fovx = q.get('x');
+  const fovy = q.get('y');
+  const link = q.get('k');
 
   if (dev) {
     const exists = devices.some(d => d.id === dev);
@@ -386,35 +349,29 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     }
   }
 
-  // If custom device requested or no valid device provided, allow focal/FOV control
   const wantsCustom = (dev === CUSTOM_DEVICE_ID) || (!dev);
   if (wantsCustom) {
     setDeviceId(CUSTOM_DEVICE_ID);
     setZoomId('custom-theo');
 
-    // Read link flag first
-    const linkFlag = link != null ? parseBool(link, linkFov) : linkFov;
+    const linkFlag = link != null ? (link === '1') : linkFov;
     setLinkFov(linkFlag);
 
     const fxQ = fovx ? Number(fovx) : NaN;
     const fyQ = fovy ? Number(fovy) : NaN;
 
     if (!linkFlag && (Number.isFinite(fxQ) || Number.isFinite(fyQ))) {
-      // Preserve asymmetric FOV when unlinking
       if (Number.isFinite(fxQ)) setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
       if (Number.isFinite(fyQ)) setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
     } else {
-      // accept base36 (compact) or decimal for 'f'
       const fmm = focal ? parseIntB36OrDec(focal) : NaN;
       if (Number.isFinite(fmm) && fmm > 0) {
-        // focal → FOV (24x36 eq)
         const FF_W = 36, FF_H = 24;
         const fx = 2 * Math.atan(FF_W / (2 * fmm)) * 180 / Math.PI;
         const fy = 2 * Math.atan(FF_H / (2 * fmm)) * 180 / Math.PI;
         setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
         setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
       } else {
-        // fallback to explicit x/y if provided
         if (Number.isFinite(fxQ)) setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
         if (Number.isFinite(fyQ)) setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
       }
@@ -436,6 +393,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       setShowStars(u.stars);
       setShowMarkers(u.markers);
       setShowGrid(u.grid);
+      setShowHorizon(u.horizon);
       setShowSunCard(u.sunCard);
       setShowMoonCard(u.moonCard);
       setEnlargeObjects(u.enlarge);
@@ -444,29 +402,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       setIsAnimating(u.play);
     }
   } else {
-    // Old verbose params
-    const boolMap: Array<[string, (b: boolean) => void]> = [
-      ['sun', setShowSun],
-      ['moon', setShowMoon],
-      ['phase', setShowPhase],
-      ['earthshine', setEarthshine],
-      ['earth', setShowEarth],
-      ['atm', setShowAtmosphere],
-      ['stars', setShowStars],
-      ['markers', setShowMarkers],
-      ['grid', setShowGrid],
-      ['sunCard', setShowSunCard],
-      ['moonCard', setShowMoonCard],
-      ['enlarge', setEnlargeObjects],
-      ['debug', setDebugMask],
-    ];
-    for (const [param, setter] of boolMap) {
-      const v = q.get(param);
-      if (v != null) setter(parseBool(v));
-    }
-    const panels = q.get('panels');
-    if (panels != null) setShowPanels(parseBool(panels, true));
-    if (q.get('play') != null) setIsAnimating(parseBool(q.get('play'), isAnimating));
+    // Old verbose params (removed)
   }
 
   // Planets selection (compact first)
@@ -487,53 +423,32 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         setShowPlanets(next);
       }
     }
-  } else {
-    // Old
-    const p = q.get('planets');
-    if (p) {
-      if (p.toLowerCase() === 'none') {
-        const allFalse = Object.fromEntries(allPlanetIds.map(id => [id, false]));
-        setShowPlanets(allFalse);
-      } else if (p.toLowerCase() === 'all') {
-        const allTrue = Object.fromEntries(allPlanetIds.map(id => [id, true]));
-        setShowPlanets(allTrue);
-      } else {
-        const list = p.split(',').map(s => s.trim()).filter(Boolean);
-        setShowPlanets(prev => {
-          const next: Record<string, boolean> = { ...prev };
-          for (const id of allPlanetIds) next[id] = list.includes(id);
-          return next;
-        });
-      }
-    }
   }
 
-  // Speed (precise decimal first, then compact/int legacy, then verbose)
-  const sr = q.get('sr'); // precise decimal speed
+  // Speed: try precise 'sr' first, then compact 's', then legacy 'spd'
+  const sr = q.get('sr');
   if (sr != null) {
     const v = Number(sr);
     if (Number.isFinite(v)) setSpeedMinPerSec(v);
-  } else {
-    const s = q.get('s');
-    if (s != null) {
-      const v = fromB36Int(s);
-      if (Number.isFinite(v)) setSpeedMinPerSec(v);
-    } else if (q.get('spd') != null) {
-      setSpeedMinPerSec(parseNum(q.get('spd'), speedMinPerSec));
-    }
   }
 
-  // NEW: Timelapse compact param: tl = H.P.S.L.T (base36 segments)
-  // H = (unitIndex<<1)|enabled, unitIndex in TL_UNITS
+  // NEW: Timelapse MORE compact: tl = HPSL.T where HPSL is packed 4-byte base36
   const tl = q.get('tl');
   if (tl) {
     const parts = tl.split('.');
-    if (parts.length >= 5) {
-      const h = fromB36Int(parts[0]);
-      const p = parseIntB36OrDec(parts[1]); // period ms
-      const s = parseIntB36OrDec(parts[2]); // step value
-      const l = parseIntB36OrDec(parts[3]); // loop after
-      const t0ms = timeFromB36(parts[4]);   // start time (ms)
+    if (parts.length >= 2) {
+      const [hpsl, tPart] = parts;
+      const bytes = unpackBytes(hpsl, 4);
+      const h = bytes[0];
+      const pHigh = bytes[1];
+      const sHigh = bytes[2]; 
+      const lHigh = bytes[3];
+
+      // For values > 255, check if there's extended precision in parts[2], [3], [4]
+      const p = parts[2] ? parseIntB36OrDec(parts[2]) : pHigh;
+      const s = parts[3] ? parseIntB36OrDec(parts[3]) : sHigh;
+      const l = parts[4] ? parseIntB36OrDec(parts[4]) : lHigh;
+      const t0ms = timeFromB36(tPart);
 
       if (Number.isFinite(h)) {
         const enabled = !!(h & 1);
@@ -547,8 +462,55 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         if (Number.isFinite(l)) setTimeLapseLoopAfter(Math.max(0, l));
         if (Number.isFinite(t0ms)) timeLapseStartMsRef.current = t0ms;
       }
+    } else {
+      // OLD format: H.P.S.L.T
+      const tlParts = tl.split('.');
+      if (tlParts.length >= 5) {
+        const h = fromB36Int(tlParts[0]);
+        const p = parseIntB36OrDec(tlParts[1]);
+        const s = parseIntB36OrDec(tlParts[2]);
+        const l = parseIntB36OrDec(tlParts[3]);
+        const t0ms = timeFromB36(tlParts[4]);
+
+        if (Number.isFinite(h)) {
+          const enabled = !!(h & 1);
+          const unitIdx = (h >> 1) & 0x7;
+          const unit = TL_UNITS[unitIdx] ?? TL_UNITS[0];
+
+          setTimeLapseEnabled(enabled);
+          if (Number.isFinite(p)) setTimeLapsePeriodMs(Math.max(1, p));
+          if (Number.isFinite(s)) setTimeLapseStepValue(Math.max(1, s));
+          setTimeLapseStepUnit(unit as any);
+          if (Number.isFinite(l)) setTimeLapseLoopAfter(Math.max(0, l));
+          if (Number.isFinite(t0ms)) timeLapseStartMsRef.current = t0ms;
+        }
+      }
     }
   }
+}
+
+// NEW: Compact float encoding (2 decimal places by default, strips trailing zeros)
+function compactFloat(n: number, decimals = 2): string {
+  const s = n.toFixed(decimals);
+  return s.replace(/\.?0+$/, '');
+}
+
+// NEW: Pack multiple small numbers into single base36 (each 8 bits)
+function packBytes(...values: number[]): string {
+  let packed = 0;
+  for (let i = 0; i < Math.min(values.length, 7); i++) {
+    packed |= ((values[i] & 0xFF) << (i * 8));
+  }
+  return toB36Int(packed);
+}
+
+function unpackBytes(s: string, count: number): number[] {
+  const packed = fromB36Int(s);
+  const result: number[] = [];
+  for (let i = 0; i < count; i++) {
+    result.push((packed >>> (i * 8)) & 0xFF);
+  }
+  return result;
 }
 
 export type BuildShareUrlArgs = {
@@ -581,6 +543,7 @@ export type BuildShareUrlArgs = {
     showStars: boolean;
     showMarkers: boolean;
     showGrid: boolean;
+    showHorizon: boolean;
     showSunCard: boolean;
     showMoonCard: boolean;
     enlargeObjects: boolean;
@@ -630,21 +593,30 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
 
   const q = new URLSearchParams();
 
-  // NEW: timelapse compact param (always include to keep share deterministic)
+  // Timelapse: compact format
   {
     const unitIdx = Math.max(0, (Array.prototype.indexOf.call(TL_UNITS, timeLapseStepUnit) as number));
     const header = (unitIdx << 1) | (timeLapseEnabled ? 1 : 0);
-    const P = toB36Int(Math.max(1, Math.round(timeLapsePeriodMs || 1)));
-    const S = toB36Int(Math.max(1, Math.round(timeLapseStepValue || 1)));
-    const L = toB36Int(Math.max(0, Math.round(timeLapseLoopAfter || 0)));
-    const T = timeToB36(timeLapseStartMs);
-    q.set('tl', `${toB36Int(header)}.${P}.${S}.${L}.${T}`);
+    
+    const pVal = Math.max(1, Math.round(timeLapsePeriodMs || 1));
+    const sVal = Math.max(1, Math.round(timeLapseStepValue || 1));
+    const lVal = Math.max(0, Math.round(timeLapseLoopAfter || 0));
+    
+    if (pVal <= 255 && sVal <= 255 && lVal <= 255) {
+      const packed = packBytes(header, pVal, sVal, lVal);
+      const T = timeToB36(timeLapseStartMs);
+      q.set('tl', `${packed}.${T}`);
+    } else {
+      const P = toB36Int(pVal);
+      const S = toB36Int(sVal);
+      const L = toB36Int(lVal);
+      const T = timeToB36(timeLapseStartMs);
+      const packed = packBytes(header, 255, 255, 255);
+      q.set('tl', `${packed}.${T}.${P}.${S}.${L}`);
+    }
   }
 
-
-  // location:
-  // - If id matches a known city AND coordinates are exactly the canonical ones → l=id
-  // - Else → g=geohash(9) + lat/lng decimals (+tz if not UTC)
+  // location: Use geohash (9 chars) OR lat/lng (6 decimals), not both
   const matchById = locations.find(l => l.id === location.id);
   const coordsMatch =
     !!matchById &&
@@ -654,12 +626,20 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
   if (matchById && coordsMatch) {
     q.set('l', location.id);
   } else {
-    // precise numeric coords for exact reproduction
-    q.set('lat', location.lat.toFixed(6));
-    q.set('lng', location.lng.toFixed(6));
-    // compact/geohash for backwards compatibility and brevity
+    // For custom locations: use geohash (shorter) if precision allows
     const gh = geohashEncode(location.lat, location.lng, 9);
-    q.set('g', gh);
+    const decoded = geohashDecode(gh);
+    const latErr = Math.abs(decoded.lat - location.lat);
+    const lonErr = Math.abs(decoded.lon - location.lng);
+    
+    // Geohash precision 9 ≈ ±2.4m; if location needs more precision, use lat/lng
+    if (latErr < 0.00002 && lonErr < 0.00002) {
+      q.set('g', gh);
+    } else {
+      q.set('lat', location.lat.toFixed(6));
+      q.set('lng', location.lng.toFixed(6));
+    }
+    
     if (location.timeZone && location.timeZone !== 'UTC') {
       q.set('tz', location.timeZone);
     }
@@ -679,23 +659,19 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
   // device/zoom or custom focal/FOV
   q.set('d', deviceId);
   if (deviceId === CUSTOM_DEVICE_ID) {
-    // Always persist linkFov
     q.set('k', linkFov ? '1' : '0');
 
     if (linkFov) {
-      // derive 24x36 eq focal from horizontal FOV (compact)
       const FF_W = 36;
       const rad = (Math.PI / 180) * fovXDeg;
       const tanHalf = Math.tan(rad / 2);
       if (tanHalf > 0) {
         const f = FF_W / (2 * tanHalf);
-        q.set('f', toB36Int(Math.round(f))); // base36 for shorter
+        q.set('f', toB36Int(Math.round(f)));
       }
-      // no x/y when linked
     } else {
-      // unlink: preserve asymmetric FOVs; omit 'f'
-      q.set('x', shortFloat(fovXDeg, 1));
-      q.set('y', shortFloat(fovYDeg, 1));
+      q.set('x', compactFloat(fovXDeg, 1));
+      q.set('y', compactFloat(fovYDeg, 1));
     }
   } else {
     q.set('z', zoomId);
@@ -715,13 +691,12 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
   else if (pMask === allMask) q.set('pl', 'a');
   else q.set('pl', toB36Int(pMask));
 
-  // speed: precise decimal + legacy compact
-  q.set('sr', shortFloat(speedMinPerSec, 6));         // precise
-  q.set('s', toB36Int(Math.round(speedMinPerSec)));   // legacy
+  // speed: only precise decimal (removed legacy 's' param)
+  q.set('sr', compactFloat(speedMinPerSec, 4));
 
-  // DirectionalKeypad deltas: only include when non-zero (keep URL short)
-  if (Math.abs(deltaAzDeg) > 1e-6) q.set('da', shortFloat(deltaAzDeg, 3));
-  if (Math.abs(deltaAltDeg) > 1e-6) q.set('dh', shortFloat(deltaAltDeg, 3));
+  // DirectionalKeypad deltas: only include when non-zero
+  if (Math.abs(deltaAzDeg) > 1e-6) q.set('da', compactFloat(deltaAzDeg, 2));
+  if (Math.abs(deltaAltDeg) > 1e-6) q.set('dh', compactFloat(deltaAltDeg, 2));
 
   const base = baseUrl ?? `${window.location.origin}${window.location.pathname}`;
   const hash = appendHash ?? (window.location.hash || '');
