@@ -2,15 +2,21 @@ import type React from 'react';
 import type { FollowMode } from '../types';
 import type { LocationOption } from '../data/locations';
 import type { Device } from '../optics/types';
-import { clamp } from '../utils/math';
-import { FOV_DEG_MIN, FOV_DEG_MAX } from '../optics/fov';
+import { clamp } from './common';
+import { FOV_DEG_MIN, FOV_DEG_MAX } from '../constants';
+import { 
+  GH_BASE32, 
+  GH_MAP, 
+  toB36Int, 
+  fromB36Int, 
+  timeToB36, 
+  timeFromB36, 
+  shortFloat 
+} from './common';
 
 type DeviceLike = Device;
 
-// Geohash helpers (base32 alphabet without a, i, l, o)
-const GH_BASE32 = '0123456789bcdefghjkmnpqrstuvwxyz';
-const GH_MAP: Record<string, number> = Object.fromEntries([...GH_BASE32].map((c, i) => [c, i]));
-
+// Geohash encoding/decoding
 function geohashEncode(lat: number, lon: number, precision = 7): string {
   let minLat = -90, maxLat = 90, minLon = -180, maxLon = 180;
   let evenBit = true, bit = 0, ch = 0, hash = '';
@@ -48,16 +54,6 @@ function geohashDecode(gh: string): { lat: number; lon: number } {
     }
   }
   return { lat: (minLat + maxLat) / 2, lon: (minLon + maxLon) / 2 };
-}
-
-// Compact helpers
-function toB36Int(n: number): string { return Math.round(n).toString(36); }
-function fromB36Int(s: string): number { const n = parseInt(s, 36); return Number.isFinite(n) ? n : NaN; }
-function timeToB36(ms: number): string { return toB36Int(Math.floor(ms / 1000)); }
-function timeFromB36(s: string): number { const sec = fromB36Int(s); return Number.isFinite(sec) ? sec * 1000 : NaN; }
-function shortFloat(n: number, decimals = 1): string {
-  const s = n.toFixed(decimals);
-  return s.replace(/\.0+$/, '').replace(/(\.\d*?[1-9])0+$/, '$1');
 }
 
 // NEW: parse integer that might be base36 (compact) or decimal (legacy)
@@ -250,7 +246,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     isAnimating, setIsAnimating, speedMinPerSec, setSpeedMinPerSec,
     setDeltaAzDeg, setDeltaAltDeg,
     setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef,
-} = args;
+  } = args;
 
   // Compact time: t = base36 unix seconds
   const t = q.get('t');

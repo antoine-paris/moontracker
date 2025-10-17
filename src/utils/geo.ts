@@ -1,52 +1,25 @@
-export const R_EARTH_KM = 6371;
+import { toRad, toDeg, clampLat as clampLatCommon } from './common';
+import { EARTH_RADIUS_KM } from '../constants';
 
-// Keep lon within [-180, 180], with -180 normalized to 180
-export function normLng(deg: number): number {
-  let x = ((deg + 180) % 360 + 360) % 360 - 180;
-  if (Object.is(x, -180)) x = 180;
-  return x;
-}
-
-export function toRad(d: number) { return (d * Math.PI) / 180; }
-export function toDeg(r: number) { return (r * 180) / Math.PI; }
-
-export function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const φ1 = toRad(lat1), φ2 = toRad(lat2);
-  const Δφ = toRad(lat2 - lat1);
-  const Δλ = toRad(lon2 - lon1);
-  const a = Math.sin(Δφ / 2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) ** 2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R_EARTH_KM * c;
-}
-
-export function bearingDeg(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const φ1 = toRad(lat1), φ2 = toRad(lat2);
-  const λ1 = toRad(lon1), λ2 = toRad(lon2);
-  const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
-  const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
-  const θ = Math.atan2(y, x);
-  return (toDeg(θ) + 360) % 360;
-}
-
-// French 8-point abbreviations using O for West: N, NE, E, SE, S, SO, O, NO
-export function dir8AbbrevFr(bearing: number): 'N'|'NE'|'E'|'SE'|'S'|'SO'|'O'|'NO' {
-  const dirs: Array<'N'|'NE'|'E'|'SE'|'S'|'SO'|'O'|'NO'> = ['N','NE','E','SE','S','SO','O','NO'];
-  const idx = Math.round(((bearing % 360) / 45)) % 8;
-  return dirs[idx];
-}
-
-// Full French names
 export type Dir8FullFr = 'Nord' | 'Nord-Est' | 'Est' | 'Sud-Est' | 'Sud' | 'Sud-Ouest' | 'Ouest' | 'Nord-Ouest';
+
 export function dir8FullFr(bearing: number): Dir8FullFr {
   const dirs: Dir8FullFr[] = ['Nord','Nord-Est','Est','Sud-Est','Sud','Sud-Ouest','Ouest','Nord-Ouest'];
   const idx = Math.round(((bearing % 360) / 45)) % 8;
   return dirs[idx];
 }
 
-// Latitude clamp
-export function clampLat(x: number) {
-  return Math.max(-90, Math.min(90, x));
+// Re-export clampLat from common
+export { clampLatCommon as clampLat };
+
+// Keep normLng here (it's geo-specific with the -180 special case)
+export function normLng(deg: number): number {
+  let x = ((deg + 180) % 360 + 360) % 360 - 180;
+  if (Object.is(x, -180)) x = 180;
+  return x;
 }
+
+const R_EARTH_KM = EARTH_RADIUS_KM;
 
 // Destination point given start/initial bearing/distance on a sphere
 export function moveDest(latDeg: number, lngDeg: number, distanceKm: number, bearingDegIn: number) {
@@ -66,7 +39,7 @@ export function moveDest(latDeg: number, lngDeg: number, distanceKm: number, bea
 
   let lat2 = toDeg(φ2);
   let lng2 = toDeg(λ2);
-  lat2 = clampLat(lat2);
+  lat2 = clampLatCommon(lat2);
   lng2 = normLng(lng2);
   return { lat: lat2, lng: lng2 };
 }
@@ -89,6 +62,42 @@ export function capNSDistanceKm(latDeg: number, distanceKm: number, bearingDegIn
   }
   const δAdj = Math.min(δWanted, maxδ);
   return δAdj * R_EARTH_KM;
+}
+
+// Haversine distance
+export function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δφ = toRad(lat2 - lat1);
+  const Δλ = toRad(lng2 - lng1);
+
+  const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+            Math.cos(φ1) * Math.cos(φ2) *
+            Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R_EARTH_KM * c;
+}
+
+// Bearing from point 1 to point 2
+export function bearingDeg(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const φ1 = toRad(lat1);
+  const φ2 = toRad(lat2);
+  const Δλ = toRad(lng2 - lng1);
+
+  const y = Math.sin(Δλ) * Math.cos(φ2);
+  const x = Math.cos(φ1) * Math.sin(φ2) -
+            Math.sin(φ1) * Math.cos(φ2) * Math.cos(Δλ);
+  const θ = Math.atan2(y, x);
+
+  return (toDeg(θ) + 360) % 360;
+}
+
+// 8-direction abbreviation (French)
+export function dir8AbbrevFr(bearing: number): string {
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SO', 'O', 'NO'];
+  const idx = Math.round(((bearing % 360) / 45)) % 8;
+  return dirs[idx];
 }
 
 // Extract city part from "Pays — Ville" or return the whole label

@@ -1,13 +1,8 @@
 import React from "react";
-import { AU_KM } from "../../astro/sun";
-import { formatDeg } from "../../utils/format";
-import { norm360 } from "../../utils/math";
-import { ROSE_16 } from "../../render/constants";
-
-function compass16(az: number): string {
-  const idx = Math.round(norm360(az) / 22.5) % 16;
-  return ROSE_16[idx] as string;
-}
+import { AU_KM } from "../../constants";
+import { formatDeg } from "../../utils/common";
+import { norm360 } from "../../utils/common";
+import { compass16 } from "../../utils/compass";
 
 export type Astro = {
   sun: { alt: number; az: number; distAU: number; appDiamDeg: number };
@@ -29,12 +24,9 @@ type Props = {
   rotationToHorizonDegMoon: number;
   phaseFraction: number;
   brightLimbAngleDeg: number;
-  // New: to control display of earthshine percentage
   earthshine: boolean;
   showMoon3D: boolean;
-  // New: Sun declination relative to lunar equator
   sunDeclinationDeg: number;
-  // New: eclipse info (computed in App)
   eclipse: { sep: number; rS: number; rM: number; kind: string };
   eclipticTiltDeg: number;
 };

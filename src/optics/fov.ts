@@ -1,9 +1,8 @@
-import { toDeg, toRad, clamp } from "../utils/math";
+import { clamp, toRad, toDeg } from '../utils/common';
+import { FOV_DEG_MIN, FOV_DEG_MAX, FF_WIDTH_MM, FF_HEIGHT_MM } from '../constants';
 
-export const FOV_DEG_MIN = 0.1;
-export const FOV_DEG_MAX = 360;
-const LOG10_MIN = Math.log10(FOV_DEG_MIN);
-const LOG10_MAX = Math.log10(FOV_DEG_MAX);
+// Re-export constants for backwards compatibility
+export { FOV_DEG_MIN, FOV_DEG_MAX };
 
 export function degToSlider(deg: number, steps = 1000) {
   const d = clamp(deg, FOV_DEG_MIN, FOV_DEG_MAX);
