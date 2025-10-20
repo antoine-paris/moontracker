@@ -236,6 +236,18 @@ export type UrlInitArgs = {
   setTimeLapseStepUnit: (u: typeof TL_UNITS[number]) => void;
   setTimeLapseLoopAfter: (n: number) => void;
   timeLapseStartMsRef: React.MutableRefObject<number>;
+
+  setTimeLapseEnabled: (b: boolean) => void;
+  setTimeLapsePeriodMs: (n: number) => void;
+  setTimeLapseStepValue: (n: number) => void;
+  setTimeLapseStepUnit: (u: typeof TL_UNITS[number]) => void;
+  setTimeLapseLoopAfter: (n: number) => void;
+  timeLapseStartMsRef: React.MutableRefObject<number>;
+
+  // NEW: Long pose setters
+  setLongPoseEnabled: (b: boolean) => void;
+  setLongPoseRetainFrames: (n: number) => void;
+
 };
 
 export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
@@ -252,6 +264,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setIsAnimating, setSpeedMinPerSec,
     setDeltaAzDeg, setDeltaAltDeg,
     setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef,
+    setLongPoseEnabled, setLongPoseRetainFrames,
   } = args;
 
   // Time: base36 unix seconds
@@ -425,6 +438,23 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     }
   }
 
+  const lp = q.get('lp');
+  if (lp) {
+    const parts = lp.split('.');
+    const bytes = unpackBytes(parts[0], 2);
+    const header = bytes[0] ?? 0;
+    const rShort = bytes[1] ?? 0;
+    let retain = rShort;
+    if (parts[1]) {
+      const rExt = parseIntB36OrDec(parts[1]);
+      if (Number.isFinite(rExt)) retain = rExt;
+    }
+    const enabled = !!(header & 1);
+    const retainClamped = Math.max(1, Math.round(retain || 1));
+    setLongPoseEnabled(enabled);
+    setLongPoseRetainFrames(retainClamped);
+  }
+
   // Speed: try precise 'sr' first, then compact 's', then legacy 'spd'
   const sr = q.get('sr');
   if (sr != null) {
@@ -572,6 +602,9 @@ export type BuildShareUrlArgs = {
   timeLapseLoopAfter: number;
   timeLapseStartMs: number;
 
+  longPoseEnabled: boolean;
+  longPoseRetainFrames: number;
+
   baseUrl?: string;
   appendHash?: string;
 };
@@ -588,6 +621,8 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
     isAnimating, speedMinPerSec,
     deltaAzDeg, deltaAltDeg,
     timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter, timeLapseStartMs,
+    longPoseEnabled, longPoseRetainFrames,
+
     baseUrl, appendHash,
   } = args;
 
@@ -613,6 +648,17 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
       const T = timeToB36(timeLapseStartMs);
       const packed = packBytes(header, 255, 255, 255);
       q.set('tl', `${packed}.${T}.${P}.${S}.${L}`);
+    }
+  }
+  {
+    const header = (longPoseEnabled ? 1 : 0);
+    const retain = Math.max(1, Math.round(longPoseRetainFrames || 1));
+    if (retain <= 255) {
+      const packed = packBytes(header, retain);
+      q.set('lp', packed);
+    } else {
+      const packed = packBytes(header, 255);
+      q.set('lp', `${packed}.${toB36Int(retain)}`);
     }
   }
 

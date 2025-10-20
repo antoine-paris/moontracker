@@ -985,6 +985,8 @@ export default function App() {
       setTimeLapseStepUnit,
       setTimeLapseLoopAfter,
       timeLapseStartMsRef: tlStartWhenMsRef,
+      setLongPoseEnabled,
+      setLongPoseRetainFrames,
     });
   }, [locationsLoading, locations]);
 
@@ -1033,6 +1035,8 @@ export default function App() {
       timeLapseStepUnit,
       timeLapseLoopAfter,
       timeLapseStartMs: tlStartWhenMsRef.current,
+      longPoseEnabled,
+      longPoseRetainFrames,
     });
   }, [
     locations, location, whenMs,
@@ -1045,6 +1049,7 @@ export default function App() {
     isAnimating, speedMinPerSec, allPlanetIds,
     deltaAzDeg, deltaAltDeg,
     timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter,
+    longPoseEnabled, longPoseRetainFrames,
   ]);
 
   useEffect(() => {
