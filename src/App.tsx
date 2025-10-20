@@ -513,6 +513,8 @@ export default function App() {
   // --- Long pose state ---
   const [longPoseEnabled, setLongPoseEnabled] = useState<boolean>(false);
   const [longPoseRetainFrames, setLongPoseRetainFrames] = useState<number>(30);
+  const lpPendingRef = useRef(false);
+  const handleLongPoseAccumulated = React.useCallback(() => { lpPendingRef.current = false; }, []);
 
 
   // Track source of time changes to detect user commits
@@ -824,7 +826,7 @@ export default function App() {
       return intMs + fracMs;
     };
 
-    // IMPLEMENTED: apply one TL step
+    // apply one TL step
     const stepOnce = (ms: number): number => {
       const v = Math.max(1, Math.round(timeLapseStepValue || 1));
       switch (timeLapseStepUnit) {
@@ -851,11 +853,15 @@ export default function App() {
         const dtSec = (ts - lastTsRef.current) / 1000;
         lastTsRef.current = ts;
 
-                if (timeLapseEnabled) {
+        if (timeLapseEnabled) {
           tlAccumRef.current += dtSec * 1000;
           let didSet = false;
-          while (tlAccumRef.current >= timeLapsePeriodMs) {
+
+          // NEW: only gate on lpPending when longPoseEnabled is true
+          const canStep = (!longPoseEnabled || !lpPendingRef.current) && tlAccumRef.current >= timeLapsePeriodMs;
+          if (canStep) {
             tlAccumRef.current -= timeLapsePeriodMs;
+
             whenMsRef.current = stepOnce(whenMsRef.current);
             tlFramesRef.current += 1;
             didSet = true;
@@ -863,11 +869,13 @@ export default function App() {
             if (timeLapseLoopAfter > 0 && tlFramesRef.current >= timeLapseLoopAfter) {
               whenMsRef.current = tlStartWhenMsRef.current;
               tlFramesRef.current = 0;
-              tlAccumRef.current = 0; // IMPORTANT: drop residual so next frame starts cleanly
-              didSet = true;
-              break; // avoid overshoot within same tick
+              tlAccumRef.current = 0;
             }
+
+            // Only wait for ACK when long pose is active
+            if (longPoseEnabled) lpPendingRef.current = true;
           }
+
           if (didSet) {
             lastChangeSourceRef.current = 'anim';
             setWhenMs(whenMsRef.current);
@@ -897,6 +905,7 @@ export default function App() {
     timeLapseStepValue,
     timeLapseStepUnit,
     timeLapseLoopAfter,
+    longPoseEnabled,
   ]);
 
   const TOP_RIGHT_BAR_W = 56; // px
@@ -1038,6 +1047,9 @@ export default function App() {
     timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter,
   ]);
 
+  useEffect(() => {
+    if (!longPoseEnabled) lpPendingRef.current = false;
+  }, [longPoseEnabled]);
   
   // --- JSX -------------------------------------------------------------------
   return (
@@ -1248,6 +1260,7 @@ export default function App() {
                   overlayInfoString={`${overlayPlaceString}, ${cityLocalTimeString} heure locale (${utcTime})`}
                   longPoseEnabled={longPoseEnabled}
                   longPoseRetainFrames={longPoseRetainFrames}
+                  onLongPoseAccumulated={handleLongPoseAccumulated}
                 />
                 </div>
               </div>
