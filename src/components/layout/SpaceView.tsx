@@ -679,8 +679,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       });
   }, [planetsRender]);
 
-  // Size long pose canvas to viewport CSS size with DPR backing
   useEffect(() => {
+    if (!longPoseEnabled || enlargeObjects) return;
     const canvas = lpCanvasRef.current;
     if (!canvas) return;
     const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -692,13 +692,13 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       canvas.height = h;
       canvas.style.width = `${cssW}px`;
       canvas.style.height = `${cssH}px`;
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw using CSS pixels
-        ctx.clearRect(0, 0, cssW, cssH);
-      }
     }
-  }, [viewport.w, viewport.h]);
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw using CSS pixels
+      ctx.clearRect(0, 0, cssW, cssH);
+    }
+  }, [longPoseEnabled, enlargeObjects, viewport.w, viewport.h]);
 
   // Clear overlay when toggles/settings change
   useEffect(() => {
@@ -709,13 +709,22 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, viewport.w, viewport.h);
     }
-  }, [longPoseEnabled, longPoseRetainFrames, enlargeObjects, projectionMode, fovXDeg, fovYDeg]);
+  }, [
+    longPoseEnabled,
+    longPoseRetainFrames,
+    enlargeObjects,
+    projectionMode,
+    fovXDeg,
+    fovYDeg,
+    viewport.x, viewport.y, viewport.w, viewport.h, // NEW: clear on viewport change
+  ]);
 
   // Long pose compositor inside SpaceView:
   // - Excludes 3D and enlarged objects
   // - Accumulates 2D canvases (e.g., stars)
   // - Manually persists DOM dots and sprite bodies (planets, Sun, Moon)
   useEffect(() => {
+    if (!longPoseEnabled || enlargeObjects) return;
     let raf: number | null = null;
     const loop = () => {
       raf = requestAnimationFrame(loop);
@@ -1066,7 +1075,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               visibleX={true}
               visibleY={true}
               rotationDeg={p.rotationDegPlanetScreen}
-              angleToSunDeg={p.rotationDegPlanetScreen}
+              angleToSunDeg={p.angleToSunDeg} // FIX: was rotationDegPlanetScreen
               phaseFraction={p.phaseFrac}
               wPx={S}
               hPx={S}
@@ -1075,7 +1084,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               brightLimbAngleDeg={p.angleToSunDeg}
               zIndex={z}
               orientationDegX={p.orientationDegX}
-            />
+          />
           );
         }
 
@@ -1135,22 +1144,25 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       />
 
       {/* Long pose overlay inside SpaceView (above sky layers, below UI) */}
-      <canvas
-        ref={lpCanvasRef}
-        className="absolute"
-        // Align to viewport so local coords are simple
-        style={{
-          zIndex: Z.horizon + 1,
-          left: viewport.x,
-          top: viewport.y,
-          width: viewport.w,
-          height: viewport.h,
-          pointerEvents: 'none',
-        }}
-        aria-hidden="true"
-      />
+      {longPoseEnabled && !enlargeObjects && (
+        <canvas
+          ref={lpCanvasRef}
+          className="absolute"
+          // Align to viewport so local coords are simple
+          style={{
+            // Optional: put ghosts below live sprites but above stars/grid
+            zIndex: Z.horizon - 3, // was Z.horizon + 1
+            left: viewport.x,
+            top: viewport.y,
+            width: viewport.w,
+            height: viewport.h,
+            pointerEvents: 'none',
+          }}
+          aria-hidden="true"
+        />
+      )}
 
-      {/* NEW: Additional overlays when App panels are hidden (HUD) */}
+      {/* Additional overlays when App panels are hidden (HUD) */}
       {showHud && (
         <>
           {/* Top right: location/time */}
