@@ -100,15 +100,18 @@ export interface SpaceViewProps {
   camRotDegY: number;
   camRotDegZ: number;
 
-  // NEW: notify App when scene is ready to play
+  // notify App when scene is ready to play
   onSceneReadyChange?: (ready: boolean) => void;
 
-  // NEW: Show the extra HUD (shown when App panels are hidden)
+  // Show the extra HUD (shown when App panels are hidden)
   showHud?: boolean;
 
-  // NEW: camera/zoom label to display
+  // camera/zoom label to display
   cameraLabel?: string;
   overlayInfoString?: string;
+
+  longPoseEnabled?: boolean;
+  longPoseRetainFrames?: number;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
@@ -127,7 +130,19 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     cameraLabel,
     overlayInfoString,
     showHorizon,
+    longPoseEnabled = false,
+    longPoseRetainFrames = 30,
   } = props;
+
+  // Capture root for querying child canvases
+  const rootRef = React.useRef<HTMLDivElement | null>(null);
+  const setRootRef = React.useCallback((node: HTMLDivElement | null) => {
+    rootRef.current = node;
+    if (typeof ref === 'function') ref(node);
+    else if (ref && 'current' in (ref as any)) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+  }, [ref]);
+  // Long pose overlay canvas
+  const lpCanvasRef = React.useRef<HTMLCanvasElement | null>(null);
 
   // Split "Place, Date..." into two lines
   const overlaySplit = useMemo(() => {
@@ -553,7 +568,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     });
   }, [neededPlanetIds]);
 
-  // NEW: only gate on planets that have never been ready before
+  // only gate on planets that have never been ready before
   const gatingPlanetIds = useMemo(
     () => neededPlanetIds.filter(id => !everReadyPlanetIds.has(id)),
     [neededPlanetIds, everReadyPlanetIds]
@@ -664,8 +679,141 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       });
   }, [planetsRender]);
 
+  // Size long pose canvas to viewport CSS size with DPR backing
+  useEffect(() => {
+    const canvas = lpCanvasRef.current;
+    if (!canvas) return;
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const cssW = Math.max(1, Math.round(viewport.w));
+    const cssH = Math.max(1, Math.round(viewport.h));
+    const w = cssW * dpr, h = cssH * dpr;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw using CSS pixels
+        ctx.clearRect(0, 0, cssW, cssH);
+      }
+    }
+  }, [viewport.w, viewport.h]);
+
+  // Clear overlay when toggles/settings change
+  useEffect(() => {
+    const c = lpCanvasRef.current;
+    const ctx = c?.getContext('2d');
+    if (c && ctx) {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, viewport.w, viewport.h);
+    }
+  }, [longPoseEnabled, longPoseRetainFrames, enlargeObjects, projectionMode, fovXDeg, fovYDeg]);
+
+  // Long pose compositor inside SpaceView:
+  // - Excludes 3D and enlarged objects
+  // - Accumulates 2D canvases (e.g., stars)
+  // - Manually persists DOM dots and sprite bodies (planets, Sun, Moon)
+  useEffect(() => {
+    let raf: number | null = null;
+    const loop = () => {
+      raf = requestAnimationFrame(loop);
+      if (!longPoseEnabled || enlargeObjects) return;
+
+      const overlay = lpCanvasRef.current;
+      const root = rootRef.current;
+      if (!overlay || !root) return;
+
+      const ctx = overlay.getContext('2d');
+      if (!ctx) return;
+
+      const cssW = viewport.w;
+      const cssH = viewport.h;
+      const retain = Math.max(1, Math.round(longPoseRetainFrames || 1));
+
+      // Fade previous frames
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.globalAlpha = Math.min(1, 1 / retain);
+      ctx.fillRect(0, 0, cssW, cssH);
+
+      // Draw current 2D canvases (exclude WebGL and the overlay itself)
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1;
+      const dstRect = overlay.getBoundingClientRect();
+
+      const canvases = Array.from(root.querySelectorAll('canvas')) as HTMLCanvasElement[];
+      const twoDCanvases = canvases.filter(c =>
+        c !== overlay && !(c.getContext('webgl') || c.getContext('webgl2'))
+      );
+      for (const src of twoDCanvases) {
+        const srcRect = src.getBoundingClientRect();
+        if (srcRect.width <= 0 || srcRect.height <= 0) continue;
+
+        const sxPerCss = src.width / srcRect.width;
+        const syPerCss = src.height / srcRect.height;
+
+        const sx = Math.max(0, (dstRect.left - srcRect.left) * sxPerCss);
+        const sy = Math.max(0, (dstRect.top  - srcRect.top ) * syPerCss);
+        const sWidth  = Math.max(0, Math.min(src.width  - sx, dstRect.width  * sxPerCss));
+        const sHeight = Math.max(0, Math.min(src.height - sy, dstRect.height * syPerCss));
+
+        try {
+          ctx.drawImage(src, sx, sy, sWidth, sHeight, 0, 0, cssW, cssH);
+        } catch {}
+      }
+
+      // Manually persist dots and sprites (planets, Sun, Moon) as filled disks
+      // Note: overlay origin is at viewport.x/y, so convert screen coords -> local
+      const drawDisk = (x: number, y: number, w: number, h: number, color: string) => {
+        const r = Math.max(1, Math.round(Math.max(w, h) / 2));
+        const lx = x - viewport.x, ly = y - viewport.y;
+        ctx.beginPath();
+        ctx.arc(lx, ly, r, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      };
+
+      // Sun sprite (never 3D)
+      // Persist only when visible on screen
+      if (showSun && sunScreen.visibleX && sunScreen.visibleY) {
+        drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b');
+      }
+
+      // Moon dot/sprite (exclude 3D)
+      if (showMoon && (moonRenderModeEffective === 'dot' || moonRenderModeEffective === 'sprite') && moonScreen.visibleX && moonScreen.visibleY) {
+        drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, '#93c5fd');
+      }
+
+      // Planets: persist dot and sprite modes only
+      for (const p of planetsRender) {
+        if (!p.visibleX || !p.visibleY) continue;
+        const S = Math.max(4, Math.round(p.sizePx));
+        const mode = p.mode;
+        if (mode === 'dot' || mode === 'sprite') {
+          drawDisk(p.x, p.y, S, S, p.color);
+        }
+      }
+    };
+
+    raf = requestAnimationFrame(loop);
+    return () => { if (raf != null) cancelAnimationFrame(raf); };
+  }, [
+    longPoseEnabled,
+    longPoseRetainFrames,
+    enlargeObjects,
+    // inputs used in manual draw
+    showSun, showMoon,
+    sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
+    moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
+    moonRenderModeEffective,
+    planetsRender,
+    viewport.x, viewport.y, viewport.w, viewport.h,
+  ]);
+
+
   return (
-    <div ref={ref} className="absolute inset-0">
+    <div ref={setRootRef} className="absolute inset-0">
       {/* Earth - render before horizon */}
       {showEarth && (
         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 0, pointerEvents: 'none' }}>
@@ -984,6 +1132,22 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         polarisColor={POLARIS_COLOR}
         cruxColor={CRUX_COLOR}
         planets={planetMarkers}
+      />
+
+      {/* Long pose overlay inside SpaceView (above sky layers, below UI) */}
+      <canvas
+        ref={lpCanvasRef}
+        className="absolute"
+        // Align to viewport so local coords are simple
+        style={{
+          zIndex: Z.horizon + 1,
+          left: viewport.x,
+          top: viewport.y,
+          width: viewport.w,
+          height: viewport.h,
+          pointerEvents: 'none',
+        }}
+        aria-hidden="true"
       />
 
       {/* NEW: Additional overlays when App panels are hidden (HUD) */}
