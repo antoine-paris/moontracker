@@ -56,6 +56,9 @@ export default function App() {
   // ref to SpaceView root
   const spaceViewRef = useRef<HTMLDivElement | null>(null);
 
+  // Long pose overlay canvas ref
+  const longPoseCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
   // dynamic locations loaded from CSV
   const [locations, setLocations] = useState<LocationOption[]>([]);
   const [locationsLoading, setLocationsLoading] = useState<boolean>(true);
@@ -506,6 +509,11 @@ export default function App() {
   const [timeLapseStepUnit, setTimeLapseStepUnit] =
     useState<'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction'>('hour');
   const [timeLapseLoopAfter, setTimeLapseLoopAfter] = useState<number>(0); // 0 => no loop
+
+  // --- Long pose state ---
+  const [longPoseEnabled, setLongPoseEnabled] = useState<boolean>(false);
+  const [longPoseRetainFrames, setLongPoseRetainFrames] = useState<number>(30);
+
 
   // Track source of time changes to detect user commits
   const lastChangeSourceRef = useRef<'user' | 'anim' | 'manual' | null>(null);
@@ -1032,6 +1040,122 @@ export default function App() {
     timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter,
   ]);
 
+  useEffect(() => {
+    const canvas = longPoseCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Reset accumulation so the new setting takes effect immediately
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }, [longPoseEnabled, longPoseRetainFrames]);
+
+  // --- Resize/setup Long pose canvas to match its CSS rect (not just viewport) ---
+  useEffect(() => {
+    const canvas = longPoseCanvasRef.current;
+    if (!canvas) return;
+
+    // Size from the canvas' parent DOM rect to avoid rounding drift
+    const parent = canvas.parentElement as HTMLElement | null;
+    const rect = parent?.getBoundingClientRect();
+    const cssW = Math.max(1, Math.round(rect?.width ?? viewport.w));
+    const cssH = Math.max(1, Math.round(rect?.height ?? viewport.h));
+
+    const dpr = Math.max(1, window.devicePixelRatio || 1);
+    const w = cssW * dpr;
+    const h = cssH * dpr;
+
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width = w;
+      canvas.height = h;
+      // Ensure CSS size expresses the intended on-screen pixels
+      canvas.style.width = `${cssW}px`;
+      canvas.style.height = `${cssH}px`;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        // No additional scaling: we will draw in device pixels directly
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, w, h);
+      }
+    }
+  }, [viewport.w, viewport.h]);
+
+  // --- NEW: Clear overlay when toggling Long pose off or changing retain ---
+  useEffect(() => {
+    const canvas = longPoseCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    if (!longPoseEnabled) {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, [longPoseEnabled]);
+
+  // --- Long pose compositor loop (aligned using DOM rect mapping) ---
+useEffect(() => {
+  let raf: number | null = null;
+  const tick = () => {
+    raf = requestAnimationFrame(tick);
+    if (!longPoseEnabled) return;
+
+    const overlay = longPoseCanvasRef.current;
+    const srcRoot = spaceViewRef.current;
+    if (!overlay || !srcRoot) return;
+
+    // Prefer the last canvas (R3F/WebGL) if multiple exist
+    const canvases = srcRoot.querySelectorAll('canvas');
+    const srcCanvas = canvases[canvases.length - 1] as HTMLCanvasElement | null;
+    if (!srcCanvas) return;
+
+    const ctx = overlay.getContext('2d');
+    if (!ctx) return;
+
+    // Compute mapping between source canvas pixels and our overlay pixels
+    const srcRect = srcCanvas.getBoundingClientRect();
+    const dstRect = overlay.getBoundingClientRect();
+
+    // Guard: if rects are degenerate, skip
+    if (srcRect.width <= 0 || srcRect.height <= 0 || dstRect.width <= 0 || dstRect.height <= 0) return;
+
+    // Source CSS px -> source device px scale
+    const sxPerCss = srcCanvas.width / srcRect.width;
+    const syPerCss = srcCanvas.height / srcRect.height;
+
+    // Compute source crop that corresponds to our overlay area
+    const sx = Math.max(0, (dstRect.left - srcRect.left) * sxPerCss);
+    const sy = Math.max(0, (dstRect.top  - srcRect.top ) * syPerCss);
+    const sWidth  = Math.min(srcCanvas.width  - sx, dstRect.width  * sxPerCss);
+    const sHeight = Math.min(srcCanvas.height - sy, dstRect.height * syPerCss);
+
+    // Destination is the full overlay backing store (device px)
+    const dw = overlay.width;
+    const dh = overlay.height;
+
+    const retain = Math.max(1, Math.round(longPoseRetainFrames || 1));
+
+    // Fade previous overlay slightly so only ~last N frames remain
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.globalAlpha = Math.min(1, 1 / retain);
+    ctx.fillRect(0, 0, dw, dh);
+
+    // Draw current frame crop on top (full alpha)
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    try {
+      ctx.drawImage(
+        srcCanvas,
+        sx, sy, Math.max(0, sWidth), Math.max(0, sHeight),
+        0, 0, dw, dh
+      );
+    } catch {
+      // ignore transient draw errors
+    }
+  };
+
+  raf = requestAnimationFrame(tick);
+  return () => { if (raf != null) cancelAnimationFrame(raf); };
+}, [longPoseEnabled, longPoseRetainFrames]);
+
+
   // --- JSX -------------------------------------------------------------------
   return (
     <div className="w-full h-screen bg-black text-white overflow-hidden">
@@ -1174,6 +1298,10 @@ export default function App() {
               onTimeLapsePrevFrame={() => stepTimeLapseOnce(-1)}
               onTimeLapseNextFrame={() => stepTimeLapseOnce(+1)}
               timeLapseStartMs={tlStartWhenMsRef.current}
+              longPoseEnabled={longPoseEnabled}
+              setLongPoseEnabled={setLongPoseEnabled}
+              longPoseRetainFrames={longPoseRetainFrames}
+              setLongPoseRetainFrames={setLongPoseRetainFrames}
 
           />
           </div>
@@ -1235,6 +1363,13 @@ export default function App() {
                   : `${device.label} — ${zoom?.label ?? ''}`}
                 overlayInfoString={`${overlayPlaceString}, ${cityLocalTimeString} heure locale (${utcTime})`}
               />
+              {/* Long pose overlay canvas (draws persisted frames) */}
+                  <canvas
+                    ref={longPoseCanvasRef}
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ zIndex: 2 }}
+                    aria-hidden="true"
+                  />
               </div>
             </div>
           </div>
