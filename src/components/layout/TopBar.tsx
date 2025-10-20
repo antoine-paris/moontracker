@@ -101,8 +101,8 @@ type Props = {
   setTimeLapsePeriodMs: (n: number) => void;
   timeLapseStepValue: number;
   setTimeLapseStepValue: (n: number) => void;
-  timeLapseStepUnit: 'hour' | 'day' | 'month' | 'lunar-fraction' | 'synodic-fraction';
-  setTimeLapseStepUnit: (u: 'hour' | 'day' | 'month' | 'lunar-fraction' | 'synodic-fraction') => void;
+  timeLapseStepUnit: 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction' ;
+  setTimeLapseStepUnit: (u: 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction' ) => void;
   timeLapseLoopAfter: number; // 0 => no loop
   setTimeLapseLoopAfter: (n: number) => void;
 
@@ -880,6 +880,7 @@ export default function TopBar({
                   >
                     <option value="hour">heure</option>
                     <option value="day">jour</option>
+                    <option value="sidereal-day">jour sidéral</option>
                     <option value="month">mois</option>
                     <option value="synodic-fraction">jour lunaire</option>
                     <option value="lunar-fraction">cycle lunaire sidéral</option>

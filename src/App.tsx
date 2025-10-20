@@ -504,7 +504,7 @@ export default function App() {
   const [timeLapsePeriodMs, setTimeLapsePeriodMs] = useState<number>(200); // 1..1000
   const [timeLapseStepValue, setTimeLapseStepValue] = useState<number>(1);  // integer step value
   const [timeLapseStepUnit, setTimeLapseStepUnit] =
-    useState<'hour' | 'day' | 'month' | 'lunar-fraction' | 'synodic-fraction'>('hour');
+    useState<'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction'>('hour');
   const [timeLapseLoopAfter, setTimeLapseLoopAfter] = useState<number>(0); // 0 => no loop
 
   // Track source of time changes to detect user commits
@@ -712,7 +712,8 @@ export default function App() {
   
   const stepTimeLapseOnce = React.useCallback((sign: 1 | -1) => {
     const SYNODIC_DAYS = 29.530588853;
-    const SIDEREAL_DAYS = 27.321661;
+    const SIDEREAL_DAYS = 27.321661;   // sidereal orbit
+    const SIDEREAL_DAY_MS = 86164000;  // 23h 56m 4s
     const AVG_MONTH_DAYS = 30.436875;
     const DAY_MS = 86400000;
     const addUTCMonthsMs = (ms: number, months: number) => {
@@ -735,6 +736,7 @@ export default function App() {
       switch (timeLapseStepUnit) {
         case 'hour':  return ms + s * v * 3600000;
         case 'day':   return ms + s * v * DAY_MS;
+        case 'sidereal-day': return ms + s * v * SIDEREAL_DAY_MS; 
         case 'month': return addUTCMonthsMs(ms, s * v);
         case 'lunar-fraction': {
           const deltaMs = (SIDEREAL_DAYS * DAY_MS) / v;
@@ -796,6 +798,7 @@ export default function App() {
 
     const SYNODIC_DAYS = 29.530588853; // phase-to-phase
     const SIDEREAL_DAYS = 27.321661;   // sidereal orbit
+    const SIDEREAL_DAY_MS = 86164000;  
     const AVG_MONTH_DAYS = 30.436875;
     const DAY_MS = 86400000;
 
@@ -821,6 +824,7 @@ export default function App() {
       switch (timeLapseStepUnit) {
         case 'hour':  return ms + v * 3600000;
         case 'day':   return ms + v * DAY_MS;
+        case 'sidereal-day': return ms + v * SIDEREAL_DAY_MS;
         case 'month': return addUTCMonthsMs(ms, v);
         case 'lunar-fraction': {
           const deltaMs = (SIDEREAL_DAYS * DAY_MS) / v;

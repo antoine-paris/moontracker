@@ -93,7 +93,7 @@ const FOLLOW_ALLOWED = ['SOLEIL','LUNE','MERCURE','VENUS','MARS','JUPITER','SATU
 const PROJ_LIST = ['recti-panini','stereo-centered','ortho','cylindrical','rectilinear','cylindrical-horizon'] as const;
 
 // NEW: timelapse units (order matters for compact header)
-const TL_UNITS = ['hour', 'day', 'month', 'lunar-fraction', 'synodic-fraction'] as const;
+const TL_UNITS = ['hour', 'day', 'sidereal-day', 'month', 'lunar-fraction', 'synodic-fraction'] as const;
 
 // Bit positions for packed toggles
 const ToggleBits = {
