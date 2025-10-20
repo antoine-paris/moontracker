@@ -36,7 +36,7 @@ import Moon3D from "../stage/Moon3D";
 import PlanetSprite from "../stage/PlanetSprite";
 import Planet3D from "../stage/Planet3D";
 import Markers from "../stage/Markers";
-import Earth from "../stage/Earth"; // ADD THIS IMPORT
+import Ground from "../stage/Ground"; // ADD THIS IMPORT
 
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
@@ -669,7 +669,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       {/* Earth - render before horizon */}
       {showEarth && (
         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 0, pointerEvents: 'none' }}>
-          <Earth
+          <Ground
             viewport={viewport}
             refAzDeg={refAzDeg}
             refAltDeg={refAltDeg}
