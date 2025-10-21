@@ -93,7 +93,7 @@ const FOLLOW_ALLOWED = ['SOLEIL','LUNE','MERCURE','VENUS','MARS','JUPITER','SATU
 const PROJ_LIST = ['recti-panini','stereo-centered','ortho','cylindrical','rectilinear','cylindrical-horizon'] as const;
 
 // NEW: timelapse units (order matters for compact header)
-const TL_UNITS = ['hour', 'day', 'sidereal-day', 'month', 'lunar-fraction', 'synodic-fraction'] as const;
+const TL_UNITS = ['minute','hour', 'day', 'sidereal-day', 'month', 'lunar-fraction', 'synodic-fraction'] as const;
 
 // Bit positions for packed toggles
 const ToggleBits = {
@@ -113,6 +113,7 @@ const ToggleBits = {
   panels: 13,
   play: 14,
   horizon: 15,
+  ecliptic: 16,
 } as const;
 
 function packTogglesToMask(t: {
@@ -130,6 +131,7 @@ function packTogglesToMask(t: {
   enlargeObjects: boolean;
   debugMask: boolean;
   showHorizon: boolean;
+  showEcliptique: boolean;
 }, showPanels: boolean, isAnimating: boolean): number {
   let m = 0;
   if (t.showSun) m |= 1 << ToggleBits.sun;
@@ -146,6 +148,7 @@ function packTogglesToMask(t: {
   if (t.enlargeObjects) m |= 1 << ToggleBits.enlarge;
   if (t.debugMask) m |= 1 << ToggleBits.debug;
   if (t.showHorizon) m |= 1 << ToggleBits.horizon;
+  if (t.showEcliptique) m |= 1 << ToggleBits.ecliptic;
   if (showPanels) m |= 1 << ToggleBits.panels;
   if (isAnimating) m |= 1 << ToggleBits.play;
   return m >>> 0;
@@ -167,6 +170,7 @@ function unpackMaskToToggles(mask: number) {
     enlarge: !!(mask & (1 << ToggleBits.enlarge)),
     debug: !!(mask & (1 << ToggleBits.debug)),
     horizon: !!(mask & (1 << ToggleBits.horizon)),
+    ecliptic: !!(mask & (1 << ToggleBits.ecliptic)),
     panels: !!(mask & (1 << ToggleBits.panels)),
     play: !!(mask & (1 << ToggleBits.play)),
   };
@@ -209,6 +213,7 @@ export type UrlInitArgs = {
   setShowHorizon: (b: boolean) => void;
   setShowSunCard: (b: boolean) => void;
   setShowMoonCard: (b: boolean) => void;
+  setShowEcliptique: (b: boolean) => void;
   setEnlargeObjects: (b: boolean) => void;
   setDebugMask: (b: boolean) => void;
 
@@ -244,6 +249,7 @@ export type UrlInitArgs = {
   setTimeLapseLoopAfter: (n: number) => void;
   timeLapseStartMsRef: React.MutableRefObject<number>;
 
+
   // NEW: Long pose setters
   setLongPoseEnabled: (b: boolean) => void;
   setLongPoseRetainFrames: (n: number) => void;
@@ -258,7 +264,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setFollow, setProjectionMode,
     setShowSun, setShowMoon, setShowPhase, setEarthshine, setShowEarth, setShowAtmosphere, setShowStars, setShowMarkers, setShowGrid,
     setShowHorizon,
-    setShowSunCard, setShowMoonCard, setEnlargeObjects, setDebugMask,
+    setShowSunCard, setShowMoonCard, setShowEcliptique, setEnlargeObjects, setDebugMask,
     setShowPanels,
     allPlanetIds, setShowPlanets,
     setIsAnimating, setSpeedMinPerSec,
@@ -409,6 +415,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       setShowHorizon(u.horizon);
       setShowSunCard(u.sunCard);
       setShowMoonCard(u.moonCard);
+      setShowEcliptique(u.ecliptic);
       setEnlargeObjects(u.enlarge);
       setDebugMask(u.debug);
       setShowPanels(u.panels);
@@ -576,6 +583,7 @@ export type BuildShareUrlArgs = {
     showHorizon: boolean;
     showSunCard: boolean;
     showMoonCard: boolean;
+    showEcliptique: boolean;
     enlargeObjects: boolean;
     debugMask: boolean;
   };

@@ -754,10 +754,14 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const cssH = viewport.h;
     const retain = Math.max(1, Math.round(longPoseRetainFrames || 1));
 
+    // Optional: slightly slower fade for longer trails (set >1 to boost)
+    const DECAY_GAIN = 10; // try 1.2–1.5 if you want even longer/brighter ghosts
+
     // Fade previous frames
     ctx.globalCompositeOperation = 'destination-out';
-    ctx.globalAlpha = Math.min(1, 1 / retain);
+    ctx.globalAlpha = Math.min(1, 1 / (retain * DECAY_GAIN));
     ctx.fillRect(0, 0, cssW, cssH);
+
 
     // Draw current canvases:
     // - Skip our persistence overlay
@@ -781,6 +785,19 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const srcRect = src.getBoundingClientRect();
       if (srcRect.width <= 0 || srcRect.height <= 0) continue;
 
+      const isStars = !!(src as HTMLElement).closest('[data-stars-layer="1"]');
+
+      const STAR_TRAIL_GAIN = 10.5; // 1=no boost, try 1.2–2.0
+
+      // Use additive for Stars so black background doesn't erase ghosts
+      if (isStars) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, STAR_TRAIL_GAIN / retain);
+      } else {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+      }
+
       const sxPerCss = src.width / srcRect.width;
       const syPerCss = src.height / srcRect.height;
 
@@ -795,34 +812,56 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         // ignore
       }
     }
+    // reset
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+
+    // Trail gains for manual disks (tune as needed)
+    const SUN_TRAIL_GAIN = 1000.5;    // 1 = live brightness at steady state
+    const MOON_TRAIL_GAIN = 300.5;   // increase for brighter trails
+    const PLANET_TRAIL_GAIN = 100.5; // increase for brighter trails
 
     // Manual persistence for sprites/dots (Sun, Moon, planets)
-    const drawDisk = (x: number, y: number, w: number, h: number, color: string) => {
+    const drawDisk = (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      color: string,
+      gain: number = 1
+    ) => {
       const r = Math.max(1, Math.round(Math.max(w, h) / 2));
       const lx = x - viewport.x, ly = y - viewport.y;
+
+      // Additively accumulate with normalized alpha
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, Math.max(0, gain) / retain);
+
       ctx.beginPath();
       ctx.arc(lx, ly, r, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
+
+      ctx.restore();
     };
 
-    // Sun (kept as-is)
+    // Sun (sprite/dot only)
     if (showSun && sunScreen.visibleX && sunScreen.visibleY && !enlargeObjects) {
-      drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b');
+      drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b', SUN_TRAIL_GAIN);
     }
 
-    // Moon sprite/dot -> persist as a disk
-    if (showMoon && !enlargeObjects &&
-        moonScreen.visibleX && moonScreen.visibleY) {
-      drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, 'rgba(127, 128, 129, 1)');
+    // Moon (sprite/dot only)
+    if (showMoon && !enlargeObjects && moonScreen.visibleX && moonScreen.visibleY) {
+      drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, 'rgba(127, 128, 129, 1)', MOON_TRAIL_GAIN);
     }
 
-    // Planets sprite/dot
+    // Planets (dot/sprite only)
     for (const p of planetsRender) {
       if (!p.visibleX || !p.visibleY) continue;
       const S = Math.max(4, Math.round(p.sizePx));
       if (p.mode === 'dot' || p.mode === 'sprite') {
-        drawDisk(p.x, p.y, S, S, p.color);
+        drawDisk(p.x, p.y, S, S, p.color, PLANET_TRAIL_GAIN);
       }
     }
   }, [
