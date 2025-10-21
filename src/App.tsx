@@ -1269,6 +1269,8 @@ export default function App() {
                   longPoseRetainFrames={longPoseRetainFrames}
                   onLongPoseAccumulated={handleLongPoseAccumulated}
                   longPoseClearSeq={longPoseClearSeq}
+                  timeLapseEnabled={timeLapseEnabled}
+                  onLongPoseClear={handleLongPoseClear}
                 />
                 </div>
               </div>
@@ -1309,6 +1311,7 @@ export default function App() {
               setDeltaAzDeg={setDeltaAzDeg}
               setDeltaAltDeg={setDeltaAltDeg}
               zIndex={Z.ui + 20}
+              onLongPoseClear={handleLongPoseClear}  
             />
           )}
         </main>

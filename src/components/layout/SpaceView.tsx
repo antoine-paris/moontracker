@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, forwardRef } from "react";
+import { Canvas } from '@react-three/fiber';
 
 // Astro core
 import { getSunAndMoonAltAzDeg, getSunOrientationAngles, sunOnMoon } from "../../astro/aeInterop";
@@ -114,6 +115,8 @@ export interface SpaceViewProps {
   longPoseRetainFrames?: number;
   onLongPoseAccumulated?: () => void;
   longPoseClearSeq?: number;
+  timeLapseEnabled?: boolean;
+  onLongPoseClear?: () => void;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
@@ -136,6 +139,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     longPoseRetainFrames = 30,
     onLongPoseAccumulated, 
     longPoseClearSeq = 0,
+    timeLapseEnabled = false,
+    onLongPoseClear,
   } = props;
 
   // Capture root for querying child canvases
@@ -724,119 +729,165 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     showStars, showSun, showMoon,
   ]);
 
-  // Long pose compositor inside SpaceView:
-  // - Excludes 3D and enlarged objects
-  // - Accumulates 2D canvases (e.g., stars)
-  // - Manually persists DOM dots and sprite bodies (planets, Sun, Moon)
-  // Replace the continuous RAF compositor with an event-driven accumulation:
-  // Accumulate ONCE whenever utcMs changes (i.e., after each TL step or anim tick).
-  useEffect(() => {
-    if (!longPoseEnabled || enlargeObjects) return;
-
-    let cancelled = false;
-
+  // Shared compositor: copy 2D canvases and draw disks for sprites/dots
+  const compositeLongPose = useCallback(() => {
     const overlay = lpCanvasRef.current;
     const root = rootRef.current;
     if (!overlay || !root) return;
 
-    const compositeOnce = () => {
-      const ctx = overlay.getContext('2d');
-      if (!ctx) return;
+    const ctx = overlay.getContext('2d');
+    if (!ctx) return;
 
-      const cssW = viewport.w;
-      const cssH = viewport.h;
-      const retain = Math.max(1, Math.round(longPoseRetainFrames || 1));
+    const cssW = viewport.w;
+    const cssH = viewport.h;
+    const retain = Math.max(1, Math.round(longPoseRetainFrames || 1));
 
-      // Fade previous frames
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.globalAlpha = Math.min(1, 1 / retain);
-      ctx.fillRect(0, 0, cssW, cssH);
+    // Fade previous frames
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.globalAlpha = Math.min(1, 1 / retain);
+    ctx.fillRect(0, 0, cssW, cssH);
 
-      // Draw current 2D canvases (exclude WebGL and the overlay itself)
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1;
+    // Draw current canvases:
+    // - Skip our persistence overlay
+    // - Skip any canvas inside a [data-3d-layer="1"] wrapper (Moon3D/Planet3D)
+    // - Include everything else (2D and Stars, even if WebGL)
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
 
-      const dstRect = overlay.getBoundingClientRect();
-      const canvases = Array.from(root.querySelectorAll('canvas')) as HTMLCanvasElement[];
-      const twoDCanvases = canvases.filter(c =>
-        c !== overlay && !(c.getContext('webgl') || c.getContext('webgl2'))
-      );
+    const dstRect = overlay.getBoundingClientRect();
+    const canvases = Array.from(root.querySelectorAll('canvas')) as HTMLCanvasElement[];
 
-      for (const src of twoDCanvases) {
-        const srcRect = src.getBoundingClientRect();
-        if (srcRect.width <= 0 || srcRect.height <= 0) continue;
+    const sources = canvases.filter((c) => {
+      if (c === overlay) return false;
+      const el = c as HTMLElement;
+      if (el.closest('[data-3d-layer="1"]')) return false;
+      return true;
+    });
 
-        const sxPerCss = src.width / srcRect.width;
-        const syPerCss = src.height / srcRect.height;
+    for (const src of sources) {
+      const srcRect = src.getBoundingClientRect();
+      if (srcRect.width <= 0 || srcRect.height <= 0) continue;
 
-        const sx = Math.max(0, (dstRect.left - srcRect.left) * sxPerCss);
-        const sy = Math.max(0, (dstRect.top  - srcRect.top ) * syPerCss);
-        const sWidth  = Math.max(0, Math.min(src.width  - sx, dstRect.width  * sxPerCss));
-        const sHeight = Math.max(0, Math.min(src.height - sy, dstRect.height * syPerCss));
+      const sxPerCss = src.width / srcRect.width;
+      const syPerCss = src.height / srcRect.height;
 
-        try {
-          ctx.drawImage(src, sx, sy, sWidth, sHeight, 0, 0, cssW, cssH);
-        } catch {}
+      const sx = Math.max(0, (dstRect.left - srcRect.left) * sxPerCss);
+      const sy = Math.max(0, (dstRect.top  - srcRect.top ) * syPerCss);
+      const sWidth  = Math.max(0, Math.min(src.width  - sx, dstRect.width  * sxPerCss));
+      const sHeight = Math.max(0, Math.min(src.height - sy, dstRect.height * syPerCss));
+
+      try {
+        ctx.drawImage(src, sx, sy, sWidth, sHeight, 0, 0, cssW, cssH);
+      } catch {
+        // ignore
       }
+    }
 
-      // Manual persistence for sprites/dots (Sun, Moon, planets)
-      const drawDisk = (x: number, y: number, w: number, h: number, color: string) => {
-        const r = Math.max(1, Math.round(Math.max(w, h) / 2));
-        const lx = x - viewport.x, ly = y - viewport.y;
-        ctx.beginPath();
-        ctx.arc(lx, ly, r, 0, Math.PI * 2);
-        ctx.fillStyle = color;
-        ctx.fill();
-      };
-
-      if (showSun && sunScreen.visibleX && sunScreen.visibleY) {
-        drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b');
-      }
-
-      if (showMoon &&
-          (moonRenderModeEffective === 'dot' || moonRenderModeEffective === 'sprite') &&
-          moonScreen.visibleX && moonScreen.visibleY) {
-        drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, '#93c5fd');
-      }
-
-      for (const p of planetsRender) {
-        if (!p.visibleX || !p.visibleY) continue;
-        const S = Math.max(4, Math.round(p.sizePx));
-        if (p.mode === 'dot' || p.mode === 'sprite') {
-          drawDisk(p.x, p.y, S, S, p.color);
-        }
-      }
+    // Manual persistence for sprites/dots (Sun, Moon, planets)
+    const drawDisk = (x: number, y: number, w: number, h: number, color: string) => {
+      const r = Math.max(1, Math.round(Math.max(w, h) / 2));
+      const lx = x - viewport.x, ly = y - viewport.y;
+      ctx.beginPath();
+      ctx.arc(lx, ly, r, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
     };
 
-    // Schedule after next paint so sprites/canvases reflect the new utcMs
-    // Use double-rAF to ensure React DOM/layout commit has happened.
-    const schedule = () => {
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (cancelled) return;
-          compositeOnce();
-          onLongPoseAccumulated?.(); // ACK the App so it can step again
-        });
-      });
-    };
+    if (showSun && sunScreen.visibleX && sunScreen.visibleY) {
+      drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b');
+    }
 
-    schedule();
-    return () => { cancelled = true; };
+    if (showMoon &&
+        (moonRenderModeEffective === 'dot' || moonRenderModeEffective === 'sprite') &&
+        moonScreen.visibleX && moonScreen.visibleY) {
+      drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, '#93c5fd');
+    }
+
+    for (const p of planetsRender) {
+      if (!p.visibleX || !p.visibleY) continue;
+      const S = Math.max(4, Math.round(p.sizePx));
+      if (p.mode === 'dot' || p.mode === 'sprite') {
+        drawDisk(p.x, p.y, S, S, p.color);
+      }
+    }
   }, [
-    // Trigger on time change to ensure one accumulation per TL step
-    utcMs,
-    longPoseEnabled,
-    longPoseRetainFrames,
-    enlargeObjects,
-    // Use the following for correct manual draw/colors/coords
     viewport.x, viewport.y, viewport.w, viewport.h,
+    longPoseRetainFrames,
     showSun, showMoon,
     sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
     moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
     moonRenderModeEffective,
     planetsRender,
-    onLongPoseAccumulated,
   ]);
+
+  // Timelapse mode: accumulate once per utcMs change and ACK
+useEffect(() => {
+  if (!longPoseEnabled || enlargeObjects || !timeLapseEnabled) return;
+  let cancelled = false;
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (cancelled) return;
+      compositeLongPose();
+      onLongPoseAccumulated?.();
+    });
+  });
+  return () => { cancelled = true; };
+}, [
+  utcMs,
+  longPoseEnabled,
+  enlargeObjects,
+  timeLapseEnabled,
+  compositeLongPose,
+  onLongPoseAccumulated,
+]);
+
+// Burst composite after toggling Stars ON (works in TL and smooth modes)
+useEffect(() => {
+  if (!longPoseEnabled || enlargeObjects) return;
+  if (!showStars) return;
+
+  let raf: number | null = null;
+  let frames = 0;
+  let cancelled = false;
+
+  const step = () => {
+    if (cancelled) return;
+    frames += 1;
+    compositeLongPose();
+
+    const root = rootRef.current;
+    const starsCanvas = root?.querySelector('[data-stars-layer="1"] canvas') as HTMLCanvasElement | null;
+    const ready = !!starsCanvas && starsCanvas.width > 0 && starsCanvas.height > 0;
+
+    if (frames < 30 && !ready) {
+      raf = requestAnimationFrame(step);
+    }
+  };
+
+  raf = requestAnimationFrame(step);
+  return () => { cancelled = true; if (raf != null) cancelAnimationFrame(raf); };
+}, [showStars, longPoseEnabled, enlargeObjects, compositeLongPose]);
+
+// Smooth mode: continuous RAF compositor (no ACK)
+useEffect(() => {
+  if (!longPoseEnabled || enlargeObjects || timeLapseEnabled) return;
+  let raf: number | null = null;
+  let running = true;
+  const loop = () => {
+    if (!running) return;
+    compositeLongPose();
+    raf = requestAnimationFrame(loop);
+  };
+  raf = requestAnimationFrame(loop);
+  return () => {
+    running = false;
+    if (raf != null) cancelAnimationFrame(raf);
+  };
+}, [longPoseEnabled, enlargeObjects, timeLapseEnabled, compositeLongPose]);
+
+
+
+  
 
   // Clear overlay when toggles/settings or observer/camera change
   useEffect(() => {
@@ -855,7 +906,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     // Observer/location
     latDeg, lngDeg,
     // Camera orientation
-    refAzDeg, refAltDeg,
+    // refAzDeg, refAltDeg,
 
     // Projection/scale/viewport
     projectionMode, fovXDeg, fovYDeg,
@@ -985,7 +1036,12 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
       {/* Stars */}
       {showStars && (
-        <div className="absolute inset-0" style={{ zIndex: Z.horizon - 5, pointerEvents: 'none' }}>
+        <div
+          className="absolute inset-0"
+          // Tag the stars layer so the compositor can include its canvas even if it's WebGL
+          data-stars-layer="1"
+          style={{ zIndex: Z.horizon - 5, pointerEvents: 'none' }}
+        >
           <Stars
             utcMs={utcMs}
             latDeg={latDeg}
@@ -1056,7 +1112,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       )}
 
       {showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
-        <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }}>
+         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }} data-3d-layer="1">
           <Moon3D
             x={moonScreen.x}
             y={moonScreen.y}
@@ -1152,7 +1208,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
         // effectiveMode === '3d'
         return (
-          <div key={p.id} className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }}>
+          <div key={p.id} className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }} data-3d-layer="1">
             <Planet3D
               id={p.id as PlanetId}
               x={p.x}
@@ -1210,6 +1266,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         <canvas
           ref={lpCanvasRef}
           className="absolute"
+          gl={{ preserveDrawingBuffer: true }}
+            onCreated={({ gl }) => {
+            gl.domElement.setAttribute('data-stars-canvas', '1');
+          }}
           // Align to viewport so local coords are simple
           style={{
             // Optional: put ghosts below live sprites but above stars/grid

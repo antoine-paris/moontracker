@@ -8,6 +8,7 @@ type Props = {
   setDeltaAzDeg: React.Dispatch<React.SetStateAction<number>>;
   setDeltaAltDeg: React.Dispatch<React.SetStateAction<number>>;
   zIndex?: number;
+  onLongPoseClear?: () => void;
 };
 
 export default function DirectionalKeypad({
@@ -17,6 +18,7 @@ export default function DirectionalKeypad({
   setDeltaAzDeg,
   setDeltaAltDeg,
   zIndex,
+  onLongPoseClear,
 }: Props) {
   return (
     <div
@@ -32,6 +34,7 @@ export default function DirectionalKeypad({
             const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
             return tgt - baseRefAlt;
           });
+          onLongPoseClear?.();
         }}
       >
         ↑
@@ -46,6 +49,7 @@ export default function DirectionalKeypad({
               const nd = prev - stepAzDeg;
               return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
             });
+            onLongPoseClear?.();
           }}
         >
           ←
@@ -57,6 +61,7 @@ export default function DirectionalKeypad({
           onClick={() => {
             setDeltaAzDeg(0);
             setDeltaAltDeg(0);
+            onLongPoseClear?.();
           }}
         >
           •
@@ -70,6 +75,7 @@ export default function DirectionalKeypad({
               const nd = prev + stepAzDeg;
               return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
             });
+            onLongPoseClear?.();
           }}
         >
           →
@@ -84,6 +90,7 @@ export default function DirectionalKeypad({
             const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
             return tgt - baseRefAlt;
           });
+          onLongPoseClear?.();
         }}
       >
         ↓

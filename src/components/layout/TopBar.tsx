@@ -565,7 +565,7 @@ export default function TopBar({
             ] as FollowMode[]).map(opt => (
               <button key={opt}
                 className={`px-3 py-1.5 rounded-lg border text-sm ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
-                onClick={() => setFollow(opt)}
+                onClick={() => { setFollow(opt); onLongPoseClear(); }}
                 title={
                   opt === 'SOLEIL' ? 'Suivre le Soleil'
                   : opt === 'LUNE' ? 'Suivre la Lune'
@@ -896,7 +896,7 @@ export default function TopBar({
                     <input
                       type="checkbox"
                       checked={timeLapseEnabled}
-                      onChange={(e) => setTimeLapseEnabled(e.target.checked)}
+                      onChange={(e) => { setTimeLapseEnabled(e.target.checked); onLongPoseClear(); }}
                     />
                   </label>
                   <span className="w-20 text-sm text-white/80">
@@ -911,7 +911,7 @@ export default function TopBar({
                     step={1}
                     className="w-12 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
                     value={tlStepValueStr}
-                    onChange={(e) => setTlStepValueStr(e.target.value)}
+                    onChange={(e) => { setTlStepValueStr(e.target.value); onLongPoseClear(); }}
                     onFocus={() => setEditingTlStep(true)}
                     onBlur={() => { setEditingTlStep(false); commitTlStep(); }}
                     onKeyDown={(e) => {
@@ -923,7 +923,7 @@ export default function TopBar({
                   <select
                     className="flex-1 min-w-0 bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
                     value={timeLapseStepUnit}
-                    onChange={(e) => setTimeLapseStepUnit(e.target.value as any)}
+                    onChange={(e) => { setTimeLapseStepUnit(e.target.value as any); onLongPoseClear(); }}
                     title="Unité du saut (UTC) appliqué entre images"
                   >
                     <option value="hour">heure</option>
@@ -965,7 +965,7 @@ export default function TopBar({
                     value={tlPeriodStr}
                     onChange={(e) => setTlPeriodStr(e.target.value)}
                     onFocus={() => setEditingTlPeriod(true)}
-                    onBlur={() => { setEditingTlPeriod(false); commitTlPeriod(); }}
+                    onBlur={() => { setEditingTlPeriod(false); commitTlPeriod(); onLongPoseClear();  }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitTlPeriod(); (e.target as HTMLInputElement).blur(); }
                       if (e.key === 'Escape') { setTlPeriodStr(String(timeLapsePeriodMs)); (e.target as HTMLInputElement).blur(); }
@@ -983,7 +983,7 @@ export default function TopBar({
                     value={tlLoopAfterStr}
                     onChange={(e) => setTlLoopAfterStr(e.target.value)}
                     onFocus={() => setEditingTlLoop(true)}
-                    onBlur={() => { setEditingTlLoop(false); commitTlLoop(); }}
+                    onBlur={() => { setEditingTlLoop(false); commitTlLoop(); onLongPoseClear();  }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitTlLoop(); (e.target as HTMLInputElement).blur(); }
                       if (e.key === 'Escape') { setTlLoopAfterStr(String(timeLapseLoopAfter)); (e.target as HTMLInputElement).blur(); }
