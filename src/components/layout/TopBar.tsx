@@ -60,6 +60,8 @@ type Props = {
   setEarthshine: (v: boolean) => void;
   showSunCard: boolean;
   setShowSunCard: (v: boolean) => void;
+  showEcliptique: boolean;
+  setShowEcliptique: (v: boolean) => void;
   showMoonCard: boolean;
   setShowMoonCard: (v: boolean) => void;
   debugMask: boolean;
@@ -127,7 +129,7 @@ export default function TopBar({
   rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
   camRotDegX, setCamRotDegX, camRotDegY, setCamRotDegY, camRotDegZ, setCamRotDegZ,
   earthshine, setEarthshine,
-  showSunCard, setShowSunCard, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
+  showSunCard, setShowSunCard, showEcliptique, setShowEcliptique, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
   timeZone,
   enlargeObjects, setEnlargeObjects,
   showHorizon, setShowHorizon,
@@ -1146,6 +1148,11 @@ export default function TopBar({
             <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux sur le Soleil">
               <input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} />
               <span>Cardinaux Soleil</span>
+            </label>
+            {/* Ecliptique */}
+            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux sur le Soleil">
+              <input type="checkbox" checked={showEcliptique} onChange={(e) => setShowEcliptique(e.target.checked)} />
+              <span>Ecliptique</span>
             </label>
             {/* Local cardinal helper */}
             <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux de la lune et des planètes">

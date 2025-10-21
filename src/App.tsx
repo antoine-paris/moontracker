@@ -293,6 +293,7 @@ export default function App() {
   const [camRotDegZ, setCamRotDegZ] = useState(0);
   // Overlays N/E/S/O sur les corps
   const [showSunCard, setShowSunCard] = useState(false);
+  const [showEcliptique, setShowEcliptique] = useState(false);
   const [showMoonCard, setShowMoonCard] = useState(false);
   const [debugMask, setDebugMask] = useState(false);
   const [enlargeObjects, setEnlargeObjects] = useState(false);
@@ -969,6 +970,7 @@ export default function App() {
       setShowGrid,
       setShowHorizon,
       setShowSunCard,
+      setShowEcliptique,
       setShowMoonCard,
       setEnlargeObjects,
       setDebugMask,
@@ -1020,6 +1022,7 @@ export default function App() {
         showGrid,
         showHorizon,
         showSunCard,
+        showEcliptique,
         showMoonCard,
         enlargeObjects,
         debugMask,
@@ -1045,7 +1048,7 @@ export default function App() {
     follow, projectionMode,
     deviceId, zoomId, fovXDeg, fovYDeg, linkFov,
     showSun, showMoon, showPhase, earthshine, showEarth, showAtmosphere, showStars, showMarkers, showGrid, showHorizon,
-    showSunCard, showMoonCard, enlargeObjects, debugMask,
+    showSunCard, showEcliptique, showMoonCard, enlargeObjects, debugMask,
     showPanels,
     showPlanets,
     isAnimating, speedMinPerSec, allPlanetIds,
@@ -1161,6 +1164,8 @@ export default function App() {
               setEarthshine={setEarthshine}
               showSunCard={showSunCard}
               setShowSunCard={setShowSunCard}
+              showEcliptique={showEcliptique}
+              setShowEcliptique={setShowEcliptique}
               showMoonCard={showMoonCard}
               setShowMoonCard={setShowMoonCard}
               debugMask={debugMask}
@@ -1248,6 +1253,7 @@ export default function App() {
                   showPhase={showPhase}
                   earthshine={earthshine}
                   showSunCard={showSunCard}
+                  showEcliptique={showEcliptique}
                   showMoonCard={showMoonCard}
                   debugMask={debugMask}
                   enlargeObjects={enlargeObjects}

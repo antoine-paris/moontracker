@@ -84,6 +84,7 @@ export interface SpaceViewProps {
   showPhase: boolean;
   earthshine: boolean;
   showSunCard: boolean;
+  showEcliptique: boolean;
   showMoonCard: boolean;
   debugMask: boolean;
   enlargeObjects: boolean;
@@ -125,7 +126,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     date, utcMs, latDeg, lngDeg,
     viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
     showEarth, showGrid, showAtmosphere, showStars, showMarkers,
-    showSun, showMoon, showPhase, earthshine, showSunCard, showMoonCard, debugMask, enlargeObjects,
+    showSun, showMoon, showPhase, earthshine, showSunCard, showMoonCard, showEcliptique, debugMask, enlargeObjects,
     glbLoading,
     showPlanets,
     rotOffsetDegX, rotOffsetDegY, rotOffsetDegZ,
@@ -700,7 +701,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   }, [planetsRender]);
 
   useEffect(() => {
-    if (!longPoseEnabled || enlargeObjects) return;
+    if (!longPoseEnabled) return;
     const canvas = lpCanvasRef.current;
     if (!canvas) return;
     const dpr = Math.max(1, window.devicePixelRatio || 1);
@@ -718,7 +719,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // draw using CSS pixels
       ctx.clearRect(0, 0, cssW, cssH);
     }
-  }, [longPoseEnabled, enlargeObjects, viewport.w, viewport.h]);
+  }, [longPoseEnabled, viewport.w, viewport.h]);
 
   // Clear overlay when toggles/settings change
   useEffect(() => {
@@ -772,6 +773,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       if (c === overlay) return false;
       const el = c as HTMLElement;
       if (el.closest('[data-3d-layer="1"]')) return false;
+      if (el.hasAttribute('data-longpose-exclude') || el.closest('[data-longpose-exclude="1"]')) return false; // exclure
       return true;
     });
 
@@ -804,7 +806,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.fill();
     };
 
-    if (showSun && sunScreen.visibleX && sunScreen.visibleY) {
+    if (showSun && sunScreen.visibleX && sunScreen.visibleY && !enlargeObjects) {
       drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b');
     }
 
@@ -828,12 +830,12 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
     moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
     moonRenderModeEffective,
-    planetsRender,
+    planetsRender,enlargeObjects,
   ]);
 
   // Timelapse mode: accumulate once per utcMs change and ACK
 useEffect(() => {
-  if (!longPoseEnabled || enlargeObjects || !timeLapseEnabled) return;
+  if (!longPoseEnabled || !timeLapseEnabled) return;
   let cancelled = false;
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
@@ -846,7 +848,6 @@ useEffect(() => {
 }, [
   utcMs,
   longPoseEnabled,
-  enlargeObjects,
   timeLapseEnabled,
   compositeLongPose,
   onLongPoseAccumulated,
@@ -854,7 +855,7 @@ useEffect(() => {
 
 // Burst composite after toggling Stars ON (works in TL and smooth modes)
 useEffect(() => {
-  if (!longPoseEnabled || enlargeObjects) return;
+  if (!longPoseEnabled ) return;
   if (!showStars) return;
 
   let raf: number | null = null;
@@ -877,11 +878,11 @@ useEffect(() => {
 
   raf = requestAnimationFrame(step);
   return () => { cancelled = true; if (raf != null) cancelAnimationFrame(raf); };
-}, [showStars, longPoseEnabled, enlargeObjects, compositeLongPose]);
+}, [showStars, longPoseEnabled, compositeLongPose]);
 
 // Smooth mode: continuous RAF compositor (no ACK)
 useEffect(() => {
-  if (!longPoseEnabled || enlargeObjects || timeLapseEnabled) return;
+  if (!longPoseEnabled || timeLapseEnabled) return;
   let raf: number | null = null;
   let running = true;
   const loop = () => {
@@ -894,7 +895,7 @@ useEffect(() => {
     running = false;
     if (raf != null) cancelAnimationFrame(raf);
   };
-}, [longPoseEnabled, enlargeObjects, timeLapseEnabled, compositeLongPose]);
+}, [longPoseEnabled, timeLapseEnabled, compositeLongPose]);
 
 
 
@@ -949,7 +950,10 @@ useEffect(() => {
     <div ref={setRootRef} className="absolute inset-0">
       {/* Earth - render before horizon */}
       {showEarth && (
-        <div className="absolute inset-0" style={{ zIndex: Z.horizon - 0, pointerEvents: 'none' }}>
+        <div className="absolute inset-0" 
+          data-longpose-exclude="1" // exclure du long pose
+          style={{ zIndex: Z.horizon - 0, pointerEvents: 'none' }}
+        >
           <Ground
             viewport={viewport}
             refAzDeg={refAzDeg}
@@ -970,6 +974,7 @@ useEffect(() => {
       {showHorizon && (
         <div
           className="absolute"
+          data-longpose-exclude="1" // exclure du long pose
           style={{
             zIndex: Z.horizon,
             left: viewport.x,
@@ -1005,6 +1010,7 @@ useEffect(() => {
       {showGrid && (
         <div
           className="absolute"
+          data-longpose-exclude="1" // exclure du long pose
           style={{
             zIndex: Z.horizon - 3,
             left: viewport.x,
@@ -1026,8 +1032,10 @@ useEffect(() => {
       )}
 
       {/* Ecliptique (pointillé) */}
+      {showEcliptique && (
       <div
         className="absolute"
+        data-longpose-exclude="1" // exclure Grid du long pose
         style={{
           zIndex: Z.horizon - 3, // même niveau que la grille, rendu après -> au-dessus
           left: viewport.x,
@@ -1055,11 +1063,13 @@ useEffect(() => {
           stepDeg={2}
         />
       </div>
+    )}
 
       {/* Atmosphere */}
       {showAtmosphere && (
         <div
           className="absolute"
+          data-longpose-exclude="1" // exclure du long pose
           style={{
             zIndex: Z.horizon - 20,
             left: viewport.x,
@@ -1103,7 +1113,10 @@ useEffect(() => {
 
       {/* Sun */}
       {showSun && (
-        <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
+        <div className="absolute inset-0" 
+          data-longpose-exclude="1" // exclure du long pose
+          style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}
+        >
           <SunSprite
             x={sunScreen.x}
             y={sunScreen.y}
@@ -1154,7 +1167,10 @@ useEffect(() => {
       )}
 
       {showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
-         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 1 }} data-3d-layer="1">
+         <div className="absolute inset-0" 
+          data-longpose-exclude="1" // exclure du long pose
+          style={{ zIndex: Z.horizon - 1 }} data-3d-layer="1"
+        >
           <Moon3D
             x={moonScreen.x}
             y={moonScreen.y}
@@ -1250,7 +1266,10 @@ useEffect(() => {
 
         // effectiveMode === '3d'
         return (
-          <div key={p.id} className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }} data-3d-layer="1">
+          <div key={p.id} 
+            data-longpose-exclude="1" // exclure du long pose
+            className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }} data-3d-layer="1"
+          >
             <Planet3D
               id={p.id as PlanetId}
               x={p.x}
@@ -1304,7 +1323,7 @@ useEffect(() => {
       />
 
       {/* Long pose overlay inside SpaceView (above sky layers, below UI) */}
-      {longPoseEnabled && !enlargeObjects && (
+      {longPoseEnabled && (
         <canvas
           ref={lpCanvasRef}
           className="absolute"
