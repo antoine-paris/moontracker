@@ -806,16 +806,18 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.fill();
     };
 
+    // Sun (kept as-is)
     if (showSun && sunScreen.visibleX && sunScreen.visibleY && !enlargeObjects) {
       drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b');
     }
 
-    if (showMoon &&
-        (moonRenderModeEffective === 'dot' || moonRenderModeEffective === 'sprite') &&
+    // Moon sprite/dot -> persist as a disk
+    if (showMoon && !enlargeObjects &&
         moonScreen.visibleX && moonScreen.visibleY) {
-      drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, '#93c5fd');
+      drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, 'rgba(127, 128, 129, 1)');
     }
 
+    // Planets sprite/dot
     for (const p of planetsRender) {
       if (!p.visibleX || !p.visibleY) continue;
       const S = Math.max(4, Math.round(p.sizePx));
@@ -829,7 +831,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     showSun, showMoon,
     sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
     moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
-    moonRenderModeEffective,
     planetsRender,enlargeObjects,
   ]);
 
@@ -1114,7 +1115,7 @@ useEffect(() => {
       {/* Sun */}
       {showSun && (
         <div className="absolute inset-0" 
-          data-longpose-exclude="1" // exclure du long pose
+          
           style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}
         >
           <SunSprite
@@ -1147,7 +1148,7 @@ useEffect(() => {
         />
       )}
 
-      {showMoon && !glbLoading && moonRenderModeEffective === 'sprite' && (
+      {showMoon && !glbLoading  && (
         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
           <MoonSprite
             x={moonScreen.x} y={moonScreen.y}
