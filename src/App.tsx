@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 // Astronomy-Engine wrapper centralisé
 import { getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg, getSunOrientationAngles } from "./astro/aeInterop";
 import { getMoonOrientationAngles } from "./astro/aeInterop";
@@ -515,6 +515,8 @@ export default function App() {
   const [longPoseRetainFrames, setLongPoseRetainFrames] = useState<number>(30);
   const lpPendingRef = useRef(false);
   const handleLongPoseAccumulated = React.useCallback(() => { lpPendingRef.current = false; }, []);
+  const [longPoseClearSeq, setLongPoseClearSeq] = useState(0);
+  const handleLongPoseClear = useCallback(() => setLongPoseClearSeq(s => s + 1), []);
 
 
   // Track source of time changes to detect user commits
@@ -1202,7 +1204,7 @@ export default function App() {
               setLongPoseEnabled={setLongPoseEnabled}
               longPoseRetainFrames={longPoseRetainFrames}
               setLongPoseRetainFrames={setLongPoseRetainFrames}
-
+              onLongPoseClear={handleLongPoseClear}
           />
           </div>
 
@@ -1266,6 +1268,7 @@ export default function App() {
                   longPoseEnabled={longPoseEnabled}
                   longPoseRetainFrames={longPoseRetainFrames}
                   onLongPoseAccumulated={handleLongPoseAccumulated}
+                  longPoseClearSeq={longPoseClearSeq}
                 />
                 </div>
               </div>

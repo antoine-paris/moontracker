@@ -117,11 +117,22 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
       {/* Play/Pause */}
       <button
         onClick={onToggleAnimating}
-        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 cursor-pointer"
-        title={isAnimating ? "Pause l’animation" : "Lancer l’animation"}
-        aria-label={isAnimating ? "Mettre en pause l’animation" : "Lancer l’animation"}
+        className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
+        title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
+        aria-label={isAnimating ? "Pause" : "Lecture"}
       >
-        {isAnimating ? "⏸" : "▶"}
+        {isAnimating ? (
+          // Pause icon
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+            <rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+            <rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+          </svg>
+        ) : (
+          // Play icon
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+            <path d="M8 5l12 7-12 7V5z" fill="currentColor" />
+          </svg>
+        )}
       </button>
     </div>
   );

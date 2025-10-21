@@ -113,6 +113,7 @@ export interface SpaceViewProps {
   longPoseEnabled?: boolean;
   longPoseRetainFrames?: number;
   onLongPoseAccumulated?: () => void;
+  longPoseClearSeq?: number;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
@@ -134,6 +135,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     longPoseEnabled = false,
     longPoseRetainFrames = 30,
     onLongPoseAccumulated, 
+    longPoseClearSeq = 0,
   } = props;
 
   // Capture root for querying child canvases
@@ -833,7 +835,52 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
     moonRenderModeEffective,
     planetsRender,
+    onLongPoseAccumulated,
   ]);
+
+  // Clear overlay when toggles/settings or observer/camera change
+  useEffect(() => {
+    const c = lpCanvasRef.current;
+    const ctx = c?.getContext('2d');
+    if (c && ctx) {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, viewport.w, viewport.h);
+    }
+  }, [
+    // Long pose settings
+    longPoseEnabled,
+    longPoseRetainFrames,
+
+    // Observer/location
+    latDeg, lngDeg,
+    // Camera orientation
+    refAzDeg, refAltDeg,
+
+    // Projection/scale/viewport
+    projectionMode, fovXDeg, fovYDeg,
+    viewport.x, viewport.y, viewport.w, viewport.h,
+
+    // Rendering toggles that affect content
+    showEarth, showAtmosphere, showGrid, showHorizon, showMarkers,
+    showStars, showSun, showMoon, showPhase, earthshine,
+    enlargeObjects,
+
+    // Planets visibility map
+    showPlanets,
+  ]);
+
+  // NEW: explicit clear when requested from UI
+  React.useEffect(() => {
+    const c = lpCanvasRef.current;
+    const ctx = c?.getContext('2d');
+    if (c && ctx) {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, viewport.w, viewport.h);
+    }
+  }, [longPoseClearSeq, viewport.w, viewport.h]);
+
 
 
   return (

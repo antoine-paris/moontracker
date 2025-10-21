@@ -115,6 +115,7 @@ type Props = {
   longPoseRetainFrames: number;
   setLongPoseRetainFrames: (n: number) => void;
 
+  onLongPoseClear: () => void;
 };
 
 export default function TopBar({
@@ -151,6 +152,7 @@ export default function TopBar({
 
   longPoseEnabled, setLongPoseEnabled,
   longPoseRetainFrames, setLongPoseRetainFrames,
+  onLongPoseClear,
 }: Props) {
   const PRESET_SPEEDS = useMemo(() => [
     { label: "1 min/s", value: 1 },
@@ -799,10 +801,24 @@ export default function TopBar({
               </div>
               <div className="mt-2 mb-1 text-xs uppercase tracking-wider text-white/50">Animation</div>
               <div className="flex items-center gap-2">
-                <button onClick={() => setIsAnimating(!isAnimating)} className={`px-3 py-2 rounded-lg border text-sm ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
+                <button
+                  onClick={() => setIsAnimating(!isAnimating)}
+                  className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
                   title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
-                  >
-                    {isAnimating ? "Pause" : "Lecture"}
+                  aria-label={isAnimating ? "Pause" : "Lecture"}
+                >
+                  {isAnimating ? (
+                    // Pause icon
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                      <rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+                      <rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+                    </svg>
+                  ) : (
+                    // Play icon
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                      <path d="M8 5l12 7-12 7V5z" fill="currentColor" />
+                    </svg>
+                  )}
                 </button>
                 <div className="relative flex-1">
                   <input
@@ -811,7 +827,11 @@ export default function TopBar({
                     max={360}
                     step={0.001}
                     value={speedMinPerSec}
-                    onChange={(e) => setSpeedMinPerSec(clamp(parseFloat(e.target.value || "0"), -360, 360))}
+                     onChange={(e) => {
+                      setSpeedMinPerSec(clamp(parseFloat(e.target.value || "0"), -360, 360));
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
                     className="w-full"
                     title={`Vitesse de l'animation : gauche = rembobiner, droite = avancer`}
                   />
@@ -821,7 +841,12 @@ export default function TopBar({
                   </div>
                   <div
                     className="absolute left-1/2 top-full -translate-x-1/2 mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer"
-                    onClick={() => { setSpeedMinPerSec(1/60); setIsAnimating(true); }}
+                    onClick={() => { 
+                      setSpeedMinPerSec(1/60); 
+                      setIsAnimating(true); 
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
                     title="Animer en temps réel"
                   >
                     Temps réel
@@ -831,7 +856,9 @@ export default function TopBar({
                     title={`-1 min/s`}
                     onClick={() => {
                       setSpeedMinPerSec(prev => clamp(prev - 1, -360, 360));
-                      }}
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
                   >
                     {"\u21B6"}
                   </div>
@@ -840,7 +867,9 @@ export default function TopBar({
                     title="+1 min/s"
                     onClick={() => {
                       setSpeedMinPerSec(prev => clamp(prev + 1, -360, 360));
-                      }}
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
                   >
                     {"\u21B7"}
                   </div>
@@ -1000,6 +1029,16 @@ export default function TopBar({
                     disabled={!longPoseEnabled}
                   />
                   <span className="text-sm text-white/80">images</span>
+                  {/* NEW: reset persistence button */}
+                  <button
+                    type="button"
+                    className="px-2 py-1 rounded border border-white/20 bg-white/10 hover:bg-white/15 text-sm cursor-pointer"
+                    onClick={onLongPoseClear}
+                    title="Vider la persistance (⟲)"
+                    aria-label="Vider la persistance"
+                  >
+                    &#10226;
+                  </button>
                 </div>
               </div>
             </div>
