@@ -103,8 +103,8 @@ type Props = {
   setTimeLapsePeriodMs: (n: number) => void;
   timeLapseStepValue: number;
   setTimeLapseStepValue: (n: number) => void;
-  timeLapseStepUnit: 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction' ;
-  setTimeLapseStepUnit: (u: 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction' ) => void;
+  timeLapseStepUnit: 'minute' | 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction' ;
+  setTimeLapseStepUnit: (u: 'minute' | 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction' ) => void;
   timeLapseLoopAfter: number; // 0 => no loop
   setTimeLapseLoopAfter: (n: number) => void;
 
@@ -930,6 +930,7 @@ export default function TopBar({
                     onChange={(e) => { setTimeLapseStepUnit(e.target.value as any); onLongPoseClear(); }}
                     title="Unité du saut (UTC) appliqué entre images"
                   >
+                    <option value="minute">minute</option>
                     <option value="hour">heure</option>
                     <option value="day">jour</option>
                     <option value="sidereal-day">jour sidéral</option>

@@ -508,7 +508,7 @@ export default function App() {
   const [timeLapsePeriodMs, setTimeLapsePeriodMs] = useState<number>(200); // 1..1000
   const [timeLapseStepValue, setTimeLapseStepValue] = useState<number>(1);  // integer step value
   const [timeLapseStepUnit, setTimeLapseStepUnit] =
-    useState<'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction'>('hour');
+    useState<'minute' | 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction'>('hour');
   const [timeLapseLoopAfter, setTimeLapseLoopAfter] = useState<number>(0); // 0 => no loop
 
   // --- Long pose state ---
@@ -745,6 +745,7 @@ export default function App() {
     const applyStep = (ms: number, s: 1 | -1) => {
       const v = Math.max(1, Math.round(timeLapseStepValue || 1));
       switch (timeLapseStepUnit) {
+        case 'minute': return ms + s * v * 60000;
         case 'hour':  return ms + s * v * 3600000;
         case 'day':   return ms + s * v * DAY_MS;
         case 'sidereal-day': return ms + s * v * SIDEREAL_DAY_MS; 
@@ -833,6 +834,7 @@ export default function App() {
     const stepOnce = (ms: number): number => {
       const v = Math.max(1, Math.round(timeLapseStepValue || 1));
       switch (timeLapseStepUnit) {
+        case 'minute': return ms + v * 60000;
         case 'hour':  return ms + v * 3600000;
         case 'day':   return ms + v * DAY_MS;
         case 'sidereal-day': return ms + v * SIDEREAL_DAY_MS;
