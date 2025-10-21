@@ -410,6 +410,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       );
       if (!Number.isFinite(proj.x) || !Number.isFinite(proj.y)) continue;
 
+      // In orthographic mode, enforce projection front-hemisphere visibility (matches Sun/Moon/Stars)
+      const projVisible = !!(proj.visibleX && proj.visibleY);
+      if (projectionMode === 'ortho' && !projVisible) continue;
+
       const screenX = viewport.x + proj.x;
       const screenY = viewport.y + proj.y;
 
@@ -431,14 +435,17 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               ? 'dot'
               : (sizePx >= PLANET_3D_SWITCH_PX ? '3d' : 'sprite'));
 
-
       const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
 
-      // Extended visibility: keep while disk intersects viewport
+      // Extended visibility: keep while disk intersects viewport (non-ortho).
       const half = sizePx / 2;
       const intersectsX = !(screenX + half < viewport.x || screenX - half > viewport.x + viewport.w);
       const intersectsY = !(screenY + half < viewport.y || screenY - half > viewport.y + viewport.h);
-      if (!intersectsX && !intersectsY) continue; // fully off in both axes
+
+      // For ortho, use projection visibility (front hemisphere). For others, use intersection.
+      const visibleX = projectionMode === 'ortho' ? !!proj.visibleX : intersectsX;
+      const visibleY = projectionMode === 'ortho' ? !!proj.visibleY : intersectsY;
+      if (!visibleX && !visibleY) continue;
 
       // Direction of Sun on screen (unchanged)
       let angleToSunDeg: number;
