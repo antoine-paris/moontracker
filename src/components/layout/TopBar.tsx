@@ -181,6 +181,7 @@ export default function TopBar({
   // Format the timelapse start time in city timezone and UTC
   const tlStartLabel = React.useMemo(() => {
     const d = new Date(timeLapseStartMs);
+    onLongPoseClear();
     return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
   }, [timeLapseStartMs]);
 
@@ -912,11 +913,12 @@ export default function TopBar({
                     className="w-12 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
                     value={tlStepValueStr}
                     onChange={(e) => { setTlStepValueStr(e.target.value); onLongPoseClear(); }}
-                    onFocus={() => setEditingTlStep(true)}
-                    onBlur={() => { setEditingTlStep(false); commitTlStep(); }}
+                    onFocus={() => { setEditingTlStep(true); onLongPoseClear(); }}
+                    onBlur={() => { setEditingTlStep(false); commitTlStep(); onLongPoseClear();}}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitTlStep(); (e.target as HTMLInputElement).blur(); }
                       if (e.key === 'Escape') { setTlStepValueStr(String(Math.max(1, Math.round(timeLapseStepValue || 1)))); (e.target as HTMLInputElement).blur(); }
+                      onLongPoseClear();
                     }}
                     title="Valeur entière du saut par image"
                   />
@@ -963,9 +965,9 @@ export default function TopBar({
                     step={1}
                     className="w-16 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
                     value={tlPeriodStr}
-                    onChange={(e) => setTlPeriodStr(e.target.value)}
+                    onChange={(e) => { setTlPeriodStr(e.target.value); onLongPoseClear(); }}
                     onFocus={() => setEditingTlPeriod(true)}
-                    onBlur={() => { setEditingTlPeriod(false); commitTlPeriod(); onLongPoseClear();  }}
+                    onBlur={() => { setEditingTlPeriod(false); commitTlPeriod();  }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitTlPeriod(); (e.target as HTMLInputElement).blur(); }
                       if (e.key === 'Escape') { setTlPeriodStr(String(timeLapsePeriodMs)); (e.target as HTMLInputElement).blur(); }
@@ -981,9 +983,9 @@ export default function TopBar({
                     step={1}
                     className="w-16 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
                     value={tlLoopAfterStr}
-                    onChange={(e) => setTlLoopAfterStr(e.target.value)}
+                    onChange={(e) => { setTlLoopAfterStr(e.target.value); onLongPoseClear(); }}
                     onFocus={() => setEditingTlLoop(true)}
-                    onBlur={() => { setEditingTlLoop(false); commitTlLoop(); onLongPoseClear();  }}
+                    onBlur={() => { setEditingTlLoop(false); commitTlLoop();  }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') { commitTlLoop(); (e.target as HTMLInputElement).blur(); }
                       if (e.key === 'Escape') { setTlLoopAfterStr(String(timeLapseLoopAfter)); (e.target as HTMLInputElement).blur(); }
