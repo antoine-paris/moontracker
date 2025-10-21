@@ -527,6 +527,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       let rotationToHorizonDegPlanet: number | undefined;
       try {
         const po = getPlanetOrientationAngles(date, latDeg, lngDeg, id as PlanetId);
+        //console.log("planet orientation", id, po);
         rotationToHorizonDegPlanet =
           (po as any)?.rotationToHorizonDegPlanetNorth ??
           (po as any)?.rotationToHorizonDegPlanet ??
@@ -538,6 +539,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         Number.isFinite(rotationToHorizonDegPlanet) && Number.isFinite(localUpAnglePlanetDeg)
           ? correctedSpriteRotationDeg(Number(rotationToHorizonDegPlanet), Number(localUpAnglePlanetDeg))
           : 0;
+
+      //console.log("rotationDegPlanetScreen", id, rotationDegPlanetScreen);
 
       items.push({
         id,

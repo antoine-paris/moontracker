@@ -174,7 +174,7 @@ function Model({
 
   const rotX = ((baseX + oX + rotOffsetDegX) * Math.PI) / 180;
   const rotY = ((baseY + oY + rotOffsetDegY) * Math.PI) / 180;
-  const rotZ = ((baseZ + oZ - rotationDeg + rotOffsetDegZ) * Math.PI) / 180;
+  const rotZ = ((baseZ - rotationDeg + rotOffsetDegZ) * Math.PI) / 180;
   const quaternion = useMemo(() => {
     const e = new THREE.Euler(rotX, rotY, rotZ, 'ZXY');
     return new THREE.Quaternion().setFromEuler(e);
