@@ -38,6 +38,7 @@ import PlanetSprite from "../stage/PlanetSprite";
 import Planet3D from "../stage/Planet3D";
 import Markers from "../stage/Markers";
 import Ground from "../stage/Ground"; // ADD THIS IMPORT
+import Ecliptique from "../stage/Ecliptique";
 
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
@@ -1023,6 +1024,37 @@ useEffect(() => {
           />
         </div>
       )}
+
+      {/* Ecliptique (pointillé) */}
+      <div
+        className="absolute"
+        style={{
+          zIndex: Z.horizon - 3, // même niveau que la grille, rendu après -> au-dessus
+          left: viewport.x,
+          top: viewport.y,
+          width: viewport.w,
+          height: viewport.h,
+          pointerEvents: 'none',
+        }}
+      >
+        <Ecliptique
+          date={date}
+          latDeg={latDeg}
+          lngDeg={lngDeg}
+          viewport={viewport}
+          refAzDeg={refAzDeg}
+          refAltDeg={refAltDeg}
+          fovXDeg={fovXDeg}
+          fovYDeg={fovYDeg}
+          projectionMode={projectionMode}
+          color="#fde68a"
+          opacity={0.95}
+          lineWidth={2}
+          dotPx={1.2}
+          gapPx={7}
+          stepDeg={2}
+        />
+      </div>
 
       {/* Atmosphere */}
       {showAtmosphere && (
