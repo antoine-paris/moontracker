@@ -934,7 +934,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         S, S,
         trailColor,
         planetGain,            // fill = GAIN
-        planetGain * 2,        // stroke = GAIN * 2
+        planetGain * 4,        // stroke = GAIN * 2
         PLANET_DECAY_GAIN
       );
     }
