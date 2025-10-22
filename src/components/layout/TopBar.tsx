@@ -541,15 +541,6 @@ export default function TopBar({
     );
   };
 
-  const [lpRetainStr, setLpRetainStr] = React.useState(String(Math.max(1, Math.round(longPoseRetainFrames || 1))));
-  const [editingLpRetain, setEditingLpRetain] = React.useState(false);
-  React.useEffect(() => { if (!editingLpRetain) setLpRetainStr(String(Math.max(1, Math.round(longPoseRetainFrames || 1)))); }, [longPoseRetainFrames, editingLpRetain]);
-
-  const commitLpRetain = () => {
-    const v = sanitizeInt(lpRetainStr, 1, 1000, Math.max(1, Math.round(longPoseRetainFrames || 1)));
-    setLongPoseRetainFrames(v);
-    setLpRetainStr(String(v));
-  };
 
   return (
     <>
@@ -1005,36 +996,17 @@ export default function TopBar({
 
                 {/* Step value (integer) + unit */}
                 <div className="mt-1 flex items-center gap-2 w-full">
-                  <label className="inline-flex items-center gap-2 text-sm" title="Activer le mode pose longue">
+                  <span className="w-12 text-sm text-white/80">
+                    Simuler  
+                  </span><label className="inline-flex items-center gap-2 text-sm" title="Activer le mode pose longue">
                     <input
                       type="checkbox"
                       checked={longPoseEnabled}
                       onChange={(e) => setLongPoseEnabled(e.target.checked)}
                     />
                   </label>
-                  <span className="w-12 text-sm text-white/80">
-                    Retenir 
-                  </span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    pattern="\d*"
-                    min={1}
-                    step={1}
-                    className="w-24 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
-                    value={lpRetainStr}
-                    onChange={(e) => setLpRetainStr(e.target.value)}
-                    onFocus={() => setEditingLpRetain(true)}
-                    onBlur={() => { setEditingLpRetain(false); commitLpRetain(); }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') { commitLpRetain(); (e.target as HTMLInputElement).blur(); }
-                      if (e.key === 'Escape') { setLpRetainStr(String(Math.max(1, Math.round(longPoseRetainFrames || 1)))); (e.target as HTMLInputElement).blur(); }
-                    }}
-                    title="Nombre d'images qui vont persister à l'écran (1 à 1000)"
-                    disabled={!longPoseEnabled}
-                  />
-                  <span className="text-sm text-white/80">images</span>
-                  {/* NEW: reset persistence button */}
+                  
+                  {/* reset persistence button */}
                   <button
                     type="button"
                     className="px-2 py-1 rounded border border-white/20 bg-white/10 hover:bg-white/15 text-sm cursor-pointer"

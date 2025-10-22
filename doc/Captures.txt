@@ -2,3 +2,6 @@
 Transit de Venus de 2012 depuis Tokyo
 http://localhost:5173/?tl=xave9t.m55thc&lp=1edd.b4&l=1850147&t=m56bjc&F=0&p=5&d=custom&k=1&f=1a9&b=pc7&pl=a&sr=-11.9833&da=0.19&dh=-0.02
 
+
+Dans des planetes intérieures depuis Paris
+http://localhost:5173/?tl=1og5.t4j2g0&lp=1edd.b4&l=2988507&t=10dox40&F=b&p=5&d=custom&k=1&f=1&b=cr9&pl=7&sr=-106.099&da=-34.49&dh=42.73

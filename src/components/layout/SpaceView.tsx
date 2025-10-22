@@ -53,6 +53,9 @@ const MOON_DOT_PX = 5;
 const MOON_3D_SWITCH_PX = 20;
 const PLANET_3D_SWITCH_PX = 20;
 
+// FIXED retain frames for long pose compositor
+const LONGPOSE_RETAIN_FRAMES = 400;
+
 export type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
 
 export interface SpaceViewProps {
@@ -114,7 +117,6 @@ export interface SpaceViewProps {
   overlayInfoString?: string;
 
   longPoseEnabled?: boolean;
-  longPoseRetainFrames?: number;
   onLongPoseAccumulated?: () => void;
   longPoseClearSeq?: number;
   timeLapseEnabled?: boolean;
@@ -138,7 +140,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     overlayInfoString,
     showHorizon,
     longPoseEnabled = false,
-    longPoseRetainFrames = 30,
     onLongPoseAccumulated, 
     longPoseClearSeq = 0,
     timeLapseEnabled = false,
@@ -732,7 +733,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     }
   }, [
     longPoseEnabled,
-    longPoseRetainFrames,
     enlargeObjects,
     projectionMode,
     fovXDeg,
@@ -752,7 +752,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
     const cssW = viewport.w;
     const cssH = viewport.h;
-    const retain = Math.max(1, Math.round(longPoseRetainFrames || 1));
+    const retain = Math.max(1, Math.round(LONGPOSE_RETAIN_FRAMES || 1));
 
     // Optional: slightly slower fade for longer trails (set >1 to boost)
     const DECAY_GAIN = 10; // try 1.2–1.5 if you want even longer/brighter ghosts
@@ -926,7 +926,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const S = Math.max(4, Math.round(p.sizePx));
       
       const illum = clamp(p.phaseFrac ?? 0, 0, 1);
-      const planetGain = 50 + 100 * illum; // same rule as Moon
+      const planetGain = 10 + 20 * illum; // same rule as Moon
       const trailColor = darkenByIllum(p.color, illum);
 
       drawDiskWithStroke(
@@ -940,7 +940,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     }
   }, [
     viewport.x, viewport.y, viewport.w, viewport.h,
-    longPoseRetainFrames,
     showSun, showMoon,
     sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
     moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
@@ -1027,8 +1026,7 @@ useEffect(() => {
   }, [
     // Long pose settings
     longPoseEnabled,
-    longPoseRetainFrames,
-
+    
     // Observer/location
     latDeg, lngDeg,
     // Camera orientation
@@ -1308,7 +1306,6 @@ useEffect(() => {
             illumFraction={phaseFraction}
             brightLimbAngleDeg={brightLimbAngleDeg}
             earthshine={earthshine}
-            // NEW: mark first-time readiness and persist it
             onReady={() => { setMoon3DReady(true); setEverReadyMoon(true); }}
           />
         </div>
