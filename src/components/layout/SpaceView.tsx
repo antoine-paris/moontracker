@@ -822,11 +822,25 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const SUN_TRAIL_GAIN    = 1000.5;
     const SUN_DECAY_GAIN    = DECAY_GAIN; // set < or > DECAY_GAIN to shorten/lengthen Sun trails
 
-    const MOON_TRAIL_GAIN   = 300.5;
+    const MOON_TRAIL_GAIN   = 100 + 400 * clamp(phaseFraction ?? 0, 0, 1);
     const MOON_DECAY_GAIN   = DECAY_GAIN;
 
-    const PLANET_TRAIL_GAIN = 100.5;
     const PLANET_DECAY_GAIN = DECAY_GAIN;
+
+    // Helper: darken color as illumination decreases (supports hex #rgb/#rrggbb)
+    const darkenByIllum = (color: string, illum: number) => {
+      const k = Math.max(0.3, Math.min(1, illum)); // keep some visibility at low phases
+      let s = (color || '').trim();
+      if (s.startsWith('#')) s = s.slice(1);
+      if (s.length === 3) s = s.split('').map(ch => ch + ch).join('');
+      if (/^[0-9a-fA-F]{6}$/.test(s)) {
+        const r = Math.max(0, Math.min(255, Math.round(parseInt(s.slice(0, 2), 16) * k)));
+        const g = Math.max(0, Math.min(255, Math.round(parseInt(s.slice(2, 4), 16) * k)));
+        const b = Math.max(0, Math.min(255, Math.round(parseInt(s.slice(4, 6), 16) * k)));
+        return `rgb(${r}, ${g}, ${b})`;
+      }
+      return color; // fallback for non-hex inputs
+    };
 
     // Manual persistence for sprites/dots (Sun, Moon, planets)
     const drawDisk = (
@@ -841,8 +855,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const r = Math.max(1, Math.round(Math.max(w, h) / 2));
       const lx = x - viewport.x, ly = y - viewport.y;
 
-      // Additively accumulate; normalize by retain and global decay,
-      // boost per-body with its own DECAY.
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = Math.min(1, Math.max(0, (gain * decay) / (retain * DECAY_GAIN)));
@@ -855,6 +867,42 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.restore();
     };
 
+    // New: stroke + fill with separate gains
+    const drawDiskWithStroke = (
+      x: number,
+      y: number,
+      w: number,
+      h: number,
+      color: string,
+      fillGain: number,
+      strokeGain: number,
+      decay: number = DECAY_GAIN
+    ) => {
+      const r = Math.max(1, Math.round(Math.max(w, h) / 2));
+      const lx = x - viewport.x, ly = y - viewport.y;
+      const alphaFor = (g: number) => Math.min(1, Math.max(0, (g * decay) / (retain * DECAY_GAIN)));
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      // Stroke (contour) at 2x gain
+      ctx.beginPath();
+      ctx.arc(lx, ly, r, 0, Math.PI * 2);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2; // thin outline in CSS px
+      ctx.globalAlpha = alphaFor(strokeGain);
+      ctx.stroke();
+
+      // Fill at base gain
+      ctx.beginPath();
+      ctx.arc(lx, ly, r, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = alphaFor(fillGain);
+      ctx.fill();
+
+      ctx.restore();
+    };
+
     // Sun (sprite/dot only)
     if (showSun && sunScreen.visibleX && sunScreen.visibleY && !enlargeObjects) {
       drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b', SUN_TRAIL_GAIN, SUN_DECAY_GAIN);
@@ -862,16 +910,33 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
     // Moon (sprite/dot only)
     if (showMoon && !enlargeObjects && moonScreen.visibleX && moonScreen.visibleY) {
-      drawDisk(moonScreen.x, moonScreen.y, bodySizes.moon.w, bodySizes.moon.h, 'rgba(127, 128, 129, 1)', MOON_TRAIL_GAIN, MOON_DECAY_GAIN);
+      drawDiskWithStroke(
+        moonScreen.x, moonScreen.y,
+        bodySizes.moon.w, bodySizes.moon.h,
+        'hsla(180, 1%, 38%, 1.00)',
+        MOON_TRAIL_GAIN,           // fill
+        MOON_TRAIL_GAIN * 2,       // stroke
+        MOON_DECAY_GAIN
+      );
     }
 
     // Planets (dot/sprite only)
     for (const p of planetsRender) {
       if (!p.visibleX || !p.visibleY) continue;
       const S = Math.max(4, Math.round(p.sizePx));
-      if (p.mode === 'dot' || p.mode === 'sprite') {
-        drawDisk(p.x, p.y, S, S, p.color, PLANET_TRAIL_GAIN, PLANET_DECAY_GAIN);
-      }
+      
+      const illum = clamp(p.phaseFrac ?? 0, 0, 1);
+      const planetGain = 50 + 100 * illum; // same rule as Moon
+      const trailColor = darkenByIllum(p.color, illum);
+
+      drawDiskWithStroke(
+        p.x, p.y,
+        S, S,
+        trailColor,
+        planetGain,            // fill = GAIN
+        planetGain * 2,        // stroke = GAIN * 2
+        PLANET_DECAY_GAIN
+      );
     }
   }, [
     viewport.x, viewport.y, viewport.w, viewport.h,
@@ -879,7 +944,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     showSun, showMoon,
     sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
     moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
-    planetsRender,enlargeObjects,
+    planetsRender,enlargeObjects, phaseFraction,
   ]);
 
   // Timelapse mode: accumulate once per utcMs change and ACK
