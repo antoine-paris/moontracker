@@ -48,6 +48,7 @@ import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
 import { copyAndDownloadNodeAsPng } from './utils/capture';
 import { unrefractAltitudeDeg } from "./utils/refraction"; // ADD
+import InfoModal from "./components/info/InfoModal"; // NEW
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -438,6 +439,9 @@ export default function App() {
   // const [showLocations, setShowLocations] = useState(true); // - remove
   // Toggle UI tool/info panels (top and bottom)
   const [showPanels, setShowPanels] = useState(false);
+  // NEW: Info modal visibility
+  const [showInfo, setShowInfo] = useState(false);
+
   // City label derived from location label (format "Pays — Ville")
   const cityName = useMemo(() => {
     const parts = (location?.label ?? '').split('—');
@@ -1129,11 +1133,10 @@ export default function App() {
             onTogglePanels={() => setShowPanels(v => !v)}
             zIndex={Z.ui + 30}
             shareUrl={shareUrl}
-            // wire play/pause
             isAnimating={isAnimating}
             onToggleAnimating={() => setIsAnimating(v => !v)}
-            // wire T1
             onCopyJpeg={handleCopyJpeg}
+            onOpenInfo={() => setShowInfo(true)} // NEW
           />
 
           {/* Top UI bar (add right padding so it doesn't sit under the toolbar) */}
@@ -1351,6 +1354,9 @@ export default function App() {
           )}
         </main>
       </div>
+
+      {/* Info modal (top layer) */}
+      <InfoModal open={showInfo} onClose={() => setShowInfo(false)} />
     </div>
   );
 

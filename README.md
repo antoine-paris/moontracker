@@ -3,131 +3,86 @@
 
 # MoonTracker
 
-Interactive web app to visualize the positions, phases, and orientations of the Moon and the Sun from any location and time. Built with React, TypeScript, and Vite, using precise astronomical computations.
+Interactive web app to visualize the sky: Moon and Sun phases/orientations, stars, and planets in real time from any location. Built with React, TypeScript, Vite, Tailwind, astronomy-engine, and three.js.
 
-## Table of contents
-
-- Overview
-- Features (detailed)
-- User guide
-- How it works (technical deep-dive)
-- Project structure
-- Getting started
-- Scripts
-- Contributing
-- License
+- Precise topocentric positions and apparent sizes
+- Multiple wide‑to‑narrow projection modes
+- Optional atmospheric refraction
+- Stars canvas (DPR-aware, rAF-throttled)
+- 3D rendering for Moon and planets (with “readiness” gating)
+- Long‑pose/timelapse compositor
+- Photo frame and optics/FOV simulation
+- Shareable URL state and PNG export
 
 ## Overview
 
-MoonTracker computes topocentric Sun/Moon positions and renders a sky stage with realistic phase geometry, apparent sizes, and optional overlays. Time is driven by a single UTC timestamp to avoid DST pitfalls. The UI is responsive and suitable for desktop and mobile.
+MoonTracker computes Sun/Moon/planet positions, accounts for apparent sizes and orientations (bright limb and sprite rotations), and renders a sky stage with several projections. Time is driven by a single UTC timestamp to avoid DST pitfalls; the UI shows local time for the selected location.
 
-## Features (detailed)
+## Features
 
-- Moon phase rendering
-  - Current phase fraction with realistic disk rendering (NASA albedo imagery + SVG masks for crescents, quarters, gibbous).
-  - Bright limb orientation computed from the solar direction and parallactic angle; waxing/waning handled correctly.
-  - Optional earthshine adds a faint glow on the dark side of the Moon.
-- Sun & Moon tracking
-  - Altitude and azimuth for any date/time/location, updated live during animation.
-  - Separation angle between Sun and Moon for quick situational awareness.
-- Location selection
-  - Choose among built-in world cities; sky view and local clock update instantly.
-  - UI shows local time while the simulation runs internally in UTC.
-- Time and animation controls
-  - Play/pause with adjustable speed multipliers.
-  - Jump to a specific date/time; scrub time to see diurnal motion.
-  - Follow modes: center the view on the Sun, the Moon, or fixed cardinal frame (N/E/S/W).
-- Stage and overlays
-  - Cardinal overlays (N, E, S, W) for both the stage and object-aligned markers for orientation.
-  - Field of View (FOV) aware rendering: equirectangular for wide FOV; gnomonic for FOV ≤ 30°.
-  - Optional “Enlarge objects” mode; otherwise apparent angular sizes are respected.
-- Telemetry cards
-  - Live numerical data for Sun and Moon: altitude, azimuth, phase fraction, bright limb angle, and apparent diameters.
-- Eclipse diagnostics (quick-look)
-  - Classifies configuration as none | partial | annular | total based on separation and apparent radii.
-- Responsive UI
-  - Dark-themed layout adapted for desktop and mobile.
+- Stars
+  - High‑performance 2D canvas with device‑pixel‑ratio scaling and rAF throttling
+  - Optional atmospheric refraction for star altitudes
+  - Angular culling vs camera FOV, projection‑aware screen mapping
+  - Southern Cross (Crux) centroid computation for markers
+- Moon & Sun
+  - Topocentric alt/az, apparent diameters, bright limb, phase fraction
+  - Libration (geo/topo) when available
+  - Sprite orientation corrected for local vertical in the current projection
+  - Optional earthshine rendering
+- Planets
+  - Ephemerides with per‑planet visibility toggles
+  - Adaptive rendering (dot/sprite/3D) with size‑based threshold
+  - Orientation vs horizon and phase masks for sprites; 3D models when large enough
+  - First‑frame 3D “readiness” gating to avoid UI flashes
+- Projections
+  - Recti‑Panini (rectilinear blended for ultra‑wide)
+  - Rectilinear (perspective)
+  - Stereographic centered
+  - Orthographic (all‑sky context)
+  - Cylindrical and Cylindrical‑horizon
+  - Auto‑pick keeps current mode if still valid after FOV/viewport changes
+- Refraction
+  - Global toggle; affects stars and body projections
+  - Unrefracted values used when disabled
+- Long‑pose compositor
+  - Accumulates trails on a single overlay canvas
+  - Works in timelapse (ACK per step) and continuous “smooth” modes
+  - Stars use additive blending; Sun/Moon/planets get configurable fill/outline gains
+  - 3D canvases explicitly excluded from accumulation
+  - Manual clear from the UI
+- Timelapse
+  - Cadence (ms) and step units: minute, hour, day, sidereal‑day, month, synodic‑fraction (lunar day), lunar‑fraction (sidereal cycle)
+  - Optional loop after N frames; prev/next frame buttons
+- Optics & photo frame
+  - Devices/modules with sensor sizes and focal lengths (or 35mm eq)
+  - Custom “focal” slider (maps to FOV); link FOV X/Y to viewport aspect
+  - Cropped viewport and masks to simulate camera frame
+  - “Enlarge objects” option for visibility at wide FOVs
+- Locations
+  - Cities loaded from CSV (min population) with an advanced search index (exact/prefix/substring scoring + tie‑breakers)
+  - “Nearest city” hint for custom coordinates; arrow‑key navigation by 100 km
+  - Sidebar 3D Earth viewer, draggable to adjust longitude; city marker + direction arrow toward active az/alt
+- URL & export
+  - Full state parsed/built into shareable URLs (location, time, view, toggles, device/FOV, planets, timelapse/long‑pose)
+  - PNG capture of the current render stack
 
-## User guide
+## Quick start
 
-1) Select a location (city) to set latitude/longitude and local time zone.
-2) Pick a date and local time; the app converts this to UTC internally.
-3) Start animation to watch the Sun and Moon traverse the sky; adjust speed as needed.
-4) Toggle follow mode (Sun/Moon) to keep the selected body centered.
-5) Use overlays (cardinals, limb orientation) and earthshine to aid visual interpretation.
-6) Adjust FOV; enable “Enlarge objects” for visibility at very wide angles.
-
-## How it works (technical deep-dive)
-
-- Astronomy engine wrapper
-  - Thin wrapper around astronomy-engine exposes high-level helpers in `src/astro/aeInterop.ts`:
-    - `getSunAltAzDeg(date, lat, lng)` → `{ altDeg, azDeg, distAU }`
-    - `getMoonAltAzDeg(date, lat, lng)` → `{ altDeg, azDeg, distanceKm }`
-    - `getMoonIllumination(date)` → `{ fraction, phase, angleDeg }`
-- Apparent sizes and distances
-  - Sun helpers in `src/astro/sun.ts`:
-    - `sunDistanceAU(date)` via `Equator(Body.Sun)` (AU)
-    - `sunApparentDiameterDeg(date, distAU?)` → `2 · atan2(Rsun, distKm)`
-  - Moon helpers in `src/astro/moon.ts`:
-    - `moonApparentDiameterDeg(distanceKm)` → `2 · atan2(Rmoon, distanceKm)`
-- Time model
-  - Single UTC timestamp `whenMs` drives the simulation and rendering.
-  - Local time in the UI is derived from UTC using `src/utils/tz.ts`:
-    - `zonedLocalToUtcMs("YYYY-MM-DDTHH:mm:ss", timeZone)`
-    - `utcMsToZonedLocalString(msUTC, timeZone)`
-  - This avoids DST edge cases (e.g., fall-back 03:00 → 02:00 loops).
-- Projection and rendering
-  - `src/render/projection.ts`: equirectangular for wide FOV, gnomonic for FOV ≤ 30°.
-  - Returns local px/deg scales so that apparent sizes remain physically consistent at narrow FOVs.
-  - Rendering pipeline composes sprites/overlays from `src/components/stage/*`.
-- Eclipse diagnostics
-  - `src/astro/eclipse.ts`:
-    - `sepDeg(alt1, az1, alt2, az2)` → angular separation (deg)
-    - `eclipseKind(sep, rSun, rMoon)` → `none | partial | annular | total`
-- UI orchestration
-  - `src/App.tsx` coordinates animation timing (UTC), viewport state, and local↔UTC conversions.
-  - `src/components/layout/TopBar.tsx` provides date/time inputs and UTC info display.
-
-## Project structure
-
-- src/
-  - App.tsx — UI orchestration, animation clock, viewport, time conversions
-  - astro/
-    - aeInterop.ts — topocentric Sun/Moon and illumination helpers
-    - sun.ts — Sun distances and apparent diameter
-    - moon.ts — Moon apparent diameter and helpers
-    - eclipse.ts — separation and eclipse kind helpers
-  - render/
-    - projection.ts — equirectangular and gnomonic projections, FOV handling
-  - components/
-    - layout/TopBar.tsx — local date/time input, UTC display
-    - stage/* — sprites, overlays, and sky rendering pieces
-  - utils/
-    - tz.ts — timezone conversions, local↔UTC helpers
-
-## Getting started
-(tested with npm 10.9.3 and node v22.19.0)
-
-1) Clone the repo
-
-```sh
-git clone https://github.com/antoine-paris/moontracker.git
-cd moontracker
-```
-
-2) Install dependencies
+Requirements: Node.js ≥ 18, npm ≥ 9.
 
 ```sh
 npm install
+npm run dev
+# open the shown URL (typically http://localhost:5173)
 ```
 
-3) Start the dev server
+Build and preview:
 
 ```sh
-npm run dev
+npm run build
+npm run preview
 ```
-
-4) Open http://localhost:5173 in your browser
 
 ## Scripts
 
@@ -136,9 +91,73 @@ npm run dev
 - preview: vite preview
 - lint: eslint .
 
-## Contributing
+## Tech stack
 
-Contributions are welcome. Please open issues or PRs for enhancements and new features.
+- React 19, TypeScript 5
+- Vite 7, @vitejs/plugin-react
+- Tailwind 4 (via @tailwindcss/vite)
+- three.js + @react-three/fiber + drei (3D Moon/planets)
+- astronomy-engine (ephemerides)
+- html-to-image (PNG export)
+
+## Project map (notable files)
+
+- src/App.tsx
+  - App state, animation engines (smooth and timelapse), URL state, panels, device/FOV, long‑pose control, share URL, PNG export
+- src/components/layout/SpaceView.tsx
+  - Stage compositor: projections, stars, Sun/Moon sprites, 3D Moon/planets, atmosphere, grid, horizon, ecliptic, markers
+  - Long‑pose overlay and trails accumulation (2D only)
+  - 3D “readiness” gating (Moon and per‑planet)
+- src/components/stage/Stars.tsx
+  - rAF‑throttled canvas, DPR scaling, refraction, FOV culling, Crux centroid
+- src/components/layout/TopBar.tsx
+  - Follow modes, device/zoom/FOV controls (focal slider), projections, visibility toggles, timelapse, long‑pose
+- src/components/layout/TopRightBar.tsx
+  - Panels toggle, share link copy, PNG export
+- src/components/layout/SidebarLocations.tsx
+  - Collapsible sidebar with 3D Earth viewer (drag longitude), tabs for cities/coordinates
+- src/components/layout/SidebarLocationsCities.tsx / SidebarLocationsCoord.tsx
+  - Cities with advanced search; coordinates editor with nearest‑city hint and 100 km arrow keys
+- src/data/locations.ts
+  - Types and advanced search index (token/prefix/substring scoring; population tie‑breakers)
+- src/render/*
+  - Projection/orientation/HUD rendering helpers
+- src/utils/*
+  - refraction, urlState, capture, geo/math/format/tz helpers
+
+## Controls & tips
+
+- Follow modes: Sun, Moon, planets, or fixed cardinals (N/E/S/O)
+- Time: play/pause; slider with ±360 min/s; “Temps réel” 1 s/s; timelapse per‑frame step and cadence with prev/next
+- Projections: choose any valid mode for the current FOV/viewport; auto‑switch keeps a valid mode
+- Long‑pose: enable to accumulate trails; clear persistence with the “clear” button; additive stars
+- Stars: enable/disable; a short “burst” composite is triggered after enabling in long‑pose
+- Locations: drag Earth to tweak longitude; coordinates tab supports arrow keys (100 km steps, polar caps handled)
+- Camera frame: device/module sets FOV from sensor and focal or 35mm eq; “Custom” uses the focal slider
+
+## Acknowledgments
+
+- Natural Earth — public domain map data (coastlines, lakes, rivers). Original READMEs are included under src/assets/natural-earth for provenance.
+- Astronomy Engine — precise astronomical computations.
+- NASA textures/models where applicable for the Moon/planets.
+
+## License
+
+MIT License.
+- Long‑pose
+  - Enable long‑pose to accumulate trails; compositor excludes 3D canvases
+  - Clear trails from TopBar; burst composite after enabling stars
+- Locations
+  - Type to search; fuzzy/prefix matching on city/aliases
+  - In Coordinates tab: arrow keys move 100 km (N/E/S/W) with polar caps handling
+- Share & export
+  - Top‑right toolbar copies share URL and exports PNG
+
+## Acknowledgments
+
+- Natural Earth — public domain map data (coastlines, lakes, rivers). READMEs from Natural Earth are included in src/assets/natural-earth for provenance.
+- Astronomy Engine — ephemerides and astronomical computations.
+- NASA textures (where applicable to bundled models).
 
 ## License
 

@@ -8,9 +8,10 @@ type Props = {
   isAnimating: boolean;
   onToggleAnimating: () => void;
   onCopyJpeg: () => void;
+  onOpenInfo: () => void;
 };
 
-export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000, shareUrl, isAnimating, onToggleAnimating, onCopyJpeg }: Props) {
+export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000, shareUrl, isAnimating, onToggleAnimating, onCopyJpeg, onOpenInfo }: Props) {
   const [copied, setCopied] = React.useState(false);
   const [captured, setCaptured] = React.useState(false);
   const [isCapturing, setIsCapturing] = React.useState(false);
@@ -18,28 +19,11 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
   const copyUrl = async () => {
     const url = shareUrl || window.location.href;
     try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
-      } else {
-        // Fallback for older browsers
-        const ta = document.createElement('textarea');
-        ta.value = url;
-        ta.style.position = 'fixed';
-        ta.style.opacity = '0';
-        document.body.appendChild(ta);
-        ta.focus();
-        ta.select();
-        document.execCommand('copy');
-        document.body.removeChild(ta);
-      }
+      if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
+    } catch {}
   };
-
-  const isCaptureDisabled = isCapturing || showPanels;
 
   return (
     <div
@@ -49,17 +33,12 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
     >
       {/* Information */}
       <button
+        onClick={onOpenInfo}
         className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 cursor-pointer flex items-center justify-center"
-        title={"Information sur ce site"}
+        title="Information sur ce site"
         aria-label="Information sur ce site"
       >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-          className="shrink-0"
-        >
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
           <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
           <rect x="11" y="10" width="2" height="6" rx="1" fill="currentColor" />
           <circle cx="12" cy="7.5" r="1.2" fill="currentColor" />
@@ -74,8 +53,6 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
       >
         {showPanels ? "\u26F6" : "\u2699"}
       </button>
-
-      
 
       {/* Play/Pause */}
       <button
