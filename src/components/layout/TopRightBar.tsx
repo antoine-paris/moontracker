@@ -47,6 +47,24 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
       style={{ zIndex, marginTop: '3em' }}
       aria-label="Barre d’outils"
     >
+      {/* Information */}
+      <button
+        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 cursor-pointer flex items-center justify-center"
+        title={"Information sur ce site"}
+        aria-label="Information sur ce site"
+      >
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          aria-hidden="true"
+          className="shrink-0"
+        >
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="2" />
+          <rect x="11" y="10" width="2" height="6" rx="1" fill="currentColor" />
+          <circle cx="12" cy="7.5" r="1.2" fill="currentColor" />
+        </svg>
+      </button>
       {/* Show/Hide Panels */}
       <button
         onClick={onTogglePanels}
@@ -55,6 +73,29 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
         aria-label="Basculer l'interface"
       >
         {showPanels ? "\u26F6" : "\u2699"}
+      </button>
+
+      
+
+      {/* Play/Pause */}
+      <button
+        onClick={onToggleAnimating}
+        className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
+        title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
+        aria-label={isAnimating ? "Pause" : "Lecture"}
+      >
+        {isAnimating ? (
+          // Pause icon
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+            <rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+            <rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+          </svg>
+        ) : (
+          // Play icon
+          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+            <path d="M8 5l12 7-12 7V5z" fill="currentColor" />
+          </svg>
+        )}
       </button>
 
       {/* Copy URL */}
@@ -112,27 +153,6 @@ export default function TopRightBar({ showPanels, onTogglePanels, zIndex = 1000,
         }
       >
         {isCapturing ? "⏳" : captured ? "✓" : "📷"}
-      </button>
-
-      {/* Play/Pause */}
-      <button
-        onClick={onToggleAnimating}
-        className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
-        title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
-        aria-label={isAnimating ? "Pause" : "Lecture"}
-      >
-        {isAnimating ? (
-          // Pause icon
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-            <rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
-            <rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
-          </svg>
-        ) : (
-          // Play icon
-          <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-            <path d="M8 5l12 7-12 7V5z" fill="currentColor" />
-          </svg>
-        )}
       </button>
     </div>
   );
