@@ -47,6 +47,7 @@ import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
 import { copyAndDownloadNodeAsPng } from './utils/capture';
+import { unrefractAltitudeDeg } from "./utils/refraction"; // ADD
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -58,6 +59,8 @@ export default function App() {
 
   // wrapper that contains SpaceView + long-pose overlay
   const renderStackRef = useRef<HTMLDivElement | null>(null);
+
+  const [showRefraction, setShowRefraction] = React.useState(true);
 
   // dynamic locations loaded from CSV
   const [locations, setLocations] = useState<LocationOption[]>([]);
@@ -373,9 +376,13 @@ export default function App() {
   
   // Follow target alt/az (sun/moon direct, planets from cache or one-off ephemeris)
   const followAltAz = useMemo(() => {
+    const altForMode = (alt: number | undefined) =>
+      (typeof alt === 'number')
+        ? (showRefraction ? alt : unrefractAltitudeDeg(alt))
+        : 0;
     switch (follow) {
-      case 'SOLEIL': return { az: astro.sun.az,  alt: astro.sun.alt };
-      case 'LUNE':   return { az: astro.moon.az, alt: astro.moon.alt };
+      case 'SOLEIL': return { az: astro.sun.az,  alt: altForMode(astro.sun.alt) };
+      case 'LUNE':   return { az: astro.moon.az, alt: altForMode(astro.moon.alt) };
       case 'N':      return { az: 0,   alt: 0 };
       case 'E':      return { az: 90,  alt: 0 };
       case 'S':      return { az: 180, alt: 0 };
@@ -388,7 +395,7 @@ export default function App() {
     const azC = cached?.azDeg ?? cached?.az;
     const altC = cached?.altDeg ?? cached?.alt;
     if (Number.isFinite(azC) && Number.isFinite(altC)) {
-      return { az: Number(azC), alt: Number(altC) };
+      return { az: Number(azC), alt: altForMode(Number(altC)) };
     }
 
     // Fallback: compute just this planet
@@ -405,13 +412,19 @@ export default function App() {
       const az = it?.azDeg ?? it?.az;
       const alt = it?.altDeg ?? it?.alt;
       if (Number.isFinite(az) && Number.isFinite(alt)) {
-        return { az: Number(az), alt: Number(alt) };
+        return { az: Number(az), alt: altForMode(Number(alt)) };
       }
     } catch { /* ignore */ }
 
     return { az: 0, alt: 0 };
-  }, [follow, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, followPlanetId, planetsById, date, location.lat, location.lng]);
-
+  }, [
+    follow,
+    astro.sun.az, astro.sun.alt,
+    astro.moon.az, astro.moon.alt,
+    followPlanetId, planetsById,
+    date, location.lat, location.lng,
+    showRefraction 
+  ]);
   /*
   - "Rectilinear + Panini" (for Photographic simulation) : rectilinear + Panini for ultra-wide, plus fisheye variants when the selected module is fisheye.
   - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
@@ -997,6 +1010,7 @@ export default function App() {
       setLongPoseEnabled,
       setLongPoseRetainFrames,
       setPreselectedCityIds,
+      setShowRefraction,
     });
   }, [locationsLoading, locations]);
 
@@ -1032,6 +1046,7 @@ export default function App() {
         showMoonCard,
         enlargeObjects,
         debugMask,
+        showRefraction,
       },
       showPanels,
       showPlanets,
@@ -1057,6 +1072,7 @@ export default function App() {
     showSun, showMoon, showPhase, earthshine, showEarth, showAtmosphere, showStars, showMarkers, showGrid, showHorizon,
     showSunCard, showEcliptique, showMoonCard, enlargeObjects, debugMask,
     showPanels,
+    showRefraction,
     showPlanets,
     isAnimating, speedMinPerSec, allPlanetIds,
     deltaAzDeg, deltaAltDeg,
@@ -1220,6 +1236,8 @@ export default function App() {
               longPoseRetainFrames={longPoseRetainFrames}
               setLongPoseRetainFrames={setLongPoseRetainFrames}
               onLongPoseClear={handleLongPoseClear}
+              showRefraction={showRefraction}
+              setShowRefraction={setShowRefraction}
           />
           </div>
 
@@ -1287,6 +1305,7 @@ export default function App() {
                   longPoseClearSeq={longPoseClearSeq}
                   timeLapseEnabled={timeLapseEnabled}
                   onLongPoseClear={handleLongPoseClear}
+                  showRefraction={showRefraction}
                 />
                 </div>
               </div>

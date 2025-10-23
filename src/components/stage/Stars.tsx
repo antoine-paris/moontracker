@@ -3,6 +3,7 @@ import { lstDeg } from "../../astro/time";
 import { projectToScreen } from "../../render/projection";
 import { createPortal } from "react-dom";
 import { Z } from "../../render/constants";
+import { refractAltitudeDeg } from "../../utils/refraction"; // NEW
 
 type Viewport = { x: number; y: number; w: number; h: number };
 
@@ -21,6 +22,8 @@ type Props = {
   onCruxCentroid?: (pos: { altDeg: number; azDeg: number } | null) => void;
   // NEW: projection mode
   projectionMode?: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
+  // NEW: refraction toggle
+  showRefraction?: boolean;
 };
 
 type Star = {
@@ -293,6 +296,7 @@ export default function Stars({
   showMarkers = false,
   onCruxCentroid,
   projectionMode = 'recti-panini',
+  showRefraction = true, // NEW
 }: Props) {
   const stars = useStarsCatalog();
   const debugStars = useDebugStarsCatalog();
@@ -359,26 +363,31 @@ export default function Stars({
         const s = stars[i];
         if (s.mag > cfg.maxMag) continue;
 
-        // Fast Alt/Az
+        // Fast Alt/Az (géométriques)
         const eq = altAzFromPrecomputed(s, sinPhi, cosPhi, lstRad);
-        const altRad = eq.altRad;
+        const altTrueRad = eq.altRad;
         const azDeg = eq.azDeg;
 
-        // Projection-aware angular culling in camera space
+        // Réfraction optionnelle
+        const altTrueDeg = toDeg(altTrueRad);
+        const altAppDeg = showRefraction ? refractAltitudeDeg(altTrueDeg) : altTrueDeg;
+        const altForCullRad = toRad(altAppDeg);
+        const altForProjDeg = altAppDeg;
+
+        // Projection-aware angular culling in camera space (utiliser alt réfractée si ON)
         {
           const azRad = toRad(azDeg);
-          const cosAlt = Math.cos(altRad);
+          const cosAlt = Math.cos(altForCullRad);
           const sx = cosAlt * Math.sin(azRad); // East
           const sy = cosAlt * Math.cos(azRad); // North
-          const sz = Math.sin(altRad);         // Up
+          const sz = Math.sin(altForCullRad);  // Up
           const dot = sx * cam.x + sy * cam.y + sz * cam.z;
           const ang = Math.acos(clamp(dot, -1, 1));
           if (ang > fovRadiusRad) continue;
         }
 
         // Project and final visibility check
-        const altDeg = toDeg(altRad);
-        const p = projectToScreen(azDeg, altDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+        const p = projectToScreen(azDeg, altForProjDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
         if (!(p.visibleX && p.visibleY)) continue;
 
         const highlighted = isSpecial(s.raDeg, s.decDeg);
@@ -408,7 +417,7 @@ export default function Stars({
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     });
-  }, [stars, debugStars, debugOn, viewport.w, viewport.h, date, lngDeg, latDeg, refAzDeg, refAltDeg, fovXDeg, fovYDeg, cfg, projectionMode]);
+  }, [stars, debugStars, debugOn, viewport.w, viewport.h, date, lngDeg, latDeg, refAzDeg, refAltDeg, fovXDeg, fovYDeg, cfg, projectionMode, showRefraction]); // NEW dep
 
   // Schedule drawing on changes (time/device motion -> rAF throttled)
   React.useEffect(() => {
@@ -427,10 +436,11 @@ export default function Stars({
 
     const projectStar = (s?: Star): P | null => {
       if (!s) return null;
-      const eq = raDecToAltAz(s.raDeg, s.decDeg, latDeg, lngDeg, date);
-      const p = projectToScreen(eq.azDeg, eq.altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const eq = raDecToAltAz(s.raDeg, s.decDeg, latDeg, lngDeg, date); // géométrique
+      const altForProj = showRefraction ? refractAltitudeDeg(eq.altDeg) : eq.altDeg; // NEW
+      const p = projectToScreen(eq.azDeg, altForProj, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
       if (!(p.visibleX && p.visibleY)) return null;
-      return { x: p.x, y: p.y, s, altDeg: eq.altDeg, azDeg: eq.azDeg };
+      return { x: p.x, y: p.y, s, altDeg: altForProj, azDeg: eq.azDeg }; // NEW: altDeg cohérent
     };
 
     // Named endpoints
@@ -505,7 +515,7 @@ export default function Stars({
     const { altDeg: centroidAltDeg, azDeg: centroidAzDeg } = vecToAltAz(sx, sy, sz);
 
     return { main, cross, cx, cy, centroidAltDeg, centroidAzDeg };
-  }, [debugStars, latDeg, lngDeg, date, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode]);
+  }, [debugStars, latDeg, lngDeg, date, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode, showRefraction]); // NEW dep
 
   // Notify App of the centroid Alt/Az (or null when unavailable) with change gating
   const centroidAlt = cruxCross?.centroidAltDeg;

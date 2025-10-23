@@ -81,6 +81,9 @@ type Props = {
   showAtmosphere: boolean;
   setShowAtmosphere: (v: boolean) => void;
 
+  showRefraction: boolean;
+  setShowRefraction: (v: boolean) => void;
+
   showStars: boolean;
   setShowStars: (v: boolean) => void;
 
@@ -137,6 +140,7 @@ export default function TopBar({
   cityName,
   showEarth, setShowEarth,
   showAtmosphere, setShowAtmosphere,
+  showRefraction, setShowRefraction,
   showStars, setShowStars,
   showMarkers, setShowMarkers,
   showGrid, setShowGrid,
@@ -564,7 +568,8 @@ export default function TopBar({
     | 'sunCard' | 'ecliptic' | 'moonCard'
     | 'debug'
     | 'timelapse' | 'longpose'
-    | 'clear';
+    | 'clear'
+    | 'refraction';
 
   const ToggleIcon: React.FC<{ id: ToggleIconId; active?: boolean; label?: string }> = ({ id, active = false, label }) => {
     const stroke = 'currentColor';
@@ -800,7 +805,20 @@ export default function TopBar({
             <path d="M8 9l8 6M16 9l-8 6" {...s} />
           </>
         )}
-
+        {/* Refraction icon (onde + horizon) */}
+        {id === 'refraction' && (
+          <>
+            <circle cx="12" cy="12" r="8" {...s} strokeDasharray="2 3" />
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="#000" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#000" />
+            
+            {/* Horizon (ligne horizontale) */}
+            <path d="M3 12h18" {...s} stroke={stroke} strokeWidth={1} />
+            {/* Oblique cassée (changement de pente à l’horizon) */}
+            <path d="M2 21L12 12L18 2" {...s} strokeDasharray="2 3" strokeWidth={2} stroke="rgba(236, 229, 26, 1)"/>
+            
+          </>
+        )}
       </svg>
     );
   };
@@ -1372,6 +1390,13 @@ export default function TopBar({
               onClick={() => setShowAtmosphere(!showAtmosphere)}
               title="Afficher l’effet d’atmosphère"
               icon="atmo"
+            />
+             {/* NEW: Refraction toggle */}
+            <IconToggleButton
+              active={showRefraction}
+              onClick={() => setShowRefraction(!showRefraction)}
+              title="Appliquer la réfraction atmosphérique"
+              icon="refraction"
             />
             {/* Moon phase */}
             <IconToggleButton

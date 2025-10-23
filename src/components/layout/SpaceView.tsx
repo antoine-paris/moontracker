@@ -37,8 +37,9 @@ import Moon3D from "../stage/Moon3D";
 import PlanetSprite from "../stage/PlanetSprite";
 import Planet3D from "../stage/Planet3D";
 import Markers from "../stage/Markers";
-import Ground from "../stage/Ground"; // ADD THIS IMPORT
+import Ground from "../stage/Ground"; 
 import Ecliptique from "../stage/Ecliptique";
+import { refractAltitudeDeg, unrefractAltitudeDeg } from "../../utils/refraction"; 
 
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
@@ -121,6 +122,8 @@ export interface SpaceViewProps {
   longPoseClearSeq?: number;
   timeLapseEnabled?: boolean;
   onLongPoseClear?: () => void;
+
+  showRefraction?: boolean;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
@@ -144,8 +147,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     longPoseClearSeq = 0,
     timeLapseEnabled = false,
     onLongPoseClear,
+    showRefraction = true,
   } = props;
 
+  
   // Capture root for querying child canvases
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const setRootRef = React.useCallback((node: HTMLDivElement | null) => {
@@ -216,22 +221,32 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   );
   const rotationToHorizonDegMoon = moonOrientation.rotationToHorizonDegMoonNorth;
 
-  // projection-aware local vertical angles at Sun/Moon
+  // Helper: altitude à projeter selon le mode
+  const sunAltForProj = useMemo(
+    () => (showRefraction ? astro.sun.alt : unrefractAltitudeDeg(astro.sun.alt)),
+    [showRefraction, astro.sun.alt]
+  );
+  const moonAltForProj = useMemo(
+    () => (showRefraction ? astro.moon.alt : unrefractAltitudeDeg(astro.moon.alt)),
+    [showRefraction, astro.moon.alt]
+  );
+
+  // projection-aware local vertical angles: utiliser alt pour proj
   const localUpAngleSunDeg = useMemo(
-    () => localUpAngleOnScreen(astro.sun.az, astro.sun.alt, {
+    () => localUpAngleOnScreen(astro.sun.az, sunAltForProj, {
       refAz: refAzDeg, refAlt: refAltDeg,
       viewport: { w: viewport.w, h: viewport.h },
       fovXDeg, fovYDeg, projectionMode
     }),
-    [astro.sun.az, astro.sun.alt, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+    [astro.sun.az, sunAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
   );
   const localUpAngleMoonDeg = useMemo(
-    () => localUpAngleOnScreen(astro.moon.az, astro.moon.alt, {
+    () => localUpAngleOnScreen(astro.moon.az, moonAltForProj, {
       refAz: refAzDeg, refAlt: refAltDeg,
       viewport: { w: viewport.w, h: viewport.h },
       fovXDeg, fovYDeg, projectionMode
     }),
-    [astro.moon.az, astro.moon.alt, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+    [astro.moon.az, moonAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
   );
 
   const rotationDegSunScreen = useMemo(
@@ -243,21 +258,23 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     [rotationToHorizonDegMoon, localUpAngleMoonDeg]
   );
 
+  
+
   // Sizes at local px/deg scale for Sun/Moon
+   // Sizes at local px/deg scale for Sun/Moon (utilise altForProj)
   const bodySizes = useMemo(() => {
-    // Use sizeRadiusPx = 0 when computing px/deg; passing bodySizes.* here causes a 2-pass jump
     const centerSun = projectToScreen(
-      astro.sun.az, astro.sun.alt, refAzDeg,
+      astro.sun.az, sunAltForProj, refAzDeg,
       viewport.w, viewport.h,
       refAltDeg,
-      0,                      // FIX: was bodySizes.sun.r
+      0,
       fovXDeg, fovYDeg, projectionMode
     );
     const centerMoon = projectToScreen(
-      astro.moon.az, astro.moon.alt, refAzDeg,
+      astro.moon.az, moonAltForProj, refAzDeg,
       viewport.w, viewport.h,
       refAltDeg,
-      0,                      // FIX: was bodySizes.moon.r
+      0,
       fovXDeg, fovYDeg, projectionMode
     );
     const pxPerDegXSun = centerSun.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
@@ -279,18 +296,45 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const moonR = Math.max(moonW, moonH) / 2;
 
     return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
-  }, [viewport, fovXDeg, fovYDeg, astro.sun.az, astro.sun.alt, astro.moon.az, astro.moon.alt, astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAzDeg, refAltDeg, enlargeObjects, projectionMode]);
+  }, [
+    viewport, fovXDeg, fovYDeg, projectionMode,
+    astro.sun.az, sunAltForProj, astro.moon.az, moonAltForProj,
+    astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAzDeg, refAltDeg, enlargeObjects
+  ]);
 
-  // Projected centers (MOVED UP so moonScreen is defined before use)
+
   const sunScreen = useMemo(() => {
-    const s = projectToScreen(astro.sun.az, astro.sun.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, bodySizes.sun.r, fovXDeg, fovYDeg, projectionMode);
+    const s = projectToScreen(
+      astro.sun.az, sunAltForProj,
+      refAzDeg,
+      viewport.w, viewport.h,
+      refAltDeg,
+      0,
+      fovXDeg, fovYDeg, projectionMode
+    );
     return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
-  }, [astro.sun, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, bodySizes.sun, projectionMode]);
+  }, [
+    astro.sun.az, sunAltForProj,
+    refAzDeg, refAltDeg,
+    viewport, fovXDeg, fovYDeg, projectionMode
+  ]);
 
   const moonScreen = useMemo(() => {
-    const m = projectToScreen(astro.moon.az, astro.moon.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, bodySizes.moon.r, fovXDeg, fovYDeg, projectionMode);
+    const m = projectToScreen(
+      astro.moon.az, moonAltForProj,
+      refAzDeg,
+      viewport.w, viewport.h,
+      refAltDeg,
+      0,
+      fovXDeg, fovYDeg, projectionMode
+    );
     return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
-  }, [astro.moon, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, bodySizes.moon, projectionMode]);
+  }, [
+    astro.moon.az, moonAltForProj,
+    refAzDeg, refAltDeg,
+    viewport, fovXDeg, fovYDeg, projectionMode
+  ]);
+
 
   // Apparent Moon size in px decides render mode
   const moonApparentPx = useMemo(() => {
@@ -397,11 +441,12 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const reg = PLANET_REGISTRY[id];
       const color = reg?.color ?? '#9ca3af';
 
-      const alt = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
+      const altRaw = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
       const az  = ((p as any).azDeg  ?? (p as any).az ) as number | undefined;
-      if (alt == null || az == null) continue;
+      if (altRaw == null || az == null) continue;
 
-      // Project center (may be outside)
+      const alt = showRefraction ? altRaw : unrefractAltitudeDeg(altRaw); // NEW
+
       const proj = projectToScreen(
         az, alt,
         refAzDeg,
@@ -413,7 +458,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       );
       if (!Number.isFinite(proj.x) || !Number.isFinite(proj.y)) continue;
 
-      // In orthographic mode, enforce projection front-hemisphere visibility (matches Sun/Moon/Stars)
       const projVisible = !!(proj.visibleX && proj.visibleY);
       if (projectionMode === 'ortho' && !projVisible) continue;
 
@@ -440,23 +484,20 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
       const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
 
-      // Extended visibility: keep while disk intersects viewport (non-ortho).
       const half = sizePx / 2;
       const intersectsX = !(screenX + half < viewport.x || screenX - half > viewport.x + viewport.w);
       const intersectsY = !(screenY + half < viewport.y || screenY - half > viewport.y + viewport.h);
 
-      // For ortho, use projection visibility (front hemisphere). For others, use intersection.
       const visibleX = projectionMode === 'ortho' ? !!proj.visibleX : intersectsX;
       const visibleY = projectionMode === 'ortho' ? !!proj.visibleY : intersectsY;
       if (!visibleX && !visibleY) continue;
 
-      // Direction of Sun on screen (unchanged)
       let angleToSunDeg: number;
       {
         const u0 = altAzToVec(az, alt);
-        const uS = altAzToVec(astro.sun.az, astro.sun.alt);
+        const uS = altAzToVec(astro.sun.az, showRefraction ? sunAltForProj : unrefractAltitudeDeg(astro.sun.alt));
         const dotUS = u0[0]*uS[0] + u0[1]*uS[1] + u0[2]*uS[2];
-
+       
         const EPS_RAD = toRad(0.05);
         if (1 - Math.abs(dotUS) < 1e-9) {
           const alpha = Math.atan2(sunScreen.y - screenY, sunScreen.x - screenX);
@@ -557,7 +598,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         mode,
         distAU,
         rotationDeg,
-        planetAltDeg: alt,
+        planetAltDeg: alt,  // NEW: cohérent avec projection
         planetAzDeg: az,
         orientationDegX,
         orientationDegY,
@@ -570,9 +611,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
     items.sort((a, b) => b.distAU - a.distAU);
     return items;
-  }, [
+   }, [
     planetsEphemArr, showPlanets, refAzDeg, viewport.w, viewport.h, viewport.x, viewport.y,
-    refAltDeg, fovXDeg, fovYDeg, projectionMode, enlargeObjects, astro.sun.az, astro.sun.alt,
+    refAltDeg, fovXDeg, fovYDeg, projectionMode, enlargeObjects,
+    astro.sun.az, astro.sun.alt, sunAltForProj, showRefraction,
     sunScreen.x, sunScreen.y, date, latDeg, lngDeg
   ]);
 
@@ -1173,6 +1215,7 @@ useEffect(() => {
           dotPx={1.2}
           gapPx={7}
           stepDeg={2}
+          applyRefraction={showRefraction} 
         />
       </div>
     )}
@@ -1219,6 +1262,7 @@ useEffect(() => {
             enlargeObjects={false}
             showMarkers={showMarkers}
             projectionMode={projectionMode}
+            showRefraction={showRefraction} 
           />
         </div>
       )}

@@ -2,8 +2,15 @@ import React, { useEffect, useMemo, useRef } from "react";
 import { altAzFromRaDec } from "../../astro/stars";
 import { projectToScreen } from "../../render/projection";
 import { toRad, toDeg, norm360 } from "../../utils/math";
+import { refractAltitudeDeg } from "../../utils/refraction"; // ADD
 
-type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
+type ProjectionMode =
+  | 'recti-panini'
+  | 'stereo-centered'
+  | 'ortho'
+  | 'cylindrical'
+  | 'rectilinear'
+  | 'cylindrical-horizon';
 
 export interface EcliptiqueProps {
   // Temps & observateur
@@ -20,26 +27,47 @@ export interface EcliptiqueProps {
   projectionMode: ProjectionMode;
 
   // Style
-  color?: string;     // couleur du tracé
-  opacity?: number;   // 0..1
-  lineWidth?: number; // en px (CSS)
-  dotPx?: number;     // longueur du "point" (dash) en px
-  gapPx?: number;     // espace entre points en px
+  color?: string;
+  opacity?: number;
+  lineWidth?: number;
+  dotPx?: number;
+  gapPx?: number;
 
   // Échantillonnage
-  stepDeg?: number;   // pas en degrés le long de l’écliptique
+  stepDeg?: number;
+
+  // NEW: appliquer la réfraction à la courbe de l'écliptique
+  applyRefraction?: boolean;
 }
 
-function raDecFromEcliptic(lambdaDeg: number) {
-  // Obliquité moyenne (assez précise pour un tracé)
-  const eps = toRad(23.439291111);
+function julianDay(date: Date) {
+  return date.getTime() / 86400000 + 2440587.5;
+}
+function centuriesSinceJ2000(date: Date) {
+  return (julianDay(date) - 2451545.0) / 36525;
+}
+function meanObliquityRad(date: Date) {
+  const T = centuriesSinceJ2000(date);
+  // IAU 2006, en arcsec
+  const epsArcsec =
+    84381.406 -
+    46.836769 * T -
+    0.0001831 * T * T +
+    0.00200340 * T * T * T -
+    0.000000576 * T * T * T * T -
+    0.0000000434 * T * T * T * T * T;
+  return toRad(epsArcsec / 3600);
+}
+
+function raDecFromEcliptic(date: Date, lambdaDeg: number) {
+  const eps = meanObliquityRad(date); // obliquité moyenne de date
   const lam = toRad(lambdaDeg);
   const sinLam = Math.sin(lam);
   const cosLam = Math.cos(lam);
 
-  // β = 0 -> formules simplifiées
-  const alpha = Math.atan2(sinLam * Math.cos(eps), cosLam);      // RA (rad)
-  const delta = Math.asin(Math.sin(eps) * sinLam);                // Dec (rad)
+  // β = 0
+  const alpha = Math.atan2(sinLam * Math.cos(eps), cosLam);
+  const delta = Math.asin(Math.sin(eps) * sinLam);
 
   const raDeg = norm360(toDeg(alpha));
   const decDeg = toDeg(delta);
@@ -50,12 +78,13 @@ export default function Ecliptique(props: EcliptiqueProps) {
   const {
     date, latDeg, lngDeg,
     viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
-    color = "#fde68a",       // jaune pâle
+    color = "#fde68a",
     opacity = 0.9,
     lineWidth = 2,
-    dotPx = 1.2,             // créer un effet "pointillé" (petite pastille)
+    dotPx = 1.2,
     gapPx = 7,
     stepDeg = 2,
+    applyRefraction = true, // NEW: par défaut apparent
   } = props;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -63,10 +92,13 @@ export default function Ecliptique(props: EcliptiqueProps) {
   const points = useMemo(() => {
     const arr: { x: number; y: number; visibleX?: boolean; visibleY?: boolean; ok: boolean }[] = [];
     for (let lam = 0; lam <= 360; lam += stepDeg) {
-      const { raDeg, decDeg } = raDecFromEcliptic(lam);
+      const { raDeg, decDeg } = raDecFromEcliptic(date, lam);
       const h = altAzFromRaDec(date, latDeg, lngDeg, raDeg, decDeg);
+
+      const altForProj = applyRefraction ? refractAltitudeDeg(h.altDeg) : h.altDeg; // NEW
+
       const pr = projectToScreen(
-        h.azDeg, h.altDeg,
+        h.azDeg, altForProj,
         refAzDeg,
         viewport.w, viewport.h,
         refAltDeg,
@@ -78,7 +110,11 @@ export default function Ecliptique(props: EcliptiqueProps) {
       arr.push({ x: pr.x, y: pr.y, visibleX: pr.visibleX, visibleY: pr.visibleY, ok });
     }
     return arr;
-  }, [date, latDeg, lngDeg, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, stepDeg]);
+  }, [
+    date, latDeg, lngDeg, refAzDeg, refAltDeg,
+    viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
+    stepDeg, applyRefraction // NEW
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
