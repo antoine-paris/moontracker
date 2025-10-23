@@ -9,3 +9,7 @@ http://localhost:5173/?tl=1og5.t4j2g0&lp=1edd.b4&l=2988507&t=10dox40&F=b&p=5&d=c
 Eclipse et couhé de soleil Espagne 2026
 http://localhost:5173/?tl=2i2o.m56xuo&lp=1edc.b4&lat=42.315345&lng=-3.702089&tz=Europe%2FMadrid&t=tjo3id&F=0&p=5&d=custom&k=1&f=m9&b=cpj&pl=a&sr=1.0167&da=-0.12&dh=-0.18
 http://localhost:5173/?tl=2i2o.m56xuo&lp=1edc.b4&lat=42.315345&lng=-3.702089&tz=Europe%2FMadrid&t=tjo7yu&F=0&p=5&d=custom&k=1&f=m9&b=cqf&pl=a&sr=0.0167&da=-0.12&dh=-0.18
+http://localhost:5173/?tl=2i2o.m56xuo&lp=1edc.b4&lat=42.315345&lng=-3.702089&tz=Europe%2FMadrid&t=tjo83e&F=0&p=5&d=custom&k=1&f=m9&b=cqf&pl=a&sr=0.0167&da=-0.12&dh=0.17
+http://localhost:5173/?tl=2i2o.m56xuo&lp=1edc.b4&lat=42.315345&lng=-3.702089&tz=Europe%2FMadrid&t=tjo84e&F=0&p=5&d=galaxy-s21u&z=t10x&b=cqf&pl=a&sr=0.0167&da=-0.12&dh=1.41
+
+

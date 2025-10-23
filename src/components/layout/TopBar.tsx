@@ -1191,7 +1191,7 @@ export default function TopBar({
                     }}
                     className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
-                    &#x21B6;
+                    -
                   </button>
                   {/* Temps réel */}
                   <button
@@ -1216,7 +1216,7 @@ export default function TopBar({
                     }}
                     className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
-                    &#x21B7;
+                    +
                   </button>
                 </div>
               </div>

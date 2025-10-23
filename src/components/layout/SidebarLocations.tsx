@@ -501,15 +501,15 @@ export default function SidebarLocations({
       minHeight: 0,
     },
     tabList: {
-      display: 'flex',
-      gap: 12,                                // espace entre onglets
+      display: collapsed ? 'none' : 'flex',   // <- masquer quand réduit
+      gap: 12,
       marginBottom: 4,
       flex: '0 0 auto',
       alignSelf: 'stretch',
       padding: '0 2px',
-      borderBottom: '1px solid rgba(255,255,255,0.12)', // ligne de base
+      borderBottom: '1px solid rgba(255,255,255,0.12)',
       background: 'transparent',
-      height: 28,                             // faible hauteur
+      height: 28,
     },
     tabBtn: {
       appearance: 'none',
@@ -591,7 +591,12 @@ export default function SidebarLocations({
 
         {/* Onglets: Villes / Coordonnées */}
         <div style={styles.tabs}>
-          <div style={styles.tabList} role="tablist" aria-label="Sélection du mode de lieux">
+          <div
+            style={styles.tabList}
+            role="tablist"
+            aria-label="Sélection du mode de lieux"
+            aria-hidden={collapsed}              // <- accessibilité
+          >
             <button
               type="button"
               role="tab"
