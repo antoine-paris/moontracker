@@ -9,7 +9,9 @@ type Props = {
   setSelectedLng: (lng: number) => void;
   onSelectLocation: (loc: LocationOption) => void;
   collapsed: boolean;
-  isActive: boolean; // nouvel indicateur
+  isActive: boolean; 
+  preselectedIds: string[];
+  setPreselectedIds: React.Dispatch<React.SetStateAction<string[]>>;
 };
 
 function normLng(deg: number): number {
@@ -26,6 +28,8 @@ export default function SidebarLocationsCities({
   onSelectLocation,
   collapsed,
   isActive,
+  preselectedIds,
+  setPreselectedIds,
 }: Props) {
   const [search, setSearch] = useState('');
   const listRef = useRef<HTMLUListElement>(null);
@@ -34,20 +38,32 @@ export default function SidebarLocationsCities({
   const [activeList, setActiveList] = useState<'main' | 'pre'>('main');
 
   // user's preselected cities
-  const [preselected, setPreselected] = useState<LocationOption[]>([]);
+  const preselected: LocationOption[] = useMemo(() => {
+    if (!preselectedIds?.length) return [];
+    const byId = new Map(locations.map(l => [l.id, l]));
+    return preselectedIds
+      .map(id => byId.get(id))
+      .filter((v): v is LocationOption => !!v);
+  }, [preselectedIds, locations]);
+
   const preselectedSorted = useMemo(
     () => [...preselected].sort((a, b) => b.lat - a.lat),
     [preselected]
   );
-  const preselectedSet = useMemo(() => new Set(preselected.map(l => l.id)), [preselected]);
+
+  // Build the set from ids (not from derived list to keep O(1) contains)
+  const preselectedSet = useMemo(() => new Set(preselectedIds), [preselectedIds]);
+
+
   const addPreselected = (loc: LocationOption) => {
-    setPreselected(prev => (prev.some(l => l.id === loc.id) ? prev : [...prev, loc]));
+    setPreselectedIds(prev => (prev.includes(loc.id) ? prev : [...prev, loc.id]));
   };
   const removePreselected = (locId: string) => {
-    setPreselected(prev => prev.filter(l => l.id !== locId));
+    setPreselectedIds(prev => prev.filter(id => id !== locId));
   };
 
   const [flashNoSameLat, setFlashNoSameLat] = useState(false);
+
 
   const styles: Record<string, React.CSSProperties> = {
     search: {
@@ -371,7 +387,7 @@ export default function SidebarLocationsCities({
                   onSelectLocation(loc);
                   setSearch('');
                   setTimeout(() => {
-                    const selectedButton = listRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
+                    const selectedButton = preListRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
                     selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
                     selectedButton?.focus();
                   }, 0);

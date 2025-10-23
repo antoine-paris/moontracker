@@ -40,6 +40,8 @@ type Props = {
   //  active viewing direction from App (follow mode)
   activeAzDeg: number;
   activeAltDeg: number;
+  preselectedCityIds: string[];
+  setPreselectedCityIds: React.Dispatch<React.SetStateAction<string[]>>;
 };
 
 function normLng(deg: number): number {
@@ -350,6 +352,8 @@ export default function SidebarLocations({
   utcMs,
   activeAzDeg,
   activeAltDeg,
+  preselectedCityIds,
+  setPreselectedCityIds,
 }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const [selectedLng, setSelectedLng] = useState<number>(() => Math.round(normLng(selectedLocation.lng)));
@@ -617,6 +621,8 @@ export default function SidebarLocations({
               onSelectLocation={onSelectLocation}
               collapsed={collapsed}
               isActive={activeTab === 'cities'}
+              preselectedIds={preselectedCityIds}
+              setPreselectedIds={setPreselectedCityIds}
             />
           </div>
 

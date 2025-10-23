@@ -67,6 +67,9 @@ export default function App() {
   const [glbLoading, setGlbLoading] = useState<boolean>(false);
   const [glbProgress, setGlbProgress] = useState<{ loaded: number; total: number }>({ loaded: 0, total: 0 });
 
+  // preselected cities (by id), persisted via URL
+  const [preselectedCityIds, setPreselectedCityIds] = useState<string[]>([]);
+
   // Scene readiness state
   const [sceneReady, setSceneReady] = useState<boolean>(false);
 
@@ -993,6 +996,7 @@ export default function App() {
       timeLapseStartMsRef: tlStartWhenMsRef,
       setLongPoseEnabled,
       setLongPoseRetainFrames,
+      setPreselectedCityIds,
     });
   }, [locationsLoading, locations]);
 
@@ -1044,6 +1048,7 @@ export default function App() {
       timeLapseStartMs: tlStartWhenMsRef.current,
       longPoseEnabled,
       longPoseRetainFrames,
+      preselectedCityIds,
     });
   }, [
     locations, location, whenMs,
@@ -1057,6 +1062,7 @@ export default function App() {
     deltaAzDeg, deltaAltDeg,
     timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter,
     longPoseEnabled, longPoseRetainFrames,
+    preselectedCityIds,
   ]);
 
   useEffect(() => {
@@ -1077,6 +1083,8 @@ export default function App() {
             // Include deltas in active pointing
             activeAzDeg={refAz}
             activeAltDeg={refAlt}
+            preselectedCityIds={preselectedCityIds}
+            setPreselectedCityIds={setPreselectedCityIds}
           />
         </aside>
         {/* Main stage */}

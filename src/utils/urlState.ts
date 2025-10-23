@@ -234,7 +234,7 @@ export type UrlInitArgs = {
   setDeltaAzDeg: (n: number) => void;
   setDeltaAltDeg: (n: number) => void;
 
-  // NEW: timelapse setters + start-ref
+  //  timelapse setters + start-ref
   setTimeLapseEnabled: (b: boolean) => void;
   setTimeLapsePeriodMs: (n: number) => void;
   setTimeLapseStepValue: (n: number) => void;
@@ -242,18 +242,13 @@ export type UrlInitArgs = {
   setTimeLapseLoopAfter: (n: number) => void;
   timeLapseStartMsRef: React.MutableRefObject<number>;
 
-  setTimeLapseEnabled: (b: boolean) => void;
-  setTimeLapsePeriodMs: (n: number) => void;
-  setTimeLapseStepValue: (n: number) => void;
-  setTimeLapseStepUnit: (u: typeof TL_UNITS[number]) => void;
-  setTimeLapseLoopAfter: (n: number) => void;
-  timeLapseStartMsRef: React.MutableRefObject<number>;
 
-
-  // NEW: Long pose setters
+  //  Long pose setters
   setLongPoseEnabled: (b: boolean) => void;
   setLongPoseRetainFrames: (n: number) => void;
 
+  //  preselected cities
+  setPreselectedCityIds: (ids: string[]) => void;
 };
 
 export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
@@ -271,6 +266,9 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setDeltaAzDeg, setDeltaAltDeg,
     setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef,
     setLongPoseEnabled, setLongPoseRetainFrames,
+
+    // NEW
+    setPreselectedCityIds,
   } = args;
 
   // Time: base36 unix seconds
@@ -462,6 +460,17 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setLongPoseRetainFrames(retainClamped);
   }
 
+  // NEW: Preselected cities (ids) — dot-separated to keep compact
+  const pc = q.get('pc');
+  if (pc) {
+    const parts = pc.split('.').filter(Boolean);
+    if (parts.length) {
+      const known = new Set(locations.map(l => l.id));
+      const ids = parts.filter(id => known.has(id));
+      setPreselectedCityIds(ids.slice(0, 200)); // safety cap
+    }
+  }
+
   // Speed: try precise 'sr' first, then compact 's', then legacy 'spd'
   const sr = q.get('sr');
   if (sr != null) {
@@ -552,15 +561,12 @@ function unpackBytes(s: string, count: number): number[] {
 
 export type BuildShareUrlArgs = {
   whenMs: number;
-
   // location
   location: LocationOption;
   locations: LocationOption[];
-
   // enums
   follow: FollowMode;
   projectionMode: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical'|'rectilinear'|'cylindrical-horizon';
-
   // optics
   deviceId: string;
   zoomId: string;
@@ -568,7 +574,6 @@ export type BuildShareUrlArgs = {
   fovYDeg: number;
   linkFov: boolean;
   CUSTOM_DEVICE_ID: string;
-
   // toggles
   toggles: {
     showSun: boolean;
@@ -587,31 +592,28 @@ export type BuildShareUrlArgs = {
     enlargeObjects: boolean;
     debugMask: boolean;
   };
-
   // UI panels
   showPanels: boolean;
-
   // planets
   showPlanets: Record<string, boolean>;
   allPlanetIds: string[];
-
   // anim
   isAnimating: boolean;
   speedMinPerSec: number;
-
   // DirectionalKeypad deltas
   deltaAzDeg: number;
   deltaAltDeg: number;
-
   timeLapseEnabled: boolean;
   timeLapsePeriodMs: number;
   timeLapseStepValue: number;
   timeLapseStepUnit: typeof TL_UNITS[number];
   timeLapseLoopAfter: number;
   timeLapseStartMs: number;
-
   longPoseEnabled: boolean;
   longPoseRetainFrames: number;
+
+  // NEW: preselected cities
+  preselectedCityIds: string[];
 
   baseUrl?: string;
   appendHash?: string;
@@ -630,6 +632,9 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
     deltaAzDeg, deltaAltDeg,
     timeLapseEnabled, timeLapsePeriodMs, timeLapseStepValue, timeLapseStepUnit, timeLapseLoopAfter, timeLapseStartMs,
     longPoseEnabled, longPoseRetainFrames,
+
+    // NEW
+    preselectedCityIds,
 
     baseUrl, appendHash,
   } = args;
@@ -751,6 +756,18 @@ export function buildShareUrl(args: BuildShareUrlArgs): string {
   // DirectionalKeypad deltas: only include when non-zero
   if (Math.abs(deltaAzDeg) > 1e-6) q.set('da', compactFloat(deltaAzDeg, 2));
   if (Math.abs(deltaAltDeg) > 1e-6) q.set('dh', compactFloat(deltaAltDeg, 2));
+
+  // NEW: Preselected cities (dot-separated ids). Only include if non-empty
+  if (preselectedCityIds && preselectedCityIds.length > 0) {
+    // keep order as-is; de-dup just in case
+    const seen = new Set<string>();
+    const ids = preselectedCityIds.filter(id => {
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
+    q.set('pc', ids.join('.'));
+  }
 
   const base = baseUrl ?? `${window.location.origin}${window.location.pathname}`;
   const hash = appendHash ?? (window.location.hash || '');
