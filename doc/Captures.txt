@@ -5,3 +5,6 @@ http://localhost:5173/?tl=xave9t.m55thc&lp=1edd.b4&l=1850147&t=m56bjc&F=0&p=5&d=
 
 Dans des planetes intérieures depuis Paris
 http://localhost:5173/?tl=1og5.t4j2g0&lp=1edd.b4&l=2988507&t=10dox40&F=b&p=5&d=custom&k=1&f=1&b=cr9&pl=7&sr=-106.099&da=-34.49&dh=42.73
+
+Eclipse et couhé de soleil Espagne 2026
+http://localhost:5173/?tl=2i2o.m56xuo&lp=1edc.b4&lat=42.315345&lng=-3.702089&tz=Europe%2FMadrid&t=tjo3id&F=0&p=5&d=custom&k=1&f=m9&b=cpj&pl=a&sr=1.0167&da=-0.12&dh=-0.18
