@@ -271,11 +271,7 @@ export default function Ground({
     return pathParts.join(" ");
   }, [showEarth, simplifyFlat, viewport.w, viewport.h, refAzDeg, refAltDegSafe, fovXDeg, fovYDeg, projectionMode, stepAz, stepAlt]);
 
-  const horizonPath = useMemo(() => {
-    if (!debugMask) return null;
-    return buildHorizonPath(viewport, refAzDeg, refAltDegSafe, fovXDeg, fovYDeg, projectionMode);
-  }, [debugMask, viewport, refAzDeg, refAltDegSafe, fovXDeg, fovYDeg, projectionMode]);
-
+  
   if (!showEarth) return null;
 
   return (
@@ -311,9 +307,7 @@ export default function Ground({
         )}
 
         {/* Optional: show sampled horizon for debug */}
-        {debugMask && horizonPath && (
-          <path d={horizonPath} stroke={COLOR_HZ_FRONT} strokeWidth={1.5} fill="none" />
-        )}
+        
 
         {/* NEW: Debug flat horizon line */}
         {debugMask && simplifyFlat && flatHorizon && (
