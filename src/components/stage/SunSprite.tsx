@@ -14,6 +14,10 @@ type Props = {
 
 export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showCard, wPx, hPx }: Props) {
   if (!visibleX || !visibleY) return null;
+
+  // Force un carré pour conserver un cercle à l'écran
+  const sizePx = Math.round(Math.min(wPx, hPx));
+
   return (
     <div
       style={{
@@ -22,26 +26,26 @@ export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showC
         top: y,
         transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`,
         zIndex: Z.sun,
-        width: wPx,
-        height: hPx,
+        width: sizePx,
+        height: sizePx,
       }}
     >
       <div
         className="rounded-full"
         style={{
-          width: wPx,
-          height: hPx,
+          width: "100%",
+          height: "100%",
           background:
             "radial-gradient(circle at 30% 30%, rgba(255,255,200,1) 0%, rgba(255,200,80,1) 35%, rgba(255,160,30,1) 55%, rgba(255,120,10,1) 75%, rgba(255,100,0,1) 100%)",
           boxShadow:
             "0 0 40px 10px rgba(255,180,40,0.35), 0 0 80px 20px rgba(255,180,40,0.15)",
-          borderRadius: "9999px",
+          borderRadius: "50%",
         }}
       />
       {showCard && (
         <svg
-          width={wPx}
-          height={hPx}
+          width={sizePx}
+          height={sizePx}
           viewBox="0 0 624 624"
           style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
         >
