@@ -330,6 +330,21 @@ export default function TopBar({
     setTimeLapseLoopAfter(v);
     setTlLoopAfterStr(String(v));
   };
+  // Time-lapse per-frame label (e.g., "2 mois par image")
+  const timeLapsePerFrameLabel = React.useMemo(() => {
+    if (!timeLapseEnabled) return '';
+    const n = Math.max(1, Math.round(timeLapseStepValue || 1));
+    const label =
+      timeLapseStepUnit === 'minute' ? (n > 1 ? 'minutes' : 'minute') :
+      timeLapseStepUnit === 'hour' ? (n > 1 ? 'heures' : 'heure') :
+      timeLapseStepUnit === 'day' ? (n > 1 ? 'jours' : 'jour') :
+      timeLapseStepUnit === 'sidereal-day' ? (n > 1 ? 'jours sidéraux' : 'jour sidéral') :
+      timeLapseStepUnit === 'month' ? 'mois' :
+      timeLapseStepUnit === 'synodic-fraction' ? (n > 1 ? 'jours lunaires' : 'jour lunaire') :
+      timeLapseStepUnit === 'lunar-fraction' ? (n > 1 ? 'cycles lunaires sidéraux' : 'cycle lunaire sidéral') :
+      '';
+    return `${n} ${label} par image`;
+  }, [timeLapseEnabled, timeLapseStepValue, timeLapseStepUnit]);
 
   // Update local input when UTC time changes externally (e.g., from animation)
   // but only if user is not currently editing
@@ -541,6 +556,301 @@ export default function TopBar({
     );
   };
 
+   // --- NEW: Generic toggle icon set used by icon-only buttons ---
+  type ToggleIconId =
+    | 'enlarge' | 'horizon' | 'earth' | 'atmo' | 'phase' | 'earthshine'
+    | 'sun' | 'moon' | 'planet' | 'stars'
+    | 'grid' | 'markers'
+    | 'sunCard' | 'ecliptic' | 'moonCard'
+    | 'debug'
+    | 'timelapse' | 'longpose'
+    | 'clear';
+
+  const ToggleIcon: React.FC<{ id: ToggleIconId; active?: boolean; label?: string }> = ({ id, active = false, label }) => {
+    const stroke = 'currentColor';
+    const fillColor = 'currentColor';
+    const strokeWidth = 1.7;
+    const s = { fill: 'none', stroke, strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+    return (
+      <svg
+        width="18"
+        height="18"
+        viewBox="0 0 24 24"
+        role="img"
+        aria-hidden={label ? undefined : true}
+        className="shrink-0 pointer-events-none select-none"
+      >
+        {label ? <title>{label}</title> : null}
+
+        {/* Enlarge: loupe + signe plus */}
+        {id === 'enlarge' && (
+          <>
+            <circle cx="10" cy="10" r="5" {...s} />
+            <path d="M14.5 14.5L19 19" {...s} />
+            <path d="M10 7.5v5M7.5 10h5" {...s} />
+          </>
+        )}
+
+        {/* Horizon: ligne d'horizon plate */}
+        {id === 'horizon' && (
+          <>
+            <circle cx="12" cy="12" r="8" {...s} strokeDasharray="2 3" />
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="#000" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#000" />
+            <path d="M3 12h18" {...s} stroke="rgba(243, 76, 196, 1)" />
+          </>
+        )}
+
+        {/* Earth (ground): demi-disque en bas */}
+        {id === 'earth' && (
+          <>
+            {/* Cercle pointillé */}
+            <circle cx="12" cy="12" r="8" {...s} strokeDasharray="2 3" />
+            {/* Remplissage de l’hémisphère inférieur */}
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="#000" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#479b47ff" />
+            {/* Ligne d’horizon pleine */}
+            
+          </>
+        )}
+
+        {/* Atmosphere: arcs concentriques */}
+        {id === 'atmo' && (
+          <>
+            {/* Cercle pointillé */}
+            <circle cx="12" cy="12" r="8" {...s} strokeDasharray="2 3" />
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="#4c57f3ff" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#000" />
+             {/* Ligne d’horizon pleine */}
+            
+          </>
+        )}
+
+        {/* Phase: croissant de Lune */}
+        {id === 'phase' && (
+          <>
+            <circle cx="12" cy="12" r="10" {...s} stroke={stroke} />
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="#000" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#000" />
+            <path 
+              d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z"
+              {...s} stroke={0} fill="hsla(0, 85%, 54%, 1.00)" />
+          </>
+        )}
+
+        {/* Earthshine: croissant + halo */}
+        {id === 'earthshine' && (
+          <>
+            <circle cx="12" cy="12" r="10" {...s} stroke={stroke} />
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="hsla(240, 70%, 68%, 1.00)" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="hsla(240, 70%, 68%, 1.00)" />
+            <path 
+              d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z"
+              {...s} stroke={0} fill={stroke}/>
+          </>
+        )}
+
+        {/* Sun: disque + rayons */}
+        {id === 'sun' && (
+          <>
+            <circle cx="12" cy="12" r="4" {...s} fill="#FFD54A" />
+            <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" {...s} />
+          </>
+        )}
+
+        {/* Moon: croissant simple */}
+        {id === 'moon' && (
+          <>
+            <circle cx="12" cy="12" r="10" {...s} stroke={stroke} />
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="#000" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#000" />
+            <path 
+              d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z"
+              {...s} stroke={0} fill={stroke} />
+          </>
+        )}
+
+        {/* Planet: planète à anneau */}
+        {id === 'planet' && (
+          <>
+            <circle cx="12" cy="12" r="3.5" {...s} />
+            <ellipse cx="12" cy="12" rx="7" ry="2.8" transform="rotate(-20 12 12)" {...s} />
+          </>
+        )}
+
+        {/* Stars: étoile + petites étoiles */}
+        {id === 'stars' && (
+          <g transform="translate(12 12) scale(1.6) translate(-11.5 -10)">
+            <path d="M12 6l1.2 2.6 2.8.4-2 2 0.5 2.9L12 13.4 9.5 14.9 10 12 8 9l2.8-.4L12 6z" {...s} stroke={stroke} />
+            <path d="M5 7.5h0M18.5 8.5h0M6.5 16.5h0" stroke={stroke} strokeWidth={2} strokeLinecap="round" />
+          </g>
+        )}
+
+        {/* Grid: grille */}
+        {id === 'grid' && (
+          <>
+            {/* Parallels */}
+            <path d="M4 9c3-3 13-3 16 0" {...s} stroke="hsla(29, 85%, 51%, 1.00)"/>
+            <path d="M4 15c3 3 13 3 16 0" {...s} stroke="hsla(29, 85%, 51%, 1.00)"/>
+            {/* Meridians */}
+            <path d="M9 4c-2.5 3.5-2.5 12.5 0 16" {...s} stroke="hsla(29, 85%, 51%, 1.00)"/>
+            <path d="M15 4c2.5 3.5 2.5 12.5 0 16" {...s} stroke="hsla(29, 85%, 51%, 1.00)"/>
+            {/* Outer circle */}
+            <circle cx="12" cy="12" r="11" {...s} />
+            
+          </>
+        )}
+
+        {/* Markers: réticule */}
+        {id === 'markers' && (
+          <>
+            <circle cx="12" cy="12" r="1.4" fill={fillColor} />
+            {/* Bras plus éloignés du point central */}
+            <path d="M12 4.2v3M12 16.8v3M4.2 12h3M16.8 12h3" {...s} stroke="hsla(186, 85%, 51%, 1.00)"/>
+          
+          </>
+        )}
+
+        {/* Sun cardinals: soleil + N/E/S/O */}
+        {id === 'sunCard' && (
+          <>
+            <circle cx="12" cy="12" r="3.5" {...s} />
+            <path d="M12 5v3M12 16v3M5 12h3M16 12h3" {...s} />
+          </>
+        )}
+
+        {/* Ecliptic: ligne inclinée */}
+        {id === 'ecliptic' && (
+          <>
+            {/* Droite oblique pointillée */}
+            <path d="M1 23L23 1" {...s} strokeDasharray="2 3" strokeWidth={2} stroke="rgba(236, 229, 26, 1)" />
+            {/* Soleil (point central plus gros) */}
+            <circle cx="12" cy="12" r="2" fill={fillColor} />
+            {/* Planètes (points de part et d’autre) */}
+            <circle cx="1" cy="20" r="0.9" fill={fillColor} />
+            <circle cx="4" cy="13" r="0.9" fill={fillColor} />
+            <circle cx="18" cy="11" r="0.9" fill={fillColor} />
+            <circle cx="8" cy="22" r="0.9" fill={fillColor} />
+            <circle cx="18" cy="2" r="0.9" fill={fillColor} />
+          </>
+        )}
+
+        {/* Moon/planets cardinals: petit disque + croix */}
+        {id === 'moonCard' && (
+          <>
+            <circle cx="12" cy="12" r="4" fill={stroke} stroke="none" />
+            <ellipse cx="12" cy="12" rx="11" ry="4.5" {...s} stroke="rgba(24, 236, 38, 1)"/>
+            <ellipse cx="12" cy="12" rx="4.5" ry="11" {...s} stroke="hsla(42, 91%, 52%, 1.00)"/>
+          
+          </>
+        )}
+
+        {/* Debug: bug stylisé */}
+        {id === 'debug' && (
+          <>
+            <ellipse cx="12" cy="12" rx="4" ry="5" {...s} />
+            <path d="M12 7V5M12 19v-2M8 9L6 7M16 9l2-2M8 15l-2 2M16 15l2 2" {...s} />
+          </>
+        )}
+
+        {/* Time-lapse: horloge + triangle lecture */}
+        {id === 'timelapse' && (
+          <>
+            <path d="M12 20.75a8.75 8.75 0 1 1 0 -17.5V0.75C5.787 0.75 0.75 5.787 0.75 12S5.787 23.25 12 23.25 23.25 18.213 23.25 12h-2.5A8.75 8.75 0 0 1 12 20.75Zm7.876 -12.568c0.315 0.648 0.552 1.34 0.699 2.066l2.45 -0.497a11.176 11.176 0 0 0 -0.9 -2.662l-2.25 1.093ZM19 6.749A8.809 8.809 0 0 0 17.249 5l1.502 -2c0.851 0.64 1.609 1.397 2.248 2.249L19.001 6.75Zm-5.25 -3.324a8.678 8.678 0 0 1 2.067 0.7l1.092 -2.249a11.178 11.178 0 0 0 -2.661 -0.9l-0.498 2.45ZM11 7v5.414l0.293 0.293 4 4 1.414 -1.414L13 11.586V7h-2Z" fill={fillColor} />
+          </>
+        )}
+
+        {/* Long pose: empilement de cadres */}
+        {id === 'longpose' && (
+          <>
+            <circle cx="8" cy="8" r="2" {...s}  fill={stroke}  opacity="0.8"/>
+            <circle cx="10" cy="10" r="2" {...s}  fill={stroke}  opacity="0.6"/>
+            <circle cx="12" cy="12" r="2" {...s}  fill={stroke}  opacity="0.5"/>
+            <circle cx="14" cy="14" r="2" {...s}  fill={stroke}  opacity="0.4"/>
+            <circle cx="16" cy="16" r="2" {...s}  fill={stroke}  opacity="0.2"/>
+            <circle cx="18" cy="18" r="2" {...s}  fill={stroke}  opacity="0.1"/>
+            <circle cx="20" cy="20" r="2" {...s}  fill={stroke}  opacity="0.1"/>
+            <circle cx="22" cy="22" r="2" {...s}  fill={stroke}  opacity="0.1"/>
+            <circle cx="6" cy="6" r="2" {...s}  fill={stroke}  opacity="1"/>
+
+            <circle cx="14" cy="2" r="1" {...s}  fill={stroke}  opacity="0.8"/>
+            <circle cx="15" cy="3" r="1" {...s}  fill={stroke}  opacity="0.6"/>
+            <circle cx="16" cy="4" r="1" {...s}  fill={stroke}  opacity="0.5"/>
+            <circle cx="17" cy="5" r="1" {...s}  fill={stroke}  opacity="0.4"/>
+            <circle cx="18" cy="6" r="1" {...s}  fill={stroke}  opacity="0.2"/>
+            <circle cx="19" cy="7" r="1" {...s}  fill={stroke}  opacity="0.1"/>
+            <circle cx="20" cy="8" r="1" {...s}  fill={stroke}  opacity="0.1"/>
+            <circle cx="14" cy="2" r="1" {...s}  fill={stroke}  opacity="1"/>
+
+            <circle cx="2" cy="16" r="1" {...s}  fill={stroke}  opacity="0.8"/>
+            <circle cx="3" cy="17" r="1" {...s}  fill={stroke}  opacity="0.6"/>
+            <circle cx="4" cy="18" r="1" {...s}  fill={stroke}  opacity="0.5"/>
+            <circle cx="5" cy="19" r="1" {...s}  fill={stroke}  opacity="0.4"/>
+            <circle cx="6" cy="20" r="1" {...s}  fill={stroke}  opacity="0.2"/>
+            <circle cx="7" cy="21" r="1" {...s}  fill={stroke}  opacity="0.1"/>
+            <circle cx="8" cy="22" r="1" {...s}  fill={stroke}  opacity="0.1"/>
+            <circle cx="2" cy="16" r="1" {...s}  fill={stroke}  opacity="1"/>
+          </>
+        )}
+        
+        {/* Clear screen: écran avec un X */}
+        {id === 'clear' && (
+          <>
+            <rect x="3" y="6" width="18" height="12" rx="2" {...s} />
+            <path d="M8 9l8 6M16 9l-8 6" {...s} />
+          </>
+        )}
+
+      </svg>
+    );
+  };
+
+  const IconToggleButton: React.FC<{
+    active: boolean;
+    onClick: () => void;
+    title: string;
+    disabled?: boolean;
+    icon: ToggleIconId;
+    children?: React.ReactNode;
+  }> = ({ active, onClick, title, disabled, icon, children }) => {
+    const handleActivate = (e?: React.SyntheticEvent) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      if (disabled) return;
+
+      const wasAnimating = isAnimating;
+      if (wasAnimating) setIsAnimating(false);
+
+      // Defer the toggle, then resume if it was running
+      requestAnimationFrame(() => {
+        onClick();
+        if (wasAnimating) {
+          requestAnimationFrame(() => setIsAnimating(true));
+        }
+      });
+    };
+
+    return (
+      <button
+        type="button"
+        className={`px-2.5 py-1.5 rounded-lg border text-sm cursor-pointer ${active ? 'border-white/50 bg-white/10 text-white' : 'border-white/15 text-white/80 hover:border-white/30'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onPointerDown={handleActivate}
+        onClick={handleActivate}
+        title={title}
+        aria-label={title}
+        aria-pressed={active}
+        disabled={disabled}
+      >
+        <span className="inline-flex items-center gap-1">
+          {icon && <ToggleIcon id={icon} active={active} label={title} />}  
+          {children ? <span>{children}</span> : null}
+        </span>
+      </button>
+    );
+  };
+
 
   return (
     <>
@@ -555,10 +865,10 @@ export default function TopBar({
             {([
               'SOLEIL','LUNE',
               'MERCURE','VENUS','MARS','JUPITER','SATURNE','URANUS','NEPTUNE',
-              'N','E','S','O'
+              'O', 'N','S','E' 
             ] as FollowMode[]).map(opt => (
               <button key={opt}
-                className={`px-3 py-1.5 rounded-lg border text-sm ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
+                className={`px-3 py-1.5 rounded-lg border text-sm cursor-pointer ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
                 onClick={() => { setFollow(opt); onLongPoseClear(); }}
                 title={
                   opt === 'SOLEIL' ? 'Suivre le Soleil'
@@ -570,15 +880,15 @@ export default function TopBar({
                   : opt === 'SATURNE' ? 'Suivre Saturne'
                   : opt === 'URANUS' ? 'Suivre Uranus'
                   : opt === 'NEPTUNE' ? 'Suivre Neptune'
-                  : opt === 'N' ? 'Suivre le Nord'
-                  : opt === 'E' ? 'Suivre l’Est'
-                  : opt === 'S' ? 'Suivre le Sud'
-                  : opt === 'O' ? 'Suivre l’Ouest'
+                  : opt === 'N' ? 'Pointer vers le Nord'
+                  : opt === 'E' ? 'Pointer vers l’Est'
+                  : opt === 'S' ? 'Pointer vers le Sud'
+                  : opt === 'O' ? 'Pointer vers l’Ouest'
                   : `Suivre ${opt}`
                 }
               >
-                {opt === 'SOLEIL' ? <span>&#9728;</span>
-                : opt === 'LUNE' ? <span>&#127762;</span>
+                {opt === 'SOLEIL' ? <ToggleIcon id='sun'  label='Suivre le Soleil' />  
+                : opt === 'LUNE' ? <ToggleIcon id='moon'  label='Suivre la Lune' />  
                 : opt === 'MERCURE' ? <span>&#9791;</span>
                 : opt === 'VENUS' ? <span>&#9792;</span>
                 : opt === 'MARS' ? <span>&#9794;</span>
@@ -586,10 +896,10 @@ export default function TopBar({
                 : opt === 'SATURNE' ? <span>&#9796;</span>
                 : opt === 'URANUS' ? <span>&#9797;</span>
                 : opt === 'NEPTUNE' ? <span>&#9798;</span>
-                : opt === 'N' ? <span style={{ display: 'inline-block', transform: 'rotate(270deg)' }}>&#x27A4;</span>
-                : opt === 'E' ? <span >&#x27A4;</span>
-                : opt === 'S' ? <span style={{ display: 'inline-block', transform: 'rotate(90deg)' }}>&#x27A4;</span>
                 : opt === 'O' ? <span style={{ display: 'inline-block', transform: 'rotate(180deg)' }}>&#x27A4;</span>
+                : opt === 'N' ? <span style={{ display: 'inline-block', transform: 'rotate(270deg)' }}>&#x27A4;</span>
+                : opt === 'S' ? <span style={{ display: 'inline-block', transform: 'rotate(90deg)' }}>&#x27A4;</span>
+                : opt === 'E' ? <span >&#x27A4;</span>
                 : opt}
               </button>
             ))}
@@ -683,7 +993,7 @@ export default function TopBar({
                         key={opt.id}
                         type="button" // ensure it's not a submit button inside forms
                         disabled={!isAllowed}
-                        className={`px-3 py-1.5 rounded-lg border text-sm ${
+                        className={`px-3 py-1.5 cursor-pointer rounded-lg border text-sm ${
                           isActive
                             ? 'border-white/50 bg-white/10'
                             : isAllowed
@@ -757,7 +1067,7 @@ export default function TopBar({
                       onCommitWhenMs(currentUtcMs - 3600000);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title="Aller à -1 heure"
                   >
                     &#x21B6;
@@ -769,7 +1079,7 @@ export default function TopBar({
                       onCommitWhenMs(nowMs);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title="Régler l'heure actuelle"
                   >
                     {/*Maintenant*/}
@@ -781,47 +1091,63 @@ export default function TopBar({
                       onCommitWhenMs(currentUtcMs + 3600000);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title="Aller à +1 heure"
                   >
                     &#x21B7;
                   </button>
                 </div>
-                {/* Replace single UTC line with the required format:
-                    "HH:MM in CityName (HH:MM UTC)" */}
                 <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3">
                   <div title={timeZone}>{`${cityHM} in ${cityName} (${utcHM} UTC)`}</div>
                 </div>
               </div>
-              <div className="mt-2 mb-1 text-xs uppercase tracking-wider text-white/50">Animation</div>
+              <div className="mt-2 mb-1 flex items-baseline justify-start gap-2">
+                <span className="text-xs uppercase tracking-wider text-white/50">Animation :  </span>
+                <span
+                  className="text-xs uppercase text-left text-white/50 tabular-nums normal-case whitespace-nowrap"
+                  title="Vitesse de l’animation (minutes par seconde)"
+                >
+                  {timeLapseEnabled
+                    ? timeLapsePerFrameLabel
+                    : (Math.round(speedMinPerSec) == 0 ? 'Temps réel' 
+                    : (Math.round(speedMinPerSec) > 0 ? Math.round(speedMinPerSec) + ' min/s' 
+                    : ' vers le passé à ' + Math.abs(Math.round(speedMinPerSec)) + ' min/s') )
+                  }
+                </span>
+              </div>
+              
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsAnimating(!isAnimating)}
+                  onClick={() => setIsAnimating(v => !v)}
                   className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
                   title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
                   aria-label={isAnimating ? "Pause" : "Lecture"}
                 >
-                  {isAnimating ? (
-                    // Pause icon
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-                      <rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
-                      <rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
-                    </svg>
-                  ) : (
-                    // Play icon
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-                      <path d="M8 5l12 7-12 7V5z" fill="currentColor" />
-                    </svg>
-                  )}
+                  <span className="inline-flex items-center gap-2">
+                    {isAnimating ? (
+                      // Pause icon
+                      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                        <rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+                        <rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+                      </svg>
+                    ) : (
+                      // Play icon
+                      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                        <path d="M8 5l12 7-12 7V5z" fill="currentColor" />
+                      </svg>
+                    )}
+                  </span>
                 </button>
-                <div className="relative flex-1">
+
+                {/* Slider grows in the middle */}
+                <div className="relative flex-1 min-w-0">
                   <input
                     type="range"
                     min={-360}
                     max={360}
                     step={0.001}
                     value={speedMinPerSec}
-                     onChange={(e) => {
+                    onChange={(e) => {
                       setSpeedMinPerSec(clamp(parseFloat(e.target.value || "0"), -360, 360));
                       onLongPoseClear(); 
                       setTimeLapseEnabled(false);
@@ -833,8 +1159,24 @@ export default function TopBar({
                   <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
                     <div className="w-px h-3 bg-white/40" />
                   </div>
-                  <div
-                    className="absolute left-1/2 top-full -translate-x-1/2 mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer"
+                </div>
+
+                {/* Step buttons on the right (do not grow) */}
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* -1 min/s */}
+                  <button
+                    title={`-1 min/s`}
+                    onClick={() => {
+                      setSpeedMinPerSec(prev => clamp(prev - 1, -360, 360));
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
+                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                  >
+                    &#x21B6;
+                  </button>
+                  {/* Temps réel */}
+                  <button
                     onClick={() => { 
                       setSpeedMinPerSec(1/60); 
                       setIsAnimating(true); 
@@ -842,61 +1184,41 @@ export default function TopBar({
                       setTimeLapseEnabled(false);
                     }}
                     title="Animer en temps réel"
+                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
-                    Temps réel
-                  </div>
-                  <div
-                    className="absolute left-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
-                    title={`-1 min/s`}
-                    onClick={() => {
-                      setSpeedMinPerSec(prev => clamp(prev - 1, -360, 360));
-                      onLongPoseClear(); 
-                      setTimeLapseEnabled(false);
-                    }}
-                  >
-                    {"\u21B6"}
-                  </div>
-                  <div
-                    className="absolute right-0 top-full mt-0.5 text-[10px] text-white/60 hover:text-white cursor-pointer select-none"
+                    &#128345;
+                  </button>
+                  {/* +1 min/s */}
+                  <button
                     title="+1 min/s"
                     onClick={() => {
                       setSpeedMinPerSec(prev => clamp(prev + 1, -360, 360));
                       onLongPoseClear(); 
                       setTimeLapseEnabled(false);
                     }}
+                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
-                    {"\u21B7"}
-                  </div>
-                </div>
-                {/* Affichage de la vitesse en min/s */}
-                <div
-                  className="min-w-[3rem] text-[10px] text-right text-sm text-white/70 tabular-nums"
-                  title="Vitesse de l’animation (minutes par seconde)"
-                >
-                  {Math.round(speedMinPerSec)==0 ? 'Temps réel': Math.round(speedMinPerSec) + ' min/s'} 
+                    &#x21B7;
+                  </button>
                 </div>
               </div>
 
               {/* --- Time-lapse section --- */}
               <div className="mt-3">
-                <div className="text-xs uppercase tracking-wider text-white/60">Time-lapse</div>
-                  <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3" title="Heure de départ du time-lapse">
-                  Depuis {tlStartLabel}
-                </div>
+                <div className="text-xs uppercase tracking-wider text-white/60"> </div>
 
                 {/* Step value (integer) + unit */}
                 <div className="mt-1 flex items-center gap-2 w-full">
-                  <label className="inline-flex items-center gap-2 text-sm" title="Activer le mode time-lapse (ignore la vitesse de l’animation)">
-                    <input
-                      type="checkbox"
-                      checked={timeLapseEnabled}
-                      onChange={(e) => { setTimeLapseEnabled(e.target.checked); onLongPoseClear(); }}
-                    />
-                  </label>
-                  <span className="w-20 text-sm text-white/80">
-                    Saut de {timeLapseStepUnit == 'synodic-fraction' ? ' 1 /' : '   '} 
-                    {timeLapseStepUnit == 'lunar-fraction' ? ' 1 /' : '   '}
-                  </span>
+                  {/* Toggle button replaces checkbox (no label) */}
+                  <IconToggleButton
+                    active={timeLapseEnabled}
+                    onClick={() => { setTimeLapseEnabled(v => !v); onLongPoseClear(); }}
+                    title={`Activer le mode time-lapse Depuis ${tlStartLabel}`}
+                    icon="timelapse"
+                  >
+                    <span>Time-lapse</span>
+                  </IconToggleButton>
+                  
                   <input
                     type="number"
                     inputMode="numeric"
@@ -929,9 +1251,9 @@ export default function TopBar({
                     <option value="synodic-fraction">jour lunaire</option>
                     <option value="lunar-fraction">cycle lunaire sidéral</option>
                   </select>
-                                    <button
+                  <button
                     type="button"
-                    className="ml-1 px-2 py-1 rounded border border-white/20 bg-white/10 hover:bg-white/15 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 cursor-pointer hover:border-white/30 text-sm"
                     onClick={onTimeLapsePrevFrame}
                     title="Image précédente (↶)"
                   >
@@ -939,7 +1261,7 @@ export default function TopBar({
                   </button>
                   <button
                     type="button"
-                    className="px-2 py-1 rounded border border-white/20 bg-white/10 hover:bg-white/15 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 cursor-pointer hover:border-white/30 text-sm"
                     onClick={onTimeLapseNextFrame}
                     title="Image suivante (↷)"
                   >
@@ -991,31 +1313,28 @@ export default function TopBar({
               </div>
               {/* --- /Time-lapse --- */}
               {/* --- Long Pose --- */}
+              {/* --- Long Pose --- */}
               <div className="mt-3">
-                <div className="text-xs uppercase tracking-wider text-white/60">Pose longue</div>
-
-                {/* Step value (integer) + unit */}
+                
                 <div className="mt-1 flex items-center gap-2 w-full">
-                  <span className="w-12 text-sm text-white/80">
-                    Simuler  
-                  </span><label className="inline-flex items-center gap-2 text-sm" title="Activer le mode pose longue">
-                    <input
-                      type="checkbox"
-                      checked={longPoseEnabled}
-                      onChange={(e) => setLongPoseEnabled(e.target.checked)}
-                    />
-                  </label>
-                  
+                  {/* Toggle button replaces checkbox (no label) */}
+                  <IconToggleButton
+                    active={longPoseEnabled}
+                    onClick={() => setLongPoseEnabled(!longPoseEnabled)}
+                    title="Activer le mode pose longue"
+                    icon="longpose"
+                  >
+                    <span>Pose longue</span>
+                  </IconToggleButton>
+
                   {/* reset persistence button */}
-                  <button
-                    type="button"
-                    className="px-2 py-1 rounded border border-white/20 bg-white/10 hover:bg-white/15 text-sm cursor-pointer"
+                  <IconToggleButton
+                    active={false}
                     onClick={onLongPoseClear}
                     title="Vider la persistance (⟲)"
-                    aria-label="Vider la persistance"
-                  >
-                    &#10226;
-                  </button>
+                    icon="clear"
+                  />
+                  
                 </div>
               </div>
             </div>
@@ -1027,116 +1346,152 @@ export default function TopBar({
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Visibilité</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Enlarge objects */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Augmenter la taille apparente des objets pour une meilleure visibilité">
-              <input type="checkbox" checked={enlargeObjects} onChange={(e) => setEnlargeObjects(e.target.checked)} />
-              <span>Agrandir les objets</span>
-            </label>
+            <IconToggleButton
+              active={enlargeObjects}
+              onClick={() => setEnlargeObjects(!enlargeObjects)}
+              title="Augmenter la taille apparente des objets pour une meilleure visibilité"
+              icon="enlarge"
+            />
             {/* Horizons toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la ligne d’horizon et les marqueurs d’horizon">
-              <input
-                type="checkbox"
-                checked={showHorizon}
-                onChange={(e) => setShowHorizon(e.target.checked)}
-              />
-              <span>Horizons</span>
-            </label>
+            <IconToggleButton
+              active={showHorizon}
+              onClick={() => setShowHorizon(!showHorizon)}
+              title="Afficher la ligne d’horizon et les marqueurs d’horizon"
+              icon="horizon"
+            />
             {/* Earth toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le sol (Terre)">
-              <input type="checkbox" checked={showEarth} onChange={(e) => setShowEarth(e.target.checked)} />
-              <span>Sol opaque</span>
-            </label>
+            <IconToggleButton
+              active={showEarth}
+              onClick={() => setShowEarth(!showEarth)}
+              title="Afficher le sol (Terre)"
+              icon="earth"
+            />
             {/* Atmosphere toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher l’effet d’atmosphère">
-              <input type="checkbox" checked={showAtmosphere} onChange={(e) => setShowAtmosphere(e.target.checked)} />
-              <span>Atmosphère</span>
-            </label>
+            <IconToggleButton
+              active={showAtmosphere}
+              onClick={() => setShowAtmosphere(!showAtmosphere)}
+              title="Afficher l’effet d’atmosphère"
+              icon="atmo"
+            />
             {/* Moon phase */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la phase de la Lune et des planètes">
-              <input type="checkbox" checked={showPhase} onChange={(e) => setShowPhase(e.target.checked)} />
-              <span>Phases Lune/Planètes</span>
-            </label>
+            <IconToggleButton
+              active={showPhase}
+              onClick={() => setShowPhase(!showPhase)}
+              title="Afficher la phase de la Lune et des planètes"
+              icon="phase"
+            />
             {/* Earthshine */}
-            <label
-              className="inline-flex items-center gap-2 text-sm"
+            <IconToggleButton
+              active={earthshine}
+              onClick={() => setEarthshine(!earthshine)}
               title={showPhase ? "Afficher le clair de Terre" : "Activez « Phase de la Lune » pour autoriser le clair de Terre"}
-            >
-              <input
-                type="checkbox"
-                checked={earthshine}
-                disabled={!showPhase}
-                onChange={(e) => setEarthshine(e.target.checked)}
-              />
-              <span>Clair de Terre</span>
-            </label>
+              icon="earthshine"
+              disabled={!showPhase}
+            />
           </div>
 
           {/* Groupe: Espace */}
           <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">Espace</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Sun toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le Soleil">
-              <input type="checkbox" checked={showSun} onChange={(e) => setShowSun(e.target.checked)} />
-              <span className="text-amber-300">Soleil</span>
-            </label>
+            <IconToggleButton
+              active={showSun}
+              onClick={() => setShowSun(!showSun)}
+              title="Afficher le Soleil"
+              icon="sun"
+            >
+              <span>Soleil</span>
+            </IconToggleButton>
             {/* Moon toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la Lune">
-              <input type="checkbox" checked={showMoon} onChange={(e) => setShowMoon(e.target.checked)} />
-              <span className="text-sky-300">Lune</span>
-            </label>
+            <IconToggleButton
+              active={showMoon}
+              onClick={() => setShowMoon(!showMoon)}
+              title="Afficher la Lune"
+              icon="moon"
+            >
+              <span>Lune</span>
+            </IconToggleButton>
             {/* Planètes */}
-            {uiPlanets.map(({ id, label }) => (
-              <label key={id} className="inline-flex items-center gap-2 text-sm" title={`Afficher ${label}`}>
-                <input
-                  type="checkbox"
-                  checked={showPlanets[id] ?? true}
-                  onChange={(e) => {
-                    const checked = e.target.checked;
-                    setShowPlanets(prev => ({ ...prev, [id]: checked }));
+            {uiPlanets.map(({ id, label }) => {
+              const active = (showPlanets[id] ?? true);
+              return (
+                <IconToggleButton
+                  key={id}
+                  active={active}
+                  onClick={() => {
+                    const next = !active;
+                    setShowPlanets(prev => ({ ...prev, [id]: next }));
                   }}
-                />
-                <span>{label}</span>
-              </label>
-            ))}
+                  title={`Afficher ${label}`}
+                  
+                >
+                  { id === 'Mercury' ? <span>&#9791; Mercure</span>
+                  : id === 'Venus' ? <span>&#9792; Vénus</span>
+                  : id === 'Mars' ? <span>&#9794; Mars</span>
+                  : id === 'Jupiter' ? <span>&#9795; Jupiter</span>
+                  : id === 'Saturn' ? <span>&#9796; Saturne</span>
+                  : id === 'Uranus' ? <span>&#9797; Uranus</span>
+                  : id === 'Neptune' ? <span>&#9798; Neptune</span>
+                  : id }
+                </IconToggleButton>
+              );
+            })}
             {/* Stars toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher le fond d’étoiles">
-              <input type="checkbox" checked={showStars} onChange={(e) => setShowStars(e.target.checked)} />
-              <span>Étoiles</span>
-            </label>
+            <IconToggleButton
+              active={showStars}
+              onClick={() => setShowStars(!showStars)}
+              title="Afficher le fond d’étoiles"
+              icon="stars"
+            >
+              <span>Etoiles</span>
+            </IconToggleButton>
           </div>
 
           {/* Groupe: Assistance */}
           <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">Assistance</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Grid toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher la grille de référence">
-              <input type="checkbox" checked={showGrid} onChange={(e) => setShowGrid(e.target.checked)} />
-              <span>Grille</span>
-            </label>
+            <IconToggleButton
+              active={showGrid}
+              onClick={() => setShowGrid(!showGrid)}
+              title="Afficher la grille de référence"
+              icon="grid"
+            />
             {/* Markers toggle */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les marqueurs (repères)">
-              <input type="checkbox" checked={showMarkers} onChange={(e) => setShowMarkers(e.target.checked)} />
-              <span>Marqueurs</span>
-            </label>
+            <IconToggleButton
+              active={showMarkers}
+              onClick={() => setShowMarkers(!showMarkers)}
+              title="Afficher les marqueurs (repères)"
+              icon="markers"
+            />
             {/* Sun cardinal helper */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux sur le Soleil">
-              <input type="checkbox" checked={showSunCard} onChange={(e) => setShowSunCard(e.target.checked)} />
-              <span>Cardinaux Soleil</span>
-            </label>
+            <IconToggleButton
+              active={showSunCard}
+              onClick={() => setShowSunCard(!showSunCard)}
+              title="Afficher les points cardinaux sur le Soleil"
+              icon="sunCard"
+            />
             {/* Ecliptique */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux sur le Soleil">
-              <input type="checkbox" checked={showEcliptique} onChange={(e) => setShowEcliptique(e.target.checked)} />
-              <span>Ecliptique</span>
-            </label>
+            <IconToggleButton
+              active={showEcliptique}
+              onClick={() => setShowEcliptique(!showEcliptique)}
+              title="Afficher l’écliptique"
+              icon="ecliptic"
+            />
             {/* Local cardinal helper */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Afficher les points cardinaux de la lune et des planètes">
-              <input type="checkbox" checked={showMoonCard} onChange={(e) => setShowMoonCard(e.target.checked)} />
-              <span>Cardinaux lune/planètes</span>
-            </label>
+            <IconToggleButton
+              active={showMoonCard}
+              onClick={() => setShowMoonCard(!showMoonCard)}
+              title="Afficher les points cardinaux de la Lune et des planètes"
+              icon="moonCard"
+            />
             {/* Debug helper */}
-            <label className="inline-flex items-center gap-2 text-sm" title="Activer les éléments de débogage visuel">
-              <input type="checkbox" checked={debugMask} onChange={(e) => setDebugMask(e.target.checked)} />
-              <span>Debug</span>
-            </label>
+            <IconToggleButton
+              active={debugMask}
+              onClick={() => setDebugMask(!debugMask)}
+              title="Activer les éléments de débogage visuel"
+              icon="debug"
+            />
           </div>
 
 

@@ -26,7 +26,7 @@ export default function DirectionalKeypad({
       style={{ zIndex }}
     >
       <button
-        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+        className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
         title={`Monter de ${stepAltDeg.toFixed(1)}°`}
         aria-label="Monter"
         onClick={() => {
@@ -41,7 +41,7 @@ export default function DirectionalKeypad({
       </button>
       <div className="flex items-center gap-2">
         <button
-          className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+          className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
           title={`Gauche de ${stepAzDeg.toFixed(1)}°`}
           aria-label="Gauche"
           onClick={() => {
@@ -55,7 +55,7 @@ export default function DirectionalKeypad({
           ←
         </button>
         <button
-          className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+          className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
           title="Recentrer"
           aria-label="Recentrer"
           onClick={() => {
@@ -67,7 +67,7 @@ export default function DirectionalKeypad({
           •
         </button>
         <button
-          className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+          className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
           title={`Droite de ${stepAzDeg.toFixed(1)}°`}
           aria-label="Droite"
           onClick={() => {
@@ -82,7 +82,7 @@ export default function DirectionalKeypad({
         </button>
       </div>
       <button
-        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
+        className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
         title={`Descendre de ${stepAltDeg.toFixed(1)}°`}
         aria-label="Descendre"
         onClick={() => {
