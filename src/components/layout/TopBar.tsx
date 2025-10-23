@@ -635,11 +635,11 @@ export default function TopBar({
         {id === 'phase' && (
           <>
             <circle cx="12" cy="12" r="10" {...s} stroke={stroke} />
-            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="#000" />
-            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#000" />
+            <path d="M4 12A8 8 0 0 1 20 12L4 12Z" fill="hsla(0, 85%, 54%, 1.00)" />
+            <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="hsla(0, 85%, 54%, 1.00)" />
             <path 
               d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z"
-              {...s} stroke={0} fill="hsla(0, 85%, 54%, 1.00)" />
+              {...s} stroke={0} fill={stroke} />
           </>
         )}
 

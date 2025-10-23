@@ -338,12 +338,13 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
   // Apparent Moon size in px decides render mode
   const moonApparentPx = useMemo(() => {
-    const p = projectToScreen(astro.moon.az, astro.moon.alt, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+    // Utiliser la même altitude que celle de projection pour éviter un basculement de mode au passage de l’horizon
+    const p = projectToScreen(astro.moon.az, moonAltForProj, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
     const pxPerDegX = p.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
     const pxPerDegY = p.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
     const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
     return (astro.moon.appDiamDeg ?? 0) * pxPerDeg;
-  }, [astro.moon.az, astro.moon.alt, astro.moon.appDiamDeg, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode]);
+  }, [astro.moon.az, moonAltForProj, astro.moon.appDiamDeg, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode]);
 
   const moonRenderMode = useMemo<'dot' | 'sprite' | '3d'>(() => {
     if (enlargeObjects) return '3d';
