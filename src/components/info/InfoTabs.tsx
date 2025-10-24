@@ -39,20 +39,27 @@ export default function InfoTabs({ initialTab = 'moontracker' }: { initialTab?: 
 
   return (
     <div className="w-full h-full flex flex-col">
-      <div role="tablist" aria-label="Informations" className="flex gap-2 p-2 border-b border-white/10 overflow-x-auto">
+      {/* Light tablist (aligned with InfoNav style) */}
+      <div role="tablist" aria-label="Informations" className="flex gap-2 p-2 border-b border-gray-200 overflow-x-auto">
         {TABS.map(t => (
           <button
             key={t.id}
             role="tab"
             aria-selected={active === t.id}
             onClick={() => setActive(t.id)}
-            className={`px-3 py-1.5 rounded-md text-sm border ${active === t.id ? 'border-white/40 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
+            className={[
+              'px-3 py-1.5 rounded-md text-sm border transition-colors',
+              active === t.id
+                ? 'border-gray-400 bg-gray-100 text-gray-900'
+                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+            ].join(' ')}
           >
             {t.label}
           </button>
         ))}
       </div>
-      <div role="tabpanel" className="flex-1 overflow-y-auto p-4 prose prose-invert max-w-none">
+      {/* Light prose with clear heading hierarchy */}
+      <div role="tabpanel" className="flex-1 overflow-y-auto p-4 prose prose-info max-w-none font-sans">
         {renderActive}
       </div>
     </div>

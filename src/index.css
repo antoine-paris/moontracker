@@ -1,2 +1,127 @@
+/* Tailwind v4 core */
 @import "tailwindcss";
+
+/* Register Typography plugin (v4) */
+@plugin "@tailwindcss/typography";
+
+/* Scoped light prose for /info + modal */
+.prose-info {
+  --tw-prose-body: #111827;
+  --tw-prose-headings: #111827;
+  --tw-prose-links: #4f46e5;
+  --tw-prose-bold: #111827;
+  --tw-prose-counters: #6b7280;
+  --tw-prose-bullets: #9ca3af;
+  --tw-prose-hr: #e5e7eb;
+  --tw-prose-quotes: #111827;
+  --tw-prose-quote-borders: #e5e7eb;
+  --tw-prose-captions: #6b7280;
+}
+
+/* Clear heading hierarchy (overrides plugin defaults) */
+.prose-info :where(h1) {
+  font-weight: 700; font-size: 2rem; line-height: 2.5rem;
+  margin-top: 0; margin-bottom: 0.75em;
+}
+.prose-info :where(h2) {
+  font-weight: 700; font-size: 1.5rem; line-height: 2rem;
+  margin-top: 1.5em; margin-bottom: 0.5em;
+}
+.prose-info :where(h3) {
+  font-weight: 600; font-size: 1.25rem; line-height: 1.75rem;
+  margin-top: 1em; margin-bottom: 0.4em;
+}
+.prose-info :where(p, ul, ol) { margin-top: 0.75em; margin-bottom: 0.75em; }
+.prose-info :where(a) { text-decoration: underline; }
+
+/* Modern palette + progressive indentation */
+.prose-info {
+  --pi-bg: #f8fafc;         /* slate-50 */
+  --pi-fg: #0f172a;         /* slate-900 */
+  --pi-muted: #64748b;      /* slate-500 */
+  --pi-border: #e2e8f0;     /* slate-200 */
+  --pi-accent: #8b5cf6;     /* violet-500 */
+  --pi-accent-2: #06b6d4;   /* cyan-500 */
+}
+
+.prose-info :where(h1) {
+  background: linear-gradient(90deg, var(--pi-accent), var(--pi-accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  margin-left: 5rem;
+  margin-right: 5rem;
+  text-align: justify;
+}
+
+.prose-info :where(h2) {
+  margin-left: 5rem;
+  margin-right: 5rem;
+  padding: 0.3rem 0.6rem 0.35rem;
+  border-left: 4px solid var(--pi-accent);
+  background: linear-gradient(90deg, rgba(139,92,246,0.06), rgba(6,182,212,0.06));
+  border-radius: 0.5rem;
+}
+
+.prose-info :where(h3) {
+  margin-left: 7.5rem;
+  margin-right: 7.5rem;
+  border-left: 3px solid var(--pi-accent-2);
+  color: var(--pi-fg);
+  background: linear-gradient(90deg, rgba(6,182,212,0.05), rgba(139,92,246,0.04));
+  border-radius: 0.5rem;
+}
+
+
+/* Paragraphs and lists indentation */
+.prose-info :where(p) {
+  margin-left: 5rem;
+  margin-right: 5rem;
+    color: var(--pi-fg); 
+    text-align: justify;
+}
+
+.prose-info :where(ul, ol) { 
+    margin-left: 7.5rem;
+    margin-right: 5rem;
+    padding-left: 1rem; 
+}
+
+.prose-info :where(li)::marker { color: var(--pi-accent); }
+
+/* Links */
+.prose-info :where(a) {
+  color: var(--pi-accent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+.prose-info :where(a:hover) { color: var(--pi-accent-2); }
+
+/* Subtle separators */
+.prose-info :where(hr) {
+  border-color: var(--pi-border);
+}
+
+/* Optional dark-mode adaptation for modals on dark backgrounds */
+@media (prefers-color-scheme: dark) {
+  .prose-info {
+    --pi-bg: #0b1020;
+    --pi-fg: #e5e7eb;
+    --pi-muted: #a1a1aa;
+    --pi-border: #1f2937;
+    --pi-accent: #a78bfa;   /* violet-400 */
+    --pi-accent-2: #22d3ee; /* cyan-400 */
+  }
+  .prose-info :where(li)::marker { color: var(--pi-accent); }
+  .prose-info :where(h2) {
+    background: linear-gradient(90deg, rgba(167,139,250,0.10), rgba(34,211,238,0.10));
+    border-left-color: var(--pi-accent);
+  }
+  .prose-info :where(h3) {
+    background: linear-gradient(90deg, rgba(34,211,238,0.08), rgba(167,139,250,0.06));
+    border-left-color: var(--pi-accent-2);
+  }
+  .prose-info :where(a) { color: var(--pi-accent); }
+  .prose-info :where(a:hover) { color: var(--pi-accent-2); }
+}
 

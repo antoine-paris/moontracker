@@ -160,7 +160,7 @@ export default function SimulationsTab() {
         {examples.map(ex => (
           <li key={ex.label} className="mb-4">
             <div className="font-semibold">{ex.label}</div>
-            {ex.desc && <div className="text-white/80 mb-1">{ex.desc}</div>}
+            {ex.desc && <div className="text-gray-600 mb-1">{ex.desc}</div>}
             <a
               href={buildExampleUrl(ex)}
               target="_blank"
@@ -172,7 +172,7 @@ export default function SimulationsTab() {
           </li>
         ))}
       </ul>
-      <p className="text-white/70 text-sm">
+      <p className="text-gray-500 text-sm">
         Astuce: ajustez ensuite la ville, la date/heure ou la projection, puis recopiez l’URL pour partager votre configuration.
       </p>
     </article>

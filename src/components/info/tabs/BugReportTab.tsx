@@ -11,7 +11,7 @@ export default function BugReportTab() {
       <h2>Étapes</h2>
       <ol>
         <li>
-          Ouvrir un ticket: <a href="https://github.com/votre-org/moontracker/issues" target="_blank" rel="noopener noreferrer">Nouvelle issue GitHub</a>.
+          Ouvrir un ticket: <a href="https://github.com/antoine-paris/moontracker/issues" target="_blank" rel="noopener noreferrer">Nouvelle issue GitHub</a>.
         </li>
         <li>
           Décrire le contexte: navigateur (version), OS, appareil, taille de fenêtre ou device pixel ratio si pertinent.

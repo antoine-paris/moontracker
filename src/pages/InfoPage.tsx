@@ -1,17 +1,65 @@
-import { useEffect } from 'react';
-import InfoTabs from '../components/info/InfoTabs';
+import { useEffect, useMemo } from 'react';
+import { Outlet, useLocation, Link } from 'react-router-dom';
+import InfoNav from '../components/info/InfoNav';
+import InfoLogo from '../components/info/InfoLogo';
 
 export default function InfoPage() {
+  const { pathname } = useLocation();
+
+  const seo = useMemo(() => {
+    if (pathname === '/info' || pathname === '/info/') {
+      return {
+        title: 'MoonTracker — Informations, Aide, Simulations',
+        desc: 'Aide MoonTracker, exemples de simulations, liens et guide de déclaration de bug. Visualisez Lune, Soleil, étoiles et planètes.',
+      };
+    }
+    if (pathname.startsWith('/info/aide')) {
+      return {
+        title: 'MoonTracker — Aide et documentation',
+        desc: 'Découvrez les options, projections, optiques et contrôles pour utiliser MoonTracker efficacement.',
+      };
+    }
+    if (pathname.startsWith('/info/simulations')) {
+      return {
+        title: 'MoonTracker — Simulations partageables',
+        desc: 'Ouvrez des configurations prêtes à l’emploi: éclipses, transits, oppositions, saisons, hémisphères.',
+      };
+    }
+    if (pathname.startsWith('/info/flat-earth')) {
+      return {
+        title: 'MoonTracker — Observations et vérifications',
+        desc: 'Vérifications reproductibles: terminateur lunaire, hauteur du Soleil, parallaxe, ciel austral.',
+      };
+    }
+    if (pathname.startsWith('/info/bug')) {
+      return {
+        title: 'MoonTracker — Déclarer un bug',
+        desc: 'Signalez un problème avec URL partageable, captures, contexte (navigateur, OS, appareil).',
+      };
+    }
+    return {
+      title: 'MoonTracker — Informations',
+      desc: 'Informations, aide et simulations pour MoonTracker.',
+    };
+  }, [pathname]);
+
   useEffect(() => {
     const prevTitle = document.title;
-    document.title = 'MoonTracker — Informations, Aide, Simulations';
+    document.title = seo.title;
+
     const metaDesc = document.querySelector('meta[name="description"]') || document.createElement('meta');
     metaDesc.setAttribute('name', 'description');
-    metaDesc.setAttribute('content', 'Aide MoonTracker, exemples de simulations, liens et guide de déclaration de bug. Visualisez Lune, Soleil, étoiles et planètes.');
+    metaDesc.setAttribute('content', seo.desc);
     if (!metaDesc.parentNode) document.head.appendChild(metaDesc);
 
-    const script = document.createElement('script');
-    script.type = 'application/ld+json';
+    // JSON-LD (SoftwareApplication), one instance with fixed id
+    let script = document.getElementById('schema-app') as HTMLScriptElement | null;
+    if (!script) {
+      script = document.createElement('script');
+      script.id = 'schema-app';
+      script.type = 'application/ld+json';
+      document.head.appendChild(script);
+    }
     script.text = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'SoftwareApplication',
@@ -22,24 +70,52 @@ export default function InfoPage() {
       description: 'Application web pour visualiser la Lune, le Soleil, les étoiles et les planètes en temps réel.',
       license: 'https://opensource.org/license/mit/',
     });
-    document.head.appendChild(script);
 
     return () => {
       document.title = prevTitle;
-      document.head.removeChild(script);
+      // keep meta and JSON-LD to benefit navigation between info pages
     };
-  }, []);
-
-  const hash = (typeof window !== 'undefined' ? window.location.hash.replace('#', '') : '') || 'moontracker';
+  }, [seo.title, seo.desc]);
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <header className="p-3 border-b border-white/10">
-        <a href="/" className="text-white/80 hover:text-white">← Retour</a>
+    <div className="min-h-screen bg-gray-50 text-gray-900">
+      {/* Cartouche standard */}
+      <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
+        <div className="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <InfoLogo />
+            <div className="flex flex-col leading-tight">
+              <span className="text-base font-semibold">MoonTracker</span>
+              <span className="text-xs text-gray-600">Informations et Aide</span>
+            </div>
+          </div>
+          <div>
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
+            >
+              ← Retour à l’application
+            </Link>
+          </div>
+        </div>
+        <div className="max-w-6xl mx-auto">
+          <InfoNav />
+        </div>
       </header>
-      <main className="max-w-6xl mx-auto p-3">
-        <InfoTabs initialTab={hash} />
+
+      {/* Contenu (prose claire avec hiérarchie H1/H2/H3) */}
+      <main className="max-w-6xl mx-auto px-3 py-4">
+        <section className="prose prose-info max-w-none font-sans">
+          {/* Les articles (tabs) existants rendent leurs H1/H2/H3 */}
+          <Outlet />
+        </section>
       </main>
+
+      <footer className="border-t border-gray-200 text-sm text-gray-600">
+        <div className="max-w-6xl mx-auto px-3 py-4">
+          © {new Date().getFullYear()} MoonTracker — MIT
+        </div>
+      </footer>
     </div>
   );
 }
