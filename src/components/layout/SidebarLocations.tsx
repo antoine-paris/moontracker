@@ -4,7 +4,7 @@ import appLogo from '../../assets/applogos/android-chrome-192x192.png';
 import type { LocationOption } from '../../data/locations';
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import * as THREE from 'three';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // + astro helpers to derive Sun direction at UTC
 import { getSunAndMoonAltAzDeg } from '../../astro/aeInterop';
 import { lstDeg } from '../../astro/time';
@@ -18,10 +18,6 @@ const SUN_LIGHT_INTENSITY = 10.0;
 const VIEWER_LIGHT_INTENSITY = 3.0;
 
 // Location marker parameters
-const LOCATION_MARKER_COLOR = '#ff0000'; // Bright red
-const LOCATION_MARKER_SIZE = 1.25; // Size relative to Earth radius (increased significantly)
-const LOCATION_MARKER_EMISSIVE_INTENSITY = 10.0; // Glow brightness (increased)
-const LOCATION_MARKER_OPACITY = 1.0; // Transparency (0-1)
 const LOCATION_MARKER_DISTANCE = 0.57; // Distance from Earth surface as fraction of radius (100% = close, 50% = 50% away)
 
 // Fix base GLB orientation (degrees)
@@ -250,7 +246,7 @@ function EarthScene({
   const dragRef = useRef<{ active: boolean; startX: number; startLng: number }>({ active: false, startX: 0, startLng: selectedLng });
 
   // Center and scale the model (best effort)
-  const { centeredScene, scale, radius } = useMemo(() => {
+  const { centeredScene, scale } = useMemo(() => {
     const scene = gltf.scene.clone(true);
     const box = new THREE.Box3().setFromObject(scene);
     const center = box.getCenter(new THREE.Vector3());

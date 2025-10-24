@@ -1,4 +1,3 @@
-import React from 'react';
 import { buildShareUrl } from '../../../utils/urlState';
 import type { FollowMode } from '../../../types';
 import type { LocationOption } from '../../../data/locations';
@@ -8,7 +7,7 @@ type Example = {
   desc?: string;
   when: string;            // ISO UTC
   follow: FollowMode;
-  projection: import("../../render/projection").ProjectionMode;
+  projection: import("../../../render/projection").ProjectionMode;
   loc: LocationOption;     // custom coords for robustness
   fovXDeg?: number;        // optional, defaults to 90°
 };

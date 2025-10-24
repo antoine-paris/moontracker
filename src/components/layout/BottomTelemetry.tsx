@@ -1,4 +1,3 @@
-import React from "react";
 import { AU_KM } from "../../astro/sun";
 import { formatDeg } from "../../utils/format";
 import { norm360 } from "../../utils/math";

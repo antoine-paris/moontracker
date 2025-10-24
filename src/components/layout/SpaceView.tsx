@@ -1,5 +1,4 @@
 import React, { useMemo, useState, useEffect, useCallback, forwardRef } from "react";
-import { Canvas } from '@react-three/fiber';
 
 // Astro core
 import { getSunAndMoonAltAzDeg, getSunOrientationAngles, sunOnMoon } from "../../astro/aeInterop";
@@ -21,7 +20,7 @@ import { localUpAngleOnScreen, correctedSpriteRotationDeg } from "../../render/o
 
 // Render constants & registry
 import { Z, MOON_RENDER_DIAMETER } from "../../render/constants";
-import { PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "../../render/planetRegistry";
+import { PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "../../render/PlanetRegistry";
 // NEW: imports to format HUD values
 import { formatDeg } from "../../utils/format";
 import { compass16 } from "../../utils/compass";
@@ -40,7 +39,7 @@ import Planet3D from "../stage/Planet3D";
 import Markers from "../stage/Markers";
 import Ground from "../stage/Ground"; 
 import Ecliptique from "../stage/Ecliptique";
-import { refractAltitudeDeg, unrefractAltitudeDeg } from "../../utils/refraction"; 
+import { unrefractAltitudeDeg } from "../../utils/refraction"; 
 
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
@@ -145,7 +144,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     onLongPoseAccumulated, 
     longPoseClearSeq = 0,
     timeLapseEnabled = false,
-    onLongPoseClear,
     showRefraction = true,
   } = props;
 
@@ -186,7 +184,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const sunDiamDeg = sunApparentDiameterDeg(date, sun.distAU);
 
     const moonParallaxDeg = moonHorizontalParallaxDeg(moon.distanceKm);
-    const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg ?? moon.alt);
+    const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg );
     const moonDiamDeg = moonApparentDiameterDeg(moonTopoKm);
 
     let moonLibrationTopo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
@@ -435,10 +433,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     }[] = [];
 
     for (const p of planetsEphemArr) {
-      const id = (p as any).id as string;
+      const id = (p as any).id as PlanetId;
       if (!id || !showPlanets[id]) continue;
 
-      const reg = PLANET_REGISTRY[id];
+      const reg = PLANET_REGISTRY[id as keyof typeof PLANET_REGISTRY];
       const color = reg?.color ?? '#9ca3af';
 
       const altRaw = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
@@ -715,7 +713,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const id = (pl as any).id as string;
       if (!showPlanets[id]) continue;
       const az = ((pl as any).azDeg ?? (pl as any).az) as number;
-      const reg = PLANET_REGISTRY[id];
+      const reg = PLANET_REGISTRY[id as keyof typeof PLANET_REGISTRY];
       if (az == null || !reg) continue;
       const pr = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
       if (pr.visibleX) out.push({ x: pr.x, az, label: reg.label, color: reg.color });
@@ -733,7 +731,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       .filter(pr => pr.visibleX && pr.visibleY)
       .map(pr => {
         const S = Math.max(1, Math.round(pr.sizePx));
-        const reg = PLANET_REGISTRY[pr.id];
+        const reg = PLANET_REGISTRY[pr.id as keyof typeof PLANET_REGISTRY];
         return {
           screen: { x: pr.x, y: pr.y, visibleX: pr.visibleX, visibleY: pr.visibleY },
           label: reg?.label ?? pr.id,
@@ -1115,9 +1113,6 @@ useEffect(() => {
             fovXDeg={fovXDeg}
             fovYDeg={fovYDeg}
             projectionMode={projectionMode}
-            date={date}
-            latDeg={latDeg}
-            lngDeg={lngDeg}
             showEarth={showEarth}
             debugMask={debugMask}
           />
@@ -1405,8 +1400,8 @@ useEffect(() => {
               y={p.y}
               visibleX={true}
               visibleY={true}
-              rotationDeg={p.rotationDegPlanetScreen}
-              angleToSunDeg={p.angleToSunDeg} // FIX: was rotationDegPlanetScreen
+              rotationDeg={p.rotationDegPlanetScreen ?? 0}
+              angleToSunDeg={p.angleToSunDeg} 
               phaseFraction={p.phaseFrac}
               wPx={S}
               hPx={S}
@@ -1482,10 +1477,6 @@ useEffect(() => {
         <canvas
           ref={lpCanvasRef}
           className="absolute"
-          gl={{ preserveDrawingBuffer: true }}
-            onCreated={({ gl }) => {
-            gl.domElement.setAttribute('data-stars-canvas', '1');
-          }}
           // Align to viewport so local coords are simple
           style={{
             // Optional: put ghosts below live sprites but above stars/grid

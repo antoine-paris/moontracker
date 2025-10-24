@@ -4,8 +4,7 @@ import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
 import { FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
 // planets registry for UI toggles
-import { PLANETS } from "../../render/planetRegistry";
-import { PLANET_REGISTRY } from "../../render/planetRegistry";
+import { PLANET_REGISTRY, PLANETS } from "../../render/PlanetRegistry";
 // NEW: projection helpers
 import { getValidProjectionModes, pickIdealProjection } from "../../render/projection";
 import type { ProjectionMode } from "../../render/projection";
@@ -127,7 +126,7 @@ type Props = {
 export default function TopBar({
   follow, setFollow,
   devices, deviceId, setDeviceId, zoomOptions, zoomId, setZoomId, CUSTOM_DEVICE_ID,
-  fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, linkFov, setLinkFov,
+  fovXDeg, fovYDeg, setFovXDeg, setFovYDeg, 
   viewport, onCommitWhenMs, setIsAnimating, isAnimating, speedMinPerSec, setSpeedMinPerSec,
   showSun, setShowSun, showMoon, setShowMoon, showPhase, setShowPhase,
   rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
@@ -158,19 +157,10 @@ export default function TopBar({
   timeLapseStartMs,
 
   longPoseEnabled, setLongPoseEnabled,
-  longPoseRetainFrames, setLongPoseRetainFrames,
+  
   onLongPoseClear,
 }: Props) {
-  const PRESET_SPEEDS = useMemo(() => [
-    { label: "1 min/s", value: 1 },
-    { label: "30 sec/s", value: 2 },
-    { label: "10 sec/s", value: 6 },
-    { label: "1 sec/s", value: 60 },
-    { label: "Temps réel", value: 1/60 },
-  ], []);
-
   
-
   // Browser local time and UTC time
   const currentDate = useMemo(() => new Date(currentUtcMs), [currentUtcMs]);
   
@@ -192,39 +182,9 @@ export default function TopBar({
     return d.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
   }, [timeLapseStartMs]);
 
-  const utcTime = useMemo(() => {
-    return currentDate.toISOString().replace('T', ' ').slice(0, 19) + ' UTC';
-  }, [currentDate]);
+  
 
-  // City-local time based on selected location's time zone
-  const cityLocalTimeString = useMemo(() => {
-    try {
-      return new Intl.DateTimeFormat('fr-FR', {
-        timeZone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-        timeZoneName: 'short',
-      }).format(currentDate);
-    } catch {
-      // Fallback: omit timeZoneName if Intl fails
-      return new Intl.DateTimeFormat('fr-FR', {
-        timeZone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: false,
-      }).format(currentDate);
-    }
-  }, [currentDate, timeZone]);
-
+  
   // Build "HH:MM in CityName (HH:MM UTC)"
   const { cityHM, utcHM } = useMemo(() => {
     const hmFmt = new Intl.DateTimeFormat('fr-FR', {
@@ -240,58 +200,6 @@ export default function TopBar({
     const cityHM = `${hmParts.hour ?? '00'}:${hmParts.minute ?? '00'}`;
     const utcHM = currentDate.toISOString().slice(11, 16);
     return { cityHM, utcHM };
-  }, [currentDate, timeZone]);
-
-  // Build "CityName HH:MM:SS UTC±HH:MM (HH:MM:SS UTC)"
-  const { cityHMS, utcHMS, offsetLabel } = useMemo(() => {
-    // City HH:MM:SS in selected time zone
-    const hmsFmt = new Intl.DateTimeFormat('fr-FR', {
-      timeZone,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    });
-    const hmsParts = hmsFmt.formatToParts(currentDate).reduce<Record<string, string>>((acc, p) => {
-      if (p.type !== 'literal') acc[p.type] = p.value;
-      return acc;
-    }, {});
-    const cityHMS = `${hmsParts.hour ?? '00'}:${hmsParts.minute ?? '00'}:${hmsParts.second ?? '00'}`;
-
-    // UTC HH:MM:SS
-    const utcHMS = currentDate.toISOString().slice(11, 19);
-
-    // Compute UTC offset for the selected time zone (±HH:MM)
-    const fullFmt = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hour12: false,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-    const parts = fullFmt.formatToParts(currentDate).reduce<Record<string, string>>((acc, p) => {
-      if (p.type !== 'literal') acc[p.type] = p.value;
-      return acc;
-    }, {});
-    const wallAsUTC = Date.UTC(
-      Number(parts.year),
-      Number(parts.month) - 1,
-      Number(parts.day),
-      Number(parts.hour),
-      Number(parts.minute),
-      Number(parts.second)
-    );
-    const offsetMin = Math.round((wallAsUTC - currentDate.getTime()) / 60000);
-    const sign = offsetMin >= 0 ? '+' : '-';
-    const abs = Math.abs(offsetMin);
-    const oh = String(Math.floor(abs / 60)).padStart(2, '0');
-    const om = String(abs % 60).padStart(2, '0');
-    const offsetLabel = `UTC${sign}${oh}:${om}`;
-
-    return { cityHMS, utcHMS, offsetLabel };
   }, [currentDate, timeZone]);
 
   // Local state for datetime input to prevent instability
@@ -447,7 +355,7 @@ export default function TopBar({
   const uiPlanets = useMemo(() => {
     return PLANETS.map((p: any) => {
       const id = (typeof p === 'string') ? p : (p?.id ?? String(p));
-      const label = PLANET_REGISTRY?.[id]?.label ?? p?.label ?? id;
+      const label = PLANET_REGISTRY?.[id as keyof typeof PLANET_REGISTRY]?.label ?? p?.label ?? id;
       return { id, label };
     });
   }, []);
@@ -480,7 +388,7 @@ export default function TopBar({
 
   // Icônes SVG pour les projections
   type ProjectionId = ProjectionMode;
-  const ProjectionIcon: React.FC<{ id: ProjectionId; active?: boolean; label?: string }> = ({ id, active = false, label }) => {
+  const ProjectionIcon: React.FC<{ id: ProjectionId; active?: boolean; label?: string }> = ({ id, label }) => {
     const stroke = 'currentColor';
     const strokeWidth = 1.5;
     const common = { fill: 'none', stroke, strokeWidth, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
@@ -572,7 +480,7 @@ export default function TopBar({
     | 'clear'
     | 'refraction';
 
-  const ToggleIcon: React.FC<{ id: ToggleIconId; active?: boolean; label?: string }> = ({ id, active = false, label }) => {
+  const ToggleIcon: React.FC<{ id: ToggleIconId; label?: string }> = ({ id,  label }) => {
     const stroke = 'currentColor';
     const fillColor = 'currentColor';
     const strokeWidth = 1.7;
@@ -640,7 +548,7 @@ export default function TopBar({
             <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="hsla(0, 85%, 54%, 1.00)" />
             <path 
               d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z"
-              {...s} stroke={0} fill={stroke} />
+              {...s} stroke={stroke} fill={stroke} />
           </>
         )}
 
@@ -652,7 +560,7 @@ export default function TopBar({
             <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="hsla(240, 70%, 68%, 1.00)" />
             <path 
               d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z"
-              {...s} stroke={0} fill={stroke}/>
+              {...s} stroke={stroke} fill={stroke}/>
           </>
         )}
 
@@ -672,7 +580,7 @@ export default function TopBar({
             <path d="M20 12A8 8 0 0 1 4 12L20 12Z" fill="#000" />
             <path 
               d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z"
-              {...s} stroke={0} fill={stroke} />
+              {...s} stroke={stroke} fill={stroke} />
           </>
         )}
 
@@ -829,7 +737,7 @@ export default function TopBar({
     onClick: () => void;
     title: string;
     disabled?: boolean;
-    icon: ToggleIconId;
+    icon?: ToggleIconId;
     children?: React.ReactNode;
   }> = ({ active, onClick, title, disabled, icon, children }) => {
     const handleActivate = (e?: React.SyntheticEvent) => {
@@ -863,7 +771,7 @@ export default function TopBar({
         disabled={disabled}
       >
         <span className="inline-flex items-center gap-1">
-          {icon && <ToggleIcon id={icon} active={active} label={title} />}  
+          {icon && <ToggleIcon id={icon} label={title} />}  
           {children ? <span>{children}</span> : null}
         </span>
       </button>
@@ -1137,7 +1045,7 @@ export default function TopBar({
               
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setIsAnimating(v => !v)}
+                  onClick={() => setIsAnimating(!isAnimating)}
                   className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
                   title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
                   aria-label={isAnimating ? "Pause" : "Lecture"}
@@ -1186,7 +1094,7 @@ export default function TopBar({
                   <button
                     title={`-1 min/s`}
                     onClick={() => {
-                      setSpeedMinPerSec(prev => clamp(prev - 1, -360, 360));
+                      setSpeedMinPerSec(clamp(speedMinPerSec - 1, -360, 360));
                       onLongPoseClear(); 
                       setTimeLapseEnabled(false);
                     }}
@@ -1211,7 +1119,7 @@ export default function TopBar({
                   <button
                     title="+1 min/s"
                     onClick={() => {
-                      setSpeedMinPerSec(prev => clamp(prev + 1, -360, 360));
+                      setSpeedMinPerSec(clamp(speedMinPerSec + 1, -360, 360));
                       onLongPoseClear(); 
                       setTimeLapseEnabled(false);
                     }}
@@ -1231,7 +1139,7 @@ export default function TopBar({
                   {/* Toggle button replaces checkbox (no label) */}
                   <IconToggleButton
                     active={timeLapseEnabled}
-                    onClick={() => { setTimeLapseEnabled(v => !v); onLongPoseClear(); }}
+                    onClick={() => { setTimeLapseEnabled(!timeLapseEnabled); onLongPoseClear(); }}
                     title={`Activer le mode time-lapse Depuis ${tlStartLabel}`}
                     icon="timelapse"
                   >

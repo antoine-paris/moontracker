@@ -1,4 +1,3 @@
-import React from "react";
 import { Z } from "../../render/constants";
 import { clamp } from "../../utils/math";
 
@@ -47,7 +46,7 @@ function computeGradientFromSunAlt(sunAltDeg?: number): string {
   return `linear-gradient(to top, ${horizonColor}, ${topColor})`;
 }
 
-export default function Athmosphere({ viewport, gradient, sunAltDeg, zIndex }: Props) {
+export default function Athmosphere({ gradient, sunAltDeg, zIndex }: Props) {
   const bg = gradient ?? computeGradientFromSunAlt(sunAltDeg);
 
   return (

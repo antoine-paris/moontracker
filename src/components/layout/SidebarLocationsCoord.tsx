@@ -64,10 +64,6 @@ export default function SidebarLocationsCoord({
     return { city: best, km: bestD, bearingFromCity: b };
   }, [locations, lat, lng]);
 
-  // NESO highlight state
-  const isN = lat > 0, isS = lat < 0;
-  const isE = lng > 0, isO = lng < 0;
-
   // Auto-apply: only when user changed lat/lng, locations are ready, and not placeholder
   useEffect(() => {
     if (!isActive) return;                 // act only when the tab is active

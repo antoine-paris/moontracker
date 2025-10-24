@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { projectToScreen } from "../../render/projection";
 import { clamp, norm360 } from "../../utils/math";
 
@@ -33,33 +33,6 @@ function minorForMajor(major: number) {
   return Math.max(major / 2, 0.5);
 }
 
-function buildPathFromPoints(points: Array<{ x: number; y: number; visible: boolean }>, gapPx = 32) {
-  let d = "";
-  let penDown = false;
-  let prev: { x: number; y: number } | null = null;
-  for (const p of points) {
-    if (!p.visible) { penDown = false; prev = null; continue; }
-    if (!penDown) {
-      d += `M${p.x.toFixed(2)},${p.y.toFixed(2)} `;
-      penDown = true;
-      prev = { x: p.x, y: p.y };
-      continue;
-    }
-    if (prev) {
-      const dx = p.x - prev.x;
-      const dy = p.y - prev.y;
-      if (dx * dx + dy * dy > gapPx * gapPx) {
-        d += `M${p.x.toFixed(2)},${p.y.toFixed(2)} `;
-      } else {
-        d += `L${p.x.toFixed(2)},${p.y.toFixed(2)} `;
-      }
-    } else {
-      d += `M${p.x.toFixed(2)},${p.y.toFixed(2)} `;
-    }
-    prev = { x: p.x, y: p.y };
-  }
-  return d.trim();
-}
 
 // Helpers: Alt/Az <-> unit vector in ENU (x=East, y=North, z=Up)
 const DEG = Math.PI / 180;
@@ -149,7 +122,7 @@ function estimateSmallCircleBBox(
   const table = getTrigTable(sampleStepDeg);
 
   const vc = altAzToVec(centerAltDeg, centerAzDeg);
-  let ref: readonly number[] = Math.abs(vc[2]) > 0.98 ? [1, 0, 0] : [0, 0, 1];
+  const ref: readonly number[] = Math.abs(vc[2]) > 0.98 ? [1, 0, 0] : [0, 0, 1];
   let u1 = cross(vc, ref);
   const u1len = Math.hypot(u1[0], u1[1], u1[2]) || 1;
   u1 = [u1[0] / u1len, u1[1] / u1len, u1[2] / u1len];
@@ -182,43 +155,6 @@ function estimateSmallCircleBBox(
   return { minX, minY, maxX, maxY, hasAny: any };
 }
 // +++ end added
-
-// Build a small-circle (constant angular radius) around a center (alt, az).
-function buildSmallCirclePath(
-  centerAltDeg: number,
-  centerAzDeg: number,
-  radiusDeg: number,
-  proj: (az: number, alt: number) => { x: number; y: number; visible: boolean },
-  thetaStepDeg = 15,
-  gapPx = 32
-) {
-  const vc = altAzToVec(centerAltDeg, centerAzDeg);
-  // pick a reference not parallel to vc
-  let ref: readonly number[] = Math.abs(vc[2]) > 0.98 ? [1, 0, 0] : [0, 0, 1];
-  let u1 = cross(vc, ref);
-  const u1len = Math.hypot(u1[0], u1[1], u1[2]) || 1;
-  u1 = [u1[0] / u1len, u1[1] / u1len, u1[2] / u1len];
-  let u2 = cross(u1, vc);
-  const u2len = Math.hypot(u2[0], u2[1], u2[2]) || 1;
-  u2 = [u2[0] / u2len, u2[1] / u2len, u2[2] / u2len];
-
-  const cr = Math.cos(radiusDeg * DEG);
-  const sr = Math.sin(radiusDeg * DEG);
-
-  const pts: { x: number; y: number; visible: boolean }[] = [];
-  for (let t = 0; t <= 360 + 1e-9; t += thetaStepDeg) {
-    const ct = Math.cos(t * DEG), st = Math.sin(t * DEG);
-    const v = [
-      vc[0] * cr + (u1[0] * ct + u2[0] * st) * sr,
-      vc[1] * cr + (u1[1] * ct + u2[1] * st) * sr,
-      vc[2] * cr + (u1[2] * ct + u2[2] * st) * sr,
-    ];
-    const { alt, az } = vecToAltAz(v);
-    const p = proj(az, alt);
-    pts.push({ x: p.x, y: p.y, visible: p.visible });
-  }
-  return buildPathFromPoints(pts, gapPx);
-}
 
 // +++ added: streaming builders using precomputed trig tables and minimal allocations
 function buildSmallCirclePathTable(
@@ -324,7 +260,6 @@ function buildGreatCircleFromNormalTable(
 // +++ end added
 
 // Colors (statics)
-const COLOR_MINOR = "rgba(219, 142, 142, 0.88)";
 const COLOR_MAJOR = "rgba(219, 142, 142, 0.88)";
 const COLOR_CARDINAL = "rgba(219, 142, 142, 0.88)";
 const COLOR_REF_CIRCLE = "rgba(219, 142, 142, 0.88)";
@@ -475,9 +410,9 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
     // Build compass-aligned meridians with classification
     const classifyAz = (az: number): "primary" | "inter" | "secondary" => {
       const a = norm360(az);
-      const isMultiple = (x: number, m: number) => Math.abs(a - Math.round(a / m) * m) < 1e-6;
-      if (isMultiple(a, 90)) return "primary";      // N, E, S, W
-      if (isMultiple(a, 45)) return "inter";        // NE, SE, SW, NW
+      const isMultiple = (m: number) => Math.abs(a - Math.round(a / m) * m) < 1e-6;
+      if (isMultiple(90)) return "primary";      // N, E, S, W
+      if (isMultiple(45)) return "inter";        // NE, SE, SW, NW
       return "secondary";                           // NNE, ENE, ESE, ...
     };
     const cardMeridians = meridianCardinals.map(az => ({
@@ -506,7 +441,6 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
 
     // Always render full 360° azimuth in all projections, including ortho
     const isOrtho = projectionMode === 'ortho';
-    const azSpan = 360;
     const azStart = Math.floor((refAzDeg - 180 - pad) / azQ) * azQ;
     const azEnd   = Math.ceil((refAzDeg + 180 + pad) / azQ) * azQ;
 

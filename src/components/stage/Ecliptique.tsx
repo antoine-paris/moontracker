@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { altAzFromRaDec } from "../../astro/stars";
 import { projectToScreen } from "../../render/projection";
 import { toRad, toDeg, norm360 } from "../../utils/math";

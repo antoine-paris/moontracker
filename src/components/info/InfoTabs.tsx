@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import MoonTrackerTab from './tabs/MoonTrackerTab';
 import HelpTab from './tabs/HelpTab';
 import SimulationsTab from './tabs/SimulationsTab';

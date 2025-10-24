@@ -37,7 +37,7 @@ import BottomTelemetry from "./components/layout/BottomTelemetry";
 // Import du logo (Vite)
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 import DirectionalKeypad from "./components/stage/DirectionalKeypad";
-import { PLANETS, PLANET_REGISTRY } from "./render/planetRegistry";
+import { PLANETS, PLANET_REGISTRY } from "./render/PlanetRegistry";
 import { getPlanetsEphemerides } from "./astro/planets";
 import { type PlanetId } from "./astro/planets";
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -1304,7 +1304,6 @@ export default function App() {
                     : `${device.label} — ${zoom?.label ?? ''}`}
                   overlayInfoString={`${overlayPlaceString}, ${cityLocalTimeString} heure locale (${utcTime})`}
                   longPoseEnabled={longPoseEnabled}
-                  longPoseRetainFrames={longPoseRetainFrames}
                   onLongPoseAccumulated={handleLongPoseAccumulated}
                   longPoseClearSeq={longPoseClearSeq}
                   timeLapseEnabled={timeLapseEnabled}

@@ -4,7 +4,7 @@ import { useGLTF, OrthographicCamera, Text, Billboard, Preload } from '@react-th
 import * as THREE from 'three';
 import { Z } from '../../render/constants';
 import type { PlanetId } from '../../astro/planets';
-import { PLANET_REGISTRY } from '../../render/planetRegistry';
+import { PLANET_REGISTRY } from '../../render/PlanetRegistry';
 import { formatDeg } from "../../utils/format";
 import { SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO } from '../../astro/planets'; // + add
 import { getOrProcess, PLANET_RELIEF_SCALE_DEFAULT } from '../../render/modelPrewarm';
