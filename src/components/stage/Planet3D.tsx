@@ -7,7 +7,10 @@ import type { PlanetId } from '../../astro/planets';
 import { PLANET_REGISTRY } from '../../render/PlanetRegistry';
 import { formatDeg } from "../../utils/format";
 import { SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO } from '../../astro/planets'; // + add
-import { getOrProcess, PLANET_RELIEF_SCALE_DEFAULT } from '../../render/modelPrewarm';
+import { getOrProcess } from '../../render/modelPrewarm';
+
+// Small helper type for 3D vectors used throughout the file
+type Vec3 = [number, number, number];
 
 // Light/relief defaults (can be overridden per-planet via PLANET_REGISTRY)
 const DEFAULT_SUNLIGHT_INTENSITY = 5.0;
@@ -17,11 +20,7 @@ const DEFAULT_NO_PHASE_AMBIENT_INTENSITY = 0.5;
 
 // Card overlay factors 
 const AXIS_LEN_FACTOR = 0.05;
-const N_SIZE_FACTOR = 0.18;
 const RING_RADIUS_FACTOR = 1.10;
-const RING_TUBE_FACTOR = 0.01;
-const AXIS_THICKNESS_FACTOR = 0.01;
-const CENTER_DOT_FACTOR = 0.04;
 const N_MARGIN_FACTOR = 0.08;
 const LABEL_MARGIN_SCALE = 0.25;
 const AXIS_GAP_FACTOR = 0.15;
@@ -32,8 +31,6 @@ const CARD_THICKNESS_PX = 1;  // épaisseur des traits/anneaux (px)
 const CARD_DOT_RADIUS_PX = 4; // rayon du point central (px)
 // tailles fixes écran (pixels) pour le texte et les cônes
 const LABEL_FONT_PX = 14;     // taille des lettres N/E/S/O en pixels
-const CONE_H_PX = 36;         // hauteur du cône en pixels
-const CONE_BASE_R_PX = 6;     // rayon de base du cône en pixels
 
 // Minimal/neutral GLB calibration with sensible defaults for card overlays
 type GlbCalib = {
@@ -56,7 +53,6 @@ function Model({
   showSubsolarCone = true,
   showPlanetCard = false,
   // rotation/orientation
-  limbAngleDeg,
   rotationDeg = 0,
   rotOffsetDegX = 0,
   rotOffsetDegY = 0,
@@ -66,7 +62,7 @@ function Model({
   glbCalib = DEFAULT_GLB_CALIB,
   orientationDegX,
   orientationDegY,
-  orientationDegZ,
+  //orientationDegZ,
   planetId,                 
   onMounted,  
 }: {
@@ -156,21 +152,12 @@ function Model({
     () => LABEL_FONT_PX / Math.max(1e-6, scale),
     [scale]
   );
-  const coneHLocal = useMemo(
-    () => CONE_H_PX / Math.max(1e-6, scale),
-    [scale]
-  );
-  const coneBaseRLocal = useMemo(
-    () => CONE_BASE_R_PX / Math.max(1e-6, scale),
-    [scale]
-  );
-
 
   // Neutral base + user offsets + "limb" rotation on Z (keep parity with Moon3D inputs)
   const baseX = glbCalib.rotationBaseDeg.x, baseY = glbCalib.rotationBaseDeg.y, baseZ = glbCalib.rotationBaseDeg.z;
   const oX = Number.isFinite(orientationDegX) ? (orientationDegX as number) : 0;
   const oY = Number.isFinite(orientationDegY) ? (orientationDegY as number) : 0;
-  const oZ = Number.isFinite(orientationDegZ) ? (orientationDegZ as number) : 0;
+  //const oZ = Number.isFinite(orientationDegZ) ? (orientationDegZ as number) : 0;
 
   const rotX = ((baseX + oX + rotOffsetDegX) * Math.PI) / 180;
   const rotY = ((baseY + oY + rotOffsetDegY) * Math.PI) / 180;
@@ -490,6 +477,37 @@ function FirstFrameReady({ armed, onReady }: { armed: boolean; onReady?: () => v
   }, [armed]);
   return null;
 }
+type Props = {
+  id: PlanetId;
+  x: number;
+  y: number;
+  wPx: number;
+  hPx: number;
+  planetAltDeg: number;
+  planetAzDeg: number;
+  sunAltDeg: number;
+  sunAzDeg: number;
+  rotationDeg: number;
+  limbAngleDeg: number;
+  modelUrl?: string;
+  debugMask?: boolean;
+  rotOffsetDegX?: number;
+  rotOffsetDegY?: number;
+  rotOffsetDegZ?: number;
+  camRotDegX?: number;
+  camRotDegY?: number;
+  camRotDegZ?: number;
+  showPhase?: boolean;
+  showPlanetCard?: boolean;
+  illumFraction?: number;
+  brightLimbAngleDeg?: number;
+  showSubsolarCone?: boolean;
+  reliefScale?: number;
+  orientationDegX?: number;
+  orientationDegY?: number;
+  orientationDegZ?: number;
+};
+
 export default function Planet3D({
   id,
   x, y, wPx, hPx,
@@ -510,9 +528,9 @@ export default function Planet3D({
   orientationDegX,
   orientationDegY,
   orientationDegZ,
-  onReady, // NEW
+  onReady, 
 }: Props & { onReady?: () => void }) {
-  const reg = PLANET_REGISTRY[id] as any;
+  const reg = PLANET_REGISTRY[id as keyof typeof PLANET_REGISTRY] as any;
   const renderCfg = (reg?.render) || {};
   const modelUrl = modelUrlOverride || reg?.modelUrl;
   if (!modelUrl) return null;
@@ -609,6 +627,13 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
       const sz = Math.cos(gamma); // +Z for Full
       return [sx, sy, sz];
     }
+    function mul(R: number[][], v: Vec3): Vec3 {
+      return [
+        R[0][0] * v[0] + R[0][1] * v[1] + R[0][2] * v[2],
+        R[1][0] * v[0] + R[1][1] * v[1] + R[1][2] * v[2],
+        R[2][0] * v[0] + R[2][1] * v[1] + R[2][2] * v[2],
+      ];
+    }
     return mul(R, vSun);
   }, [illumFraction, brightLimbAngleDeg, R, vSun]);
   //console.log(reg.label, " illumFraction: ", illumFraction);
@@ -652,22 +677,13 @@ function rotateAToB(a: Vec3, b: Vec3): number[][] {
   const canvasPx = Math.floor(targetPx * (1 + extraMargin));
   const left = x;
   const top  = y;
-  // Debug: show all incoming props
-  const debugProps = {
-    id,
-    limbAngleDeg,
-    illumFraction,
-    rotationDeg,
-    orientationDegX,
-    orientationDegY,  
-    orientationDegZ,
-  };
+  
   const debugText = id+"\n" +
-    "Eclairé : " + formatDeg(limbAngleDeg) + " " + (illumFraction * 100).toFixed(2) + "%, " + "\n " +
+    "Eclairé : " + formatDeg(limbAngleDeg) + " " + (illumFraction??0 * 100).toFixed(2) + "%, " + "\n " +
     "RotZ Ecran : " + formatDeg(rotationDeg) + "\n" +
-    "RotX astro : " + formatDeg(orientationDegX) + "\n" +
-    "RotY astro : " + formatDeg(orientationDegY) + "\n" +
-    "RotZ astro : " + formatDeg(orientationDegZ) + "\n";
+    "RotX astro : " + formatDeg(orientationDegX??0) + "\n" +
+    "RotY astro : " + formatDeg(orientationDegY??0) + "\n" +
+    "RotZ astro : " + formatDeg(orientationDegZ??0) + "\n";
 
   //JSON.stringify(debugProps.lim, null, 2);
 

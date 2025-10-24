@@ -1,13 +1,13 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Z } from "../../render/constants";
 import { projectToScreen } from "../../render/projection";
 
 // Colors (kept consistent with Earth.tsx)
 const COLOR_GROUND = "hsla(125, 64%, 12%, 1.00)";
 const COLOR_GROUND_FRONT = "rgba(19, 246, 72, 0.53)";
-const COLOR_GROUND_BACK = "#f6131387";
+
 const COLOR_HZ_FRONT = "hsla(0, 93%, 52%, 0.90)";
-const COLOR_HZ_BACK = "hsla(61, 91%, 50%, 1.00)";
+
 
 // NEW: Flat-mode thresholds (same spirit as Earth.tsx)
 const FLAT_FOV_X_THRESHOLD = 58;

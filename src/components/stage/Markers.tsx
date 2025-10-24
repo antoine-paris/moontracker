@@ -9,22 +9,6 @@ export type ScreenPoint = {
   visibleY?: boolean;
 };
 
-type HorizonPoint = {
-  x: number;
-  visibleX?: boolean;
-};
-
-type SizePx = { w: number; h: number };
-
-type Planet = {
-  // accept either name or label (App.tsx sends "label")
-  name?: string;
-  label?: string;
-  screen: ScreenPoint;
-  // size can be omitted (optional chaining already used below)
-  size?: SizePx;
-  color: string;
-};
 
 type Props = {
   showMarkers: boolean;
@@ -56,7 +40,7 @@ export default function Markers(props: Props) {
     showSun, sunScreen, sunSize,
     showMoon, moonScreen, moonSize,
     polarisScreen,
-    sunColor, moonColor, polarisColor, cruxColor,
+    sunColor, moonColor, polarisColor, 
     planets,
   } = props;
 

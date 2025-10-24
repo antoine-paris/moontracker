@@ -7,7 +7,7 @@ type ProjCtx = {
   viewport: { w: number; h: number };
   fovXDeg: number;
   fovYDeg: number;
-  projectionMode: import("../../render/projection").ProjectionMode;
+  projectionMode: import("./projection").ProjectionMode;
 };
 
 /**

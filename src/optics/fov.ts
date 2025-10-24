@@ -34,7 +34,7 @@ export function fovFromF35(f35: number, aspect = 4 / 3) {
   return { h: toDeg(hf), v: toDeg(vf) };
 }
 
-export function f35FromFov(hDeg: number, vDeg: number, aspect = 4 / 3) {
+export function f35FromFov( vDeg: number, aspect = 4 / 3) {
   const vf = toRad(Math.max(1e-6, Math.min(179.999, vDeg)));
   const k = Math.tan(vf / 2);
   const alpha = Math.atan(k * Math.sqrt(aspect * aspect + 1));
@@ -56,7 +56,7 @@ export function f35FromFovH(hDeg: number, aspect = 4 / 3) {
 
 // New: best-of using both axes (yields the smaller 35mm eq for wide FOVs)
 export function f35FromFovBest(hDeg: number, vDeg: number, aspect = 4 / 3) {
-  const fV = f35FromFov(hDeg, vDeg, aspect);
+  const fV = f35FromFov(vDeg, aspect);
   const fH = f35FromFovH(hDeg, aspect);
   return Math.min(fV, fH);
 }

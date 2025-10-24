@@ -18,9 +18,6 @@ const AXIS_LEN_FACTOR = 0.125; // longueur du trait nord raccourcie (‑75%)
 const N_SIZE_FACTOR = 0.18;    // hauteur du "N" = 0.18R
 // Paramètres par défaut (verrouillés) des indicateurs cardinaux
 const RING_RADIUS_FACTOR = 1.10;     // altitude des anneaux au-dessus de la surface (1.10 = +10% du rayon)
-const RING_TUBE_FACTOR = 0.01;       // épaisseur du torus (tube) vs rayon lunaire
-const AXIS_THICKNESS_FACTOR = 0.01;  // épaisseur du cylindre de l’axe nord vs rayon
-const CENTER_DOT_FACTOR = 0.04;      // rayon du point central vs rayon
 const N_MARGIN_FACTOR = 0.08;        // marge verticale du label "N" au-dessus de l’axe (en R)
 const LABEL_MARGIN_SCALE = 0.25;     // marge réduite proportionnellement au raccourcissement de l’axe
 const AXIS_GAP_FACTOR = 0.15;        // écarte les traits cardinaux du limbe (en R)
@@ -496,7 +493,6 @@ export default function Moon3D({
   showMoonCard = false,
   illumFraction,
   brightLimbAngleDeg,
-  showSubsolarCone = true,
   earthshine = false,
   reliefScale = MOON_RELIEF_SCALE_DEFAULT,
   onReady,

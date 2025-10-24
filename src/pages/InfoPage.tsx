@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import InfoTabs from '../components/info/InfoTabs';
 
 export default function InfoPage() {

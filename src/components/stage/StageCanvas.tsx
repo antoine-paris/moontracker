@@ -1,4 +1,4 @@
-import React from "react";
+
 import { Z } from "../../render/constants";
 
 export type Viewport = { x: number; y: number; w: number; h: number };

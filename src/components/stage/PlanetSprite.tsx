@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import { useMemo } from 'react';
 import { Z } from '../../render/constants';
 import { sampleTerminatorLUT } from '../../astro/lut';
 import { SATURN_RING_OUTER_TO_GLOBE_DIAM_RATIO, SATURN_RING_INNER_TO_GLOBE_DIAM_RATIO } from '../../astro/planets';

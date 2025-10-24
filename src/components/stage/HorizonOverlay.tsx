@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Z } from "../../render/constants";
 import { projectToScreen } from "../../render/projection";
 
@@ -67,68 +67,10 @@ export default function HorizonOverlay({
   fovXDeg,
   fovYDeg,
   projectionMode,
-  showEarth = false,
   debugMask = false,
 }: Props) {
   // NEW: avoid closer ±90° to prevent singularities
   const refAltDegSafe = refAltDeg > 89 ? 89 : (refAltDeg < -89 ? -89 : refAltDeg);
-
-  // Robust 360° horizon path (ignores FOV clipping, handles seams)
-  const buildAltPath360 = (altDeg: number) => {
-    const startAz = refAzDeg - 180;
-    const endAz = refAzDeg + 180;
-    const steps = 720; // 0.5° resolution
-    const step = (endAz - startAz) / steps;
-    const maxJump2 = Math.pow(0.3 * Math.hypot(viewport.w, viewport.h), 2);
-
-    let d = "";
-    let inSeg = false;
-    let prev: { x: number; y: number } | null = null;
-
-    for (let i = 0; i <= steps; i++) {
-      const az = startAz + i * step;
-      const p = projectToScreen(
-        az,
-        altDeg,
-        refAzDeg,
-        viewport.w,
-        viewport.h,
-        refAltDegSafe,
-        0,
-        fovXDeg,
-        fovYDeg,
-        projectionMode
-      );
-      const finite = Number.isFinite(p.x) && Number.isFinite(p.y);
-      if (!finite) {
-        inSeg = false;
-        prev = null;
-        continue;
-      }
-
-      const x = p.x;
-      const y = p.y;
-
-      // Break at projection seams/large jumps to avoid long wrap lines
-      if (prev) {
-        const dx = x - prev.x, dy = y - prev.y;
-        if (dx * dx + dy * dy > maxJump2) {
-          inSeg = false;
-          prev = null;
-        }
-      }
-
-      if (!inSeg) {
-        d += `M ${x.toFixed(2)} ${y.toFixed(2)} `;
-        inSeg = true;
-      } else {
-        d += `L ${x.toFixed(2)} ${y.toFixed(2)} `;
-      }
-      prev = { x, y };
-    }
-
-    return d.trim();
-  };
 
   // --- helpers to build the prime-vertical great circle (through zenith, crossing horizon at refAz±90)
   const buildHorizonFrontBackPaths = (altDeg = 0) => {
@@ -354,13 +296,13 @@ export default function HorizonOverlay({
   };
 
   // Horizon split in two parts (memoized)
-  const { frontD: horizonFrontPath, backD: horizonBackPath, frontSegs, backSegs } = useMemo(
+  const { frontD: horizonFrontPath, backD: horizonBackPath} = useMemo(
     () => buildHorizonFrontBackPaths(0),
     [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
   );
 
   // Prime-vertical top/bottom arcs (memoized)
-  const { topPath, bottomPath, bottomLabelPath, bottomSegs, topSegs } = useMemo(
+  const { topPath, bottomPath, bottomLabelPath} = useMemo(
     () => buildPrimeVerticalPaths(),
     [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
   );

@@ -8,8 +8,6 @@ export type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cyl
 
 function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
 function toRad(d: number) { return (d * Math.PI) / 180; }
-function toDeg(r: number) { return (r * 180) / Math.PI; }
-function norm360(v: number) { return ((v % 360) + 360) % 360; }
 function dot(a: readonly number[], b: readonly number[]) { return a[0]*b[0] + a[1]*b[1] + a[2]*b[2]; }
 function cross(a: readonly number[], b: readonly number[]) {
   return [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]] as const;

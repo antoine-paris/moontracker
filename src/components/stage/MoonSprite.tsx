@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { Z } from "../../render/constants";
 import { sampleTerminatorLUT } from "../../astro/lut";
 import moonImg from "../../assets/moon.2709.jpg";

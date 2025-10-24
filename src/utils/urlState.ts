@@ -4,6 +4,7 @@ import type { LocationOption } from '../data/locations';
 import type { Device } from '../optics/types';
 import { clamp } from '../utils/math';
 import { FOV_DEG_MIN, FOV_DEG_MAX } from '../optics/fov';
+import type { ProjectionMode } from '../render/projection';
 
 type DeviceLike = Device;
 
@@ -70,27 +71,9 @@ function normLng(lon: number) {
   return x;
 }
 
-function parseBool(v: string | null, def = false) {
-  if (v == null) return def;
-  const s = v.toLowerCase();
-  return s === '1' || s === 'true' || s === 'yes' || s === 'on';
-}
-
-function parseNum(v: string | null, def: number) {
-  if (v == null) return def;
-  const n = Number(v);
-  return Number.isFinite(n) ? n : def;
-}
-
-function parseEnum<T extends string>(v: string | null, allowed: readonly T[], def: T): T {
-  if (!v) return def;
-  const up = v.toUpperCase() as T;
-  return (allowed as readonly string[]).includes(up) ? (up as T) : def;
-}
-
 const FOLLOW_ALLOWED = ['SOLEIL','LUNE','MERCURE','VENUS','MARS','JUPITER','SATURNE','URANUS','NEPTUNE','N','E','S','O'] as const;
 // Garder l'ordre initial des 4 premiers pour compatibilité des indices 'p'
-const PROJ_LIST = ['recti-panini','stereo-centered','ortho','cylindrical','rectilinear','cylindrical-horizon'] as const;
+const PROJ_LIST: readonly ProjectionMode[] = ['recti-panini','stereo-centered','ortho','cylindrical','rectilinear','cylindrical-horizon'] as const;
 
 // NEW: timelapse units (order matters for compact header)
 const TL_UNITS = ['minute','hour', 'day', 'sidereal-day', 'month', 'lunar-fraction', 'synodic-fraction'] as const;
@@ -205,8 +188,8 @@ export type UrlInitArgs = {
 
   // enums
   setFollow: (f: FollowMode) => void;
-  setProjectionMode: (p: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical'|'rectilinear'|'cylindrical-horizon') => void;
-
+  setProjectionMode: (p: ProjectionMode) => void;
+ 
   // toggles
   setShowSun: (b: boolean) => void;
   setShowMoon: (b: boolean) => void;
@@ -355,8 +338,10 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
   const pIdx = q.get('p');
   if (pIdx != null) {
     const idx = fromB36Int(pIdx);
-    const v = PROJ_LIST[idx as keyof typeof PROJ_LIST];
-    if (v) setProjectionMode(v);
+    if (Number.isFinite(idx) && idx >= 0 && Number.isInteger(idx) && idx < PROJ_LIST.length) {
+      const v = PROJ_LIST[idx];
+      setProjectionMode(v);
+    }
   }
 
   // Device / zoom / focal / FOV
@@ -578,7 +563,7 @@ export type BuildShareUrlArgs = {
   locations: LocationOption[];
   // enums
   follow: FollowMode;
-  projectionMode: import("../../render/projection").ProjectionMode;
+  projectionMode: ProjectionMode;
   // optics
   deviceId: string;
   zoomId: string;

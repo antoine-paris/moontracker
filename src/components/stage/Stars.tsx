@@ -1,7 +1,6 @@
 import React from "react";
 import { lstDeg } from "../../astro/time";
 import { projectToScreen } from "../../render/projection";
-import { createPortal } from "react-dom";
 import { Z } from "../../render/constants";
 import { refractAltitudeDeg } from "../../utils/refraction"; // NEW
 
@@ -254,11 +253,6 @@ function altAzFromPrecomputed(
   const azDeg = norm360(toDeg(A));
 
   return { altRad: alt, azDeg };
-}
-
-// NEW: small azimuth difference helper [-180, 180]
-function angleDiffDeg(a: number, b: number) {
-  return ((a - b + 540) % 360) - 180;
 }
 
 function useExternalDebug(debugProp?: boolean) {
@@ -550,11 +544,9 @@ export default function Stars({
     }
   }, [centroidAlt, centroidAz, onCruxCentroid, showMarkers]);
 
-  const fmt = (v?: number, frac = 2) => (typeof v === "number" ? v.toFixed(frac) : "");
-
   // Measure an anchor placed at the viewport top-left (inside Stars wrapper)
   const anchorRef = React.useRef<HTMLDivElement | null>(null);
-  const [anchorPos, setAnchorPos] = React.useState<{ left: number; top: number }>({ left: 0, top: 0 });
+  const [, setAnchorPos] = React.useState<{ left: number; top: number }>({ left: 0, top: 0 });
   React.useLayoutEffect(() => {
     const upd = () => {
       const r = anchorRef.current?.getBoundingClientRect();

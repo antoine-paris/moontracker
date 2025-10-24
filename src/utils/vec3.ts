@@ -1,4 +1,4 @@
-import { toRad, toDeg, norm360 } from '../utils/math';
+import { toRad } from '../utils/math';
 
 export function altAzToVec(azDeg: number, altDeg: number) {
   const az = toRad(azDeg);
