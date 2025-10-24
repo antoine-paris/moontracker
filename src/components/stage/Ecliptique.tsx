@@ -4,13 +4,8 @@ import { projectToScreen } from "../../render/projection";
 import { toRad, toDeg, norm360 } from "../../utils/math";
 import { refractAltitudeDeg } from "../../utils/refraction"; // ADD
 
-type ProjectionMode =
-  | 'recti-panini'
-  | 'stereo-centered'
-  | 'ortho'
-  | 'cylindrical'
-  | 'rectilinear'
-  | 'cylindrical-horizon';
+import type { ProjectionMode } from "../../render/projection";
+
 
 export interface EcliptiqueProps {
   // Temps & observateur

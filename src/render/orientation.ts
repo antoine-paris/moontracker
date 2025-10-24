@@ -7,7 +7,7 @@ type ProjCtx = {
   viewport: { w: number; h: number };
   fovXDeg: number;
   fovYDeg: number;
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
+  projectionMode: import("../../render/projection").ProjectionMode;
 };
 
 /**

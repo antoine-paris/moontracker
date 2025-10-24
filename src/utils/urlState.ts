@@ -578,7 +578,7 @@ export type BuildShareUrlArgs = {
   locations: LocationOption[];
   // enums
   follow: FollowMode;
-  projectionMode: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical'|'rectilinear'|'cylindrical-horizon';
+  projectionMode: import("../../render/projection").ProjectionMode;
   // optics
   deviceId: string;
   zoomId: string;

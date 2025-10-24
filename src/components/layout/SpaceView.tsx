@@ -16,6 +16,7 @@ import { getMoonOrientationAngles } from "../../astro/aeInterop";
 import { toDeg, toRad, norm360, clamp } from "../../utils/math";
 import { altAzToVec, normalize3 } from "../../utils/vec3";
 import { projectToScreen } from "../../render/projection";
+import type { ProjectionMode } from "../../render/projection";
 import { localUpAngleOnScreen, correctedSpriteRotationDeg } from "../../render/orientation";
 
 // Render constants & registry
@@ -56,8 +57,6 @@ const PLANET_3D_SWITCH_PX = 20;
 
 // FIXED retain frames for long pose compositor
 const LONGPOSE_RETAIN_FRAMES = 400;
-
-export type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
 
 export interface SpaceViewProps {
   // Time & observer

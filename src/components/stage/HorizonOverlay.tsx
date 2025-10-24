@@ -23,7 +23,8 @@ type Props = {
   refAltDeg: number;
   fovXDeg: number;
   fovYDeg: number;
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho'  | 'cylindrical'; // NEW: projection mode
+  // Change to shared ProjectionMode
+  projectionMode: import("../../render/projection").ProjectionMode;
   // visuals
   showEarth?: boolean;
   debugMask?: boolean; // NEW: debug mask passthrough

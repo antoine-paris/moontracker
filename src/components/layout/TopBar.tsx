@@ -8,6 +8,7 @@ import { PLANETS } from "../../render/planetRegistry";
 import { PLANET_REGISTRY } from "../../render/planetRegistry";
 // NEW: projection helpers
 import { getValidProjectionModes, pickIdealProjection } from "../../render/projection";
+import type { ProjectionMode } from "../../render/projection";
 
 export type Viewport = { x: number; y: number; w: number; h: number };
 
@@ -93,9 +94,9 @@ type Props = {
   showGrid: boolean;
   setShowGrid: (v: boolean) => void;
 
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
-  setProjectionMode: (m: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon') => void;
-
+  projectionMode: ProjectionMode;
+  setProjectionMode: (m: ProjectionMode) => void;
+  
   showPlanets: Record<string, boolean>;
   setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 
@@ -478,7 +479,7 @@ export default function TopBar({
 
 
   // Icônes SVG pour les projections
-  type ProjectionId = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
+  type ProjectionId = ProjectionMode;
   const ProjectionIcon: React.FC<{ id: ProjectionId; active?: boolean; label?: string }> = ({ id, active = false, label }) => {
     const stroke = 'currentColor';
     const strokeWidth = 1.5;

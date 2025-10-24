@@ -15,7 +15,7 @@ type Props = {
   refAltDeg: number;
   fovXDeg: number;
   fovYDeg: number;
-  projectionMode: 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical';
+  projectionMode: import("../../render/projection").ProjectionMode;
 
   // Only keep bodyItems coming from parent; cardinals are computed here
   bodyItems?: BodyItem[];

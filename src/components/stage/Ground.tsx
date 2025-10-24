@@ -13,7 +13,7 @@ const COLOR_HZ_BACK = "hsla(61, 91%, 50%, 1.00)";
 const FLAT_FOV_X_THRESHOLD = 58;
 const FLAT_FOV_Y_THRESHOLD = 40;
 
-type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
+import type { ProjectionMode } from "../../render/projection";
 
 type Props = {
   viewport: { x: number; y: number; w: number; h: number };

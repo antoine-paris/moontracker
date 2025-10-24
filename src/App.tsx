@@ -30,6 +30,7 @@ import { computeEclipseInfo } from "./astro/eclipseHelpers";
 // Projection
 import TopBar from "./components/layout/TopBar";
 import { computeViewport } from "./render/viewport";
+import type { ProjectionMode } from "./render/projection";
 
 import BottomTelemetry from "./components/layout/BottomTelemetry";
 
@@ -39,7 +40,7 @@ import DirectionalKeypad from "./components/stage/DirectionalKeypad";
 import { PLANETS, PLANET_REGISTRY } from "./render/planetRegistry";
 import { getPlanetsEphemerides } from "./astro/planets";
 import { type PlanetId } from "./astro/planets";
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { prewarmModel, MOON_RELIEF_SCALE_DEFAULT, PLANET_RELIEF_SCALE_DEFAULT } from './render/modelPrewarm';
 import PhotoFrame from "./components/stage/PhotoFrame"; // + add
 import SpaceView from "./components/layout/SpaceView";
@@ -250,7 +251,7 @@ export default function App() {
      const sunDiamDeg = sunApparentDiameterDeg(date, sunDistAU);
      // Parallaxe horizontale et distance topocentrique
      const moonParallaxDeg = moonHorizontalParallaxDeg(moon.distanceKm);
-     const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg ?? moon.alt);
+     const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg );
      const moonDiamDeg = moonApparentDiameterDeg(moonTopoKm);
      // Libration (Meeus): géocentrique + topocentrique (apparente)
      let moonLibrationGeo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
@@ -431,7 +432,7 @@ export default function App() {
   - "Stereographic centered" (for Educational sky): stereographic centered on the reference direction to keep intuition for angular distances and directions.
   - "Orthographic" (for All-sky context) : orthographic (hemisphere) 
   */
-  const [projectionMode, setProjectionMode] = useState<'recti-panini' | 'rectilinear' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'cylindrical-horizon'>('recti-panini');
+  const [projectionMode, setProjectionMode] = useState<ProjectionMode>('recti-panini');
 
   // Cadre appareil photo automatique: actif si un appareil/zoom est sélectionné (non "Personnalisé")
   const showCameraFrame = deviceId !== CUSTOM_DEVICE_ID;

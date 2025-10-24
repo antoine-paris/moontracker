@@ -4,7 +4,7 @@
 
 // --- OLD: Full projection implementation (kept for reference) ---
 
-type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
+export type ProjectionMode = 'recti-panini' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'rectilinear' | 'cylindrical-horizon';
 
 function clamp(v: number, a: number, b: number) { return Math.max(a, Math.min(b, v)); }
 function toRad(d: number) { return (d * Math.PI) / 180; }

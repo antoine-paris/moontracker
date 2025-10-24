@@ -8,7 +8,7 @@ type Example = {
   desc?: string;
   when: string;            // ISO UTC
   follow: FollowMode;
-  projection: 'recti-panini'|'stereo-centered'|'ortho'|'cylindrical'|'rectilinear'|'cylindrical-horizon';
+  projection: import("../../render/projection").ProjectionMode;
   loc: LocationOption;     // custom coords for robustness
   fovXDeg?: number;        // optional, defaults to 90°
 };
