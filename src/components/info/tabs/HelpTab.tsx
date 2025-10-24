@@ -10,11 +10,12 @@ type IconId =
   | 'location' | 'search' | 'keyboard' | 'globe' | 'arrow' | 'center';
 
 function I({ id, title }: { id: IconId; title?: string }) {
-  const wrap = 'inline-flex items-center justify-center w-5 h-5 rounded bg-black text-white/90 border border-white/20 mr-2 align-text-bottom';
+  const wrap = 'inline-flex items-center justify-center w-[30px] h-[30px] rounded bg-black text-white/90 border border-white/20 mr-2 align-middle';
   const s = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
   return (
     <span className={wrap} title={title} aria-hidden="true">
-      <svg width="16" height="16" viewBox="0 0 24 24">
+      <svg className="w-[22px] h-[22px]" width="24" height="24" viewBox="0 0 24 24">
+
         {id === 'info' && (<><circle cx="12" cy="12" r="9" stroke="currentColor" fill="none" strokeWidth="2" /><rect x="11" y="10" width="2" height="6" rx="1" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/></>)}
         {id === 'panels' && <path d="M4 7h16M4 12h10M4 17h7" {...s} />}
         {id === 'play' && <path d="M8 5l12 7-12 7V5z" fill="currentColor" />}
