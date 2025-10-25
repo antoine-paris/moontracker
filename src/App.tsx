@@ -47,7 +47,7 @@ import SpaceView from "./components/layout/SpaceView";
 import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
-import { copyAndDownloadNodeAsPng } from './utils/capture';
+import { copyAndDownloadNodeAsPngAndJpeg } from './utils/capture';
 import { unrefractAltitudeDeg } from "./utils/refraction"; // ADD
 import InfoModal from "./components/info/InfoModal"; // NEW
 
@@ -78,15 +78,7 @@ export default function App() {
   // Scene readiness state
   const [sceneReady, setSceneReady] = useState<boolean>(false);
 
-  const handleCopyJpeg = React.useCallback(async () => {
-    const node = renderStackRef.current;
-    if (!node) return;
-    try {
-      await copyAndDownloadNodeAsPng(node, { filename: 'spaceview.png' });
-    } catch (e) {
-      console.error('Capture/Clipboard error:', e);
-    }
-  }, []);
+  
 
   useEffect(() => {
     let cancelled = false;
@@ -1090,6 +1082,55 @@ export default function App() {
     if (!longPoseEnabled) lpPendingRef.current = false;
   }, [longPoseEnabled]);
   
+  const handleCopyJpeg = React.useCallback(async () => {
+      const node = renderStackRef.current;
+      if (!node) return;
+      try {
+        const deviceLabel =
+          deviceId === CUSTOM_DEVICE_ID
+            ? (zoomOptions[0]?.label ?? '')
+            : `${device.label} — ${zoom?.label ?? ''}`;
+
+        await copyAndDownloadNodeAsPngAndJpeg(node, {
+          filenameBase: 'spaceview',
+          meta: {
+            siteUrl: window.location.origin,
+            city: cityName,
+            lat: location.lat,
+            lng: location.lng,
+            altDeg: refAlt,
+            azDeg: refAz,
+            whenMs: whenMs,
+            deviceLabel,
+            projection: projectionMode,
+            fovXDeg,
+            fovYDeg,
+            // NEW: pass full share/export URL
+            exportUrl: shareUrl,
+          },
+          backgroundColor: '#000',
+          jpegQuality: 0.92,
+        });
+      } catch (e) {
+        console.error('Capture/Clipboard error:', e);
+      }
+    }, [
+      renderStackRef,
+      cityName,
+      location.lat,
+      location.lng,
+      refAlt,
+      refAz,
+      whenMs,
+      deviceId,
+      device,
+      zoom,
+      zoomOptions,
+      projectionMode,
+      fovXDeg,
+      fovYDeg,
+      shareUrl,
+    ]);
   // --- JSX -------------------------------------------------------------------
   return (
     <div className="w-full h-screen bg-black text-white overflow-hidden">
