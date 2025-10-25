@@ -7,20 +7,78 @@ type IconId =
   | 'phase' | 'earthshine' | 'ecliptic' | 'sunCard' | 'moonCard' | 'debug'
   | 'device' | 'focal' | 'fov' | 'projection' | 'recti-panini' | 'rectilinear' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'cylindrical-horizon'
   | 'datetime' | 'speed' | 'timelapse' | 'longpose' | 'loop'
-  | 'location' | 'search' | 'keyboard' | 'globe' | 'arrow' | 'center';
+  | 'location' | 'search' | 'keyboard' | 'globe' | 'arrow' | 'center' | 'fullscreen';
 
-function I({ id, title }: { id: IconId; title?: string }) {
-  const wrap = 'inline-flex items-center justify-center w-[30px] h-[30px] rounded bg-black text-white/90 border border-white/20 mr-2 align-middle';
+function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | 'large' }) {
+  // Wrapper: taille dépendante de `size`
+  const wrapBase = 'inline-flex items-center justify-center rounded bg-black text-white/90 border border-white/20 mr-2 align-middle';
+  const wrapClass =
+    size === 'small'
+      ? `${wrapBase} w-[24px] h-[24px]`
+      : size === 'large'
+      ? `${wrapBase} w-[34px] h-[34px]`
+      : `${wrapBase} w-[30px] h-[30px]`;
+
   const s = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+
+  // SVG size selon `size`
+  const svgSize = size === 'small' ? 16 : size === 'large' ? 24 : 22;
+  const svgClass = size === 'small'
+    ? 'w-[16px] h-[16px]'
+    : size === 'large'
+    ? 'w-[24px] h-[24px]'
+    : 'w-[22px] h-[22px]';
+
   return (
-    <span className={wrap} title={title} aria-hidden="true">
-      <svg className="w-[22px] h-[22px]" width="24" height="24" viewBox="0 0 24 24">
+    <span className={wrapClass} title={title} aria-hidden="true">
+      <svg className={svgClass} width={svgSize} height={svgSize} viewBox="0 0 24 24">
 
         {id === 'info' && (<><circle cx="12" cy="12" r="9" stroke="currentColor" fill="none" strokeWidth="2" /><rect x="11" y="10" width="2" height="6" rx="1" fill="currentColor"/><circle cx="12" cy="7.5" r="1.2" fill="currentColor"/></>)}
-        {id === 'panels' && <path d="M4 7h16M4 12h10M4 17h7" {...s} />}
+        {id === 'panels' && (
+          <>
+            {/* Engrenage 8 dents */}
+            {/* Dents (remplies) */}
+            <g transform="translate(12 12)">
+              <rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" />
+              <g transform="rotate(45)"><rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" /></g>
+              <g transform="rotate(90)"><rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" /></g>
+              <g transform="rotate(135)"><rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" /></g>
+              <g transform="rotate(180)"><rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" /></g>
+              <g transform="rotate(225)"><rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" /></g>
+              <g transform="rotate(270)"><rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" /></g>
+              <g transform="rotate(315)"><rect x="-1" y="-10.8" width="2" height="3.2" rx="0.6" fill="currentColor" /></g>
+
+              {/* Branches (traits) */}
+              <path d="M0 -3.4v-2.2M0 3.4v2.2M-3.4 0h-2.2M3.4 0h2.2" {...s} />
+            </g>
+
+            {/* Jante et moyeu (traits) */}
+            <circle cx="12" cy="12" r="6.4" {...s} />
+            <circle cx="12" cy="12" r="2.6" {...s} />
+          </>
+        )}
+        {id === 'fullscreen' && (
+          <>
+            {/* Coins externes plein écran (inspiré de ⛶ U+26F6) */}
+            <path d="M4 9V4h5" {...s}/>
+            <path d="M20 9V4h-5" {...s}/>
+            <path d="M4 15v5h5" {...s}/>
+            <path d="M20 15v5h-5" {...s}/>
+          </>
+        )}
         {id === 'play' && <path d="M8 5l12 7-12 7V5z" fill="currentColor" />}
         {id === 'pause' && (<><rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></>)}
-        {id === 'share' && (<><path d="M18 8a3 3 0 1 0-2.83-4" {...s}/><path d="M6 14a3 3 0 1 0 2.83 4" {...s}/><path d="M8 15l8-6" {...s}/></>)}
+        {id === 'share' && (
+          <>
+            {/* Nœuds */}
+            <circle cx="6" cy="12" r="3" fill="currentColor" />
+            <circle cx="18" cy="6" r="3" fill="currentColor" />
+            <circle cx="18" cy="18" r="3" fill="currentColor" />
+            {/* Liaisons */}
+            <path d="M8 12L16 8" {...s} />
+            <path d="M8 12L16 16" {...s} />
+          </>
+        )}
         {id === 'capture' && (<><rect x="3" y="6" width="18" height="12" rx="2" {...s}/><circle cx="12" cy="12" r="3.5" {...s}/></>)}
         {id === 'sun' && (<><circle cx="12" cy="12" r="4" {...s}/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" {...s}/></>)}
         {id === 'moon' && (<><circle cx="12" cy="12" r="10" {...s}/><path d="M12 3 A 9 9 0 0 1 12 21 A 3.5 9 0 0 0 12 3 Z" fill="currentColor"/></>)}
@@ -80,21 +138,46 @@ export default function HelpTab() {
         <img src="/img/capture/moontracker-application-capture-1.png" alt="Vue d’ensemble de l’écran principal" className="rounded-md border border-black/10 shadow-sm" />
         <figcaption className="text-sm text-gray-500 mt-1">Ecran principal de Moontracker.</figcaption>
       </figure>
-      <h3><I id="info" />Information</h3>
-      <p>Ouvre la présentation de l’application et des liens utiles. <Link to="/info#simulations">Voir aussi les simulations prêtes à l’emploi</Link>.</p>
-
-      <h3><I id="panels" />Afficher/Masquer l’interface</h3>
+      
+      <h3><I id="panels" /> <I id="fullscreen" />Afficher/Masquer l’interface</h3>
       <p>Permet d’afficher ou de cacher tous les panneaux (réglages, télémétrie). Pratique pour une capture propre du rendu.</p>
 
       <h3><I id="play" />Lecture <I id="pause" />Pause</h3>
       <p>Contrôle global de l’animation temporelle (lecture continue ou pause). Fonctionne quel que soit le mode (continu ou time‑lapse).</p>
 
       <h3><I id="share" />Copier l’URL de partage</h3>
-      <p>Copie un lien qui encode lieu, date/heure, projection, FOV, visibilité, etc. Toute personne ouvrant ce lien retrouve exactement la même scène. [CAPTURE]</p>
+      <p>Copie un lien qui encode tous les paramètres actuels de l'application : lieu, date/heure, projection, FOV, visibilité, etc. Toute personne ouvrant ce lien retrouve exactement la même scène que celle que vous voyez.</p>
+      <p>Idéal pour partager une configuration précise, comme une éclipse, un transit ou un alignement planétaire.</p>
+      <p>Pour utiliser cette fonctionnalité, cliquez sur l'icône de partage et collez le lien (ctrl+v) dans votre application de messagerie ou de partage préférée.</p>
+      <p>Le statut d'affichage de l'interface ( <I id="panels" size='small'/> <I id="fullscreen" size="small" />) et d'animation ( <I id="play" size="small" /> <I id="pause" size="small"/>) est également enregistré dans le lien.</p>
 
       <h3><I id="capture" />Capture d’image</h3>
-      <p>Exporte une image (PNG) du rendu et la copie dans le presse‑papier. Conseil: masquez l’interface avant de capturer pour un visuel sans UI. [CAPTURE]</p>
-
+      <p>Enregistre une image (PNG) du rendu à l'écran + la copie dans le presse‑papier. Masquez l’interface ( <I id="fullscreen" size="small" />) Pour activer cette fonctionnalité.</p>
+      <p>Utile pour partager un projet d’astro‑photo, un transit ou un lever/coucher précis.
+      {/* Galerie 2 colonnes */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-export-1.png"
+            alt="Fonction de capture et d'exportation de la scène"
+            className="w-full h-auto rounded-md border border-black/10 shadow-sm"
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            Vue depuis Paris de l'éclipse solaire de 2026 avec Mercure et Jupiter.
+          </figcaption>
+        </figure>
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-export-2.png"
+            alt="Fonction de capture et d'exportation de la scène"
+            className="w-full h-auto rounded-md border border-black/10 shadow-sm"
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            Vue depuis Paris de l'éclipse solaire de 2026 - Visibilité de Soleil, Lune, Mercure et Jupiter exagérée.
+          </figcaption>
+        </figure>
+      </div>
+      </p>
       <h2>2) Barre supérieure — Suivi, optique, projection, temps</h2>
 
       <h3><I id="sun" />Suivi: Soleil, <I id="moon" />Lune, <I id="planet" />planètes, points cardinaux (N/E/S/O)</h3>
