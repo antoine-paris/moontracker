@@ -834,7 +834,18 @@ export default function TopBar({
           <div className="mt-3">
             <div className="text-xs uppercase tracking-wider text-white/60">Champ de vision</div>
             {/* Sélection Appareil + Objectif */}
-            <div className="mt-1 flex items-center gap-2">
+            <div className="mt-1 flex flex-wrap sm:flex-nowrap items-center gap-2 gap-y-2">
+              <svg className="w-6 h-6 shrink-0 align-middle text-white/60" viewBox="0 0 24 24" aria-hidden="true">
+                {/* Camera icon */}
+                <rect
+                  x="5" y="4" width="14" height="12" rx="2"
+                  fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round"
+                />
+                <circle
+                  cx="12" cy="10" r="3"
+                  fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round"
+                />
+              </svg>
               <select
                 value={deviceId}
                 onChange={(e) => {
@@ -847,15 +858,26 @@ export default function TopBar({
                     if (d?.zooms?.length) setZoomId(d.zooms[0].id);
                   }
                 }}
-                className="min-w-[10rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
-                 title="Sélectionner l’appareil"
+                className="flex-1 basis-0 min-w-0 h-8 leading-none bg-black/60 border border-white/15 rounded-lg px-2 text-sm"
+                title="Sélectionner l’appareil"
               >
                 {devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
-
-              {/* When custom device is selected, replace the zoom select with a clean, live-updating label (no “Focale théorique”) */}
+              <svg className="w-6 h-6 shrink-0 align-middle text-white/60" viewBox="0 0 24 24" aria-hidden="true">
+                {/* Zoom device (lens barrel) */}
+                <g transform="translate(2.75 0)" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round">
+                    {/* Mount */}
+                  <rect x="2.5" y="9" width="3" height="6" rx="1.5" />
+                  {/* Barrel */}
+                  <rect x="6" y="8" width="10" height="8" rx="2" />
+                  {/* Zoom ring ridges */}
+                  <path d="M8 8v8M10 8v8M12 8v8" />
+                  
+                </g>
+              </svg>
               {deviceId === CUSTOM_DEVICE_ID ? (
-                <div className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm text-white/80"
+                <div
+                  className="flex-1 basis-0 min-w-0 h-8 inline-flex items-center bg-black/60 border border-white/15 rounded-lg px-2 text-sm text-white/80 overflow-hidden text-ellipsis whitespace-nowrap"
                   title={`${Math.round(currentFocalMm)} mm (équivalent 24x36)`}
                 >
                   {`${Math.round(currentFocalMm)} mm (eq. 24x36)`}
@@ -864,7 +886,7 @@ export default function TopBar({
                 <select
                   value={zoomId}
                   onChange={(e) => setZoomId(e.target.value)}
-                  className="min-w-[12rem] bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
+                  className="flex-1 basis-0 min-w-0 h-8 leading-none bg-black/60 border border-white/15 rounded-lg px-2 text-sm"
                   title="Sélectionner l’objectif/zoom"
                 >
                   {zoomOptions.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}

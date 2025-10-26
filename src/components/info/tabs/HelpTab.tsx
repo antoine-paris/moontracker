@@ -11,6 +11,7 @@ type IconId =
   | 'mercure' | 'venus' | 'mars' | 'jupiter' | 'saturne' | 'uranus' | 'neptune'
   | 'N' | 'S' | 'E' | 'O'
   | 'arrow-left' | 'arrow-right' | 'arrow-up' | 'arrow-down'
+  | 'zoom-device'
   ;
 
 function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | 'large' }) {
@@ -75,6 +76,20 @@ function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | '
           <>
             <path d="M5 12h14" {...s} />
             <path d="M13 6l6 6-6 6" {...s} />
+          </>
+        )}
+        {id === 'zoom-device' && (
+          <>
+            {/* Zoom device (lens barrel) */}
+            <g transform="translate(2.75 0)" fill="none" stroke="currentColor" strokeWidth={1} strokeLinecap="round" strokeLinejoin="round">
+                {/* Mount */}
+              <rect x="2.5" y="9" width="3" height="6" rx="1.5" />
+              {/* Barrel */}
+              <rect x="6" y="8" width="10" height="8" rx="2" />
+              {/* Zoom ring ridges */}
+              <path d="M8 8v8M10 8v8M12 8v8" />
+              
+            </g>
           </>
         )}
         {id === 'arrow-left' && (
@@ -241,53 +256,15 @@ export default function HelpTab() {
       </div>
       </p>
 
+      <h2 ><I id="panels" />Suivi d'objet spatial, angle de vue, champ de vision</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        
         <div className="md:col-span-2">
-          <h2 ><I id="panels" />Suivi d'objet spatial, angle de vue, champ de vision</h2>
-            <p>
-              L'application peut se caller sur un point cardinale de la terre ou
-              automatiquement suivre un objet spatiel (soleil, lune, planète). Elle permet aussi de choisir un appareil photo et un objectif, ou choisir un angle de prise de vue personnalisé.
-            </p>
-
-          <h3><I id="sun" />Suivre le Soleil, <I id="moon" />la lune, une planète, ou un point cardinal</h3>
           <p>
-            Dans "Suivi" vous pouvez choisir vers quel point fixer votre scène.</p>
-            <ul>
-              <li><I id="sun" />La caméra va suivre le soleil. Dans une animation, 
-              la caméra va donc faire le tour de l'horizon en 24h, et si le soleil est couché, 
-              la caméra va continuer à suivre le soleil sous les pieds de l'observateur.</li>
-              <li><I id="moon" />La caméra va suivre la lune. Dans une animation, la caméra va donc se déplacer dans le ciel ou pointer sous les pieds de l'observateur si la lune est couchée.</li>
-              <li><I id="mercure" />La caméra va suivre Mercure. </li>
-              <li><I id="venus" />La caméra va suivre Vénus. </li>
-              <li><I id="mars" />La caméra va suivre Mars. </li>
-              <li><I id="jupiter" />La caméra va suivre Jupiter. </li>
-              <li><I id="saturne" />La caméra va suivre Saturne. </li>
-              <li><I id="uranus" />La caméra va suivre Uranus. </li>
-              <li><I id="neptune" />La caméra va suivre Neptune. </li>
-              <li><I id="n" />La caméra va rester fixée au Nord, centrée sur l'horizon.</li>
-              <li><I id="s" />La caméra va rester fixée au Sud, centrée sur l'horizon.</li>
-              <li><I id="e" />La caméra va rester fixée à l'Est, centrée sur l'horizon.</li>
-              <li><I id="o" />La caméra va rester fixée à l'Ouest, centrée sur l'horizon.</li>
-            </ul>
-          <h3><I id="arrow-up" /><I id="arrow-left" /> <I id="center" /><I id="arrow-right" /><I id="arrow-down" />Déplacer le cadre et le suivi avec le pavé directionnel</h3>
-          <p>
-            Les flèches du pavé directionnel à droite de l'écran permettent de se décentrer autour du point suivi. 
-            Le bouton <I id="center" size='small' /> recentre sur l'objet ou le point cardinal que vous avez choisi.
-            les déplacements verticaux  ( <I id="arrow-up" size='small' /><I id="arrow-down" size='small' />) est limitée à "haut" du ciel (Altitude 90°), et au bas sous le sol (altitude -90°).
+            L'application peut se caller sur un point cardinale de la terre ou
+            automatiquement suivre un objet spatiel (soleil, lune, planète). Elle permet aussi de choisir un appareil photo et un objectif, ou choisir un angle de prise de vue personnalisé.
           </p>
-            <p>La scène se recentre sur une cible: Soleil, Lune, Mercure à Neptune, ou un azimut cardinal. Idéal pour verrouiller une composition pendant un lever/coucher
-            ou suivre un alignement. Le suivi influe sur le repère de navigation et sur le pavé directionnel.
-          </p>
-          <h3><I id="device" />Cadre photo et capteur</h3>
-          <p>
-            La zone de rendu est «masquée» par un cadre proportionnel au capteur/l’appareil choisi, avec marges noires minimales.
-            Le libellé du boîtier/objectif s’affiche en surimpression pour l’astro‑photo. [CAPTURE]
-          </p>
-
-          
         </div>
-        <div className="m-0 md:col-span-1">
+        <div className="m-0 md:col-span- md:mr-[5em]">
           <figure className="mt-0">
             <img
               src="/img/capture/moontracker-application-follow-1.png"
@@ -298,35 +275,45 @@ export default function HelpTab() {
               Fonction de choix de la scène principale.
             </figcaption>
           </figure>
-          <figure className="mt-6">
-            <img
-              src="/img/capture/moontracker-application-direction-1.png"
-              alt="Fonction de déplacement de la scène"
-              className="w-full h-auto md:w-1/3 rounded-md border border-black/10 shadow-sm"
-            />
-            <figcaption className="text-sm text-gray-500 mt-1">
-              Fonction de déplacement de la scène.
-            </figcaption>
-          </figure>
         </div>
       </div>
+      <h3><I id="sun" />Suivre le Soleil, <I id="moon" />la lune, une planète, ou un point cardinal</h3>
+        <p>
+          Dans "Suivi" vous pouvez choisir vers quel point fixer votre scène.</p>
+          <ul className="list-disc pl-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
+            <li><I id="sun" />La caméra va suivre le soleil. Dans une animation, 
+            la caméra va donc faire le tour de l'horizon en 24h, et si le soleil est couché, 
+            la caméra va continuer à suivre le soleil sous les pieds de l'observateur.</li>
+            <li><I id="moon" />La caméra va suivre la lune. Dans une animation, la caméra va donc se déplacer dans le ciel ou pointer sous les pieds de l'observateur si la lune est couchée.</li>
+            <li><I id="mercure" />La caméra va suivre Mercure. </li>
+            <li><I id="venus" />La caméra va suivre Vénus. </li>
+            <li><I id="mars" />La caméra va suivre Mars. </li>
+            <li><I id="jupiter" />La caméra va suivre Jupiter. </li>
+            <li><I id="saturne" />La caméra va suivre Saturne. </li>
+            <li><I id="uranus" />La caméra va suivre Uranus. </li>
+            <li><I id="neptune" />La caméra va suivre Neptune. </li>
+            <li><I id="n" />La caméra va rester fixée au Nord, centrée sur l'horizon.</li>
+            <li><I id="s" />La caméra va rester fixée au Sud, centrée sur l'horizon.</li>
+            <li><I id="e" />La caméra va rester fixée à l'Est, centrée sur l'horizon.</li>
+            <li><I id="o" />La caméra va rester fixée à l'Ouest, centrée sur l'horizon.</li>
+          </ul>
+        <h3><I id="arrow-up" /><I id="arrow-left" /> <I id="center" /><I id="arrow-right" /><I id="arrow-down" />Déplacer le cadre et le suivi avec le pavé directionnel</h3>
+        <p>
+          Les flèches du pavé directionnel à droite de l'écran permettent de se décentrer autour du point suivi. 
+          Le bouton <I id="center" size='small' /> recentre sur l'objet ou le point cardinal que vous avez choisi.
+          les déplacements verticaux  ( <I id="arrow-up" size='small' /><I id="arrow-down" size='small' />) est limitée à "haut" du ciel (Altitude 90°), et au bas sous le sol (altitude -90°).
+        </p>
+          <p>La scène se recentre sur une cible: Soleil, Lune, Mercure à Neptune, ou un azimut cardinal. Idéal pour verrouiller une composition pendant un lever/coucher
+          ou suivre un alignement. Le suivi influe sur le repère de navigation et sur le pavé directionnel.
+        </p>
 
-      <h3>Télémétrie d’observation</h3>
+      <h3>Champ de vision</h3>
       <p>
-        En bas, des cartes montrent des angles utiles: orientation du terminateur, fraction de phase, éclairement terrestre, tilt de l’écliptique,
-        et estimations d’<strong>éclipse</strong> (chevauchement Soleil/Lune). Idéal pour planifier une session d’observation ou de photographie. [CAPTURE]
-      </p>
-
-
-
-      <h2>2) Barre supérieure — Suivi, optique, projection, temps</h2>
-
-      
-
-      <h3><I id="device" />Appareil/objectif, <I id="focal" />focale (eq. 24×36) et <I id="fov" />champ de vision</h3>
-      <p>
-        Choisissez un boîtier ou module (bridge/smartphone) et un zoom/objectif. Le cadre photo se cale au capteur et à la focale.
-        En mode «Personnalisé», un unique slider «focale (24×36)» ajuste directement FOV horizontal et vertical. La lecture de la focale est en direct. [CAPTURE]
+        Choisissez un boîtier ou module (bridge/smartphone) <I id="device" size='small' /> et un zoom/objectif <I id="zoom-device" size='small' />. 
+        Un cadre photo se dessine alors d'après le capteur et la focale choisie.
+        <br/>
+        A l'aide du slider "f" vous pouvez créer un champs de vision personnalisé en choisissant une focale de 1mm à 4000mm. 
+        la largeur et la hauteur (en dégrés) du champ de vision s'affiche à droite du slider.
       </p>
 
       <h3><I id="projection" />Projections photo & pédagogie</h3>
@@ -339,6 +326,26 @@ export default function HelpTab() {
       </ul>
       <p>L’app choisit automatiquement une projection «idéale» compatible avec votre FOV, que vous pouvez changer à la main si souhaité.</p>
 
+
+
+        <h3><I id="device" />Cadre photo et capteur</h3>
+        <p>
+          La zone de rendu est «masquée» par un cadre proportionnel au capteur/l’appareil choisi, avec marges noires minimales.
+          Le libellé du boîtier/objectif s’affiche en surimpression pour l’astro‑photo. [CAPTURE]
+        </p>  
+      <h3>Télémétrie d’observation</h3>
+      <p>
+        En bas, des cartes montrent des angles utiles: orientation du terminateur, fraction de phase, éclairement terrestre, tilt de l’écliptique,
+        et estimations d’<strong>éclipse</strong> (chevauchement Soleil/Lune). Idéal pour planifier une session d’observation ou de photographie. [CAPTURE]
+      </p>
+
+
+
+      <h2>2) Barre supérieure — Suivi, optique, projection, temps</h2>
+
+      
+
+      
       <h3><I id="datetime" />Date & heure, <I id="speed" />vitesse et temps réel</h3>
       <p>
         Saisissez une date/heure, utilisez ±1h, ou revenez à «Maintenant». La vitesse en <em>minutes par seconde</em> permet d’accélérer
