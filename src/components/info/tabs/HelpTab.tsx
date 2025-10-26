@@ -318,14 +318,15 @@ export default function HelpTab() {
 
       <h3><I id="projection" />Projections photo & pédagogie</h3>
       <ul>
-        <li><I id="recti-panini" />Recti‑Panini (photo ultra‑grand‑angle maîtrisée, lignes droites préservées au centre).</li>
-        <li><I id="rectilinear" />Rectilinéaire (perspective photo classique, idéal portraits/tele).</li>
-        <li><I id="stereo-centered" />Stéréographique centré (pédagogie du ciel: distances/directions intuitives).</li>
-        <li><I id="ortho" />Orthographique (hémisphère all‑sky).</li>
-        <li><I id="cylindrical" />Cylindrique et <I id="cylindrical-horizon" />Cylindrique (horizon) pour panoramas.</li>
+        <li><I id="recti-panini" />Recti‑Panini — conserve des lignes droites autour du centre et limite l’étirement aux bords. Rend une perspective naturelle jusqu’en très grand‑angle (≈140–170° selon réglages). Déforme échelles/formes en périphérie et courbe légèrement les droites loin du centre. Idéale en urbain/architecture et paysages ultra‑larges.</li>
+        <li><I id="rectilinear" />Rectilinéaire — projection «objectif à trou d’épingle». Toutes les droites restent droites; rendu conforme aux photos classiques. Forte dilatation des tailles près de 90° (étirement en bord de champ), peu adaptée à plus de 120° de FOV. Bon choix en focale normale/télé.</li>
+        <li><I id="stereo-centered" />Stéréographique centré — projection conforme (préserve les angles, donc les directions locales). Les droites deviennent des arcs; distances et surfaces s’amplifient vers le bord. Très lisible pour la pédagogie du ciel (orientations, rotations), «planètes» et grands dômes.</li>
+        <li><I id="ortho" />Orthographique — hémisphère vu «depuis l’espace». Préserve bien les formes près du centre; compresse distances vers le bord. Ni conforme ni équivalente en aire. Très lisible pour une vue all‑sky simple et des cartes hémisphériques.</li>
+        <li><I id="cylindrical" />Cylindrique — panoramas: azimut linéaire, horizon droit, méridiens verticaux. Conserve les directions horizontales; étire fortement près du zénith/nadir. <I id="cylindrical-horizon" />Cylindrique (horizon) — variante recentrée sur l’horizon pour bandes panoramiques; minimise la courbure de l’horizon mais écrase le haut/bas du ciel.</li>
       </ul>
-      <p>L’app choisit automatiquement une projection «idéale» compatible avec votre FOV, que vous pouvez changer à la main si souhaité.</p>
-
+      <p>L’app choisit automatiquement une projection «idéale» compatible avec votre FOV</p>
+      <p>La projection appliquée ne déformera jamais la forme des planètes, soleil et lune (comme le ferait un logiciel sur une photo fisheye par exemple). Ils seront donc toujours rendus parfaitement circulaires.</p>
+      <p>Par contre elle modifiera les angles et les positions de ces objets à l'écran.</p>
 
 
         <h3><I id="device" />Cadre photo et capteur</h3>
