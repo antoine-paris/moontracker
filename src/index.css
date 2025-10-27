@@ -132,5 +132,19 @@
   }
   .prose-info :where(a) { color: var(--pi-accent); }
   .prose-info :where(a:hover) { color: var(--pi-accent-2); }
+
+
+}
+
+  /* Mobile: annule les marges latérales sur petits écrans */
+@media (max-width: 640px) {
+  .prose-info :where(h1, h2, h3, p, ul, ol, figure) {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  /* Conserve une indentation douce pour les listes */
+  .prose-info :where(ul, ol) {
+    padding-left: 1rem;
+  }
 }
 

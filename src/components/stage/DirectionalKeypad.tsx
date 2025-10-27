@@ -23,7 +23,7 @@ export default function DirectionalKeypad({
   return (
     <div
       className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col items-center gap-2"
-      style={{ zIndex }}
+      style={{ zIndex, marginTop: '3.5em', marginRight: '3px' }}
     >
       <button
         className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
