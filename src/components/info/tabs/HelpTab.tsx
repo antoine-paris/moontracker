@@ -6,12 +6,15 @@ type IconId =
   | 'grid' | 'markers' | 'horizon' | 'earth' | 'atmo' | 'refraction'
   | 'phase' | 'earthshine' | 'ecliptic' | 'sunCard' | 'moonCard' | 'debug'
   | 'device' | 'focal' | 'fov' | 'projection' | 'recti-panini' | 'rectilinear' | 'stereo-centered' | 'ortho' | 'cylindrical' | 'cylindrical-horizon'
-  | 'datetime' | 'speed' | 'timelapse' | 'longpose' | 'loop'
+  | 'datetime' | 'speed' | 'timelapse' | 'timelapse2' | 'longpose' | 'loop'
   | 'location' | 'search' | 'keyboard' | 'globe' | 'arrow' | 'center' | 'fullscreen'
   | 'mercure' | 'venus' | 'mars' | 'jupiter' | 'saturne' | 'uranus' | 'neptune'
   | 'N' | 'S' | 'E' | 'O'
   | 'arrow-left' | 'arrow-right' | 'arrow-up' | 'arrow-down'
   | 'zoom-device'
+  | 'previous' | 'next'
+  | 'plus' | 'moins'
+  | 'enlarge'
   ;
 
 function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | 'large' }) {
@@ -48,6 +51,10 @@ function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | '
       case 'O': return { char: '\u27A4', rotate: 180 };  // ➤ (Ouest)
       case 'N': return { char: '\u27A4', rotate: 270 };  // ➤
       case 'S': return { char: '\u27A4', rotate: 90 };   // ➤
+      case 'NEXT': return { char: '\u21B7', rotate: 0 };
+      case 'PREVIOUS': return { char: '\u21B6', rotate: 0 };
+      case 'PLUS': return { char: '+', rotate: 0 };
+      case 'MOINS': return { char: '-', rotate: 0 };
       default: return null;
     }
   })();
@@ -71,7 +78,13 @@ function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | '
   return (
     <span className={wrapClass} title={title} aria-hidden="true">
       <svg className={svgClass} width={svgSize} height={svgSize} viewBox="0 0 24 24">
-
+        {id === 'enlarge' && (
+            <>
+            <circle cx="10" cy="10" r="5" {...s} />
+            <path d="M14.5 14.5L19 19" {...s} />
+            <path d="M10 7.5v5M7.5 10h5" {...s} />
+          </>
+        )}
         {id === 'arrow-right' && (
           <>
             <path d="M5 12h14" {...s} />
@@ -186,7 +199,38 @@ function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | '
         {id === 'datetime' && (<><rect x="3" y="5" width="18" height="14" rx="2" {...s}/><path d="M7 5v-2M17 5v-2M3 9h18" {...s}/></>)}
         {id === 'speed' && (<><path d="M4 19l16-7-7 16" {...s}/></>)}
         {id === 'timelapse' && (<><circle cx="12" cy="12" r="9" {...s}/><path d="M12 7v6l4 4" {...s}/></>)}
-        {id === 'longpose' && (<><rect x="5" y="5" width="12" height="8" rx="1" {...s}/><rect x="7" y="7" width="12" height="8" rx="1" {...s} opacity="0.6"/></>)}
+        {id === 'timelapse2' && (<><path d="M12 20.75a8.75 8.75 0 1 1 0 -17.5V0.75C5.787 0.75 0.75 5.787 0.75 12S5.787 23.25 12 23.25 23.25 18.213 23.25 12h-2.5A8.75 8.75 0 0 1 12 20.75Zm7.876 -12.568c0.315 0.648 0.552 1.34 0.699 2.066l2.45 -0.497a11.176 11.176 0 0 0 -0.9 -2.662l-2.25 1.093ZM19 6.749A8.809 8.809 0 0 0 17.249 5l1.502 -2c0.851 0.64 1.609 1.397 2.248 2.249L19.001 6.75Zm-5.25 -3.324a8.678 8.678 0 0 1 2.067 0.7l1.092 -2.249a11.178 11.178 0 0 0 -2.661 -0.9l-0.498 2.45ZM11 7v5.414l0.293 0.293 4 4 1.414 -1.414L13 11.586V7h-2Z"  strokeWidth={0.8} stroke='currentColor' fill='currentColor'/></>)}
+        {id === 'longpose' && (
+          <>
+            <circle cx="8" cy="8" r="2" {...s}  fill='currentColor'  opacity="0.8"/>
+            <circle cx="10" cy="10" r="2" {...s}  fill='currentColor'  opacity="0.6"/>
+            <circle cx="12" cy="12" r="2" {...s}  fill='currentColor'  opacity="0.5"/>
+            <circle cx="14" cy="14" r="2" {...s}  fill='currentColor'  opacity="0.4"/>
+            <circle cx="16" cy="16" r="2" {...s}  fill='currentColor'  opacity="0.2"/>
+            <circle cx="18" cy="18" r="2" {...s}  fill='currentColor'  opacity="0.1"/>
+            <circle cx="20" cy="20" r="2" {...s}  fill='currentColor'  opacity="0.1"/>
+            <circle cx="22" cy="22" r="2" {...s}  fill='currentColor'  opacity="0.1"/>
+            <circle cx="6" cy="6" r="2" {...s}  fill='currentColor'  opacity="1"/>
+
+            <circle cx="14" cy="2" r="1" {...s}  fill='currentColor'  opacity="0.8"/>
+            <circle cx="15" cy="3" r="1" {...s}  fill='currentColor'  opacity="0.6"/>
+            <circle cx="16" cy="4" r="1" {...s}  fill='currentColor'  opacity="0.5"/>
+            <circle cx="17" cy="5" r="1" {...s}  fill='currentColor'  opacity="0.4"/>
+            <circle cx="18" cy="6" r="1" {...s}  fill='currentColor'  opacity="0.2"/>
+            <circle cx="19" cy="7" r="1" {...s}  fill='currentColor'  opacity="0.1"/>
+            <circle cx="20" cy="8" r="1" {...s}  fill='currentColor'  opacity="0.1"/>
+            <circle cx="14" cy="2" r="1" {...s}  fill='currentColor'  opacity="1"/>
+
+            <circle cx="2" cy="16" r="1" {...s}  fill='currentColor'  opacity="0.8"/>
+            <circle cx="3" cy="17" r="1" {...s}  fill='currentColor'  opacity="0.6"/>
+            <circle cx="4" cy="18" r="1" {...s}  fill='currentColor'  opacity="0.5"/>
+            <circle cx="5" cy="19" r="1" {...s}  fill='currentColor'  opacity="0.4"/>
+            <circle cx="6" cy="20" r="1" {...s}  fill='currentColor'  opacity="0.2"/>
+            <circle cx="7" cy="21" r="1" {...s}  fill='currentColor'  opacity="0.1"/>
+            <circle cx="8" cy="22" r="1" {...s}  fill='currentColor'  opacity="0.1"/>
+            <circle cx="2" cy="16" r="1" {...s}  fill='currentColor'  opacity="1"/>
+          </>
+        )}
         {id === 'loop' && (<><path d="M3 12a7 7 0 1 1 2 5" {...s}/><path d="M3 17v-5h5" {...s}/></>)}
         {id === 'location' && (<><path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10z" {...s}/><circle cx="12" cy="11" r="2.2" {...s}/></>)}
         {id === 'search' && (<><circle cx="10" cy="10" r="5" {...s}/><path d="M14.5 14.5L19 19" {...s}/></>)}
@@ -260,8 +304,8 @@ export default function HelpTab() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         <div className="md:col-span-2">
           <p>
-            L'application peut se caller sur un point cardinale de la terre ou
-            automatiquement suivre un objet spatiel (soleil, lune, planète). Elle permet aussi de choisir un appareil photo et un objectif, ou choisir un angle de prise de vue personnalisé.
+            L'application peut se caller sur un point cardinal ou
+            automatiquement suivre un objet spatial (soleil, lune, planète). Elle permet aussi de choisir un appareil photo et un objectif, ou choisir un angle de prise de vue personnalisé.
           </p>
         </div>
         <div className="m-0 md:col-span- md:mr-[5em]">
@@ -301,147 +345,570 @@ export default function HelpTab() {
         <p>
           Les flèches du pavé directionnel à droite de l'écran permettent de se décentrer autour du point suivi. 
           Le bouton <I id="center" size='small' /> recentre sur l'objet ou le point cardinal que vous avez choisi.
-          les déplacements verticaux  ( <I id="arrow-up" size='small' /><I id="arrow-down" size='small' />) est limitée à "haut" du ciel (Altitude 90°), et au bas sous le sol (altitude -90°).
+          les déplacements verticaux  ( <I id="arrow-up" size='small' /><I id="arrow-down" size='small' />) sont limités à "haut" du ciel (Altitude 90°), et au "bas" vers le sol (altitude -90°).
         </p>
-          <p>La scène se recentre sur une cible: Soleil, Lune, Mercure à Neptune, ou un azimut cardinal. Idéal pour verrouiller une composition pendant un lever/coucher
-          ou suivre un alignement. Le suivi influe sur le repère de navigation et sur le pavé directionnel.
-        </p>
-
+        
       <h3>Champ de vision</h3>
       <p>
         Choisissez un boîtier ou module (bridge/smartphone) <I id="device" size='small' /> et un zoom/objectif <I id="zoom-device" size='small' />. 
         Un cadre photo se dessine alors d'après le capteur et la focale choisie.
         <br/>
-        A l'aide du slider "f" vous pouvez créer un champs de vision personnalisé en choisissant une focale de 1mm à 4000mm. 
-        la largeur et la hauteur (en dégrés) du champ de vision s'affiche à droite du slider.
+        A l'aide du slider "f" vous pouvez créer un champs de vision personnalisé en choisissant une focale théorique de 1mm à 4000mm (équivalent 24/36). 
+        La largeur et la hauteur (en dégrés) du champ de vision s'affiche à droite du slider.
       </p>
 
-      <h3><I id="projection" />Projections photo & pédagogie</h3>
+      <h3><I id="projection" />Projections à l'écran</h3>
+      <p>Quand le champs de vision est très large (à partir de 90° affiché sur un écran, et encore 
+        plus avec un effet fisheye à presque 180°), il devient impossible de respecter à la fois 
+        les proportions des objets affichés, les angles et les positions. Il y aura forcément une, voire deux de ces éléments qui seront déformés.</p>
+      <p>Il faut alors choisir une projection adaptée à ce que nous voulons montrer. L'application propose les projections suivantes :</p>
       <ul>
-        <li><I id="recti-panini" />Recti‑Panini — conserve des lignes droites autour du centre et limite l’étirement aux bords. Rend une perspective naturelle jusqu’en très grand‑angle (≈140–170° selon réglages). Déforme échelles/formes en périphérie et courbe légèrement les droites loin du centre. Idéale en urbain/architecture et paysages ultra‑larges.</li>
-        <li><I id="rectilinear" />Rectilinéaire — projection «objectif à trou d’épingle». Toutes les droites restent droites; rendu conforme aux photos classiques. Forte dilatation des tailles près de 90° (étirement en bord de champ), peu adaptée à plus de 120° de FOV. Bon choix en focale normale/télé.</li>
-        <li><I id="stereo-centered" />Stéréographique centré — projection conforme (préserve les angles, donc les directions locales). Les droites deviennent des arcs; distances et surfaces s’amplifient vers le bord. Très lisible pour la pédagogie du ciel (orientations, rotations), «planètes» et grands dômes.</li>
-        <li><I id="ortho" />Orthographique — hémisphère vu «depuis l’espace». Préserve bien les formes près du centre; compresse distances vers le bord. Ni conforme ni équivalente en aire. Très lisible pour une vue all‑sky simple et des cartes hémisphériques.</li>
-        <li><I id="cylindrical" />Cylindrique — panoramas: azimut linéaire, horizon droit, méridiens verticaux. Conserve les directions horizontales; étire fortement près du zénith/nadir. <I id="cylindrical-horizon" />Cylindrique (horizon) — variante recentrée sur l’horizon pour bandes panoramiques; minimise la courbure de l’horizon mais écrase le haut/bas du ciel.</li>
+        <li>
+          <I id="recti-panini" />Recti‑Panini — conserve des lignes droites autour du centre et limite l’étirement aux bords. Rend une perspective naturelle jusqu’en très grand‑angle (≈140–170° selon réglages). Déforme échelles/formes en périphérie et courbe légèrement les droites loin du centre. Idéale en urbain/architecture et paysages ultra‑larges.
+          {/* Galerie 2 colonnes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-rectipanini-173.jpg"
+                alt="Projection Recti-Panini à 173° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Recti-Panini à 173° de champs de vision
+              </figcaption>
+            </figure>
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-rectipanini-114.jpg"
+                alt="Projection Recti-Panini à 114° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Recti-Panini à 114° de champs de vision
+              </figcaption>
+            </figure>
+          </div>
+        </li>
+        <li>
+          <I id="rectilinear" />Rectilinéaire — projection «objectif à trou d’épingle». Toutes les droites restent droites; rendu conforme aux photos classiques. Forte dilatation des tailles près de 90° (étirement en bord de champ), peu adaptée à plus de 120° de FOV. Bon choix en focale normale/télé.
+          {/* Galerie 2 colonnes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <figure className="m-0">
+              
+            </figure>
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-rectiperspective-114.jpg"
+                alt="Projection Recti-Perspective à 114° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Recti-Perspective à 114° de champs de vision
+              </figcaption>
+            </figure>
+          </div>
+        </li>
+        <li>
+          <I id="stereo-centered" />Stéréographique centré — projection conforme (préserve les angles, donc les directions locales). Les droites deviennent des arcs; distances et surfaces s’amplifient vers le bord. Très lisible pour la pédagogie du ciel (orientations, rotations), «planètes» et grands dômes.
+          {/* Galerie 2 colonnes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-stereocentre-173.jpg"
+                alt="Projection Stéréographique centrée à 173° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Stéréographique centrée à 173° de champs de vision
+              </figcaption>
+            </figure>
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-stereocentre-114.jpg"
+                alt="Projection Stéréographique centrée à 114° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Stéréographique centrée à 114° de champs de vision
+              </figcaption>
+            </figure>
+          </div>
+        </li>
+        <li>
+          <I id="ortho" />Orthographique — hémisphère vu «depuis l’espace». Préserve bien les formes près du centre; compresse distances vers le bord. Ni conforme ni équivalente en aire. Très lisible pour une vue all‑sky simple et des cartes hémisphériques.
+          {/* Galerie 2 colonnes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-ortho-173.jpg"
+                alt="Projection Orthographique à 173° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Orthographique à 173° de champs de vision
+              </figcaption>
+            </figure>
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-ortho-114.jpg"
+                alt="Projection Orthographique à 114° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Orthographique à 114° de champs de vision
+              </figcaption>
+            </figure>
+          </div>
+        </li>
+        <li><I id="cylindrical" />Cylindrique — panoramas: azimut linéaire, horizon droit, méridiens verticaux. Conserve les directions horizontales; étire fortement près du zénith/nadir. 
+          {/* Galerie 2 colonnes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-cylindrique-173.jpg"
+                alt="Projection Cylindrique à 173° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Cylindrique à 173° de champs de vision
+              </figcaption>
+            </figure>
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-cylindrique-114.jpg"
+                alt="Projection Cylindrique à 114° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Cylindrique à 114° de champs de vision
+              </figcaption>
+            </figure>
+          </div>
+        </li>
+        <li>
+          <I id="cylindrical-horizon" />Cylindrique (horizon) — variante recentrée sur l’horizon pour bandes panoramiques; minimise la courbure de l’horizon mais écrase le haut/bas du ciel.
+          {/* Galerie 2 colonnes */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-cylindriquehorizon-173.jpg"
+                alt="Projection Cylindrique (horizon) à 173° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Cylindrique (horizon) à 173° de champs de vision
+              </figcaption>
+            </figure>
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-projection-cylindriquehorizon-114.jpg"
+                alt="Projection Cylindrique (horizon) à 114° de champs de vision"
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Projection Cylindrique (horizon) à 114° de champs de vision
+              </figcaption>
+            </figure>
+          </div>
+        </li>
       </ul>
-      <p>L’app choisit automatiquement une projection «idéale» compatible avec votre FOV</p>
-      <p>La projection appliquée ne déformera jamais la forme des planètes, soleil et lune (comme le ferait un logiciel sur une photo fisheye par exemple). Ils seront donc toujours rendus parfaitement circulaires.</p>
-      <p>Par contre elle modifiera les angles et les positions de ces objets à l'écran.</p>
+      <p>Quand vous changez de largeur de champs de vision (FOV) l’app choisit automatiquement une projection «idéale» compatible avec votre FOV</p>
+      <p>Attention : Nous avons fait le choix de ne jamais déformer la forme des planètes, soleil et lune (comme le ferait un logiciel sur une photo fisheye par exemple). Ils seront donc toujours rendus parfaitement circulaires.</p>
+      <p>La projection ne modifiera que les angles et les positions de ces objets à l'écran.</p>
 
-
-        <h3><I id="device" />Cadre photo et capteur</h3>
-        <p>
-          La zone de rendu est «masquée» par un cadre proportionnel au capteur/l’appareil choisi, avec marges noires minimales.
-          Le libellé du boîtier/objectif s’affiche en surimpression pour l’astro‑photo. [CAPTURE]
-        </p>  
-      <h3>Télémétrie d’observation</h3>
+      <h3><I id="device" />Cadre photo</h3>
       <p>
-        En bas, des cartes montrent des angles utiles: orientation du terminateur, fraction de phase, éclairement terrestre, tilt de l’écliptique,
-        et estimations d’<strong>éclipse</strong> (chevauchement Soleil/Lune). Idéal pour planifier une session d’observation ou de photographie. [CAPTURE]
-      </p>
-
-
-
-      <h2>2) Barre supérieure — Suivi, optique, projection, temps</h2>
-
+        Quand vous choisissez un appareil photo particulier, la zone de rendu est entourée par un cadre (en gris) proportionnel au capteur de l’appareil choisi.
+        Des pointillés indiquent le format 16:9.
+        <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-capture-cadre-iphone.jpg"
+                alt="Photo de la lune avec un iphone 15 pro. Le cadre gris est aux dimensions du capteur de l'iphone."
+                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Photo de la lune avec un iphone 15 pro. Le cadre gris est aux dimensions du capteur de l'iphone.
+              </figcaption>
+            </figure>
+        
+      </p>  
       
-
-      
-      <h3><I id="datetime" />Date & heure, <I id="speed" />vitesse et temps réel</h3>
-      <p>
-        Saisissez une date/heure, utilisez ±1h, ou revenez à «Maintenant». La vitesse en <em>minutes par seconde</em> permet d’accélérer
-        ou rembobiner le temps (temps réel, accéléré, marche arrière).
+      <h2>Barre latérale «Lieux» — se déplacer sur la terre</h2>
+      <p>Choisissez un lieu d’observation sur Terre (latitude, longitude) pour voir le ciel et l’horizon depuis cet endroit. Plusieurs outils facilitent la recherche, la navigation et le positionnement précis.
+       
       </p>
 
-      <h3><I id="timelapse" />Time‑lapse (pas temporels astronomiques)</h3>
+      <h3><I id="globe" />Globe terrestre</h3>
       <p>
-        Activez un saut discret par image: minute/heure/jour, <strong>jour sidéral</strong>, <strong>fraction sidérale (orbite Lunaire)</strong> ou
-        <strong> fraction synodique (phases)</strong>, et «mois» (UTC). Réglez la période (ms) entre images, le bouclage après N images, et naviguez
-        image précédente/suivante. Un label indique la date/heure de départ du time‑lapse. [CAPTURE]
-      </p>
-
-      <h3><I id="longpose" />Pose longue (empilement) et <I id="loop" />vider la persistance</h3>
-      <p>
-        Superpose plusieurs trames pour simuler une pose longue (traînées, lueurs). Ajustez le nombre d’images conservées, et videz à la demande.
-        En mode time‑lapse, la progression attend la consolidation de la pose longue pour éviter des manques.
-      </p>
-
-      <h3>Visibilité et aides visuelles</h3>
-      <ul>
-        <li><I id="sun" />Soleil, <I id="moon" />Lune, <I id="planet" />planètes, <I id="stars" />étoiles.</li>
-        <li><I id="phase" />Phase de la Lune et <I id="earthshine" />clair de Terre.</li>
-        <li><I id="horizon" />Ligne d’horizon, <I id="earth" />sol (Terre), <I id="atmo" />atmosphère.</li>
-        <li><I id="refraction" />Réfraction atmosphérique on/off (valeurs géométriques vs apparentes près de l’horizon).</li>
-        <li><I id="grid" />Grille de référence, <I id="markers" />marqueurs (réticule), <I id="ecliptic" />écliptique.</li>
-        <li><I id="sunCard" />Cardinaux sur le Soleil, <I id="moonCard" />cardinaux locaux sur la Lune/planètes, <I id="debug" />aides de débogage.</li>
-        <li>«Agrandir les objets» pour rendre Soleil/Lune lisibles en ultra grand‑angle.</li>
-      </ul>
-
-      <h2>3) Barre latérale «Lieux» — globe 3D, villes et coordonnées</h2>
-
-      <h3><I id="globe" />Globe 3D orientable et flèche d’élévation</h3>
-      <p>
-        Prévisualisez la Terre avec un marqueur sur votre position. Glissez horizontalement pour balayer la longitude. Une flèche indique la direction
-        observée (suivi actif), verte au‑dessus de l’horizon, rouge en‑dessous. [CAPTURE]
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-capture-globe.jpg"
+              alt="Indicateur du lieu et de la direction d'observation"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Indicateur du lieu et de la direction d'observation
+            </figcaption>
+          </figure>
+          <div>
+            Avec ce globe, vous pouvez vous déplacer d'est en ouest, ce qui mettra à jour la liste des villes dans l'oglet "Villes". 
+            <br/>
+            Sur le globe la position de l'observateur est indiquée par un marqueur et une flèche indique la direction de la prise de vue.
+            <br/>
+            Quand la flèche est rouge, elle indique que l'observateur regarde sous l'horizon (altitude négative)
+          </div>
+        </div>
       </p>
 
       <h3><I id="location" />Onglet Villes, favoris et navigation</h3>
       <p>
-        Liste des villes (filtrée par longitude en l’absence de recherche), recherche instantanée, ajout/suppression de favoris, et navigation «même latitude»
-        Est/Ouest. Les pôles sont proposés hors recherche. Les flèches du clavier naviguent dans la liste. [CAPTURE]
+        L'application dispose d'une base de données des villes de plus de 100 000 habitants. Tapez quelques lettres dans le champs <I id="search" size='small' />"Recherche" pour trouver une de ces villes.
+        <br/>
+        <br/>
+        Dans l'onglet "Villes" elles sont présentées du Nord <I id="n" size='small' />au Sud <I id="s" size='small' />(à 1° de latitude) permettant de se déplacer d'une ville à l'autre sur la même latitude en un seul click.
+        <br/>
       </p>
-
-      <h3><I id="search" />Recherche</h3>
-      <p>Tapez quelques lettres (nom de ville/pays) pour filtrer rapidement. La sélection met à jour l’heure locale et le contexte.</p>
-
-      <h3><I id="keyboard" />Raccourcis dans la barre latérale</h3>
       <p>
-        Dans «Villes»: flèches Haut/Bas (parcourir), Gauche/Droite (ville suivante/précédente à la même latitude), entrée pour activer.
-        Dans «Coordonnées»: flèches N/E/S/O déplacent la position par pas de 100 km.
-      </p>
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+         <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-capture-cities.jpg"
+              alt="Se dépacer sur la Terre avec l'onglet Villes"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Se dépacer sur la Terre avec l'onglet Villes
+            </figcaption>
+          </figure>
+          <div>
+           
+            <br/>
+            Les deux boutons Est  <I id="e" size='small' />et Ouest  <I id="o" size='small' />permettent
+            de naviguer dans la liste des villes en restant sur la même longitude (à 1° près).
+            <br/>
+            <br/>
+            Cette organisation permet de mettre en évidence la sphéricité de la planète puisqu'en se déplaçant d'est en ouest ou du nord au sud, la scène rendue va pivoter.
+            <br/>
+            {/* Galerie 2 colonnes */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">
+              <figure className="m-0">
+                <img
+                  src="/img/capture/moontracker-application-moon-paris.jpg"
+                  alt="Simulation de la lune vue de Paris"
+                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
-      <h3><I id="location" />Onglet Coordonnées (lat/lon) et déplacements 100 km</h3>
+                />
+                <figcaption className="text-sm text-gray-500 mt-1">
+                  La lune vue de Paris
+                </figcaption>
+              </figure>
+              <figure className="m-0">
+                <img
+                  src="/img/capture/moontracker-application-moon-cotonou.jpg"
+                  alt="Simulation de la lune vue de Cotonou"
+                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+                />
+                <figcaption className="text-sm text-gray-500 mt-1">
+                  La lune vue de Cotonou (au sud de Paris)
+                </figcaption>
+              </figure>
+              <figure className="m-0">
+                <img
+                  src="/img/capture/moontracker-application-moon-somalia.jpg"
+                  alt="Simulation de la lune vue de Somalie"
+                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+                />
+                <figcaption className="text-sm text-gray-500 mt-1">
+                  La lune vue de Somalie (à l'est de Cotonou)
+                </figcaption>
+              </figure>
+              <figure className="m-0">
+                <img
+                  src="/img/capture/moontracker-application-moon-madagascar.jpg"
+                  alt="Simulation de la lune vue de Madagascar"
+                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+                />
+                <figcaption className="text-sm text-gray-500 mt-1">
+                  La lune vue de Madagascar (au sud de la Somalie)
+                 
+                </figcaption>
+              </figure>
+            </div>
+            Ces quatre photos (simulées par l'application) montrent la lune vue de Paris, Cotonou, Somalie et Madagascar au même instant. L'effet de rotation n'est possible que sur une terre sphérique.  
+          </div>
+        </div>
+      </p>
       <p>
-        Saisissez directement latitude/longitude (wrap‑around sur les longitudes, garde‑fou aux pôles). Utilisez le pavé NESO pour vous déplacer
-        de 100 km. Une mention «Ville proche» indique la grande ville de référence et la direction. [CAPTURE]
+        Ce déplacement <I id="o" size='small' /><I id="n" size='small' /><I id="s" size='small' /><I id="e" size='small' />est 
+        aussi possible en utilisant les touches du pavé numérique de votre clavier.
+        <br/>
+        <br/>
+        Avec le bouton "+" (côté de chaque ville)  vous pouvez créer une liste des villes préférées pour faciliter la navigation entre ces villes.
       </p>
-
-
-      <h2>5) Partage, capture, performances</h2>
-
-      <h3><I id="share" />URL partageable complète</h3>
+      <h3><I id="location" />Onglet Coordonnées (lat/lon) et déplacements par pas de 100 km</h3>
       <p>
-        L’URL encode lieu (ou coordonnées), date/heure, suivi, projection, FOV, boîtier/objectif, visibilité (Soleil, Lune, planètes, étoiles, horizon, écliptique, etc.),
-        time‑lapse, pose longue et plus. Parfait pour partager une composition d’astro‑photo, un transit ou un lever/coucher précis.
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-capture-coord.jpg"
+              alt="Se dépacer sur la Terre avec l'onglet Coordonnées"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Se dépacer sur la Terre avec l'onglet Coordonnées
+            </figcaption>
+          </figure>
+          <div>
+            Dans cet onglet vous pouvez saisir directement les latitude/longitude de l'observateur.
+            <br/><br/>
+            Les boutons <I id="o" size='small' /><I id="n" size='small' /><I id="s" size='small' /><I id="e" size='small' />permettent de se déplacer par pas de 100 km dans chaque direction.
+            <br/><br/>
+            Il est aussi possible de se déplacer rapidement en utilisant les touches du pavé numérique de votre clavier.
+            <br/>
+          </div>
+        </div>
       </p>
-
-      <h3><I id="capture" />Export JPG (presse‑papier + fichier)</h3>
-      <p>Copie l’image et télécharge le JPG. L’option est désactivée lorsque l’interface est visible: basculez l’UI pour une capture «propre» du ciel. [CAPTURE]</p>
-
-      <h3>Chargement des modèles 3D</h3>
+      <h2 ><I id="panels" />Date, Heure et animation</h2>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
+        <div className="md:col-span-2">
+          <p>
+            Dans la barre d'outils <I id="panels" size='small' />, vous pouvez choisir la date et l’heure d’observation
+            du ciel, et paramétrer son rythme de mise à jour afin de créer une animation.
+            <br/>
+            <br/>
+            L'heure de référence de l'animation est l'heure UTC, ce qui permet d'éviter les 
+            "sauts" lors des passages en heure été/hivers.
+            <br/><br/>
+            Par contre dans le champs "Date & Heure" que vous pouvez configurer, sera comprise en heure locale à votre navigateur, et ce peu importe le lieu d'observation que vous avez choisi dans la barre de naviogation.
+            
+          </p>
+        </div>
+        <div className="m-0 md:col-span- md:mr-[5em]">
+          <figure className="mt-0">
+            <img
+              src="/img/capture/moontracker-application-capture-date.jpg"
+              alt="Choix de l'heure et de la date d'observation. Paramétrage de l'animation"
+              className="w-full h-auto rounded-md border border-black/10 shadow-sm"
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Choix de l'heure et de la date d'observation. Paramétrage de l'animation
+            </figcaption>
+          </figure>
+        </div>
+      </div>
       <p>
-        Les modèles 3D (Lune, Terre, planètes) sont préchargés avec une barre de progression. L’application prépare le relief pour un premier rendu fluide.
-        Le premier cadre 3D affiche un «Rendu en cours…» le temps de chauffer le GPU.
+        A titre d'information, les heures UTC, et l'heure locale à la ville d'observation 
+        choisie est indiquée sous le champs "Date & Heure".
+        <br/>
+        <br/>
+        Par ailleurs, si vous changez de ville d'observation dans la barre de navigation, 
+        l'heure UTC ne changera pas. De même que le champs "Date & Heure"  restera inchangée (locale 
+        à votre navigateur).
+        <br/>
+        <br/>
+        Les boutons <I id="previous" size='small' /><I id="timelapse" size='small' /><I id="next" size='small'/>permettent de reculer, avancer ou revenir à l'heure actuelle.
       </p>
 
-      <h2>6) Conseils d’astrophotographie et d’observation</h2>
+      <h3><I id="play" />Animer la scène</h3>
+      <p>
+        L'application anime la scène en faisant évoluer l'heure UTC de référence.
+        <br/>
+        <br/>
+        Activez l'animation ou mettez la en pause par les boutons <I id="play" size='small'/>et <I id="pause" size='small'/>
+        <br/>
+        <br/>
+        Le slider de cette zone permet d'accélérer ou de ralentir l'animation (vers l'avenir ou vers le passé).
+        <br/>
+        <br/>
+        De même les boutons <I id="moins" size='small' /><I id="plus" size='small'/> permettent
+        d'accélérer ou de ralentir finement (de 1 minute simulée par seconde à l'écran), ou de revenir en temps réel <I id="timelapse" size='small' />.
+        <br/>
+        <br/>
+        Ce mode d'animation (en minutes par seconde) va essayer de s'adapter à la capacité de votre navigateur en créant le plus d'images possible. Elle est à différencier de la fonction "timelapse" qui elle va effectuer des sauts de temps discrets (minute, heure, jour, jour sidéral, etc.).
+
+      </p>
+      <h3><I id="timelapse2" />Timelapse</h3>
+      <p>
+        Le mode "Timelapse" permet de créer des animations en accélérant le temps de manière significative. Contrairement à l'animation standard qui simule le passage du temps en temps réel, le timelapse effectue des sauts de temps discrets, permettant de visualiser des événements sur de longues périodes en quelques secondes.
+        <br/>
+        <br/>
+        Vous pouvez choisir différents intervalles de temps pour les sauts. Cela permet de capturer des phénomènes astronomiques qui se déroulent sur des échelles de temps plus longues.
+      </p>
       <ul>
-        <li>Utilisez <strong>Recti‑Panini</strong> pour les ultra‑larges (paysages + ciel), <strong>Rectilinéaire</strong> pour les longues focales.</li>
-        <li>Activez <strong>réfraction</strong> près de l’horizon pour des hauteurs apparentes crédibles au lever/coucher.</li>
-        <li>Servez‑vous de l’<strong>écliptique</strong> pour anticiper les alignements Soleil‑Lune‑planètes.</li>
-        <li>La <strong>pose longue</strong> permet de visualiser les traînées ou d’adoucir le bruit des timelapses.</li>
-        <li>Les pas <strong>sidéral</strong>/<strong>synodique</strong> du time‑lapse sont parfaits pour suivre la libration et les phases lunaires.</li>
+        <li>Minute</li>
+        <li>Heure</li>
+        <li>Jour</li>
+        <li>Jour sidéral : 23h 56m 4s, permet le retour du lieux d'observation sous les mêmes étoiles que le jour précédent</li>
+        <li>Mois : un 12eme d'année</li>
+        <li>Jour lunaire : 29.53 jours, temps entre deux phases identiques de la lune. Permet une observation intéressante de la libration de la lune (bien visible depuis les pôles).</li>
+        <li>Cycle lunaire sidéral : 27.32 jours, temps entre deux passages de la lune devant les mêmes étoiles.</li>
+      </ul>
+      <p>
+        Le timelapse est particulièrement utile pour observer des événements tels que les phases de la lune, les transits planétaires, ou les mouvements des étoiles sur plusieurs nuits. 
+      </p>
+
+      <h3><I id="longpose" />Pose longue (empilement)</h3>
+      <p>
+        Superpose plusieurs trames pour simuler une pose longue (traînées, lueurs). Ajustez le nombre d’images conservées, et videz à la demande.
+        En mode time‑lapse, la progression attend la consolidation de la pose longue pour éviter des manques.
+        {/* Galerie 4 colonnes */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-sun-noon-followup.jpg"
+              alt="Une image du soleil à midi superposée tout au long de l'année montre la progression des saisons"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Une image du soleil à midi superposée tout au long de l'année montre la progression des saisons
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-sun-venus-dance.jpg"
+              alt="Simulation de la danse de Vénus et de mercure autour du soleil"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Même paramètres, athmosphère cachée, durant plusieurs décénies : la danse de Vénus et de Mercure.
+            </figcaption>
+          </figure>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-venus-transit.png"
+              alt="Transit de venus vue de tokyo en 2012"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Transit de venus vue de tokyo en 2012
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-sun-vens-polaris.jpg"
+              alt="Le soleil, polaris, venus et mercure en pose longue"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Le soleil, polaris, venus et mercure en pose longue. Cette prise de vue est évidement très complexe à réaliser ayant le soleil dans le champ de vision.
+            </figcaption>
+          </figure>
+        </div>
+      </p>
+      <h2><I id="panels" /> Objets spatiaux visibles dans la scène et assistance visuelle</h2>
+
+      <ul className="list-disc pl-6  gap-x-8 gap-y-2">
+        <li><I id="enlarge" />Agrandit les objets par rapport à la taille qu'ils devraient avoir avec le niveau de zoom choisi.
+          <br/>
+          Cette fonction est mise en place pour simuler un zoom par logiciel, mais peut donner l'impression que les objets se chevaucheront sur une prise de vue (ce qui ne sera pas le cas),
+          <br/>
+          Elle peut aider à animer une présentation et à la rendre plus immersive (même si elle est moins réaliste)
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-not-enlarge.jpg"
+                alt="Real size simulation"
+                className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Simulation en taille réelle sans agrandissement : le soleil et la lune sont minuscules à 173° de FOV.
+              </figcaption>
+            </figure>
+            <figure className="m-0">
+              <img
+                src="/img/capture/moontracker-application-enlarge.jpg"
+                alt="Simulation de la danse de Vénus et de mercure autour du soleil"
+                className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+              />
+              <figcaption className="text-sm text-gray-500 mt-1">
+                Simulation avec agrandissement : le soleil, la lune et les planètes sont rendues à la même taille.
+              </figcaption>
+            </figure>
+        </li>
+        <li><I id="horizon" />Ajoute une ligne d’horizon, avec des indicateur cardinaux et de position des objets spatiaux affichés.
+        <br/>Des lignes pointillées "haut" et "bas" sont aussi ajoutés pour indiquer les altitudes 90° et -90°  </li>
+        <li><I id="earth" />Affiche ou cache le sol opaque (la terre). Le désactiver permet de suivre le trajet des objets spatiaux même quand ils sont cachés à un observateur (sous l'horizon).</li>
+        <li><I id="atmo" />Affiche ou cache un effet d'atmosphère. L'activer rend les étoiles, et planètes difficile à voir (comme dans la réalité).</li>
+        <li><I id="refraction" />Réfraction atmosphérique : va modifier la position des étoiles et planètes proches de l'horizon. Le désactiver permet de fluidifier les animations qui traversent l'horizon.</li>
+        <li><I id="phase" />Phase de la Lune et des planètes : affiche les phases selon la position relative du Soleil, de la Terre et de la Lune/planète. Quand il est désactivé, la lune est éclairée tout au long de sa phase.</li>
+        <li><I id="phase" />Clair de terre : Retroéclairage bleuté du limbe ombré de la lune par la lumière qui se réfléchit sur la Terre.</li>
+        </ul><ul className="list-disc pl-6 grid grid-cols-1 md:grid-cols-2  gap-x-8 gap-y-2">
+        <li><I id="sun" />Affiche ou cache le soleil</li>
+        <li><I id="moon" />Affiche ou cache la lune</li>
+        <li><I id="mercure" />Affiche ou cache Mercure. </li>
+        <li><I id="venus" />Affiche ou cache Vénus. </li>
+        <li><I id="mars" />Affiche ou cache Mars. </li>
+        <li><I id="jupiter" />Affiche ou cache Jupiter. </li>
+        <li><I id="saturne" />Affiche ou cache Saturne. </li>
+        <li><I id="uranus" />Affiche ou cache Uranus. </li>
+        <li><I id="neptune" />Affiche ou cache Neptune. </li>
+        </ul><ul className="list-disc pl-6  gap-x-8 gap-y-2">
+        <li><I id="grid" />Affiche ou cache la grille de référence. Elle trace un trait tous les 15°.</li>
+        <li><I id="markers" />Affiche ou cache les marqueurs (réticule sur les objets spatiaux)</li>
+        <li><I id="ecliptic" />Affiche ou cache le plan de l'écliptique.
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-ecliptic.jpg"
+              alt="Méridien standard, Equateur et cardinaux des planètes"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Méridien standard, Equateur et cardinaux des planètes
+            </figcaption>
+          </figure>
+        </li>
+        <li><I id="moonCard" />Affiche ou cache les cardinaux locaux sur la Lune/planètes
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-cards.jpg"
+              alt="Méridien standard, Equateur et cardinaux des planètes"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Méridien standard, Equateur et cardinaux des planètes
+            </figcaption>
+          </figure>
+        </li>
       </ul>
 
-      <h2>Raccourcis et actions rapides</h2>
-      <ul>
-        <li><I id="keyboard" />Villes: flèches Haut/Bas/Gauche/Droite pour naviguer/faire défiler rapidement.</li>
-        <li><I id="keyboard" />Coordonnées: flèches NESO pour des sauts de 100 km (routage aux pôles pris en charge).</li>
-        <li><I id="share" />Copier l’URL pour partager une observation reproduisible (éclipses, conjonctions, occultations).</li>
-      </ul>
-
+      <h3>Télémétrie d’observation</h3>
       <p>
-        Pour des <strong>exemples prêts à shooter</strong>, voir la <Link to="/info#simulations">page des simulations</Link>.
+        En bas de la scène :  des informations télémétriques sur la lune et le soleil.
+        <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-moon3d.jpg"
+              alt="Lune rendue en 3D avec effet de libration, orientation et phase"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Lune rendue en 3D avec effet de libration, orientation et phase
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-application-telemetry.jpg"
+              alt="Télémétrie de l'application"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Télémétrie de l'application
+            </figcaption>
+          </figure>
       </p>
     </article>
   );

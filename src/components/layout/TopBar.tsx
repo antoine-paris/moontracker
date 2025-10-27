@@ -1032,7 +1032,10 @@ export default function TopBar({
                     title="Régler l'heure actuelle"
                   >
                     {/*Maintenant*/}
-                    &#128345;	
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                      <circle cx="12" cy="12" r="9" stroke="currentColor" />
+                      <path d="M12 7v6l4 4" stroke="currentColor" />
+                    </svg>
                   </button>
                   {/* +1 heure */}
                   <button
@@ -1135,7 +1138,10 @@ export default function TopBar({
                     title="Animer en temps réel"
                     className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
-                    &#128345;
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" />
+                        <path d="M12 7v6l4 4" stroke="currentColor" />
+                      </svg>
                   </button>
                   {/* +1 min/s */}
                   <button
