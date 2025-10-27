@@ -151,7 +151,7 @@ class ByteWriter {
   finalize(): Uint8Array { return new Uint8Array(this.bytes); }
 }
 
-type ExifPatch = { at: number; value: number };
+//type ExifPatch = { at: number; value: number };
 type DataPatch = { at: number; bytes: Uint8Array };
 
 // Builds minimal EXIF: IFD0(Software, Make, Model, DateTime, ExifIFDPointer[, ImageDescription]) + ExifIFD(DateTimeOriginal, UserComment)
@@ -161,7 +161,7 @@ function makeExifTiff(meta?: PngMeta): Uint8Array | null {
     // Header
     w.writeU8(0x49); w.writeU8(0x49); w.writeU16LE(0x2A); w.writeU32LE(8);
 
-    const patches: ExifPatch[] = [];
+    //const patches: ExifPatch[] = [];
     const dataPatches: DataPatch[] = [];
 
     const whenMs = Number.isFinite(meta?.whenMs) ? (meta!.whenMs as number) : Date.now();
@@ -190,7 +190,7 @@ function makeExifTiff(meta?: PngMeta): Uint8Array | null {
     for (let i=0;i<userCommentAscii.length;i++) userCommentBytes[8+i] = userCommentAscii.charCodeAt(i);
     userCommentBytes[userCommentBytes.length - 1] = 0x00;
 
-    const TYPE_BYTE=1, TYPE_ASCII=2, TYPE_SHORT=3, TYPE_LONG=4, TYPE_RATIONAL=5, TYPE_UNDEFINED=7;
+    const TYPE_BYTE=1, TYPE_ASCII=2, /*TYPE_SHORT=3,*/ TYPE_LONG=4, TYPE_RATIONAL=5, TYPE_UNDEFINED=7;
 
     // IFD0 (sorted)
     const ifd0Entries: { tag:number; type:number; count:number; write:()=>void }[] = [];
@@ -480,7 +480,7 @@ export async function copyAndDownloadNodeAsPngAndJpeg(
   }
 ): Promise<{ pngDataUrl: string; jpegDataUrl: string }> {
   const filenameBase = options?.filenameBase ?? 'spaceview';
-  const pngName = options?.pngFilename ?? `${filenameBase}.png`;
+  //const pngName = options?.pngFilename ?? `${filenameBase}.png`;
   const jpgName = options?.jpgFilename ?? `${filenameBase}.jpg`;
   const pixelRatio = options?.pixelRatio ?? Math.min(2, (window.devicePixelRatio || 1));
   const backgroundColor = options?.backgroundColor ?? '#000';

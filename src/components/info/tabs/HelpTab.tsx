@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 
 type IconId =
   | 'info' | 'panels' | 'play' | 'pause' | 'share' | 'capture'
