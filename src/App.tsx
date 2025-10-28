@@ -308,7 +308,7 @@ export default function App() {
 
   const [showHorizon, setShowHorizon] = useState(true);
 
-  const [lockHorizon, setLockHorizon] = useState(false);
+  const [lockHorizon, setLockHorizon] = useState(true);
 
   const [showPlanets, setShowPlanets] = useState<Record<string, boolean>>(
     () => {

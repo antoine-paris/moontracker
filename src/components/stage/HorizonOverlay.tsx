@@ -28,6 +28,11 @@ type Props = {
   // visuals
   showEarth?: boolean;
   debugMask?: boolean; // NEW: debug mask passthrough
+  // horizon vs ecliptic alignment
+  lockHorizon?: boolean;
+  // optional ecliptic "up" direction (when lockHorizon=false)
+  eclipticUpAzDeg?: number;
+  eclipticUpAltDeg?: number;
 };
 
 // Hoisted math helpers (avoid reallocation each render)
@@ -68,6 +73,9 @@ export default function HorizonOverlay({
   fovYDeg,
   projectionMode,
   debugMask = false,
+  lockHorizon = true,
+  eclipticUpAzDeg,
+  eclipticUpAltDeg,
 }: Props) {
   // NEW: avoid closer ±90° to prevent singularities
   const refAltDegSafe = refAltDeg > 89 ? 89 : (refAltDeg < -89 ? -89 : refAltDeg);
@@ -103,7 +111,8 @@ export default function HorizonOverlay({
         viewport.w, viewport.h,
         refAltDegSafe, 0,
         fovXDeg, fovYDeg,
-        projectionMode
+        projectionMode,
+        lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
       );
       const finite = Number.isFinite(p.x) && Number.isFinite(p.y);
       if (!finite) {
@@ -196,7 +205,8 @@ export default function HorizonOverlay({
         0,                            // roll (unused here)
         fovXDeg,                      // horizontal field of view
         fovYDeg,                      // vertical field of view
-        projectionMode                // projection model
+        projectionMode,                // projection model
+        lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
       );
       // Check that projection produced finite coordinates
       const finite = Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -298,13 +308,17 @@ export default function HorizonOverlay({
   // Horizon split in two parts (memoized)
   const { frontD: horizonFrontPath, backD: horizonBackPath} = useMemo(
     () => buildHorizonFrontBackPaths(0),
-    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg, 
+    ]
   );
 
   // Prime-vertical top/bottom arcs (memoized)
   const { topPath, bottomPath, bottomLabelPath} = useMemo(
     () => buildPrimeVerticalPaths(),
-    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+    [refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+    ]
   );
 
   const topPathId = "alt-top-path";
@@ -314,33 +328,76 @@ export default function HorizonOverlay({
   const simplifyFlat = fovXDeg <= FLAT_FOV_X_THRESHOLD || fovYDeg <= FLAT_FOV_Y_THRESHOLD;
 
   const flatHorizon = useMemo(() => {
-    if (!simplifyFlat) return null as { y: number; groundBelow: boolean } | null;
-    const p = projectToScreen(
-      refAzDeg,               // center of frame azimuth
-      0,                      // horizon altitude
-      refAzDeg,
-      viewport.w, viewport.h,
-      refAltDegSafe,
-      0,
-      fovXDeg, fovYDeg,
-      projectionMode
+    if (!simplifyFlat) return null as { x1: number; y1: number; x2: number; y2: number } | null;
+
+    // Center point on world horizon (Alt=0) at refAz
+    const p0 = projectToScreen(
+      refAzDeg, 0, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
     );
-    let y = Number.isFinite(p.x) && Number.isFinite(p.y) ? p.y : viewport.h / 2;
-    // Probe slightly under the horizon to detect the "ground" side in screen space
-    const pb = projectToScreen(
-      refAzDeg, -1,
-      refAzDeg,
-      viewport.w, viewport.h,
-      refAltDegSafe,
-      0,
-      fovXDeg, fovYDeg,
-      projectionMode
+    if (!Number.isFinite(p0.x) || !Number.isFinite(p0.y)) {
+      // fallback: horizontal through center
+      return { x1: 0, y1: viewport.h / 2, x2: viewport.w, y2: viewport.h / 2 };
+    }
+
+    // Sample left/right along horizon to estimate tangent slope at center
+    const dAz = Math.max(0.5, Math.min(2, fovXDeg / 30));
+    const pL = projectToScreen(
+      refAzDeg - dAz, 0, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
     );
-    const groundBelow = (Number.isFinite(pb.x) && Number.isFinite(pb.y)) ? (pb.y > y) : true;
-    // Clamp within viewport
-    y = Math.max(0, Math.min(viewport.h, y));
-    return { y, groundBelow };
-  }, [simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+    const pR = projectToScreen(
+      refAzDeg + dAz, 0, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+    );
+
+    let dx = (pR.x - pL.x);
+    let dy = (pR.y - pL.y);
+    const len = Math.hypot(dx, dy);
+
+    // If degenerate, fallback to horizontal
+    if (!Number.isFinite(len) || len < 1e-3) {
+      return { x1: 0, y1: p0.y, x2: viewport.w, y2: p0.y };
+    }
+
+    dx /= len; dy /= len; // direction along horizon
+    // Compute intersections of the infinite line (p0 + t*[dx,dy]) with viewport rectangle
+    const hits: { x: number; y: number }[] = [];
+    const tryEdge = (t: number, x: number | null, y: number | null) => {
+      const X = x ?? (p0.x + t * dx);
+      const Y = y ?? (p0.y + t * dy);
+      if (X >= 0 - 1e-3 && X <= viewport.w + 1e-3 && Y >= 0 - 1e-3 && Y <= viewport.h + 1e-3) {
+        hits.push({ x: X, y: Y });
+      }
+    };
+    const EPS = 1e-6;
+    if (Math.abs(dx) > EPS) {
+      // x = 0 and x = w
+      let t = (0 - p0.x) / dx;    tryEdge(t, 0, null);
+      t = (viewport.w - p0.x) / dx; tryEdge(t, viewport.w, null);
+    }
+    if (Math.abs(dy) > EPS) {
+      // y = 0 and y = h
+      let t = (0 - p0.y) / dy;    tryEdge(t, null, 0);
+      t = (viewport.h - p0.y) / dy; tryEdge(t, null, viewport.h);
+    }
+    // Ensure we have two endpoints
+    if (hits.length < 2) {
+      return { x1: 0, y1: p0.y, x2: viewport.w, y2: p0.y };
+    }
+    // Pick two farthest hits to span the viewport
+    let bestI = 0, bestJ = 1, bestD2 = -1;
+    for (let i = 0; i < hits.length; i++) {
+      for (let j = i + 1; j < hits.length; j++) {
+        const d2 = (hits[i].x - hits[j].x) ** 2 + (hits[i].y - hits[j].y) ** 2;
+        if (d2 > bestD2) { bestD2 = d2; bestI = i; bestJ = j; }
+      }
+    }
+    const a = hits[bestI], b = hits[bestJ];
+    return { x1: a.x, y1: a.y, x2: b.x, y2: b.y };
+  }, [simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
+    lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+  ]);
 
   return (
     <>
@@ -366,11 +423,11 @@ export default function HorizonOverlay({
           {simplifyFlat && flatHorizon && (
             <>
               {/* Flat horizon line */}
-              <line
-                x1={0}
-                y1={flatHorizon.y}
-                x2={viewport.w}
-                y2={flatHorizon.y}
+               <line
+                x1={flatHorizon.x1}
+                y1={flatHorizon.y1}
+                x2={flatHorizon.x2}
+                y2={flatHorizon.y2}
                 stroke={debugMask ? COLOR_HZ_FRONT : COLOR_MARKER}
                 strokeWidth={1.5}
               />

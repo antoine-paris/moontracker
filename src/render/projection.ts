@@ -45,17 +45,37 @@ export function projectToScreen(
   fovYDeg: number = 220,
   // NEW: projection mode (default keeps previous behavior = "recti-panini")
   projectionMode: ProjectionMode = 'recti-panini',
+  // NEW: lock horizon to world up (default true). If false, use ecliptic-up if provided.
+  lockHorizon: boolean = true,
+  // NEW: optional Ecliptic North direction (Az/Alt, degrees) to align screen "up" with.
+  eclipticUpAzDeg?: number,
+  eclipticUpAltDeg?: number,
 ) {
   const halfW = width / 2;
   const halfH = height / 2;
 
   // Build camera basis from refAlt/refAz
   const fwd = altAzToVec(refAzDeg, refAltDeg); // forward = center direction
-  const worldUp = [0, 0, 1] as const;
-  let right = cross(fwd, worldUp);
+
+  // Choose "world up": horizon-locked (Up) or ecliptic-locked (Ecliptic North)
+  const worldUpHorizon = [0, 0, 1] as const;
+  let chosenUp: readonly number[];
+  if (lockHorizon) {
+    chosenUp = worldUpHorizon;
+  } else {
+    if (Number.isFinite(eclipticUpAzDeg) && Number.isFinite(eclipticUpAltDeg)) {
+      chosenUp = altAzToVec(eclipticUpAzDeg as number, eclipticUpAltDeg as number);
+    } else {
+      // Fallback safely to horizon up if ecliptic-up not provided
+      chosenUp = worldUpHorizon;
+    }
+  }
+
+  let right = cross(fwd, chosenUp);
   let rLen = Math.hypot(right[0], right[1], right[2]);
+
   if (rLen < 1e-6) {
-    // looking close to zenith/nadir → choose arbitrary right on horizon East
+    // looking close to the chosenUp axis → choose arbitrary right on horizon East
     right = [1, 0, 0] as const;
     rLen = 1;
   }
@@ -126,23 +146,72 @@ export function projectToScreen(
       sy = halfH - v2;
     }
   } else if (projectionMode === 'cylindrical-horizon') {
-    // Horizon-locked cylindrical (world-up): x=ΔAz(world), y=Alt(world)
-    const az = toRad(azDeg);
-    const alt = toRad(altDeg);
-    const refAz = toRad(refAzDeg);
-    const refAlt = toRad(refAltDeg);
-    const dLon = wrapPI(az - refAz);
-    const dLat = alt - refAlt;
+    if (lockHorizon || !(Number.isFinite(eclipticUpAzDeg) && Number.isFinite(eclipticUpAltDeg))) {
+      // Horizon-locked cylindrical (world-up): x=ΔAz(world), y=Alt(world)
+      const az = toRad(azDeg);
+      const alt = toRad(altDeg);
+      const refAz = toRad(refAzDeg);
+      const refAlt = toRad(refAltDeg);
+      const dLon = wrapPI(az - refAz);
+      const dLat = alt - refAlt;
 
-    const fx = halfW / Math.max(1e-9, thetaX);
-    const fy = halfH / Math.max(1e-9, thetaY);
+      const fx = halfW / Math.max(1e-9, thetaX);
+      const fy = halfH / Math.max(1e-9, thetaY);
 
-    const u = fx * dLon;
-    const v2 = fy * dLat;
-    sx = halfW + u;
-    sy = halfH - v2;
+      const u = fx * dLon;
+      const v2 = fy * dLat;
+      sx = halfW + u;
+      sy = halfH - v2;
 
-    visible = Math.abs(dLon) <= (thetaX + 1e-9) && Math.abs(dLat) <= (thetaY + 1e-9);
+      visible = Math.abs(dLon) <= (thetaX + 1e-9) && Math.abs(dLat) <= (thetaY + 1e-9);
+    } else {
+      // Ecliptic-locked cylindrical:
+      // x = Δλ along ecliptic (longitude around ecliptic North)
+      // y = β - β0 where β = asin(dot(v, n)) is ecliptic latitude, β0 is center ecliptic lat
+      const n = altAzToVec(eclipticUpAzDeg as number, eclipticUpAltDeg as number); // ecliptic north (unit)
+
+      // Stable ecliptic basis:
+      // e2 = camera right; e1 = forward projected onto ecliptic plane (use n × right to keep correct orientation)
+      let e2 = [right[0], right[1], right[2]];
+      let e1 = cross(n, e2) as number[];  // instead of cross(e2, n)
+
+      // Normalize and fallback if degenerate
+      let e1Len = Math.hypot(e1[0], e1[1], e1[2]);
+      if (e1Len < 1e-6) {
+        // right ~ parallel to n → pick arbitrary axis orthogonal to n
+        const tmp = Math.abs(n[0]) < 0.9 ? [1, 0, 0] as const : [0, 1, 0] as const;
+        const altRight = cross(tmp, n);
+        const arLen = Math.hypot(altRight[0], altRight[1], altRight[2]) || 1;
+        e2 = [altRight[0] / arLen, altRight[1] / arLen, altRight[2] / arLen];
+        const e1Alt = cross(n, e2);  // keep same orientation here too
+        const e1AltLen = Math.hypot(e1Alt[0], e1Alt[1], e1Alt[2]) || 1;
+        e1 = [e1Alt[0] / e1AltLen, e1Alt[1] / e1AltLen, e1Alt[2] / e1AltLen];
+      } else {
+        e1 = [e1[0] / e1Len, e1[1] / e1Len, e1[2] / e1Len];
+      }
+
+      // Latitude relative to ecliptic: β = asin(dot(v, n))
+      const vDotN = dot(v, n);
+      const beta = Math.asin(clamp(vDotN, -1, 1));
+      // Center ecliptic latitude β0
+      const fDotN = dot(fwd, n);
+      const beta0 = Math.asin(clamp(fDotN, -1, 1));
+      const dBeta = beta - beta0;
+
+      // Longitude along ecliptic: angle from e1 to v projected on the ecliptic plane
+      const vProj = [v[0] - vDotN * n[0], v[1] - vDotN * n[1], v[2] - vDotN * n[2]] as const;
+      const lon = Math.atan2(dot(vProj, e2), dot(vProj, e1));
+
+      const fx = halfW / Math.max(1e-9, thetaX);
+      const fy = halfH / Math.max(1e-9, thetaY);
+
+      const u = fx * lon;
+      const v2 = fy * dBeta;
+      sx = halfW + u;
+      sy = halfH - v2;
+
+      visible = Math.abs(lon) <= (thetaX + 1e-9) && Math.abs(dBeta) <= (thetaY + 1e-9);
+    }
   } else {
     // recti-panini: rectilinear for narrow FOV, Panini-like for ultra-wide
     const minFov = Math.min(fovXDeg, fovYDeg);

@@ -19,14 +19,27 @@ type Props = {
 
   // Only keep bodyItems coming from parent; cardinals are computed here
   bodyItems?: BodyItem[];
+
+  // NEW: horizon vs ecliptic alignment
+  lockHorizon?: boolean;
+  // NEW: optional ecliptic "up" direction (when lockHorizon=false)
+  eclipticUpAzDeg?: number;
+  eclipticUpAltDeg?: number;
 };
 
 export default function CardinalMarkers({
   viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
-  bodyItems
+  bodyItems,
+  // NEW
+  lockHorizon = true,
+  eclipticUpAzDeg,
+  eclipticUpAltDeg,
 }: Props) {
   const yForAz = (az: number) => {
-    const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+    const p = projectToScreen(
+      az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+    );
     const y = (p?.y ?? Number.NaN); // local (pas de + viewport.y)
 
     if (Number.isFinite(y)) return y;
@@ -57,7 +70,10 @@ export default function CardinalMarkers({
     ];
     const projected = base
       .map(c => {
-        const p = projectToScreen(c.az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+        const p = projectToScreen(
+          c.az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+          lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+        );
         const x = p.x; // local
         const delta = Math.abs(angularDiff(c.az, refAzDeg));
         return { ...c, x, visible: p.visibleX, delta };
@@ -75,7 +91,9 @@ export default function CardinalMarkers({
     return dedup
       .sort((a, b) => a.x - b.x)
       .map(({ label, az, x }) => ({ label, az, x }));
-  }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+  }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
+    lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+  ]);
 
   // Compute secondary 16-wind markers (dedup on x, skip primaries)
   const secondaryItems: SecondaryCardinalItem[] = React.useMemo(() => {
@@ -85,7 +103,10 @@ export default function CardinalMarkers({
       const az = i * 22.5;
       const label = compass16(az);
       if (primaries.has(label)) continue;
-      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const p = projectToScreen(
+        az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+        lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+      );
       if (!p.visibleX) continue;
       const x = p.x; // local
       const delta = Math.abs(angularDiff(az, refAzDeg));
@@ -99,7 +120,9 @@ export default function CardinalMarkers({
       else if (it.delta < dedup[idx].delta) dedup[idx] = it;
     }
     return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
-  }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+  }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
+    lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+  ]);
 
   return (
     <>

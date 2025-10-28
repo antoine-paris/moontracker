@@ -16,7 +16,7 @@ import { toDeg, toRad, norm360, clamp } from "../../utils/math";
 import { altAzToVec, normalize3 } from "../../utils/vec3";
 import { projectToScreen } from "../../render/projection";
 import type { ProjectionMode } from "../../render/projection";
-import { localUpAngleOnScreen, correctedSpriteRotationDeg } from "../../render/orientation";
+import { localPoleAngleOnScreen, localUpAngleOnScreen, correctedSpriteRotationDeg } from "../../render/orientation";
 
 // Render constants & registry
 import { Z, MOON_RENDER_DIAMETER } from "../../render/constants";
@@ -229,33 +229,64 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     () => (showRefraction ? astro.moon.alt : unrefractAltitudeDeg(astro.moon.alt)),
     [showRefraction, astro.moon.alt]
   );
-
-  // projection-aware local vertical angles: utiliser alt pour proj
-  const localUpAngleSunDeg = useMemo(
-    () => localUpAngleOnScreen(astro.sun.az, sunAltForProj, {
-      refAz: refAzDeg, refAlt: refAltDeg,
-      viewport: { w: viewport.w, h: viewport.h },
-      fovXDeg, fovYDeg, projectionMode
-    }),
-    [astro.sun.az, sunAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
-  );
-  const localUpAngleMoonDeg = useMemo(
-    () => localUpAngleOnScreen(astro.moon.az, moonAltForProj, {
-      refAz: refAzDeg, refAlt: refAltDeg,
-      viewport: { w: viewport.w, h: viewport.h },
-      fovXDeg, fovYDeg, projectionMode
-    }),
-    [astro.moon.az, moonAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]
+  
+  const eclipticNorthAltAz = useMemo(
+    () => altAzFromRaDec(date, latDeg, lngDeg, 270, 66.5607),
+    [date, latDeg, lngDeg]
   );
 
-  const rotationDegSunScreen = useMemo(
-    () => correctedSpriteRotationDeg(rotationToHorizonDegSun, localUpAngleSunDeg),
-    [rotationToHorizonDegSun, localUpAngleSunDeg]
-  );
-  const rotationDegMoonScreen = useMemo(
-    () => correctedSpriteRotationDeg(rotationToHorizonDegMoon, localUpAngleMoonDeg),
-    [rotationToHorizonDegMoon, localUpAngleMoonDeg]
-  );
+  
+  // small signed angular diff helper
+  const angDiff = (a: number, b: number) => {
+    let d = (a - b + 540) % 360 - 180;
+    return d;
+  };
+
+  // --- Sun: horizon vs ecliptic local angles ---
+  const sunAngles = useMemo(() => {
+    const ctx = {
+      refAz: refAzDeg, refAlt: refAltDeg,
+      viewport: { w: viewport.w, h: viewport.h },
+      fovXDeg, fovYDeg, projectionMode,
+      lockHorizon,
+      eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
+      eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
+    };
+    const aH = localUpAngleOnScreen(astro.sun.az, sunAltForProj, ctx);
+    const aE = localPoleAngleOnScreen(astro.sun.az, sunAltForProj, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg, ctx);
+    return { aH, aE };
+  }, [astro.sun.az, sunAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, lockHorizon, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg]);
+
+  // --- Moon: horizon vs ecliptic local angles ---
+  const moonAngles = useMemo(() => {
+    const ctx = {
+      refAz: refAzDeg, refAlt: refAltDeg,
+      viewport: { w: viewport.w, h: viewport.h },
+      fovXDeg, fovYDeg, projectionMode,
+      lockHorizon,
+      eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
+      eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
+    };
+    const aH = localUpAngleOnScreen(astro.moon.az, moonAltForProj, ctx);
+    const aE = localPoleAngleOnScreen(astro.moon.az, moonAltForProj, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg, ctx);
+    return { aH, aE };
+  }, [astro.moon.az, moonAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, lockHorizon, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg]);
+
+  // Choose reference and rebase rotation from horizon->chosen (only when ecliptic-locked)
+  const rotationDegSunScreen = useMemo(() => {
+    const chosenAngle = lockHorizon ? sunAngles.aH : sunAngles.aE;
+    const deltaRef = lockHorizon ? 0 : angDiff(sunAngles.aE, sunAngles.aH);
+    const rotationToChosen = rotationToHorizonDegSun - deltaRef;
+    return correctedSpriteRotationDeg(rotationToChosen, chosenAngle);
+  }, [rotationToHorizonDegSun, lockHorizon, sunAngles.aH, sunAngles.aE]);
+
+  const rotationDegMoonScreen = useMemo(() => {
+    const chosenAngle = lockHorizon ? moonAngles.aH : moonAngles.aE;
+    const deltaRef = lockHorizon ? 0 : angDiff(moonAngles.aE, moonAngles.aH);
+    const rotationToChosen = rotationToHorizonDegMoon - deltaRef;
+    return correctedSpriteRotationDeg(rotationToChosen, chosenAngle);
+  }, [rotationToHorizonDegMoon, lockHorizon, moonAngles.aH, moonAngles.aE]);
+
 
   
 
@@ -267,14 +298,18 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       viewport.w, viewport.h,
       refAltDeg,
       0,
-      fovXDeg, fovYDeg, projectionMode
+      fovXDeg, fovYDeg, projectionMode,
+      lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
     );
     const centerMoon = projectToScreen(
       astro.moon.az, moonAltForProj, refAzDeg,
       viewport.w, viewport.h,
       refAltDeg,
       0,
-      fovXDeg, fovYDeg, projectionMode
+      fovXDeg, fovYDeg, projectionMode,
+      lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
     );
     const pxPerDegXSun = centerSun.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
     const pxPerDegYSun = centerSun.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
@@ -298,7 +333,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   }, [
     viewport, fovXDeg, fovYDeg, projectionMode,
     astro.sun.az, sunAltForProj, astro.moon.az, moonAltForProj,
-    astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAzDeg, refAltDeg, enlargeObjects
+    astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAzDeg, refAltDeg, enlargeObjects,
+    lockHorizon,
+    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
   ]);
 
 
@@ -309,13 +346,15 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       viewport.w, viewport.h,
       refAltDeg,
       0,
-      fovXDeg, fovYDeg, projectionMode
+      fovXDeg, fovYDeg, projectionMode, lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
     );
     return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
   }, [
     astro.sun.az, sunAltForProj,
     refAzDeg, refAltDeg,
-    viewport, fovXDeg, fovYDeg, projectionMode
+    viewport, fovXDeg, fovYDeg, projectionMode, lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
   ]);
 
   const moonScreen = useMemo(() => {
@@ -325,25 +364,34 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       viewport.w, viewport.h,
       refAltDeg,
       0,
-      fovXDeg, fovYDeg, projectionMode
+      fovXDeg, fovYDeg, projectionMode, lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
     );
     return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
   }, [
     astro.moon.az, moonAltForProj,
     refAzDeg, refAltDeg,
-    viewport, fovXDeg, fovYDeg, projectionMode
+    viewport, fovXDeg, fovYDeg, projectionMode,
+    lockHorizon,
+    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
   ]);
 
 
   // Apparent Moon size in px decides render mode
   const moonApparentPx = useMemo(() => {
     // Utiliser la même altitude que celle de projection pour éviter un basculement de mode au passage de l’horizon
-    const p = projectToScreen(astro.moon.az, moonAltForProj, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+    const p = projectToScreen(astro.moon.az, moonAltForProj, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+    );
     const pxPerDegX = p.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
     const pxPerDegY = p.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
     const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
     return (astro.moon.appDiamDeg ?? 0) * pxPerDeg;
-  }, [astro.moon.az, moonAltForProj, astro.moon.appDiamDeg, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode]);
+  }, [astro.moon.az, moonAltForProj, astro.moon.appDiamDeg, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode,
+    lockHorizon,
+    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+  ]);
 
   const moonRenderMode = useMemo<'dot' | 'sprite' | '3d'>(() => {
     if (enlargeObjects) return '3d';
@@ -410,6 +458,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     }
   }, [selectedPlanetIds, date, latDeg, lngDeg]);
 
+   
   // Per-planet render bundle
   const planetsRender = useMemo(() => {
     if (!planetsEphemArr?.length) return [];
@@ -454,7 +503,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         refAltDeg,
         0,
         fovXDeg, fovYDeg,
-        projectionMode
+        projectionMode, lockHorizon,
+        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
       );
       if (!Number.isFinite(proj.x) || !Number.isFinite(proj.y)) continue;
 
@@ -520,8 +570,14 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           const altB = toDeg(Math.asin(wB[2]));
           const azB  = norm360(toDeg(Math.atan2(wB[0], wB[1])));
 
-          const pF = projectToScreen(azF, altF, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
-          const pB = projectToScreen(azB, altB, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+          const pF = projectToScreen(azF, altF, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+            lockHorizon,
+            eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+          );
+          const pB = projectToScreen(azB, altB, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+            lockHorizon,
+            eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+          );
 
           const xF = viewport.x + pF.x, yF = viewport.y + pF.y;
           const xB = viewport.x + pB.x, yB = viewport.y + pB.y;
@@ -566,9 +622,44 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         fovXDeg,
         fovYDeg,
         projectionMode,
+        lockHorizon,
+        eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
+        eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
       });
 
+      const ctxAngles = {
+        refAz: refAzDeg,
+        refAlt: refAltDeg,
+        viewport: { w: viewport.w, h: viewport.h },
+        fovXDeg,
+        fovYDeg,
+        projectionMode,
+        lockHorizon,
+        eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
+        eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
+      };
+      const localUpH = localUpAngleOnScreen(az, alt, ctxAngles);
+      const localUpE = localPoleAngleOnScreen(az, alt, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg, ctxAngles);
+      const chosenLocalAngle = lockHorizon ? localUpH : localUpE;
+      const deltaRef = lockHorizon ? 0 : angDiff(localUpE, localUpH);
+
       let rotationToHorizonDegPlanet: number | undefined;
+      try {
+        const po = getPlanetOrientationAngles(date, latDeg, lngDeg, id as PlanetId);
+        rotationToHorizonDegPlanet =
+          (po as any)?.rotationToHorizonDegPlanetNorth ??
+          (po as any)?.rotationToHorizonDegPlanet ??
+          (po as any)?.rotationToHorizonDeg ??
+          undefined;
+      } catch {}
+
+      const rotationToChosenDeg =
+        Number.isFinite(rotationToHorizonDegPlanet) ? (rotationToHorizonDegPlanet as number) - deltaRef : 0;
+
+      const rotationDegPlanetScreen =
+        correctedSpriteRotationDeg(rotationToChosenDeg, chosenLocalAngle);
+
+
       try {
         const po = getPlanetOrientationAngles(date, latDeg, lngDeg, id as PlanetId);
         //console.log("planet orientation", id, po);
@@ -579,10 +670,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           undefined;
       } catch {}
 
-      const rotationDegPlanetScreen =
-        Number.isFinite(rotationToHorizonDegPlanet) && Number.isFinite(localUpAnglePlanetDeg)
-          ? correctedSpriteRotationDeg(Number(rotationToHorizonDegPlanet), Number(localUpAnglePlanetDeg))
-          : 0;
+      
 
       //console.log("rotationDegPlanetScreen", id, rotationDegPlanetScreen);
 
@@ -615,7 +703,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     planetsEphemArr, showPlanets, refAzDeg, viewport.w, viewport.h, viewport.x, viewport.y,
     refAltDeg, fovXDeg, fovYDeg, projectionMode, enlargeObjects,
     astro.sun.az, astro.sun.alt, sunAltForProj, showRefraction,
-    sunScreen.x, sunScreen.y, date, latDeg, lngDeg
+    sunScreen.x, sunScreen.y, date, latDeg, lngDeg, lockHorizon,
+    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
   ]);
 
   const neededPlanetIds = useMemo(
@@ -684,31 +773,53 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     [date, latDeg, lngDeg]
   );
 
+
   const polarisScreen = useMemo(() => {
-    const p = projectToScreen(polarisAltAz.azDeg, polarisAltAz.altDeg, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+    const p = projectToScreen(
+      polarisAltAz.azDeg, polarisAltAz.altDeg, 
+      refAzDeg, 
+      viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+      lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+    );
     return { ...p, x: viewport.x + p.x, y: viewport.y + p.y };
-  }, [polarisAltAz, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode]);
+  }, [polarisAltAz, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode,
+    lockHorizon, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+  ]);
   
   const bodyHorizonItems = useMemo(() => {
     const out: BodyItem[] = [];
     if (showSun) {
       const az = astro.sun.az;
-      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const p = projectToScreen(
+        az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+        lockHorizon,
+        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+      );
       if (p.visibleX) out.push({ x: p.x, az, label: "Soleil", color: "#f59e0b" });
     }
     if (showMoon) {
       const az = astro.moon.az;
-      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+        lockHorizon,
+        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+      );
       if (p.visibleX) out.push({ x: p.x, az, label: "Lune", color: "#93c5fd" });
     }
     {
       const az = polarisAltAz.azDeg;
-      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+        lockHorizon,
+        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+      );
       if (p.visibleX) out.push({ x: p.x, az, label: "Polaris", color: POLARIS_COLOR });
     }
     {
       const az = cruxAltAz.azDeg;
-      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const p = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+        lockHorizon,
+        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+      );
       if (p.visibleX) out.push({ x: p.x, az, label: "Croix du Sud", color: CRUX_COLOR });
     }
     for (const pl of planetsEphemArr) {
@@ -717,14 +828,18 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       const az = ((pl as any).azDeg ?? (pl as any).az) as number;
       const reg = PLANET_REGISTRY[id as keyof typeof PLANET_REGISTRY];
       if (az == null || !reg) continue;
-      const pr = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const pr = projectToScreen(az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+        lockHorizon,
+        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+      );
       if (pr.visibleX) out.push({ x: pr.x, az, label: reg.label, color: reg.color });
     }
     return out;
   }, [
     showSun, showMoon, astro.sun.az, astro.moon.az,
     polarisAltAz.azDeg, cruxAltAz.azDeg, planetsEphemArr, showPlanets,
-    refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode
+    refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode, lockHorizon,
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
   ]);
 
   // Planet markers for Markers overlay
@@ -1117,6 +1232,9 @@ useEffect(() => {
             projectionMode={projectionMode}
             showEarth={showEarth}
             debugMask={debugMask}
+            lockHorizon={lockHorizon}
+            eclipticUpAzDeg={eclipticNorthAltAz.azDeg}
+            eclipticUpAltDeg={eclipticNorthAltAz.altDeg}
           />
         </div>
       )}
@@ -1144,6 +1262,9 @@ useEffect(() => {
             projectionMode={projectionMode}
             showEarth={showEarth}
             debugMask={false}
+            lockHorizon={lockHorizon}
+            eclipticUpAzDeg={eclipticNorthAltAz.azDeg}
+            eclipticUpAltDeg={eclipticNorthAltAz.altDeg}
           />
           <CardinalMarkers
             viewport={viewport}
@@ -1153,6 +1274,9 @@ useEffect(() => {
             fovYDeg={fovYDeg}
             projectionMode={projectionMode}
             bodyItems={bodyHorizonItems}
+            lockHorizon={lockHorizon}
+            eclipticUpAzDeg={eclipticNorthAltAz.azDeg}
+            eclipticUpAltDeg={eclipticNorthAltAz.altDeg}
           />
         </div>
       )}
@@ -1178,6 +1302,9 @@ useEffect(() => {
             fovXDeg={fovXDeg}
             fovYDeg={fovYDeg}
             projectionMode={projectionMode}
+            lockHorizon={lockHorizon}
+            eclipticUpAzDeg={eclipticNorthAltAz.azDeg}
+            eclipticUpAltDeg={eclipticNorthAltAz.altDeg}
           />
         </div>
       )}
@@ -1213,6 +1340,9 @@ useEffect(() => {
           gapPx={7}
           stepDeg={2}
           applyRefraction={showRefraction} 
+          lockHorizon={lockHorizon}
+          eclipticUpAzDeg={eclipticNorthAltAz.azDeg}
+          eclipticUpAltDeg={eclipticNorthAltAz.altDeg}
         />
       </div>
     )}
@@ -1260,6 +1390,9 @@ useEffect(() => {
             showMarkers={showMarkers}
             projectionMode={projectionMode}
             showRefraction={showRefraction} 
+            lockHorizon={lockHorizon}
+            eclipticUpAzDeg={eclipticNorthAltAz.azDeg}
+            eclipticUpAltDeg={eclipticNorthAltAz.altDeg}
           />
         </div>
       )}

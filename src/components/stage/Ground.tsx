@@ -24,6 +24,9 @@ type Props = {
   projectionMode: ProjectionMode;
   showEarth?: boolean;      // same prop name for drop-in replacement
   debugMask?: boolean;      // optional: show debug horizon
+  lockHorizon?: boolean;
+  eclipticUpAzDeg?: number;
+  eclipticUpAltDeg?: number;
 };
 
 type Sph = { az: number; alt: number };
@@ -165,22 +168,145 @@ export default function Ground({
   projectionMode,
   showEarth = false,
   debugMask = false,
+  lockHorizon = true,
+  eclipticUpAzDeg,
+  eclipticUpAltDeg,
 }: Props) {
   const refAltDegSafe = clamp(refAltDeg, -89, 89);
+
+  // NEW: compute a tilted flat horizon half-plane when ecliptic-locked + narrow FOV
+  const flatHorizonEcliptic = useMemo(() => {
+    if (!showEarth) return null as { path: string } | null;
+    // Only use the flat shortcut when narrow FOV and lockHorizon=false
+    const simplifyFlat = fovXDeg <= FLAT_FOV_X_THRESHOLD || fovYDeg <= FLAT_FOV_Y_THRESHOLD;
+    if (!simplifyFlat || lockHorizon) return null;
+
+    // Need an ecliptic up direction to define screen "up"
+    if (!(Number.isFinite(eclipticUpAzDeg) && Number.isFinite(eclipticUpAltDeg))) return null;
+
+    const w = viewport.w, h = viewport.h;
+
+    // Sample the world horizon near center at two azimuths to define the local line
+    const dAz = Math.max(0.25, Math.min(5, fovXDeg / 8)); // small span around center
+    const A = projectToScreen(
+      refAzDeg - dAz, 0, refAzDeg, w, h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      false, eclipticUpAzDeg, eclipticUpAltDeg
+    );
+    const B = projectToScreen(
+      refAzDeg + dAz, 0, refAzDeg, w, h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      false, eclipticUpAzDeg, eclipticUpAltDeg
+    );
+    // Probe a point slightly below horizon at center to pick ground side
+    const P = projectToScreen(
+      refAzDeg, -1, refAzDeg, w, h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      false, eclipticUpAzDeg, eclipticUpAltDeg
+    );
+
+    if (![A, B, P].every(p => Number.isFinite(p.x) && Number.isFinite(p.y))) return null;
+
+    const xA = A.x, yA = A.y, xB = B.x, yB = B.y;
+    const dx = xB - xA;
+    const dy = yB - yA;
+
+    // Handle near-vertical line robustly
+    const EPS = 1e-3;
+    let intersections: Pt[] = [];
+    if (Math.abs(dx) < EPS) {
+      // vertical line: x = xA
+      intersections.push({ x: xA, y: 0 });
+      intersections.push({ x: xA, y: h });
+    } else {
+      const m = dy / (dx || 1e-9);
+      const lineY = (x: number) => yA + m * (x - xA);
+      const lineX = (y: number) => xA + (y - yA) / (m || 1e-9);
+
+      // Intersections with rectangle edges
+      const candidates: Pt[] = [
+        { x: 0, y: lineY(0) },       // left
+        { x: w, y: lineY(w) },       // right
+        { x: lineX(0), y: 0 },       // top
+        { x: lineX(h), y: h },       // bottom
+      ].filter(p => p.x >= -1 && p.x <= w + 1 && p.y >= -1 && p.y <= h + 1);
+
+      // Keep the two most distant (should be the true border intersections)
+      candidates.sort((p1, p2) => p1.x - p2.x || p1.y - p2.y);
+      // pick two distinct points farthest apart
+      let bestI = -1, bestJ = -1, bestD2 = -1;
+      for (let i = 0; i < candidates.length; i++) {
+        for (let j = i + 1; j < candidates.length; j++) {
+          const dx = candidates[i].x - candidates[j].x;
+          const dy = candidates[i].y - candidates[j].y;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > bestD2) { bestD2 = d2; bestI = i; bestJ = j; }
+        }
+      }
+      if (bestI >= 0 && bestJ >= 0) {
+        intersections.push(candidates[bestI], candidates[bestJ]);
+      }
+    }
+    if (intersections.length !== 2) return null;
+
+    const [I0, I1] = intersections;
+
+    // Decide which side to fill (ground side) using oriented line A->B
+    const orient = (px: number, py: number) => (dx) * (py - yA) - (dy) * (px - xA);
+    const sP = orient(P.x, P.y);
+    const fillLeft = sP > 0; // if true, we fill the "left" half-plane of A->B
+
+    // Pick the two rectangle corners on the desired side
+    const corners: Pt[] = [
+      { x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }
+    ];
+    const sideCorners = corners.filter(c => (orient(c.x, c.y) >= 0) === fillLeft);
+    if (sideCorners.length !== 2) return null;
+
+    // Build convex quad from I0, I1 and the two chosen corners (order by angle around centroid)
+    const poly = [I0, I1, sideCorners[0], sideCorners[1]];
+    const cx = poly.reduce((s, p) => s + p.x, 0) / poly.length;
+    const cy = poly.reduce((s, p) => s + p.y, 0) / poly.length;
+    poly.sort((p1, p2) => Math.atan2(p1.y - cy, p1.x - cx) - Math.atan2(p2.y - cy, p2.x - cx));
+
+    let d = `M ${poly[0].x.toFixed(2)} ${poly[0].y.toFixed(2)} `;
+    for (let i = 1; i < poly.length; i++) {
+      d += `L ${poly[i].x.toFixed(2)} ${poly[i].y.toFixed(2)} `;
+    }
+    d += "Z";
+
+    return { path: d };
+  }, [
+    showEarth, lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg,
+    viewport.w, viewport.h, refAzDeg, refAltDegSafe, fovXDeg, fovYDeg, projectionMode
+  ]);
 
   // NEW: simplify to a flat horizon fill for narrow FOV (≈50mm and longer)
   const simplifyFlat = fovXDeg <= FLAT_FOV_X_THRESHOLD || fovYDeg <= FLAT_FOV_Y_THRESHOLD;
 
-  // NEW: compute the horizon Y position and whether ground is below it
+  // NEW: compute the horizon Y position and whether ground is below it (horizon-locked only)
   const flatHorizon = useMemo(() => {
-    if (!simplifyFlat) return null as { y: number; groundBelow: boolean } | null;
-    const p = projectToScreen(refAzDeg, 0, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
-    let y = Number.isFinite(p.x) && Number.isFinite(p.y) ? p.y : viewport.h / 2;
-    const pb = projectToScreen(refAzDeg, -1, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
-    const groundBelow = (Number.isFinite(pb.x) && Number.isFinite(pb.y)) ? (pb.y > y) : true;
-    y = Math.max(0, Math.min(viewport.h, y));
-    return { y, groundBelow };
-  }, [simplifyFlat, refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode]);
+    // Only use the flat shortcut when:
+    // - narrow FOV (simplifyFlat)
+    // - and horizon-locked mode (lockHorizon=true)
+    if (!simplifyFlat || !lockHorizon) return null as { y: number; groundBelow: boolean } | null;
+
+    // Project the center of the world horizon (Alt=0) at refAz
+    const p0 = projectToScreen(
+      refAzDeg, 0, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      true /* lockHorizon */, undefined, undefined
+    );
+    const y0 = Number.isFinite(p0.x) && Number.isFinite(p0.y) ? p0.y : viewport.h / 2;
+
+    // Probe slightly below the horizon to know which side is the ground
+    const pb = projectToScreen(
+      refAzDeg, -1, refAzDeg, viewport.w, viewport.h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+      true /* lockHorizon */, undefined, undefined
+    );
+    const groundBelow = Number.isFinite(pb.y) ? (pb.y > y0) : true;
+
+    return { y: y0, groundBelow };
+  }, [
+    simplifyFlat, lockHorizon,
+    refAzDeg, refAltDegSafe, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode
+  ]);
 
   // Adaptive sampling (kept modest for performance)
   const { stepAz, stepAlt } = useMemo(() => {
@@ -195,8 +321,8 @@ export default function Ground({
   // Build filled ground mesh (union of many clipped quads)
   const groundPath = useMemo(() => {
     if (!showEarth) return null;
-    // NEW: skip heavy tessellation when in flat mode
-    if (simplifyFlat) return null;
+    // Skip heavy tessellation only when using the flat shortcut in horizon-locked mode
+    if (simplifyFlat && lockHorizon) return null;
 
     const w = viewport.w, h = viewport.h;
     const maxJump2 = Math.pow(0.35 * Math.hypot(w, h), 2);
@@ -242,7 +368,9 @@ export default function Ground({
         let broken = false;
         for (let k = 0; k < clipped.length; k++) {
           const v = clipped[k];
-          const p = projectToScreen(v.az, v.alt, refAzDeg, w, h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode);
+          const p = projectToScreen(v.az, v.alt, refAzDeg, w, h, refAltDegSafe, 0, fovXDeg, fovYDeg, projectionMode,
+            lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+          );
           if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) { broken = true; break; }
           pts.push({ x: p.x, y: p.y });
         }
@@ -269,9 +397,10 @@ export default function Ground({
     }
 
     return pathParts.join(" ");
-  }, [showEarth, simplifyFlat, viewport.w, viewport.h, refAzDeg, refAltDegSafe, fovXDeg, fovYDeg, projectionMode, stepAz, stepAlt]);
+  }, [showEarth, simplifyFlat, viewport.w, viewport.h, refAzDeg, refAltDegSafe, fovXDeg, fovYDeg, projectionMode, stepAz, stepAlt,
+    eclipticUpAltDeg, eclipticUpAzDeg, lockHorizon
+  ]);
 
-  
   if (!showEarth) return null;
 
   return (
@@ -285,8 +414,8 @@ export default function Ground({
         className="absolute"
         style={{ left: 0, top: 0, zIndex: Z.horizon - 25, overflow: "visible" }}
       >
-        {/* NEW: Ground fill - simplified flat mode for narrow FOV */}
-        {simplifyFlat && flatHorizon && (
+        {/* Flat ground fill only in horizon-locked narrow-FOV mode */}
+        {simplifyFlat && lockHorizon && flatHorizon && (
           <rect
             x={0}
             y={flatHorizon.groundBelow ? flatHorizon.y : 0}
@@ -296,8 +425,18 @@ export default function Ground({
           />
         )}
 
-        {/* Ground fill from tessellated mesh (robust for all projections) */}
-        {!simplifyFlat && groundPath && (
+        {/* NEW: Tilted flat ground (approx) for ecliptic-locked narrow-FOV */}
+        {simplifyFlat && !lockHorizon && flatHorizonEcliptic && (
+          <path
+            d={flatHorizonEcliptic.path}
+            fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
+            stroke="none"
+            fillRule="nonzero"
+          />
+        )}
+
+        {/* Ground fill from tessellated mesh (robust for all projections and ecliptic-locked mode) */}
+        {(!simplifyFlat || (!lockHorizon && !flatHorizonEcliptic) || (lockHorizon && !flatHorizon)) && groundPath && (
           <path
             d={groundPath}
             fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
@@ -306,11 +445,8 @@ export default function Ground({
           />
         )}
 
-        {/* Optional: show sampled horizon for debug */}
-        
-
-        {/* NEW: Debug flat horizon line */}
-        {debugMask && simplifyFlat && flatHorizon && (
+        {/* Optional: debug horizontal horizon line for the flat shortcut */}
+        {debugMask && simplifyFlat && lockHorizon && flatHorizon && (
           <line x1={0} y1={flatHorizon.y} x2={viewport.w} y2={flatHorizon.y} stroke={COLOR_HZ_FRONT} strokeWidth={1.5} />
         )}
       </svg>

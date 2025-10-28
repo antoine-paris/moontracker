@@ -834,6 +834,8 @@ export default function TopBar({
                 : opt}
               </button>
             ))}
+            <div role="separator" aria-hidden="true" className="mx-1 w-px self-stretch bg-white/20" />
+            
             {/* Horizons toggle */}
             <IconToggleButton
               active={lockHorizon}

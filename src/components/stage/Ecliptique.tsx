@@ -33,6 +33,13 @@ export interface EcliptiqueProps {
 
   // NEW: appliquer la réfraction à la courbe de l'écliptique
   applyRefraction?: boolean;
+
+  // NEW: horizon vs ecliptic alignment
+  lockHorizon?: boolean;
+
+  // NEW: optional ecliptic "up" direction (when lockHorizon=false)
+  eclipticUpAzDeg?: number;
+  eclipticUpAltDeg?: number;
 }
 
 function julianDay(date: Date) {
@@ -80,9 +87,22 @@ export default function Ecliptique(props: EcliptiqueProps) {
     gapPx = 7,
     stepDeg = 2,
     applyRefraction = true, // NEW: par défaut apparent
+    // NEW
+    lockHorizon = true,
+    eclipticUpAzDeg,
+    eclipticUpAltDeg,
   } = props;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // NEW: Ecliptic North direction (use provided values or compute fallback)
+  const eclipticNorthAltAz = useMemo(() => {
+    if (Number.isFinite(eclipticUpAzDeg) && Number.isFinite(eclipticUpAltDeg)) {
+      return { azDeg: eclipticUpAzDeg as number, altDeg: eclipticUpAltDeg as number };
+    }
+    // RA=270°, Dec≈66.5607° => Ecliptic North
+    return altAzFromRaDec(date, latDeg, lngDeg, 270, 66.5607);
+  }, [eclipticUpAzDeg, eclipticUpAltDeg, date, latDeg, lngDeg]);
 
   const points = useMemo(() => {
     const arr: { x: number; y: number; visibleX?: boolean; visibleY?: boolean; ok: boolean }[] = [];
@@ -99,7 +119,9 @@ export default function Ecliptique(props: EcliptiqueProps) {
         refAltDeg,
         0,
         fovXDeg, fovYDeg,
-        projectionMode
+        projectionMode,
+        lockHorizon,
+        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
       );
       const ok = Number.isFinite(pr.x) && Number.isFinite(pr.y);
       arr.push({ x: pr.x, y: pr.y, visibleX: pr.visibleX, visibleY: pr.visibleY, ok });
@@ -108,7 +130,8 @@ export default function Ecliptique(props: EcliptiqueProps) {
   }, [
     date, latDeg, lngDeg, refAzDeg, refAltDeg,
     viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
-    stepDeg, applyRefraction // NEW
+    stepDeg, applyRefraction, 
+    lockHorizon, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg 
   ]);
 
   useEffect(() => {

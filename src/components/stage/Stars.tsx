@@ -23,6 +23,11 @@ type Props = {
   projectionMode?: import("../../render/projection").ProjectionMode;
   // NEW: refraction toggle
   showRefraction?: boolean;
+  // NEW: horizon vs ecliptic alignment
+  lockHorizon?: boolean;
+  // NEW: optional ecliptic "up" direction (when lockHorizon=false)
+  eclipticUpAzDeg?: number;
+  eclipticUpAltDeg?: number;
 };
 
 type Star = {
@@ -291,10 +296,22 @@ export default function Stars({
   onCruxCentroid,
   projectionMode = 'recti-panini',
   showRefraction = true, // NEW
+  lockHorizon = true,
+  eclipticUpAzDeg,
+  eclipticUpAltDeg,
 }: Props) {
   const stars = useStarsCatalog();
   const debugStars = useDebugStarsCatalog();
   const date = React.useMemo(() => new Date(utcMs), [utcMs]);
+  const eclipticUp = React.useMemo(() => {
+    if (Number.isFinite(eclipticUpAzDeg) && Number.isFinite(eclipticUpAltDeg)) {
+      return { azDeg: eclipticUpAzDeg as number, altDeg: eclipticUpAltDeg as number };
+    }
+    // Fallback: Ecliptic North (RA=270°, Dec≈66.5607°)
+    const p = raDecToAltAz(270, 66.5607, latDeg, lngDeg, date);
+    return { azDeg: p.azDeg, altDeg: p.altDeg };
+  }, [eclipticUpAzDeg, eclipticUpAltDeg, latDeg, lngDeg, date]);
+
   const debugOn = useExternalDebug(debug);
 
   // NEW: canvas ref and rAF throttling
@@ -381,7 +398,10 @@ export default function Stars({
         }
 
         // Project and final visibility check
-        const p = projectToScreen(azDeg, altForProjDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+        const p = projectToScreen(
+          azDeg, altForProjDeg, refAzDeg, w, h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+          lockHorizon, eclipticUp.azDeg, eclipticUp.altDeg
+        );
         if (!(p.visibleX && p.visibleY)) continue;
 
         const highlighted = isSpecial(s.raDeg, s.decDeg);
@@ -411,7 +431,9 @@ export default function Stars({
       ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
     });
-  }, [stars, debugStars, debugOn, viewport.w, viewport.h, date, lngDeg, latDeg, refAzDeg, refAltDeg, fovXDeg, fovYDeg, cfg, projectionMode, showRefraction]); // NEW dep
+  }, [stars, debugStars, debugOn, viewport.w, viewport.h, date, lngDeg, latDeg, refAzDeg, refAltDeg, fovXDeg, fovYDeg, cfg, projectionMode, showRefraction,
+    lockHorizon, eclipticUp.azDeg, eclipticUp.altDeg
+  ]); // NEW dep
 
   // Schedule drawing on changes (time/device motion -> rAF throttled)
   React.useEffect(() => {
@@ -432,7 +454,10 @@ export default function Stars({
       if (!s) return null;
       const eq = raDecToAltAz(s.raDeg, s.decDeg, latDeg, lngDeg, date); // géométrique
       const altForProj = showRefraction ? refractAltitudeDeg(eq.altDeg) : eq.altDeg; // NEW
-      const p = projectToScreen(eq.azDeg, altForProj, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode);
+      const p = projectToScreen(
+        eq.azDeg, altForProj, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
+        lockHorizon, eclipticUp.azDeg, eclipticUp.altDeg
+      );
       if (!(p.visibleX && p.visibleY)) return null;
       return { x: p.x, y: p.y, s, altDeg: altForProj, azDeg: eq.azDeg }; // NEW: altDeg cohérent
     };
@@ -509,7 +534,9 @@ export default function Stars({
     const { altDeg: centroidAltDeg, azDeg: centroidAzDeg } = vecToAltAz(sx, sy, sz);
 
     return { main, cross, cx, cy, centroidAltDeg, centroidAzDeg };
-  }, [debugStars, latDeg, lngDeg, date, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode, showRefraction]); // NEW dep
+  }, [debugStars, latDeg, lngDeg, date, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode, showRefraction,
+    lockHorizon, eclipticUp.azDeg, eclipticUp.altDeg
+  ]); // NEW dep
 
   // Notify App of the centroid Alt/Az (or null when unavailable) with change gating
   const centroidAlt = cruxCross?.centroidAltDeg;

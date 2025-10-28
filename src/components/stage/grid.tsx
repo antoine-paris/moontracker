@@ -12,6 +12,9 @@ type Props = {
   fovYDeg: number;
   // added: keep Grid in sync with HorizonOverlay
   projectionMode: import("../../render/projection").ProjectionMode;
+  lockHorizon?: boolean;
+  eclipticUpAzDeg?: number;
+  eclipticUpAltDeg?: number;
 };
 
 function chooseMajorStep(rangeDeg: number) {
@@ -279,8 +282,13 @@ function compassQuantum(stepDeg: number) {
 }
 // +++ end added
 
-export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode }: Props) {
-  // Step selection
+export default function Grid({
+  viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
+  // NEW
+  lockHorizon = true,
+  eclipticUpAzDeg,
+  eclipticUpAltDeg,
+}: Props) {  // Step selection
   const { azMinorStep, azMajorStep, polesMinorStep, polesMajorStep } = useMemo(() => {
     const azMajor = chooseMajorStep(Math.max(1, fovXDeg));
     const azMinor = minorForMajor(azMajor);
@@ -352,7 +360,8 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
       fovXDeg,
       fovYDeg,
       // pass-through so curves match HorizonOverlay
-      projectionMode
+      projectionMode,
+      lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
     );
     // relaxed visibility for non-orthographic projections so "backside" data can render
     const finite = Number.isFinite(p.x) && Number.isFinite(p.y);
@@ -424,7 +433,9 @@ export default function Grid({ viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, 
     const cardSpecial = [horizonPath, primeVerticalPath].filter(Boolean);
 
     return { minor: pMinor, major: pMajor, cardinalMeridians: cardMeridians, cardinalSpecial: cardSpecial };
-  }, [viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode, meridianMinor, meridianMajor, meridianCardinals, poleMinor, poleMajor]);
+  }, [viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode, meridianMinor, meridianMajor, meridianCardinals, poleMinor, poleMajor,
+     proj
+  ]);
 
   // +++ updated: reference shapes with trig table and tight-loop hypot in dist
   const refShapes = useMemo(() => {
