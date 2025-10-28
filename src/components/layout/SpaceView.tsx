@@ -80,6 +80,7 @@ export interface SpaceViewProps {
   showMarkers: boolean;
 
   showHorizon: boolean;
+  lockHorizon: boolean;
 
   showSun: boolean;
   showMoon: boolean;
@@ -140,6 +141,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     cameraLabel,
     overlayInfoString,
     showHorizon,
+    lockHorizon,
     longPoseEnabled = false,
     onLongPoseAccumulated, 
     longPoseClearSeq = 0,
@@ -1077,7 +1079,7 @@ useEffect(() => {
     viewport.x, viewport.y, viewport.w, viewport.h,
 
     // Rendering toggles that affect content
-    showEarth, showAtmosphere, showGrid, showHorizon, showMarkers,
+    showEarth, showAtmosphere, showGrid, showHorizon, lockHorizon, showMarkers,
     showStars, showSun, showMoon, showPhase, earthshine,
     enlargeObjects,
 

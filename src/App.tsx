@@ -308,6 +308,8 @@ export default function App() {
 
   const [showHorizon, setShowHorizon] = useState(true);
 
+  const [lockHorizon, setLockHorizon] = useState(false);
+
   const [showPlanets, setShowPlanets] = useState<Record<string, boolean>>(
     () => {
       const ids = PLANETS.map(p => (typeof p === 'string' ? p : (p as any)?.id ?? String(p)));
@@ -1249,6 +1251,8 @@ export default function App() {
               setShowEarth={setShowEarth}
               showHorizon={showHorizon}
               setShowHorizon={setShowHorizon}
+              lockHorizon={lockHorizon}
+              setLockHorizon={setLockHorizon}
               showAtmosphere={showAtmosphere}
               setShowAtmosphere={setShowAtmosphere}
               showStars={showStars}
@@ -1321,6 +1325,7 @@ export default function App() {
                   showStars={showStars}
                   showMarkers={showMarkers}
                   showHorizon={showHorizon}
+                  lockHorizon={lockHorizon}
                   showSun={showSun}
                   showMoon={showMoon}
                   showPhase={showPhase}

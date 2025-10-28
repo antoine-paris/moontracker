@@ -72,6 +72,9 @@ type Props = {
   showHorizon: boolean;
   setShowHorizon: (v: boolean) => void;
 
+  lockHorizon: boolean;
+  setLockHorizon: (v: boolean) => void;
+
   currentUtcMs: number;
   cityName: string;
 
@@ -136,6 +139,7 @@ export default function TopBar({
   timeZone,
   enlargeObjects, setEnlargeObjects,
   showHorizon, setShowHorizon,
+  lockHorizon, setLockHorizon,
   currentUtcMs,
   cityName,
   showEarth, setShowEarth,
@@ -830,6 +834,20 @@ export default function TopBar({
                 : opt}
               </button>
             ))}
+            {/* Horizons toggle */}
+            <IconToggleButton
+              active={lockHorizon}
+              onClick={() => setLockHorizon(!lockHorizon)}
+              title="Horizon terrestre aligné à l'écran"
+              icon="horizon"
+            />
+            {/* Ecliptique */}
+            <IconToggleButton
+              active={!lockHorizon}
+              onClick={() => setLockHorizon(!lockHorizon)}
+              title="Ecliptique aligné à l'écran"
+              icon="ecliptic"
+            />
           </div>
           <div className="mt-3">
             <div className="text-xs uppercase tracking-wider text-white/60">Champ de vision</div>
