@@ -540,23 +540,39 @@ export default function App() {
   // Replace handler to also push a frame to recorder in frame-locked mode
   const recorderRef = useRef<CanvasRecorderHandle | DomRecorderHandle | DomCfrRecorderHandle | null>(null);
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+  const [recordingFrames, setRecordingFrames] = useState(0);
+  // format HH;MM;SS from frames and fps
+  const formatTimecode = (frames: number, fps: number) => {
+    const total = Math.floor(frames / Math.max(1, fps));
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  };
+
   const handleLongPoseAccumulated = React.useCallback(() => {
     lpPendingRef.current = false;
     const r = recorderRef.current;
     if (!r) return;
     if ((r as any).kind === 'dom-cfr') {
      // CFR: capture one frame and ACK
-     (r as DomCfrRecorderHandle).captureNext().finally(() => {
-       recPendingRef.current = false;
-     });
+     (r as DomCfrRecorderHandle).captureNext()
+       .then(() => { setRecordingFrames(n => n + 1); })
+       .finally(() => { recPendingRef.current = false; });
    } else if (r.kind === 'dom-snapshot' && r.mode === 'frame-locked') {
 
       // Snapshot the DOM subtree and ACK when done
-      Promise.resolve(r.renderOnce()).finally(() => {
-        recPendingRef.current = false; // ACK: recorded this frame
-      });
+      Promise.resolve(r.renderOnce())
+       .then(() => { setRecordingFrames(n => n + 1); })
+       .finally(() => { recPendingRef.current = false; });
     } else if (r.kind === 'canvas' && r.mode === 'frame-locked') {
-      try { r.requestFrame(); } finally { recPendingRef.current = false; }
+      try {
+        r.requestFrame();
+        setRecordingFrames(n => n + 1);
+      } finally {
+        recPendingRef.current = false;
+      }
     }
   }, []);
   const [longPoseClearSeq, setLongPoseClearSeq] = useState(0);
@@ -1200,7 +1216,7 @@ export default function App() {
     ]);
 
 
-  // NEW: hook called by SpaceView right after the new frame is drawn
+  // hook called by SpaceView right after the new frame is drawn
 const handleFramePresented = React.useCallback(() => {
   const r = recorderRef.current;
   if (!r) return;
@@ -1208,19 +1224,24 @@ const handleFramePresented = React.useCallback(() => {
 
   if ((r as any).kind === 'dom-cfr') {
     if (recPendingRef.current) {
-      (r as DomCfrRecorderHandle).captureNext().then(() => {
-        recPendingRef.current = false;
-      });
+      (r as DomCfrRecorderHandle).captureNext()
+        .then(() => { setRecordingFrames(n => n + 1); })
+        .finally(() => { recPendingRef.current = false; });
     }
   } else if (r.kind === 'dom-snapshot' && r.mode === 'frame-locked') {
     if (recPendingRef.current) {
-      (r as DomRecorderHandle).renderOnce().then(() => {
-        recPendingRef.current = false;
-      });
+      (r as DomRecorderHandle).renderOnce()
+        .then(() => { setRecordingFrames(n => n + 1); })
+        .finally(() => { recPendingRef.current = false; });
     }
   } else if (r.kind === 'canvas' && r.mode === 'frame-locked') {
     if (recPendingRef.current) {
-      try { (r as CanvasRecorderHandle).requestFrame(); } finally { recPendingRef.current = false; }
+      try {
+        (r as CanvasRecorderHandle).requestFrame();
+        setRecordingFrames(n => n + 1);
+      } finally {
+        recPendingRef.current = false;
+      }
     }
   }
 }, [isRecordingVideo, longPoseEnabled]);
@@ -1232,6 +1253,7 @@ const handleFramePresented = React.useCallback(() => {
     if (!isRecordingVideo) {
       const node = renderStackRef.current as HTMLDivElement | null;
       if (!node) { console.warn('No node to record.'); return; }
+      setRecordingFrames(0);
 
       // If paused and in timelapse, record from the beginning
       if (!isAnimating && timeLapseEnabled) {
@@ -1341,6 +1363,17 @@ const handleFramePresented = React.useCallback(() => {
             isRecordingVideo={isRecordingVideo}
             onToggleRecording={handleToggleRecording}
           />
+
+          {/* Recording status (UI-only, not included in video since we capture renderStackRef) */}
+          {isRecordingVideo && (
+            <div
+              className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-md bg-black/70 border text-xs pointer-events-none"
+              style={{ zIndex: Z.ui + 40, borderColor: 'rgba(244, 63, 94, 0.6)', color: 'rgba(252, 165, 165, 0.95)' }}
+            >
+              {`Enregistrement en cours — Image ${recordingFrames} — ${formatTimecode(recordingFrames, Math.max(1, recFpsRef.current || 24))}`}
+            </div>
+          )}
+
 
           {/* Top UI bar (add right padding so it doesn't sit under the toolbar) */}
           <div
