@@ -119,6 +119,7 @@ export const DEVICES: Device[] = [
       { id: 'wide', label: 'Grand-angle (24 mm eq)',       kind: 'module', f35: 24 },
       { id: 't3x',  label: 'Télé 3× (72 mm eq)',           kind: 'module', f35: 72 },
       { id: 't10x', label: 'Télé 10× (240 mm eq)',         kind: 'module', f35: 240 },
+      { id: 'sd30', label: 'Digital zoom 30x',              kind: 'module', f35: 1560 },
     ],
   },
 
