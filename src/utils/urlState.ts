@@ -97,8 +97,8 @@ const ToggleBits = {
   play: 14,
   horizon: 15,
   ecliptic: 16,
-  // NEW: refraction toggle
   refraction: 17,
+  lockHorizon: 18,
 } as const;
 
 function packTogglesToMask(t: {
@@ -117,8 +117,8 @@ function packTogglesToMask(t: {
   enlargeObjects: boolean;
   debugMask: boolean;
   showHorizon: boolean;
-  // NEW
   showRefraction: boolean;
+  lockHorizon: boolean;
 }, showPanels: boolean, isAnimating: boolean): number {
   let m = 0;
   if (t.showSun) m |= 1 << ToggleBits.sun;
@@ -136,7 +136,8 @@ function packTogglesToMask(t: {
   if (t.debugMask) m |= 1 << ToggleBits.debug;
   if (t.showHorizon) m |= 1 << ToggleBits.horizon;
   if (t.showEcliptique) m |= 1 << ToggleBits.ecliptic;
-  if (t.showRefraction) m |= 1 << ToggleBits.refraction; // NEW
+  if (t.showRefraction) m |= 1 << ToggleBits.refraction; 
+  if (t.lockHorizon) m |= 1 << ToggleBits.lockHorizon;
   if (showPanels) m |= 1 << ToggleBits.panels;
   if (isAnimating) m |= 1 << ToggleBits.play;
   return m >>> 0;
@@ -159,8 +160,8 @@ function unpackMaskToToggles(mask: number) {
     debug: !!(mask & (1 << ToggleBits.debug)),
     horizon: !!(mask & (1 << ToggleBits.horizon)),
     ecliptic: !!(mask & (1 << ToggleBits.ecliptic)),
-    // NEW
     refraction: !!(mask & (1 << ToggleBits.refraction)),
+    lockHorizon: !!(mask & (1 << ToggleBits.lockHorizon)),
     panels: !!(mask & (1 << ToggleBits.panels)),
     play: !!(mask & (1 << ToggleBits.play)),
   };
@@ -206,13 +207,12 @@ export type UrlInitArgs = {
   setShowEcliptique: (b: boolean) => void;
   setEnlargeObjects: (b: boolean) => void;
   setDebugMask: (b: boolean) => void;
-  // NEW
+  
   setShowRefraction: (b: boolean) => void; // ← ADD
-
-  // UI panels
+  setLockHorizon: (b: boolean) => void;
+  
   setShowPanels: (b: boolean) => void;
 
-  // planets
   allPlanetIds: string[];
   setShowPlanets: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 
@@ -234,7 +234,6 @@ export type UrlInitArgs = {
   setTimeLapseLoopAfter: (n: number) => void;
   timeLapseStartMsRef: React.MutableRefObject<number>;
 
-
   //  Long pose setters
   setLongPoseEnabled: (b: boolean) => void;
   setLongPoseRetainFrames: (n: number) => void;
@@ -252,16 +251,15 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setShowSun, setShowMoon, setShowPhase, setEarthshine, setShowEarth, setShowAtmosphere, setShowStars, setShowMarkers, setShowGrid,
     setShowHorizon,
     setShowSunCard, setShowMoonCard, setShowEcliptique, setEnlargeObjects, setDebugMask,
-    // NEW
-    setShowRefraction, // ← ADD
+    setLockHorizon,
+    setShowRefraction, 
     setShowPanels,
     allPlanetIds, setShowPlanets,
     setIsAnimating, setSpeedMinPerSec,
     setDeltaAzDeg, setDeltaAltDeg,
     setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef,
     setLongPoseEnabled, setLongPoseRetainFrames,
-    // NEW
-    setPreselectedCityIds, // ← stays here for 'pc'
+    setPreselectedCityIds, 
   } = args;
 
   // Time: base36 unix seconds
@@ -413,8 +411,8 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       setDebugMask(u.debug);
       setShowPanels(u.panels);
       setIsAnimating(u.play);
-      // NEW
-      setShowRefraction(u.refraction); // ← now defined
+      setShowRefraction(u.refraction); 
+      setLockHorizon(u.lockHorizon);
     }
   } else {
     // No legacy fallback
@@ -588,8 +586,8 @@ export type BuildShareUrlArgs = {
     showMoonCard: boolean;
     enlargeObjects: boolean;
     debugMask: boolean;
-    // NEW
     showRefraction: boolean;
+    lockHorizon: boolean;
   };
   // UI panels
   showPanels: boolean;

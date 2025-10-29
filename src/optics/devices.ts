@@ -14,6 +14,15 @@ export const DEVICES: Device[] = [
       { id: 'eagle', label: 'Aigle (8×)',  kind: 'module', f35: 400 },   // ~8× acuité ⇒ 8× la focale de référence
     ],
   },
+  {
+    id: 'VM',
+    label: 'Vue carrée',
+    type: 'camera',
+    aspect: 1/1, // champ binoculaire humain ~200°×130° ⇒ ~3:2
+    zooms: [
+      { id: 'vm173', label: 'fisheye', kind: 'module', f35: 1 },    
+    ],
+  },
   // Full Frame (24×36) with typical zoom ranges
   {
     id: 'ff',

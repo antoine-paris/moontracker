@@ -1010,6 +1010,7 @@ export default function App() {
       setLongPoseRetainFrames,
       setPreselectedCityIds,
       setShowRefraction,
+      setLockHorizon,
     });
   }, [locationsLoading, locations]);
 
@@ -1046,6 +1047,7 @@ export default function App() {
         enlargeObjects,
         debugMask,
         showRefraction,
+        lockHorizon,
       },
       showPanels,
       showPlanets,
@@ -1072,6 +1074,7 @@ export default function App() {
     showSunCard, showEcliptique, showMoonCard, enlargeObjects, debugMask,
     showPanels,
     showRefraction,
+    lockHorizon,
     showPlanets,
     isAnimating, speedMinPerSec, allPlanetIds,
     deltaAzDeg, deltaAltDeg,
