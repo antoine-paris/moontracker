@@ -1,103 +1,11 @@
-import { buildShareUrl } from '../../../utils/urlState';
-import type { FollowMode } from '../../../types';
-import type { LocationOption } from '../../../data/locations';
-
-type Example = {
-  label: string;
-  desc?: string;
-  when: string;            // ISO UTC
-  follow: FollowMode;
-  projection: import("../../../render/projection").ProjectionMode;
-  loc: LocationOption;     // custom coords for robustness
-  fovXDeg?: number;        // optional, defaults to 90°
-};
-
-const loc = (label: string, lat: number, lng: number, timeZone = 'UTC'): LocationOption =>
-  ({ id: `url@${lat.toFixed(6)},${lng.toFixed(6)}`, label, lat, lng, timeZone });
-
-const buildExampleUrl = (ex: Example) => {
-  const baseUrl = (typeof window !== 'undefined')
-    ? `${window.location.origin}/` // ensure links open on the main app '/' and not '/info'
-    : '/';
-
-  const whenMs = Date.parse(ex.when);
-
-  // Minimal defaults for a robust, portable URL
-  const url = buildShareUrl({
-    whenMs,
-    location: ex.loc,
-    locations: [],
-
-    follow: ex.follow,
-    projectionMode: ex.projection,
-
-    // Use custom optics for portability
-    deviceId: 'custom-device',
-    zoomId: 'custom-theo',
-    fovXDeg: ex.fovXDeg ?? 90,
-    fovYDeg: 60,
-    linkFov: true,
-    CUSTOM_DEVICE_ID: 'custom-device',
-
-    toggles: {
-      showSun: true,
-      showMoon: true,
-      showPhase: true,
-      earthshine: false,
-      showEarth: false,
-      showAtmosphere: false,
-      showStars: true,
-      showMarkers: false,
-      showGrid: false,
-      showHorizon: true,
-      showSunCard: false,
-      showEcliptique: true,
-      showMoonCard: false,
-      enlargeObjects: false,
-      debugMask: false,
-      showRefraction: true,
-    },
-
-    showPanels: false,
-
-    // Planets (optional mask). If you want "all", list ids and set them true.
-    allPlanetIds: [],
-    showPlanets: {},
-
-    isAnimating: false,
-    speedMinPerSec: 1 / 60,
-
-    deltaAzDeg: 0,
-    deltaAltDeg: 0,
-
-    timeLapseEnabled: false,
-    timeLapsePeriodMs: 200,
-    timeLapseStepValue: 1,
-    timeLapseStepUnit: 'minute',
-    timeLapseLoopAfter: 0,
-    timeLapseStartMs: whenMs,
-
-    longPoseEnabled: false,
-    longPoseRetainFrames: 1,
-
-    preselectedCityIds: [],
-
-    baseUrl,
-    appendHash: '',
-  });
-
-  return url;
-};
 
 export default function SimulationsTab() {
   const examples: Example[] = [
     {
       label: 'Transit de Vénus — 2012-06-05/06 (San Francisco)',
       desc: 'Dernier transit visible depuis le Pacifique/Amérique du Nord.',
-      when: '2012-06-05T22:00:00Z',
-      follow: 'VENUS',
-      projection: 'rectilinear',
-      loc: loc('San Francisco', 37.7749, -122.4194),
+      url: '/?tl=2i2p.m55zs0&lp=74&l=5391959&t=m5608o&F=0&p=1&d=nikon-p1000&z=p1000-2000eq&b=aw1z&pl=2&sr=0.0167',
+      img : '/img/examples/export-venus-transit-san-francisco-2012.jpg'
     },
     {
       label: 'Éclipse solaire annulaire — 2026-08-12 (Madrid)',
@@ -162,7 +70,7 @@ export default function SimulationsTab() {
             <div className="font-semibold">{ex.label}</div>
             {ex.desc && <div className="text-gray-600 mb-1">{ex.desc}</div>}
             <a
-              href={buildExampleUrl(ex)}
+              href={ex.url}
               target="_blank"
               rel="noopener noreferrer"
               className="underline"

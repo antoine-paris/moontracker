@@ -1,6 +1,6 @@
 
 type IconId =
-  | 'info' | 'panels' | 'play' | 'pause' | 'share' | 'capture'
+  | 'info' | 'panels' | 'play' | 'pause' | 'rec' | 'stop' | 'share' | 'capture'
   | 'sun' | 'moon' | 'planet' | 'stars'
   | 'grid' | 'markers' | 'horizon' | 'earth' | 'atmo' | 'refraction'
   | 'phase' | 'earthshine' | 'ecliptic' | 'sunCard' | 'moonCard' | 'debug'
@@ -157,6 +157,16 @@ function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | '
         )}
         {id === 'play' && <path d="M8 5l12 7-12 7V5z" fill="currentColor" />}
         {id === 'pause' && (<><rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor"/><rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor"/></>)}
+        {id === 'stop' && (
+            <>
+              <rect x="6.5" y="6.5" height="11" width='11' rx="2" fill="currentColor"  />
+            </>
+        )}
+        {id === 'rec' && (
+            <>
+              <circle cx="12" cy="12" r="7" fill="currentColor"   />
+            </>
+        )}
         {id === 'share' && (
           <>
             {/* Nœuds */}
@@ -265,6 +275,42 @@ export default function HelpTab() {
       <h3><I id="play" />Lecture <I id="pause" />Pause</h3>
       <p>Contrôle global de l’animation temporelle (lecture continue ou pause). Fonctionne quel que soit le mode (continu ou time‑lapse).</p>
 
+      <h3><I id="rec" />Démarrer un enregistrement et <I id="stop" />télécharger la vidéo (.webm)</h3>
+      <figure className="mx-[5rem] my-4">
+        <video
+          controls
+          preload="metadata"
+          playsInline
+          className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
+        >
+          <source src="/img/capture/moontracker-video-sample-1.webm" type="video/webm" />
+          Votre navigateur ne supporte pas la lecture de vidéos WebM.
+        </video>
+        <figcaption className="text-sm text-gray-500 mt-1">
+          Exemple de vidéo enregistrée (.webm).
+        </figcaption>
+      </figure>
+      <p>
+        Enregistre une vidéo WEBM de la scène (zone de rendu uniquement, sans l’interface). Cliquez <I id="rec" />pour
+        démarrer, puis <I id="stop" />pour arrêter : le fichier se télécharge automatiquement.
+      </p>
+      <ul className="list-disc pl-6">
+        <li><I id='play' size='small'/>Animation classique : Crée une vidéo en 24 images par seconde dont le rythme dépend de la vitesse choisie au slider (en minutes par secondes).</li>
+        <li><I id='timelapse' size='small'/>Timelapse activé : 1 image par pas, cadence 
+        de lecture constante. Le nombre d'image par seconde de la vidéo dépendra du paramètre "Toutes les [] ms". Pour une vidéo fluide, descendez ce paramètre en dessous de 50 millisecondes. </li>
+        <li><I id='longpose' size='small'/>Pose longue active : chaque image attend l’empilement pour éviter des « trous ».</li>
+        <li>L’enregistrement lance la lecture de la scène automatiquement; l’arrêt termine la vidéo. Vous pouvez mettre l'enregistrement en pause <I id='pause' size='small'/>et
+        changer les paramètres de l'application en cours d'enregistrement afin de changer de scène en cours de vidéo.</li>
+        <li>Le bandeau « Enregistrement en cours » n’est pas inclus dans la vidéo.</li>
+      </ul>
+      <p>
+        Le processus d'enregistrement est beaucoup plus lent qu'une animation <I id='play' size='small'/>lue à l'écran car l'application va attendre que chaque image soit parfaitement rendue pour l'ajouter à la vidéo. Le temps de génération d'une vidéo va donc dépendre de la puissance disponible sur votre matériel
+      </p>
+      <p>
+        La qualité de la vidéo dépend de la résolution de votre écran/navigateur.
+      </p>
+      <p> Cette fonctionalité a été testée sur Chrome. Elle pourrait ne pas fonctionner sur Safari.</p>
+      
       <h3><I id="share" />Copier l’URL de partage</h3>
       <p>Copie un lien qui encode tous les paramètres actuels de l’application : lieu, date/heure, projection, FOV, visibilité, etc. Toute personne ouvrant ce lien retrouve exactement la même scène que celle que vous voyez.</p>
       <p>Idéal pour partager une configuration précise, comme une éclipse, un transit ou un alignement planétaire.</p>
@@ -340,6 +386,16 @@ export default function HelpTab() {
             <li><I id="E" />La caméra va rester fixée à l’est, centrée sur l’horizon.</li>
             <li><I id="O" />La caméra va rester fixée à l’ouest, centrée sur l’horizon.</li>
           </ul>
+        <h3>Aligner l'écran sur <I id="horizon" />l'horizon terrestre ou sur <I id="ecliptic" />l'écliptique</h3>
+        <p>
+          Deux repères d’orientation sont proposés pour faire pivoter le cadre sans changer le point suivi:
+          <br/>
+          <I id="horizon" size="small" /> Horizon terrestre — l’horizon reste parfaitement droit; les altitudes (°) se lisent directement et la scène conserve l’orientation « photo » classique.
+          <br/>
+          <I id="ecliptic" size="small" /> Écliptique — le plan de l’écliptique est rendu horizontal; le trajet apparent du Soleil, de la Lune et des planètes devient une ligne droite, utile pour comparer les conjonctions et longitudes écliptiques.
+          <br/>
+          Astuce: l’alignement ne modifie pas le suivi (objet/point cardinal) mais uniquement la rotation du cadre. Utiliser les flèches pour recadrer, puis <I id="center" size="small" />pour recentrer.
+        </p>
         <h3><I id="arrow-up" /><I id="arrow-left" /> <I id="center" /><I id="arrow-right" /><I id="arrow-down" />Déplacer le cadre et le suivi avec le pavé directionnel</h3>
         <p>
           Les flèches du pavé directionnel à droite de l’écran permettent de se décentrer autour du point suivi. 
