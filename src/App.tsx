@@ -42,14 +42,21 @@ import { getPlanetsEphemerides } from "./astro/planets";
 import { type PlanetId } from "./astro/planets";
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { prewarmModel, MOON_RELIEF_SCALE_DEFAULT, PLANET_RELIEF_SCALE_DEFAULT } from './render/modelPrewarm';
-import PhotoFrame from "./components/stage/PhotoFrame"; // + add
+import PhotoFrame from "./components/stage/PhotoFrame"; 
 import SpaceView from "./components/layout/SpaceView";
 import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
 import { copyAndDownloadNodeAsPngAndJpeg } from './utils/capture';
-import { unrefractAltitudeDeg } from "./utils/refraction"; // ADD
-import InfoModal from "./components/info/InfoModal"; // NEW
+import { unrefractAltitudeDeg } from "./utils/refraction"; 
+import InfoModal from "./components/info/InfoModal"; 
+import {
+  startDomSnapshotRecorder,
+  type DomRecorderHandle,
+  type CanvasRecorderHandle,
+  startDomCfrRecorder,
+  type DomCfrRecorderHandle
+} from "./utils/record";
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -530,10 +537,33 @@ export default function App() {
   const [longPoseEnabled, setLongPoseEnabled] = useState<boolean>(false);
   const [longPoseRetainFrames, setLongPoseRetainFrames] = useState<number>(30);
   const lpPendingRef = useRef(false);
-  const handleLongPoseAccumulated = React.useCallback(() => { lpPendingRef.current = false; }, []);
+  // Replace handler to also push a frame to recorder in frame-locked mode
+  const recorderRef = useRef<CanvasRecorderHandle | DomRecorderHandle | DomCfrRecorderHandle | null>(null);
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false);
+  const handleLongPoseAccumulated = React.useCallback(() => {
+    lpPendingRef.current = false;
+    const r = recorderRef.current;
+    if (!r) return;
+    if ((r as any).kind === 'dom-cfr') {
+     // CFR: capture one frame and ACK
+     (r as DomCfrRecorderHandle).captureNext().finally(() => {
+       recPendingRef.current = false;
+     });
+   } else if (r.kind === 'dom-snapshot' && r.mode === 'frame-locked') {
+
+      // Snapshot the DOM subtree and ACK when done
+      Promise.resolve(r.renderOnce()).finally(() => {
+        recPendingRef.current = false; // ACK: recorded this frame
+      });
+    } else if (r.kind === 'canvas' && r.mode === 'frame-locked') {
+      try { r.requestFrame(); } finally { recPendingRef.current = false; }
+    }
+  }, []);
   const [longPoseClearSeq, setLongPoseClearSeq] = useState(0);
   const handleLongPoseClear = useCallback(() => setLongPoseClearSeq(s => s + 1), []);
-
+  const recPendingRef = useRef(false);
+  const recFpsRef = useRef(20);
+  
 
   // Track source of time changes to detect user commits
   const lastChangeSourceRef = useRef<'user' | 'anim' | 'manual' | null>(null);
@@ -873,12 +903,22 @@ export default function App() {
         const dtSec = (ts - lastTsRef.current) / 1000;
         lastTsRef.current = ts;
 
-        if (timeLapseEnabled) {
+         if (timeLapseEnabled) {
           tlAccumRef.current += dtSec * 1000;
           let didSet = false;
 
-          // NEW: only gate on lpPending when longPoseEnabled is true
-          const canStep = (!longPoseEnabled || !lpPendingRef.current) && tlAccumRef.current >= timeLapsePeriodMs;
+          const needsAckRecording =
+           !!(isRecordingVideo &&
+              recorderRef.current &&
+              ( (recorderRef.current as any).kind === 'dom-cfr' ||
+                (recorderRef.current as any).mode === 'frame-locked'));
+
+          // Gate stepping on: long-pose ACK, recorder ACK, and period elapsed
+          const canStep =
+            (!longPoseEnabled || !lpPendingRef.current) &&
+            (!needsAckRecording || !recPendingRef.current) &&
+            tlAccumRef.current >= timeLapsePeriodMs;
+
           if (canStep) {
             tlAccumRef.current -= timeLapsePeriodMs;
 
@@ -892,8 +932,9 @@ export default function App() {
               tlAccumRef.current = 0;
             }
 
-            // Only wait for ACK when long pose is active
+            // Wait for ACKs when features are active
             if (longPoseEnabled) lpPendingRef.current = true;
+            if (needsAckRecording) recPendingRef.current = true; // wait until capture completes
           }
 
           if (didSet) {
@@ -901,9 +942,29 @@ export default function App() {
             setWhenMs(whenMsRef.current);
           }
         } else {
-          whenMsRef.current += dtSec * clamp(speedMinPerSec, -360, 360) * 60 * 1000;
-          lastChangeSourceRef.current = 'anim';
-          setWhenMs(whenMsRef.current);
+          // Smooth mode
+          const needsAckRecording =
+           !!(isRecordingVideo &&
+              recorderRef.current &&
+              ( (recorderRef.current as any).kind === 'dom-cfr' ||
+                (recorderRef.current as any).mode === 'frame-locked'));
+
+          if (needsAckRecording) {
+            // Advance exactly one recorded frame at the recorder fps, gate on ACK
+            if (!recPendingRef.current) {
+              const fps = Math.max(1, recFpsRef.current || 20);
+              const deltaMsPerFrame = clamp(speedMinPerSec, -360, 360) * 60000 / fps;
+              whenMsRef.current += deltaMsPerFrame;
+              lastChangeSourceRef.current = 'anim';
+              setWhenMs(whenMsRef.current);
+              recPendingRef.current = true; // will be cleared when renderOnce() resolves
+            }
+          } else {
+            // Original realtime progression
+            whenMsRef.current += dtSec * clamp(speedMinPerSec, -360, 360) * 60 * 1000;
+            lastChangeSourceRef.current = 'anim';
+            setWhenMs(whenMsRef.current);
+          }
         }
       }
       if (runningRef.current) rafIdRef.current = requestAnimationFrame(tick);
@@ -926,6 +987,7 @@ export default function App() {
     timeLapseStepUnit,
     timeLapseLoopAfter,
     longPoseEnabled,
+    isRecordingVideo, 
   ]);
 
   const TOP_RIGHT_BAR_W = 56; // px
@@ -1136,6 +1198,98 @@ export default function App() {
       fovYDeg,
       shareUrl,
     ]);
+
+
+  // NEW: hook called by SpaceView right after the new frame is drawn
+const handleFramePresented = React.useCallback(() => {
+  const r = recorderRef.current;
+  if (!r) return;
+  if (longPoseEnabled || !isRecordingVideo) return;
+
+  if ((r as any).kind === 'dom-cfr') {
+    if (recPendingRef.current) {
+      (r as DomCfrRecorderHandle).captureNext().then(() => {
+        recPendingRef.current = false;
+      });
+    }
+  } else if (r.kind === 'dom-snapshot' && r.mode === 'frame-locked') {
+    if (recPendingRef.current) {
+      (r as DomRecorderHandle).renderOnce().then(() => {
+        recPendingRef.current = false;
+      });
+    }
+  } else if (r.kind === 'canvas' && r.mode === 'frame-locked') {
+    if (recPendingRef.current) {
+      try { (r as CanvasRecorderHandle).requestFrame(); } finally { recPendingRef.current = false; }
+    }
+  }
+}, [isRecordingVideo, longPoseEnabled]);
+
+ 
+
+  // Start/stop WebM recording, auto play on start, auto pause on stop
+  const handleToggleRecording = useCallback(async () => {
+    if (!isRecordingVideo) {
+      const node = renderStackRef.current as HTMLDivElement | null;
+      if (!node) { console.warn('No node to record.'); return; }
+
+      // If paused and in timelapse, record from the beginning
+      if (!isAnimating && timeLapseEnabled) {
+        whenMsRef.current = tlStartWhenMsRef.current;
+        setWhenMs(whenMsRef.current);
+        tlAccumRef.current = 0;
+        tlFramesRef.current = 0;
+      }
+
+      // Ensure playback starts
+      setIsAnimating(true);
+
+      // Choose playback fps:
+      // - timelapse: fps = round(1000 / periodMs), clamped 1..60
+      // - smooth: 24 fps
+      const fps = timeLapseEnabled
+        ? Math.max(1, Math.min(60, Math.round(1000 / Math.max(1, timeLapsePeriodMs))))
+        : 24;
+
+      recFpsRef.current = fps;
+
+      // CFR encoder: constant playback speed, no frame drops
+      recorderRef.current = await startDomCfrRecorder(node, {
+        fps,
+        pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        backgroundColor: '#000',
+        quality: 0.95,
+      });
+      setIsRecordingVideo(true);
+      recPendingRef.current = false;
+    } else {
+      try {
+        const blob = await recorderRef.current?.stop();
+        recorderRef.current = null;
+        setIsRecordingVideo(false);
+        // Auto-pause on stop
+        setIsAnimating(false);
+        if (blob && blob.size) {
+          const url = URL.createObjectURL(blob);
+          const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `spaceview-${stamp}.webm`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
+        }
+      } catch (e) {
+        console.error('Recording stop failed:', e);
+        setIsRecordingVideo(false);
+        setIsAnimating(false);
+      }
+    }
+  }, [isRecordingVideo, isAnimating, timeLapseEnabled, timeLapsePeriodMs]);
+
+
+  
   // --- JSX -------------------------------------------------------------------
   return (
     <div className="w-full h-screen bg-black text-white overflow-hidden">
@@ -1183,7 +1337,9 @@ export default function App() {
             isAnimating={isAnimating}
             onToggleAnimating={() => setIsAnimating(v => !v)}
             onCopyJpeg={handleCopyJpeg}
-            onOpenInfo={() => setShowInfo(true)} // NEW
+            onOpenInfo={() => setShowInfo(true)} 
+            isRecordingVideo={isRecordingVideo}
+            onToggleRecording={handleToggleRecording}
           />
 
           {/* Top UI bar (add right padding so it doesn't sit under the toolbar) */}
@@ -1358,6 +1514,8 @@ export default function App() {
                   timeLapseEnabled={timeLapseEnabled}
                   onLongPoseClear={handleLongPoseClear}
                   showRefraction={showRefraction}
+                  presentKey={whenMs}
+                  onFramePresented={handleFramePresented}
                 />
                 </div>
               </div>

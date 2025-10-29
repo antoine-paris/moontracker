@@ -40,7 +40,8 @@ import Markers from "../stage/Markers";
 import Ground from "../stage/Ground"; 
 import Ecliptique from "../stage/Ecliptique";
 import { unrefractAltitudeDeg } from "../../utils/refraction"; 
-
+import { useFrame } from '@react-three/fiber';
+  
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
 const POLARIS_RA_DEG = 37.952917;
@@ -123,6 +124,8 @@ export interface SpaceViewProps {
   onLongPoseClear?: () => void;
 
   showRefraction?: boolean;
+  presentKey?: number;
+  onFramePresented?: () => void;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
@@ -147,7 +150,21 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     longPoseClearSeq = 0,
     timeLapseEnabled = false,
     showRefraction = true,
+    presentKey,
+    onFramePresented,
   } = props;
+
+  
+  React.useEffect(() => {
+    let cancelled = false;
+    // Wait two RAFs to ensure canvases/DOM are presented
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!cancelled) onFramePresented?.();
+      });
+    });
+    return () => { cancelled = true; };
+  }, [presentKey, onFramePresented]);
 
   
   // Capture root for querying child canvases
