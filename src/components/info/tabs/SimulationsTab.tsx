@@ -175,7 +175,7 @@ export default function SimulationsTab() {
       img: '/img/examples/export-planet-dance.jpg'
     },
     {
-      label: 'Le soleil au centre (9 ans en une minute)',
+      label: 'Le soleil au centre (5 ans en 30 secondes)',
       desc: 'Sur le même principe (une photo par jour, sans sol ni athmosphère), voici une vidéo produite avec l\'application.<br/> Lancez vous et créez vos propres animations!!!!',
       url: '/?tl=1iit.usgh40&lp=5xc&l=2988507&t=wad7s0&F=0&p=0&d=custom&k=1&f=1&b=5z2d&pl=a&sr=214.852',
       webm: '/img/examples/video-sun-dance.webm'
