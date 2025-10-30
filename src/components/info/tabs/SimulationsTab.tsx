@@ -7,7 +7,14 @@ type Example = {
   webm?: string;
 };
 
-
+// Convertit les <br/> éventuels en véritables retours à la ligne
+function renderDesc(desc?: string) {
+  if (!desc) return null;
+  const parts = desc.split(/<br\s*\/?>/gi);
+  return parts.flatMap((part, idx) =>
+    idx < parts.length - 1 ? [part, <br key={idx} />] : [part]
+  );
+}
 
 export default function SimulationsTab() {
   const examples: Example[] = [
@@ -54,10 +61,10 @@ export default function SimulationsTab() {
       img : '/img/examples/export-polaris-crux-equador.jpg'
     },
     {
-      label: 'Éclipse solaire annulaire — 2026-08-12 (Palma de Majorque)',
+      label: 'Éclipse solaire annulaire - cercle de feux — 2024-10-02 (Océan pacifique)',
       desc: 'La Lune, trop petite (apogée), ne couvre pas tout le Soleil: un anneau lumineux subsiste. Intérêt: dynamique des contacts d’annularité et orientation du croissant avant/après. Observation: protection OBLIGATOIRE en continu. Astuce: suivez le Soleil, activez l’horizon et la réfraction pour le cadrage bas sur l’horizon.',
-      url: '',
-      img: ''
+      url: '/?tl=1iis.skq100&lp=5xc&g=3e1ery7k6&tz=America%2FSantiago&t=skqs9f&F=0&p=0&d=custom&k=1&f=kr&b=5z0n&pl=n&sr=1.0167',
+      img: '/img/examples/export-eclipse-annulaire-2024.jpg'
     },
     {
       label: 'La drôle d\'orbite de Mercure',
@@ -144,43 +151,43 @@ export default function SimulationsTab() {
       webm: '/img/examples/video-moon-libration.webm'
     },
     {
+      label: 'Libration de saturne',
+      desc: 'Saturne ne nous montre pas toujours le même visage: son axe est incliné de 27° et sa position par rapport à la Terre varie. En combinant ces deux effets, nous voyons alternativement les hémisphères nord et sud, ainsi que les anneaux sous différents angles. Dans cette application, nous nous plaçons au pôle nord, rendons la terre transparente, et alignons notre smartphone avec l’écliptique. Nous faisons une photo chaque jour sidéral (23h56m) pendant plusieurs années...',
+      url: '/?tl=ebk5.ol9ojc&lp=5xc&g=upcrvxb65&tz=Etc%2FUTC&t=s3t8jc&F=6&p=0&d=nikon-p1000&z=p1000-2000eq&b=e85&pl=g&sr=0.0167',
+      webm: '/img/examples/video-saturn-libration.webm'
+    },
+    {
       label: 'Voie lactée et Croix du Sud — hiver austral (Atacama)',
       desc: 'Ciel sombre exceptionnel: bande galactique, Crux et le “Sac à Charbon”. Intérêt: hauteur du centre galactique et rotation du champ. Utilisez grand‑angle, Atmosphère OFF pour un ciel neutre, Grille ON pour les altitudes.',
       url: '/?tl=v2s7b4.vo7rks&lp=5xc&l=3899539&t=sy6bjw&F=b&p=0&d=custom&k=1&f=1&b=6odx&pl=n&sr=5.0167&dh=37.84',
       img: '/img/examples/export-crux-atacama.jpg'
     },
     {
-      label: 'Traînées circumpolaires — pôle nord céleste (Reykjavík)',
-      desc: 'Les étoiles décrivent des arcs autour de Polaris. Intérêt: mesurer la latitude via l’altitude du pôle. Activez Pose longue pour visualiser les arcs; comparez avec une pose au pôle sud céleste depuis l’hémisphère sud.',
-      url: '',
-      img: ''
+      label: 'Pourquoi les "planètes" s\'appellent-elles ainsi?',
+      desc: 'Le terme "planète" vient du grec "planetes", qui signifie "errant". Cela fait référence au mouvement des planètes par rapport aux étoiles fixes. Nos anciens ont mis des siècles pour comprendre ces mouvements complexes (et finalement réaliser que le soleil était le centre du système), notamment les boucles rétrogrades observées depuis la Terre (quand la planète ralentit et fait marche arrière avant de reprendre sa course). Dans l\'application, nous prenons une photo par jour sidéral (quand notre position se réaligne avec les mêmes étoiles toutes les 23h 56m 4s). Nous observons alors les mouvements des planètes par rapport aux étoiles fixes, mettant en évidence leur nature "errante".',
+      url: '/?tl=-teqghl.s6l39p&lp=5xc&l=3110876&t=s793kh&F=9&p=0&d=VM&z=vm173&b=9hec&pl=a&sr=-6.9833&da=34.73&dh=89.9',
+      img: '/img/examples/export-planetes-errantes.jpg'
     },
     {
-      label: 'Inclinaison de l’écliptique au crépuscule d’hiver (Tokyo)',
-      desc: 'En hiver boréal, l’écliptique est très inclinée le soir: planètes alignées sur une pente raide. Intérêt: visibilité améliorée de Vénus/Jupiter en début de soirée. Activez l’écliptique et comparez hiver/été.',
-      url: '',
-      img: ''
+      label: 'Le soleil au centre',
+      desc: 'Nos anciens ont mis des siècle à comprendre: l\'héliocentrisme (qui place le soleil au centre des planètes) et la relativité (qui fait courber l\'espace par la masse du soleil). Avec cette application, ces deux phénomènes deviennent intuitifs : il nous suffit de rendre le sol transparent, de pointer vers le soleil, et de prendre une photo par jour pendant plusieurs années. On voit clairement se dessiner l\'attraction du soleil sur les Planetes, et la courbure de leurs trajectoires en sinusoïde.',
+      url: '/?tl=-6z.uikx40.1e.1.15o&lp=5xd&l=524901&t=usgh40&F=0&p=0&d=custom&k=1&f=1&b=5z0l&pl=u&sr=214.852&dh=-14.19',
+      img: '/img/examples/export-planet-dance.jpg'
     },
     {
-      label: 'Équinoxe: ombre d’un gnomon — 2025-03-20 (Nairobi)',
-      desc: 'Proche de l’équateur, le Soleil passe presque au zénith: ombre minimale à midi vrai. Intérêt: variation de la longueur/direction de l’ombre dans la journée. Suivez le Soleil, repérez le midi vrai et tracez les altitudes.',
-      url: '',
-      img: ''
+      label: 'Le soleil au centre (9 ans en une minute)',
+      desc: 'Sur le même principe (une photo par jour, sans sol ni athmosphère), voici une vidéo produite avec l\'application.<br/> Lancez vous et créez vos propres animations!!!!',
+      url: '/?tl=1iit.usgh40&lp=5xc&l=2988507&t=wad7s0&F=0&p=0&d=custom&k=1&f=1&b=5z2d&pl=a&sr=214.852',
+      webm: '/img/examples/video-sun-dance.webm'
     },
-    {
-      label: '“Manhattanhenge” — lever/coucher aligné (New York)',
-      desc: 'Le Soleil s’aligne avec la trame est‑ouest de Manhattan à quelques dates. Intérêt: angle azimutal exact et hauteur du disque au moment de l’alignement. Simulez autour des dates attendues, horizon ON, projection rectilinéaire.',
-      url: '',
-      img: ''
-    }
-    
+
   ];
 
   return (
     <article>
-      <h1 className="text-xl font-bold">Simulations — Exemples partageables</h1>
+      <h1 className="text-xl font-bold">Quelques simulations et exemples</h1>
       <p>
-        Ouvrez chaque lien dans un nouvel onglet pour comparer aux observations réelles. Les paramètres (lieu, date/heure UTC,
+        Ouvrez chaque lien pour comparer aux observations réelles. Les paramètres (lieu, date/heure UTC,
         cible suivie, projection, FOV) sont encodés dans l’URL.
       </p>
 
@@ -213,7 +220,8 @@ export default function SimulationsTab() {
         
                 </td>
                 <td className="py-0 align-top">
-                  {ex.desc}<br/>
+                  {renderDesc(ex.desc)}<br/>
+                  
                   <a
                     href={ex.url}
                     target="_blank"
