@@ -73,33 +73,57 @@ export default function SimulationsTab() {
     },
     {
       label: 'Soleil de (presque) minuit — 21 juin (Jyvaeskylae - Finlande)',
-      desc: 'Au‑delà du cercle polaire, le Soleil reste au‑dessus de l’horizon 24 h au solstice d’été. Dans cette ville de Finlande, le 21 juin, le soleil va se se lever à 3h00, et se coucher à 23h00. Tout au long de cette journée, le soleil va tourner autour de vous. .',
+      desc: 'Au‑delà du cercle polaire, le Soleil reste au‑dessus de l’horizon 24 h au solstice d’été. Dans cette ville de Finlande, le 21 juin, le soleil va se se lever (au nord) à 2h30, et se coucher (au nord) à 23h00. Tout au long de cette journée, le soleil va tourner autour de vous.',
       url: '/?tl=7apt.tgyag0&lp=5xd&l=655194&t=tgyc2c&F=9&p=0&d=VM&z=vm173&b=9hcl&pl=n&sr=2.0167&dh=89.9',
       img: '/img/examples/export-sun-path-north-finland.jpg'
     },
     {
-      label: 'Nuit polaire — 21 décembre (Tromsø)',
-      desc: 'En hiver, le Soleil ne se lève pas: seuls les crépuscules colorent le ciel. Intérêt: comparer les altitudes négatives du Soleil et la durée des crépuscules. Utilisez Terre ON/OFF pour visualiser la trajectoire sous l’horizon.',
-      url: '',
-      img: ''
+      label: 'Soleil de (presque) minuit — 21 juin (Jyvaeskylae - Finlande)',
+      desc: 'Une autre vue du soleil qui semble tourner autour de nous le 21 juin à Jyvaeskylae, Finlande, au‑delà du cercle polaire où le Soleil reste au‑dessus de l’horizon 24 h au solstice d’été. Dans cette ville de Finlande, le 21 juin, le soleil va se se lever (au nord) à 2h30, et se coucher (au nord) à 23h00. Tout au long de cette journée, le soleil va tourner autour de vous.',
+      url: '/?tl=7aps.tgyc2c&lp=5xd&l=655194&t=tgyhou&F=0&p=5&d=custom&k=1&f=7&b=9hh1&pl=n&sr=30.0167&dh=-20.61',
+      img: '/img/examples/export-sun-path-north-finland-2.jpg'
+    },
+    {
+      label: 'Nuit polaire — 21 décembre (Jyvaeskylae - Finlande)',
+      desc: 'Au‑delà du cercle polaire, le Soleil reste couché 24 h au solstice d’hiver. Dans cette ville de Finlande, le 21 décembre, le soleil ne va se lever (au sud) à 9h00 et se coucher (au sud) à 15h00. Cette courte journée ne sera finalement qu\'un long lever et coucher de soleil.',
+      url: '/?tl=7apt.tqdvg0&lp=5xd&l=655194&t=tqdxj0&F=b&p=0&d=custom&k=1&f=r&b=9hdh&pl=n&sr=2.0167',
+      img: '/img/examples/export-sun-path-south-finland.jpg'
     },
     {
       label: 'Analemme solaire sur 1 an (Quito)',
       desc: 'La figure en “8” résulte de l’obliquité (23,44°) et de l’équation du temps. Intérêt: position du Soleil à midi vrai selon la date. Simulez un point fixe: même lieu, même heure chaque jour (Timelapse jour), projection Recti‑Panini.',
-      url: '',
-      img: ''
+      url: '/?tl=1og5.wer5w0&lp=5xd&l=3652462&t=ts9b80&F=b&p=0&d=custom&k=1&f=1&b=9nsl&pl=n&sr=30.0167&da=-34.73&dh=89.9',
+      img: '/img/examples/export-sun-noon-8-quito.jpg'
     },
     {
-      label: 'Conjonction Vénus–Jupiter — 2025-03-02 (Le Caire)',
-      desc: 'Spectaculaire rapprochement crépusculaire. Intérêt: différence d’éclat, trajectoire sur l’écliptique, faible altitude. Suivez Vénus puis Jupiter, activez l’écliptique et comparez diverses focales (grand‑angle vs télé).',
-      url: '',
-      img: ''
+      label: 'Conjonction Vénus–Jupiter — 2025-08-25 (Paris)',
+      desc: 'Spectaculaire rapprochement matinal. Intérêt: différence d’éclat, trajectoire sur l’écliptique, faible altitude. Suivez Vénus puis Jupiter, activez l’écliptique et comparez diverses focales (grand‑angle vs télé).',
+      url: '/?tl=1og4.ts9b80&lp=5xc&l=2988507&t=t0v4g0&F=5&p=0&d=oeil&z=human&b=94vr&pl=a&sr=30.0167&dh=-10.89',
+      img: '/img/examples/export-venus-jupiter-conjonction-2025.jpg'
+    },
+    {
+      label: 'Conjonction Vénus–Jupiter — 2025-08-25 (Paris) - Teleobjectif',
+      desc: 'Spectaculaire rapprochement matinal. Intérêt: différence d’éclat, trajectoire sur l’écliptique, faible altitude. Suivez Vénus puis Jupiter, activez l’écliptique et comparez diverses focales (grand‑angle vs télé).',
+      url: '/?tl=1og4.ts9b80&lp=5xc&l=2988507&t=t0v4g0&F=5&p=0&d=custom&k=1&f=7r&b=al13&pl=a&sr=30.0167&da=0.37&dh=-0.4',
+      img: '/img/examples/export-venus-jupiter-conjonction-zoomed-2025.jpg'
+    },
+    {
+      label: 'Conjonction Vénus–Jupiter — 2025-08-25 (Paris) - Animation',
+      desc: 'Spectaculaire rapprochement matinal. Dans cette version le sol est transparent et les objets agrandits.',
+      url: '/?tl=sd8h.t0qzdc&lp=5xc&l=2988507&t=t0r8mo&F=5&p=0&d=custom&k=1&f=9k&b=f5z&pl=a&sr=30.0167',
+      img: '/img/examples/export-venus-jupiter-conjonction-timelapse-2025.jpg'
     },
     {
       label: 'Opposition de Mars — 2035-09 (Sydney)',
       desc: 'Mars est plus proche et plus brillante, sa taille apparente culmine. Intérêt: boucle rétrograde autour de l’opposition sur fond d’étoiles. Simulez plusieurs semaines (Timelapse jour), écliptique ON, comparez l’altitude de culminations.',
-      url: '',
-      img: ''
+      url: '/?tl=uit0jp.y7axg0&lp=5xc&l=2147714&t=y7ghg0&F=4&p=0&d=custom&k=1&f=1&b=2hg7&pl=a&sr=30.0167',
+      img: '/img/examples/export-mars-opposition-sydney-2035.jpg'
+    },
+    {
+      label: 'Opposition de Mars — 2035-09 à la lunette astro (taille réelle)',
+      desc: 'Mars est plus proche et plus brillante, sa taille apparente culmine. Intérêt: boucle rétrograde autour de l’opposition sur fond d’étoiles. Simulez plusieurs semaines (Timelapse jour), écliptique ON, comparez l’altitude de culminations.',
+      url: '/?tl=uit0jp.y7ghg0&lp=5xc&l=2147714&t=yb9is0&F=4&p=0&d=astro-1inch&z=sct-6-1500&b=24t3&pl=a&sr=30.0167',
+      img: '/img/examples/export-mars-opposition-sydney-astrocam-2035.jpg'
     },
     {
       label: 'Transit de Mercure — 2032-11-13 (Londres)',
@@ -108,22 +132,22 @@ export default function SimulationsTab() {
       img: '/img/examples/export-mercury-transit-london-2032.jpg'
     },
     {
-      label: 'Lever de Pleine Lune au périgée — 2026-11-25 (New York)',
+      label: 'Lever de Pleine Lune au périgée — 2026-11-24 (New York) - Temps réel au smartphone',
       desc: 'Pleine Lune proche du périgée: disque légèrement plus grand. Intérêt: illusions de taille à l’horizon et compression de perspective au téléobjectif. Activez la réfraction, cadrez un repère urbain et simulez minute par minute.',
-      url: '',
-      img: ''
+      url: '/?tl=uit0jk.tp0z3k&lp=5xc&l=5128581&t=tp0z99&F=1&p=5&d=galaxy-s21u&z=sd30&b=5z07&pl=a&sr=0.0167',
+      img: '/img/examples/export-pleine-lune-perigee-new-york-2026.jpg'
     },
     {
-      label: 'Libration lunaire sur un mois (Ushuaïa)',
-      desc: 'La Lune “bascule” et “respire” (librations en longitude/latitude). Intérêt: voir apparaître/disparaître les bords proches du limbe. Suivez la Lune, pas quotidien, phases ON, et comparez l’orientation du terminateur.',
-      url: '',
-      img: ''
+      label: 'Libration lunaire (Style Nasa)',
+      desc: 'La Lune “bascule” et “respire” (librations en longitude/latitude). La Nasa utilise les photos de ses satélites pour le montrer. Dans cette application nous nous plaçons au pôle nord, rendons la terre transparente, et alignons notre smartphone avec l’écliptique. Nous faisons une photo chaque jour lunaire (28j) pendant plusieurs années...',
+      url: '/?tl=v2s7bh.t52l80&lp=5xc&g=upcrvxb65&tz=Etc%2FUTC&t=vo7rks&F=1&p=5&d=galaxy-s21u&z=sd30&b=dl3&pl=a&sr=360',
+      webm: '/img/examples/video-moon-libration.webm'
     },
     {
       label: 'Voie lactée et Croix du Sud — hiver austral (Atacama)',
       desc: 'Ciel sombre exceptionnel: bande galactique, Crux et le “Sac à Charbon”. Intérêt: hauteur du centre galactique et rotation du champ. Utilisez grand‑angle, Atmosphère OFF pour un ciel neutre, Grille ON pour les altitudes.',
-      url: '',
-      img: ''
+      url: '/?tl=v2s7b4.vo7rks&lp=5xc&l=3899539&t=sy6bjw&F=b&p=0&d=custom&k=1&f=1&b=6odx&pl=n&sr=5.0167&dh=37.84',
+      img: '/img/examples/export-crux-atacama.jpg'
     },
     {
       label: 'Traînées circumpolaires — pôle nord céleste (Reykjavík)',
@@ -175,6 +199,18 @@ export default function SimulationsTab() {
                       className="w-120 h-auto object-cover rounded block p-0 !my-0"
                     />
                   )}
+                  {ex.webm && (
+                    <video
+                      controls
+                      preload="metadata"
+                      playsInline
+                      className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm  p-0 !my-0"
+                    >
+                      <source src={ex.webm} type="video/webm" />
+                      Votre navigateur ne supporte pas la lecture de vidéos WebM.
+                    </video>
+                  )}
+        
                 </td>
                 <td className="py-0 align-top">
                   {ex.desc}<br/>
