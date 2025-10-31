@@ -32,6 +32,8 @@ import Ground from "../stage/Ground";
 import Ecliptique from "../stage/Ecliptique";
 import { usePlanetsRender } from "./hooks/usePlanetsRender";
 import { useSunMoonModel } from "./hooks/useSunMoonModel";
+import { earthShadowAtMoon } from "../../astro/aeInterop";
+import { RMOON_KM } from "../../astro/moon";
   
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
@@ -199,6 +201,36 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     enlargeObjects,
     glbLoading,
   });
+
+  // Physique de l’éclipse (géocentrique)
+  const eclipsePhys = useMemo(() => {
+    const g = earthShadowAtMoon(date);
+    const umbraRel     = g.umbraRadiusKm    / RMOON_KM;            // en rayons lunaires
+    const penumbraRel  = g.penumbraRadiusKm / RMOON_KM;
+    const offsetRel    = g.axisOffsetKm     / RMOON_KM;
+
+    // Intensité: 1 en ombre, décroît linéairement jusqu'au bord de la pénombre, 0 au-delà
+    let strength = 0;
+    if (offsetRel <= umbraRel) {
+      strength = 1;
+    } else if (offsetRel < penumbraRel) {
+      strength = (penumbraRel - offsetRel) / Math.max(1e-6, penumbraRel - umbraRel);
+    } else {
+      strength = 0;
+    }
+    strength = Math.max(0, Math.min(1, strength));
+
+    // Rougeoiement: proportionnel à la profondeur dans l’ombre
+    const deep = Math.max(0, Math.min(1, (umbraRel - offsetRel) / Math.max(umbraRel, 1e-6)));
+    const red = Math.max(0, Math.min(1, 0.25 + 0.9 * Math.pow(deep, 0.7)));
+
+    return {
+      umbraRel: Math.max(0, umbraRel),
+      penumbraRel: Math.max(umbraRel, penumbraRel),
+      strength,
+      redGlow: red,
+    };
+  }, [date]);
 
   // NEW: remember if Moon has ever completed its first 3D render (persist for session)
   const [everReadyMoon, setEverReadyMoon] = useState<boolean>(false);
@@ -956,6 +988,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             brightLimbAngleDeg={brightLimbAngleDeg}
             earthshine={earthshine}
             onReady={() => { setMoon3DReady(true); setEverReadyMoon(true); }}
+            // Params physiques d’éclipse
+            eclipseStrength={eclipsePhys.strength}
+            umbraRadiusRel={eclipsePhys.umbraRel}
+            penumbraOuterRel={eclipsePhys.penumbraRel}
+            redGlowStrength={eclipsePhys.redGlow}
           />
         </div>
       )}

@@ -6,6 +6,8 @@ function norm360(x: number): number { return clamp360(x); }
 const D2R = Math.PI / 180;
 const R2D = 180 / Math.PI;
 
+export const R_SUN_KM = 695700;
+
 // Julian day UTC
 function jdUTC(date: Date): number { return date.getTime() / 86400000 + 2440587.5; }
 // ΔT approx (s) — approximation grossière suffisante pour affichage
@@ -465,6 +467,51 @@ export function moonNorthPositionAngleJ2000Deg(date: Date): number {
   const y = Math.sin(ap - a0) * Math.cos(dp);
   const x = Math.sin(dp) * Math.cos(d0) - Math.cos(dp) * Math.sin(d0) * Math.cos(ap - a0);
   return -Math.atan2(y, x) * R2D; // [-180,180], E from N
+}
+
+// Ombre terrestre à la distance de la Lune (géocentrique)
+export function earthShadowAtMoon(date: Date): {
+  sunDistKm: number;
+  moonDistKm: number;
+  umbraRadiusKm: number;      // rayon de l'ombre (si négatif -> pas d’ombre, on clamp à 0)
+  penumbraRadiusKm: number;   // rayon de la pénombre
+  axisOffsetKm: number;       // distance perpendiculaire entre axe Terre→anti-Soleil et centre Lune
+} {
+  const t = new AstroTime(date);
+
+  // Vecteurs géocentriques en UA
+  const vSun = GeoVector(Body.Sun, t, true);   // Terre -> Soleil
+  const vMoon = GeoVector(Body.Moon, t, true); // Terre -> Lune
+
+  // Distances (km)
+  const sunDistKm  = Math.hypot(vSun.x, vSun.y, vSun.z) * AU_KM;
+  const moonDistKm = Math.hypot(vMoon.x, vMoon.y, vMoon.z) * AU_KM;
+
+  // Axe ombre: u = direction Terre -> anti-Soleil
+  const ux = -vSun.x, uy = -vSun.y, uz = -vSun.z;
+  const un = Math.hypot(ux, uy, uz) || 1;
+  const u0 = ux / un, u1 = uy / un, u2 = uz / un;
+
+  // Composante perpendiculaire de la position lunaire par rapport à l’axe
+  const rx = vMoon.x, ry = vMoon.y, rz = vMoon.z;
+  const dot = rx * u0 + ry * u1 + rz * u2;
+  const px = rx - dot * u0;
+  const py = ry - dot * u1;
+  const pz = rz - dot * u2;
+  const axisOffsetKm = Math.hypot(px, py, pz) * AU_KM;
+
+  // Rayon de l’ombre/pénombre au plan de la Lune (triangles semblables)
+  const Re = EARTH_RADIUS_KM;
+  const Rs = R_SUN_KM;
+
+  // Ombre: décroît linéairement : r_u(d) = Re - d * (Rs - Re) / D_es  (tronquée à 0 si négative)
+  let umbraRadiusKm = Re - moonDistKm * (Rs - Re) / Math.max(1, sunDistKm);
+  if (umbraRadiusKm < 0) umbraRadiusKm = 0;
+
+  // Pénombre: croît linéairement : r_p(d) = Re + d * (Rs + Re) / D_es
+  const penumbraRadiusKm = Re + moonDistKm * (Rs + Re) / Math.max(1, sunDistKm);
+
+  return { sunDistKm, moonDistKm, umbraRadiusKm, penumbraRadiusKm, axisOffsetKm };
 }
 
 
