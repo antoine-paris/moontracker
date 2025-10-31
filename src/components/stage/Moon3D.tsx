@@ -162,10 +162,10 @@ function Model({
   sunDirWorld, showSubsolarCone = true,
   reliefScale = RELIEF_SCALE_DEFAULT,
   // NEW: eclipse visuals
-  eclipseStrength = 0,
-  umbraRadiusRel = 0.92,
-  penumbraOuterRel = 1.22,
-  redGlowStrength = 0.35,
+  eclipseStrength = 1,
+  umbraRadiusRel = 1.3,
+  penumbraOuterRel = 4.0,
+  redGlowStrength = 0.8,
   camForwardWorld,
   onMounted,
 }: {
@@ -431,41 +431,49 @@ function Model({
   `;
 
   const eclipseShadowFs = `
-    precision highp float;
-    varying vec3 vPos;
-    uniform vec3 uXAxis;
-    uniform vec3 uYAxis;
-    uniform vec3 uViewAxis;     // centre -> caméra
-    uniform vec3 uEarthDir;     // centre de l'ombre (antisolaire) projeté
-    uniform float uRUmbra;      // rayon umbra (en Rlunaire)
-    uniform float uRPenumbra;   // rayon penumbra (en Rlunaire, > uRUmbra)
-    uniform float uStrength;
+  precision highp float;
+  varying vec3 vPos;
+  uniform vec3 uXAxis;
+  uniform vec3 uYAxis;
+  uniform vec3 uViewAxis;     // centre -> caméra
+  uniform vec3 uEarthDir;     // centre de l'ombre (antisolaire) projeté
+  uniform float uRUmbra;      // rayon umbra (en Rlunaire)
+  uniform float uRPenumbra;   // rayon penumbra (en Rlunaire, > uRUmbra)
+  uniform float uStrength;
 
-    void main() {
-      if (uStrength <= 0.0001) discard;
+  void main() {
+    if (uStrength <= 0.0001) discard;
 
-      vec3 p = normalize(vPos);
-      float w = dot(p, normalize(uViewAxis));
-      if (w <= 0.0) discard; // hémisphère arrière
+    vec3 p = normalize(vPos);
+    float w = dot(p, normalize(uViewAxis));
+    if (w <= 0.0) discard; // hémisphère arrière
 
-      vec3 xA = normalize(uXAxis);
-      vec3 yA = normalize(uYAxis);
+    vec3 xA = normalize(uXAxis);
+    vec3 yA = normalize(uYAxis);
 
-      // Coordonnées "écran" du point et du centre d'ombre
-      vec2 uv = vec2(dot(p, xA), dot(p, yA));
-      vec2 c  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
+    // Coordonnées "écran"
+    vec2 uv = vec2(dot(p, xA), dot(p, yA));
+    vec2 c  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
+    float d = length(uv - c);
 
-      float d = length(uv - c);
+    // Pénombre: 1 au bord interne (umbra), 0 au bord externe de la pénombre
+    float pen = 1.0 - smoothstep(uRUmbra, uRPenumbra, d);
+    // Ombre: 1 au centre, 0 au bord de l'umbra
+    float umb = 1.0 - smoothstep(0.0, uRUmbra, d);
 
-      // t=1 au centre de l'ombre, t=0 au bord extérieur de la pénombre
-      float t = clamp((uRPenumbra - d) / max(1e-5, (uRPenumbra - uRUmbra)), 0.0, 1.0);
-      float s = smoothstep(0.0, 1.0, t) * uStrength;
+    // Adoucir les profils
+    pen = pow(pen, 1.2);
+    umb = pow(umb, 0.7);
 
-      // Assombrissement multiplicatif
-      float k = mix(1.0, 1.0 - 0.85 * uStrength, s);
-      gl_FragColor = vec4(vec3(k), 1.0);
-    }
-  `;
+    // Opacités cibles (ajuste si besoin)
+    const float ALPHA_PENUM = 1.55;  // densité en pénombre
+    const float ALPHA_UMBRA = 1.93;  // densité au cœur de l’ombre
+
+    float alpha = uStrength * (ALPHA_PENUM * pen + (ALPHA_UMBRA - ALPHA_PENUM) * umb);
+
+    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+  }
+`;
 
   // 2) Red glow additive pass
   const eclipseRedUniforms = useMemo(() => ({
@@ -514,7 +522,7 @@ function Model({
       gl_FragColor = vec4(tint, 1.0);
     }
   `;
-  
+
   React.useEffect(() => { onMounted?.(); }, [onMounted]);
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
@@ -638,7 +646,7 @@ function Model({
               <meshBasicMaterial color="#ef4444" depthTest={false} depthWrite={false} />
             </mesh>
           )}
-          {/* Multiply shadow */}
+          {/* Multiply shadow -> passe alpha noire (Normal blending) */}
           <mesh renderOrder={14}>
             <sphereGeometry args={[radius * 1.01, 64, 64]} />
             <shaderMaterial
@@ -649,7 +657,7 @@ function Model({
               transparent
               depthTest={false}
               depthWrite={false}
-              blending={THREE.MultiplyBlending}
+              blending={THREE.NormalBlending}
               side={THREE.FrontSide}
             />
           </mesh>
