@@ -5,22 +5,20 @@ import { getSunAndMoonAltAzDeg, getSunOrientationAngles, sunOnMoon } from "../..
 import { getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm } from "../../astro/aeInterop";
 import { sunApparentDiameterDeg } from "../../astro/sun";
 import { moonApparentDiameterDeg } from "../../astro/moon";
-import { getPlanetsEphemerides, getPlanetOrientationAngles, type PlanetId } from "../../astro/planets";
+import { getPlanetsEphemerides, type PlanetId } from "../../astro/planets";
 import { altAzFromRaDec } from "../../astro/stars";
-import { sepDeg } from "../../astro/eclipse";
 
 import { getMoonOrientationAngles } from "../../astro/aeInterop";
 
 // Math/projection utils
-import { toDeg, toRad, norm360, clamp } from "../../utils/math";
-import { altAzToVec, normalize3 } from "../../utils/vec3";
+import { norm360, clamp } from "../../utils/math";
 import { projectToScreen } from "../../render/projection";
 import type { ProjectionMode } from "../../render/projection";
 import { localPoleAngleOnScreen, localUpAngleOnScreen, correctedSpriteRotationDeg } from "../../render/orientation";
 
 // Render constants & registry
 import { Z, MOON_RENDER_DIAMETER } from "../../render/constants";
-import { PLANET_REGISTRY, PLANET_DOT_MIN_PX } from "../../render/PlanetRegistry";
+import { PLANET_REGISTRY } from "../../render/PlanetRegistry";
 // NEW: imports to format HUD values
 import { formatDeg } from "../../utils/format";
 import { compass16 } from "../../utils/compass";
@@ -40,7 +38,7 @@ import Markers from "../stage/Markers";
 import Ground from "../stage/Ground"; 
 import Ecliptique from "../stage/Ecliptique";
 import { unrefractAltitudeDeg } from "../../utils/refraction"; 
-import { useFrame } from '@react-three/fiber';
+import { usePlanetsRender } from "./hooks/usePlanetsRender";
   
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
@@ -53,7 +51,6 @@ const CRUX_CENTROID_DEC_DEG = -59.6625;
 // Moon render thresholds (px)
 const MOON_DOT_PX = 5;
 const MOON_3D_SWITCH_PX = 20;
-const PLANET_3D_SWITCH_PX = 20;
 
 // FIXED retain frames for long pose compositor
 const LONGPOSE_RETAIN_FRAMES = 400;
@@ -431,33 +428,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   // NEW: remember if Moon has ever completed its first 3D render (persist for session)
   const [everReadyMoon, setEverReadyMoon] = useState<boolean>(false);
 
-// --- Planets readiness -----------------------------------------------------
-  // Decide if a planet actually needs a 3D canvas (match render branch conditions)
-  const planetNeeds3D = useCallback((p: any) => {
-    if (!p.visibleX || !p.visibleY) return false;
-    if (!Number.isFinite(p.x) || !Number.isFinite(p.y)) return false;
-
-    const S = Math.max(4, Math.round(p.sizePx));
-    const half = S / 2;
-    const offscreen =
-      p.x + half < viewport.x ||
-      p.x - half > viewport.x + viewport.w ||
-      p.y + half < viewport.y ||
-      p.y - half > viewport.y + viewport.h;
-    if (offscreen) return false;
-
-    // Use the same effective mode as the render switch
-    const effectiveMode = glbLoading && p.mode === '3d' ? 'sprite' : p.mode;
-    return effectiveMode === '3d';
-  }, [viewport.x, viewport.y, viewport.w, viewport.h, glbLoading]);
-
-
-
-  const [readyPlanetIds, setReadyPlanetIds] = useState<Set<string>>(new Set());
-
-  // NEW: remember planets that have ever completed their first 3D render
-  const [everReadyPlanetIds, setEverReadyPlanetIds] = useState<Set<string>>(new Set());
-  
   // Planets ephemerides (for selected ids)
   const selectedPlanetIds = useMemo(
     () => Object.entries(showPlanets).filter(([, v]) => v).map(([id]) => id) as PlanetId[],
@@ -477,284 +447,28 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
    
   // Per-planet render bundle
-  const planetsRender = useMemo(() => {
-    if (!planetsEphemArr?.length) return [];
-    const items: {
-      id: string;
-      x: number; y: number;
-      visibleX?: boolean; visibleY?: boolean;
-      sizePx: number;
-      color: string;
-      phaseFrac: number;
-      angleToSunDeg: number;
-      mode: 'dot' | 'sprite' | '3d';
-      distAU: number;
-      rotationDeg: number;
-      planetAltDeg: number;
-      planetAzDeg: number;
-      orientationDegX?: number;
-      orientationDegY?: number;
-      orientationDegZ?: number;
-      localUpAnglePlanetDeg?: number;
-      rotationToHorizonDegPlanet?: number;
-      rotationDegPlanetScreen?: number;
-    }[] = [];
+  const { planetsRender, planetsReady, markPlanetReady } = usePlanetsRender({
+    planetsEphemArr,
+    showPlanets,
+    refAzDeg,
+    refAltDeg,
+    viewport,
+    fovXDeg,
+    fovYDeg,
+    projectionMode,
+    enlargeObjects,
+    astroSun: { alt: astro.sun.alt, az: astro.sun.az, distAU: astro.sun.distAU },
+    sunAltForProj,
+    showRefraction,
+    sunScreen: { x: sunScreen.x, y: sunScreen.y },
+    date,
+    latDeg,
+    lngDeg,
+    lockHorizon,
+    eclipticNorthAltAz: { azDeg: eclipticNorthAltAz.azDeg, altDeg: eclipticNorthAltAz.altDeg },
+    glbLoading,
+  });
 
-    for (const p of planetsEphemArr) {
-      const id = (p as any).id as PlanetId;
-      if (!id || !showPlanets[id]) continue;
-
-      const reg = PLANET_REGISTRY[id as keyof typeof PLANET_REGISTRY];
-      const color = reg?.color ?? '#9ca3af';
-
-      const altRaw = ((p as any).altDeg ?? (p as any).alt) as number | undefined;
-      const az  = ((p as any).azDeg  ?? (p as any).az ) as number | undefined;
-      if (altRaw == null || az == null) continue;
-
-      const alt = showRefraction ? altRaw : unrefractAltitudeDeg(altRaw); // NEW
-
-      const proj = projectToScreen(
-        az, alt,
-        refAzDeg,
-        viewport.w, viewport.h,
-        refAltDeg,
-        0,
-        fovXDeg, fovYDeg,
-        projectionMode, lockHorizon,
-        eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-      );
-      if (!Number.isFinite(proj.x) || !Number.isFinite(proj.y)) continue;
-
-      const projVisible = !!(proj.visibleX && proj.visibleY);
-      if (projectionMode === 'ortho' && !projVisible) continue;
-
-      const screenX = viewport.x + proj.x;
-      const screenY = viewport.y + proj.y;
-
-      const pxPerDegX = proj.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
-      const pxPerDegY = proj.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
-      const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
-
-      const appDiamDeg = Number((p as any).appDiamDeg ?? 0);
-      const computedSize = appDiamDeg > 0 ? appDiamDeg * pxPerDeg : 0;
-
-      let sizePx = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, computedSize) : computedSize;
-      const hasValidSize = Number.isFinite(computedSize) && computedSize > 0;
-      if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
-
-      const mode: 'dot' | 'sprite' | '3d' =
-        enlargeObjects
-          ? '3d'
-          : (!hasValidSize || sizePx < PLANET_DOT_MIN_PX
-              ? 'dot'
-              : (sizePx >= PLANET_3D_SWITCH_PX ? '3d' : 'sprite'));
-
-      const distAU = Number((p as any).distAU ?? (p as any).distanceAU ?? NaN);
-
-      const half = sizePx / 2;
-      const intersectsX = !(screenX + half < viewport.x || screenX - half > viewport.x + viewport.w);
-      const intersectsY = !(screenY + half < viewport.y || screenY - half > viewport.y + viewport.h);
-
-      const visibleX = projectionMode === 'ortho' ? !!proj.visibleX : intersectsX;
-      const visibleY = projectionMode === 'ortho' ? !!proj.visibleY : intersectsY;
-      if (!visibleX && !visibleY) continue;
-
-      let angleToSunDeg: number;
-      {
-        const u0 = altAzToVec(az, alt);
-        const uS = altAzToVec(astro.sun.az, showRefraction ? sunAltForProj : unrefractAltitudeDeg(astro.sun.alt));
-        const dotUS = u0[0]*uS[0] + u0[1]*uS[1] + u0[2]*uS[2];
-       
-        const EPS_RAD = toRad(0.05);
-        if (1 - Math.abs(dotUS) < 1e-9) {
-          const alpha = Math.atan2(sunScreen.y - screenY, sunScreen.x - screenX);
-          angleToSunDeg = norm360(toDeg(alpha) + 90);
-        } else {
-          const t = normalize3([uS[0] - dotUS*u0[0], uS[1] - dotUS*u0[1], uS[2] - dotUS*u0[2]]);
-          const wF = normalize3([
-            Math.cos(EPS_RAD)*u0[0] + Math.sin(EPS_RAD)*t[0],
-            Math.cos(EPS_RAD)*u0[1] + Math.sin(EPS_RAD)*t[1],
-            Math.cos(EPS_RAD)*u0[2] + Math.sin(EPS_RAD)*t[2],
-          ]);
-          const wB = normalize3([
-            Math.cos(EPS_RAD)*u0[0] - Math.sin(EPS_RAD)*t[0],
-            Math.cos(EPS_RAD)*u0[1] - Math.sin(EPS_RAD)*t[1],
-            Math.cos(EPS_RAD)*u0[2] - Math.sin(EPS_RAD)*t[2],
-          ]);
-
-          const altF = toDeg(Math.asin(wF[2]));
-          const azF  = norm360(toDeg(Math.atan2(wF[0], wF[1])));
-          const altB = toDeg(Math.asin(wB[2]));
-          const azB  = norm360(toDeg(Math.atan2(wB[0], wB[1])));
-
-          const pF = projectToScreen(azF, altF, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
-            lockHorizon,
-            eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-          );
-          const pB = projectToScreen(azB, altB, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
-            lockHorizon,
-            eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-          );
-
-          const xF = viewport.x + pF.x, yF = viewport.y + pF.y;
-          const xB = viewport.x + pB.x, yB = viewport.y + pB.y;
-
-          const dxF = xF - screenX, dyF = yF - screenY;
-          const dxB = xB - screenX, dyB = yB - screenY;
-
-          const mF = Math.hypot(dxF, dyF);
-          const mB = Math.hypot(dxB, dyB);
-
-          const useBack = mB > mF;
-          const alpha = Math.atan2(useBack ? dyB : dyF, useBack ? dxB : dxF);
-          let deg = norm360(toDeg(alpha) + 90);
-          if (useBack) deg = norm360(deg + 180);
-          if (Math.max(mF, mB) < 1e-6) {
-            const a = Math.atan2(sunScreen.y - screenY, sunScreen.x - screenX);
-            deg = norm360(toDeg(a) + 90);
-          }
-          angleToSunDeg = deg;
-        }
-      }
-
-      let phaseFrac = Number((p as any).phaseFraction);
-      if (!Number.isFinite(phaseFrac)) {
-        const sep = sepDeg(alt, az, astro.sun.alt, astro.sun.az);
-        phaseFrac = clamp((1 + Math.cos((sep * Math.PI) / 180)) / 2, 0, 1);
-      } else {
-        phaseFrac = clamp(phaseFrac, 0, 1);
-      }
-
-      const rotationDeg = angleToSunDeg - 90;
-
-      const ori = (p as any).orientationXYZDeg;
-      const orientationDegX = Number.isFinite(ori?.x) ? Number(ori.x) : undefined;
-      const orientationDegY = Number.isFinite(ori?.y) ? Number(ori.y) : undefined;
-      const orientationDegZ = Number.isFinite(ori?.z) ? Number(ori.z) : undefined;
-
-      const localUpAnglePlanetDeg = localUpAngleOnScreen(az, alt, {
-        refAz: refAzDeg,
-        refAlt: refAltDeg,
-        viewport: { w: viewport.w, h: viewport.h },
-        fovXDeg,
-        fovYDeg,
-        projectionMode,
-        lockHorizon,
-        eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
-        eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
-      });
-
-      const ctxAngles = {
-        refAz: refAzDeg,
-        refAlt: refAltDeg,
-        viewport: { w: viewport.w, h: viewport.h },
-        fovXDeg,
-        fovYDeg,
-        projectionMode,
-        lockHorizon,
-        eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
-        eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
-      };
-      const localUpH = localUpAngleOnScreen(az, alt, ctxAngles);
-      const localUpE = localPoleAngleOnScreen(az, alt, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg, ctxAngles);
-      const chosenLocalAngle = lockHorizon ? localUpH : localUpE;
-      const deltaRef = lockHorizon ? 0 : angDiff(localUpE, localUpH);
-
-      let rotationToHorizonDegPlanet: number | undefined;
-      try {
-        const po = getPlanetOrientationAngles(date, latDeg, lngDeg, id as PlanetId);
-        rotationToHorizonDegPlanet =
-          (po as any)?.rotationToHorizonDegPlanetNorth ??
-          (po as any)?.rotationToHorizonDegPlanet ??
-          (po as any)?.rotationToHorizonDeg ??
-          undefined;
-      } catch {}
-
-      const rotationToChosenDeg =
-        Number.isFinite(rotationToHorizonDegPlanet) ? (rotationToHorizonDegPlanet as number) - deltaRef : 0;
-
-      const rotationDegPlanetScreen =
-        correctedSpriteRotationDeg(rotationToChosenDeg, chosenLocalAngle);
-
-
-      try {
-        const po = getPlanetOrientationAngles(date, latDeg, lngDeg, id as PlanetId);
-        //console.log("planet orientation", id, po);
-        rotationToHorizonDegPlanet =
-          (po as any)?.rotationToHorizonDegPlanetNorth ??
-          (po as any)?.rotationToHorizonDegPlanet ??
-          (po as any)?.rotationToHorizonDeg ??
-          undefined;
-      } catch {}
-
-      
-
-      //console.log("rotationDegPlanetScreen", id, rotationDegPlanetScreen);
-
-      items.push({
-        id,
-        x: screenX, y: screenY,
-        visibleX: intersectsX,
-        visibleY: intersectsY,
-        sizePx,
-        color,
-        phaseFrac,
-        angleToSunDeg,
-        mode,
-        distAU,
-        rotationDeg,
-        planetAltDeg: alt,  // NEW: cohérent avec projection
-        planetAzDeg: az,
-        orientationDegX,
-        orientationDegY,
-        orientationDegZ,
-        localUpAnglePlanetDeg,
-        rotationToHorizonDegPlanet,
-        rotationDegPlanetScreen,
-      });
-    }
-
-    items.sort((a, b) => b.distAU - a.distAU);
-    return items;
-   }, [
-    planetsEphemArr, showPlanets, refAzDeg, viewport.w, viewport.h, viewport.x, viewport.y,
-    refAltDeg, fovXDeg, fovYDeg, projectionMode, enlargeObjects,
-    astro.sun.az, astro.sun.alt, sunAltForProj, showRefraction,
-    sunScreen.x, sunScreen.y, date, latDeg, lngDeg, lockHorizon,
-    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-  ]);
-
-  const neededPlanetIds = useMemo(
-    () => planetsRender.filter(planetNeeds3D).map(p => p.id as string),
-    [planetsRender, planetNeeds3D]
-  );
-
-  // Keep only ready ids that are still needed
-  useEffect(() => {
-    setReadyPlanetIds(prev => {
-      const next = new Set<string>();
-      for (const id of neededPlanetIds) if (prev.has(id)) next.add(id);
-      return next;
-    });
-  }, [neededPlanetIds]);
-
-  // only gate on planets that have never been ready before
-  const gatingPlanetIds = useMemo(
-    () => neededPlanetIds.filter(id => !everReadyPlanetIds.has(id)),
-    [neededPlanetIds, everReadyPlanetIds]
-  );
-
-  const markPlanetReady = useCallback((id: string) => {
-    setReadyPlanetIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
-    // persist “ever ready”
-    setEverReadyPlanetIds(prev => (prev.has(id) ? prev : new Set(prev).add(id)));
-  }, []);
-
-  const planetsReady = useMemo(() => {
-    if (!gatingPlanetIds.length) return true;
-    for (const id of gatingPlanetIds) if (!readyPlanetIds.has(id)) return false;
-    return true;
-  }, [gatingPlanetIds, readyPlanetIds]);
 
   // Scene readiness: show overlay only for the first time a body needs 3D and hasn't completed once yet
   const sceneReady = useMemo(
@@ -1121,68 +835,68 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   ]);
 
   // Timelapse mode: accumulate once per utcMs change and ACK
-useEffect(() => {
-  if (!longPoseEnabled || !timeLapseEnabled) return;
-  let cancelled = false;
-  requestAnimationFrame(() => {
+  useEffect(() => {
+    if (!longPoseEnabled || !timeLapseEnabled) return;
+    let cancelled = false;
     requestAnimationFrame(() => {
-      if (cancelled) return;
-      compositeLongPose();
-      onLongPoseAccumulated?.();
+      requestAnimationFrame(() => {
+        if (cancelled) return;
+        compositeLongPose();
+        onLongPoseAccumulated?.();
+      });
     });
-  });
-  return () => { cancelled = true; };
-}, [
-  utcMs,
-  longPoseEnabled,
-  timeLapseEnabled,
-  compositeLongPose,
-  onLongPoseAccumulated,
-]);
+    return () => { cancelled = true; };
+  }, [
+    utcMs,
+    longPoseEnabled,
+    timeLapseEnabled,
+    compositeLongPose,
+    onLongPoseAccumulated,
+  ]);
 
-// Burst composite after toggling Stars ON (works in TL and smooth modes)
-useEffect(() => {
-  if (!longPoseEnabled ) return;
-  if (!showStars) return;
+  // Burst composite after toggling Stars ON (works in TL and smooth modes)
+  useEffect(() => {
+    if (!longPoseEnabled ) return;
+    if (!showStars) return;
 
-  let raf: number | null = null;
-  let frames = 0;
-  let cancelled = false;
+    let raf: number | null = null;
+    let frames = 0;
+    let cancelled = false;
 
-  const step = () => {
-    if (cancelled) return;
-    frames += 1;
-    compositeLongPose();
+    const step = () => {
+      if (cancelled) return;
+      frames += 1;
+      compositeLongPose();
 
-    const root = rootRef.current;
-    const starsCanvas = root?.querySelector('[data-stars-layer="1"] canvas') as HTMLCanvasElement | null;
-    const ready = !!starsCanvas && starsCanvas.width > 0 && starsCanvas.height > 0;
+      const root = rootRef.current;
+      const starsCanvas = root?.querySelector('[data-stars-layer="1"] canvas') as HTMLCanvasElement | null;
+      const ready = !!starsCanvas && starsCanvas.width > 0 && starsCanvas.height > 0;
 
-    if (frames < 30 && !ready) {
-      raf = requestAnimationFrame(step);
-    }
-  };
+      if (frames < 30 && !ready) {
+        raf = requestAnimationFrame(step);
+      }
+    };
 
-  raf = requestAnimationFrame(step);
-  return () => { cancelled = true; if (raf != null) cancelAnimationFrame(raf); };
-}, [showStars, longPoseEnabled, compositeLongPose]);
+    raf = requestAnimationFrame(step);
+    return () => { cancelled = true; if (raf != null) cancelAnimationFrame(raf); };
+  }, [showStars, longPoseEnabled, compositeLongPose]);
 
-// Smooth mode: continuous RAF compositor (no ACK)
-useEffect(() => {
-  if (!longPoseEnabled || timeLapseEnabled) return;
-  let raf: number | null = null;
-  let running = true;
-  const loop = () => {
-    if (!running) return;
-    compositeLongPose();
+  // Smooth mode: continuous RAF compositor (no ACK)
+  useEffect(() => {
+    if (!longPoseEnabled || timeLapseEnabled) return;
+    let raf: number | null = null;
+    let running = true;
+    const loop = () => {
+      if (!running) return;
+      compositeLongPose();
+      raf = requestAnimationFrame(loop);
+    };
     raf = requestAnimationFrame(loop);
-  };
-  raf = requestAnimationFrame(loop);
-  return () => {
-    running = false;
-    if (raf != null) cancelAnimationFrame(raf);
-  };
-}, [longPoseEnabled, timeLapseEnabled, compositeLongPose]);
+    return () => {
+      running = false;
+      if (raf != null) cancelAnimationFrame(raf);
+    };
+  }, [longPoseEnabled, timeLapseEnabled, compositeLongPose]);
 
 
 
@@ -1569,7 +1283,7 @@ useEffect(() => {
         // effectiveMode === '3d'
         return (
           <div key={p.id} 
-            data-longpose-exclude="1" // exclure du long pose
+            data-longpose-exclude="1"
             className="absolute inset-0" style={{ zIndex: z, pointerEvents: 'none' }} data-3d-layer="1"
           >
             <Planet3D
