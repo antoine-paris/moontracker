@@ -504,11 +504,16 @@ export default function Moon3D({
   // Aligner la direction Lune vers la caméra (cam regarde -Z)
   const R = useMemo(() => rotateAToB(vMoon, [0,0,-1]), [vMoon]);
 
+  
+
   // Compute Sun direction in camera space from Moon card data when available.
   // If illumFraction and a limb angle are provided, derive s_cam from:
   //   f = (1 + cos(gamma)) / 2, gamma = arccos(2f - 1)
   //   azimuth in image plane = bright limb angle (0=N, 90°=E).
   // Otherwise fall back to alt/az-based mapping (mul(R, vSun)).
+  const PHASE_SNAP_DEG = 6;     // zone morte angulaire ~6°
+  const FRACTION_SNAP = 0.01;   // zone morte sur fraction éclairée 5%
+  const lastStableLightCamY = React.useRef<number | undefined>(undefined);
   const lightCam = useMemo((): Vec3 => {
     const fNum = toFiniteNumber(illumFraction);
     const paCandidate = brightLimbAngleDeg != null ? brightLimbAngleDeg : librationTopo?.paDeg;
@@ -517,32 +522,60 @@ export default function Moon3D({
     const hasF = typeof fNum === 'number';
     const hasPa = typeof paNum === 'number';
 
-    if (hasF && hasPa) {
-      const f = Math.min(1, Math.max(0, fNum as number));
+    if (hasF) {
+      const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+      const f = clamp01(fNum as number);
+
       const c = Math.max(-1, Math.min(1, 2 * f - 1));
-      const gamma = Math.acos(c); // 0=Full, π=New
-      // Correct the bright limb azimuth by the parallactic rotation already applied to the GLB
-      const qPar = Number.isFinite(limbAngleDeg) ? (limbAngleDeg as number) : 0;
-      const a = (((paNum as number) - qPar) * Math.PI) / 180; // image-plane azimuth adjusted by parallactic angle
-      // Image plane unit vector: +Y=N (0°), +X=E (90°)
-      const px = Math.sin(a);
-      const py = Math.cos(a);
-      // Sun direction in camera frame (pointing from Moon to Sun)
-      const sx = Math.sin(gamma) * px;
-      const sy = Math.sin(gamma) * py;
-      const sz = Math.cos(gamma); // +Z for Full, -Z for New
-      return [sx, sy, sz];
+      const s = Math.sqrt(Math.max(0, 1 - c * c));
+
+      const sSnap = Math.sin((PHASE_SNAP_DEG * Math.PI) / 180);
+      const inDeadZone = f <= FRACTION_SNAP || f >= 1 - FRACTION_SNAP || s <= sSnap;
+
+      if (hasPa) {
+        const qPar = Number.isFinite(limbAngleDeg) ? (limbAngleDeg as number) : 0;
+        const norm360 = (d: number) => ((d % 360) + 360) % 360;
+        const delta = norm360((paNum as number) - qPar);
+        const aDeg = delta > 180 ? delta - 360 : delta;
+        const a = (aDeg * Math.PI) / 180;
+
+        // Plan image: +Y=N (0°), +X=E (90°)
+        const px = Math.sin(a);
+        const py = Math.cos(a);
+
+        let sx = s * px;
+        let sy = s * py;
+        let sz = c;
+
+        const snap0 = (v: number) => (Math.abs(v) < 1e-8 ? 0 : v);
+        sx = snap0(sx); sy = snap0(sy);
+        const len = Math.hypot(sx, sy, sz) || 1;
+        const nx = sx / len;
+        const ny = sy / len;
+        const nz = sz / len;
+
+        // Zone morte: conserver l'ancien Y stable pour éviter la rotation apparente
+        if (inDeadZone) {
+          const yHeld = lastStableLightCamY.current ?? 0;
+          return [nx, yHeld, nz] as Vec3;
+        }
+        // Hors zone morte: mettre à jour la mémoire Y et renvoyer le vecteur complet
+        lastStableLightCamY.current = ny;
+        return [nx, ny, nz] as Vec3;
+      }
+
+      // Pas de PA -> fallback alt/az pour les phases intermédiaires
+      return mul(R, vSun);
     }
 
+    // Pas d'illumFraction -> fallback
     if (illumFraction != null || brightLimbAngleDeg != null || librationTopo?.paDeg != null) {
       console.warn('[Moon3D] Fallback to alt/az. Provided:', {
         illumFraction,
         brightLimbAngleDeg,
         paDeg: librationTopo?.paDeg,
-        parsed: { fNum, paNum }
       });
     }
-    // Fallback: compute from Sun alt/az
     return mul(R, vSun);
   }, [illumFraction, brightLimbAngleDeg, librationTopo?.paDeg, limbAngleDeg, R, vSun]);
 
