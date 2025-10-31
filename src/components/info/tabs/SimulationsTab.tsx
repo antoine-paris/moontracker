@@ -61,7 +61,7 @@ export default function SimulationsTab() {
       img : '/img/examples/export-polaris-crux-equador.jpg'
     },
     {
-      label: 'Éclipse solaire annulaire - cercle de feux — 2024-10-02 (Océan pacifique)',
+      label: 'Éclipse solaire annulaire - cercle de feu — 2024-10-02 (Océan pacifique)',
       desc: 'La Lune, trop petite (apogée), ne couvre pas tout le Soleil: un anneau lumineux subsiste. Intérêt: dynamique des contacts d’annularité et orientation du croissant avant/après. Observation: protection OBLIGATOIRE en continu. Astuce: suivez le Soleil, activez l’horizon et la réfraction pour le cadrage bas sur l’horizon.',
       url: '/?tl=1iis.skq100&lp=5xc&g=3e1ery7k6&tz=America%2FSantiago&t=skqs9f&F=0&p=0&d=custom&k=1&f=kr&b=5z0n&pl=n&sr=1.0167',
       img: '/img/examples/export-eclipse-annulaire-2024.jpg'
@@ -141,7 +141,7 @@ export default function SimulationsTab() {
     {
       label: 'Lever de Pleine Lune au périgée — 2026-11-24 (New York) - Temps réel au smartphone',
       desc: 'Pleine Lune proche du périgée: disque légèrement plus grand. Intérêt: illusions de taille à l’horizon et compression de perspective au téléobjectif. Activez la réfraction, cadrez un repère urbain et simulez minute par minute.',
-      url: '/?tl=uit0jk.tp0z3k&lp=5xc&l=5128581&t=tp0z99&F=1&p=5&d=galaxy-s21u&z=sd30&b=5z07&pl=a&sr=0.0167',
+      url: '/?tl=uit0jk.tp0z3k&lp=5xc&l=5128581&t=tp0zab&F=1&p=5&d=galaxy-s21u&z=sd30&b=5z03&pl=a&sr=0.0167',
       img: '/img/examples/export-pleine-lune-perigee-new-york-2026.jpg'
     },
     {
