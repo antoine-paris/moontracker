@@ -173,7 +173,7 @@ export function projectToScreen(
       // Stable ecliptic basis:
       // e2 = camera right; e1 = forward projected onto ecliptic plane (use n × right to keep correct orientation)
       let e2 = [right[0], right[1], right[2]];
-      let e1 = cross(n, e2) as number[];  // instead of cross(e2, n)
+      let e1 = cross(n, e2) as [number, number, number];  // instead of cross(e2, n)
 
       // Normalize and fallback if degenerate
       let e1Len = Math.hypot(e1[0], e1[1], e1[2]);

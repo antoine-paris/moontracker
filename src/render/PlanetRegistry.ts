@@ -118,3 +118,4 @@ export const PLANET_REGISTRY = {
 // Heuristic thresholds (px) similar to Moon auto-switching
 export const PLANET_DOT_MIN_PX = 5;
 export const PLANET_3D_MIN_PX  = 20;
+export const PLANET_3D_SWITCH_PX = 20;

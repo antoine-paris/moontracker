@@ -9,7 +9,7 @@ import { getOrProcess, MOON_RELIEF_SCALE_DEFAULT } from '../../render/modelPrewa
 // Si vous changez de modèle GLB, ajustez ces valeurs ici.
 const GLB_CALIB = {
   rotationBaseDeg: { x: 0, y: -90, z: 180 }, // base pour obtenir North-Up et face visible
-  northLocal: new THREE.Vector3(0, 0, 1),    // direction du nord lunaire dans l'espace local du GLB
+  northLocal: new THREE.Vector3(0, 0, 1),
   viewForwardLocal: new THREE.Vector3(0, 0, -1), // direction vers la caméra dans l'espace local du GLB
 } as const;
 
@@ -72,6 +72,13 @@ type Props = {
   earthshine?: boolean;
   // NEW: scale factor for texture-based relief (displacement/bump/normal)
   reliefScale?: number;
+  // Overrides physiques (optionnels). Si définis, priment sur l'heuristique interne.
+  eclipseStrength?: number;
+  umbraRadiusRel?: number;
+  penumbraOuterRel?: number;
+  redGlowStrength?: number;
+  // Debug: forcer eclipse ON (si pas d’override fourni)
+  forceEclipse?: boolean;
   // notify parent when the 3D canvas has rendered a couple of frames
   onReady?: () => void;
 };
@@ -154,6 +161,12 @@ function Model({
   debugMask = false, showMoonCard = false,
   sunDirWorld, showSubsolarCone = true,
   reliefScale = RELIEF_SCALE_DEFAULT,
+  // NEW: eclipse visuals
+  eclipseStrength = 1,
+  umbraRadiusRel = 1.3,
+  penumbraOuterRel = 4.0,
+  redGlowStrength = 0.8,
+  camForwardWorld,
   onMounted,
 }: {
   limbAngleDeg: number; targetPx: number; modelUrl: string;
@@ -162,6 +175,12 @@ function Model({
   debugMask?: boolean; showMoonCard?: boolean;
   sunDirWorld?: [number, number, number]; showSubsolarCone?: boolean;
   reliefScale?: number;
+  // NEW eclipse params (0 disables)
+  eclipseStrength?: number;
+  umbraRadiusRel?: number;
+  penumbraOuterRel?: number;
+  redGlowStrength?: number;
+  camForwardWorld?: [number, number, number];
   onMounted?: () => void;
 }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
@@ -347,14 +366,172 @@ function Model({
     return { center, rotation, h, baseRadius } as const;
   }, [sunDirWorld, quaternionFinal, radius, coneHLocal, coneBaseRLocal]);
 
+  // Compute Earth direction in model local space (opposite Sun vector)
+  const earthDirLocalRaw = useMemo(() => {
+    if (!sunDirWorld) return null;
+    const sWorld = new THREE.Vector3().fromArray(sunDirWorld as any);
+    if (sWorld.lengthSq() < 1e-9) return null;
+    const qInv = quaternionFinal.clone().invert();
+    const sLocal = sWorld.applyQuaternion(qInv).normalize();
+    return sLocal.clone().negate().normalize(); // toward Earth
+  }, [sunDirWorld, quaternionFinal]);
+
+
+  // Front facing (view axis) and disk axes for stable “screen” overlay
+  // Camera forward expressed in the model's local space (compte la rotation du groupe)
+  const viewAxisLocal = useMemo(() => {
+    // fallback: -viewLocal = centre->cam (car viewLocal est "cam -> objet")
+    if (!camForwardWorld) return viewLocal.clone().negate().normalize();
+    const fWorld = new THREE.Vector3().fromArray(camForwardWorld as any); // cam -> objet
+    const toCamWorld = fWorld.clone().negate().normalize();               // centre -> caméra
+    const qInv = quaternionFinal.clone().invert();
+    return toCamWorld.applyQuaternion(qInv).normalize();                  // en espace local
+  }, [camForwardWorld, quaternionFinal, viewLocal]);
+
+  // Base 2D écran: projeter le nord du disque sur le plan orthogonal à la vue
+  const yAxisLocal = useMemo(() => {
+    const n = diskNorthLocal.clone().normalize();
+    const v = viewAxisLocal.clone().normalize(); // centre -> caméra
+    // y = n - (n·v) v  (projection de n sur le plan écran)
+    const y = n.add(v.multiplyScalar(-n.dot(v)));
+    return y.lengthSq() > 1e-9 ? y.normalize() : diskNorthLocal.clone().normalize();
+  }, [diskNorthLocal, viewAxisLocal]);
+
+  const xAxisLocal = useMemo(
+    () => new THREE.Vector3().crossVectors(viewAxisLocal, yAxisLocal).normalize(),
+    [viewAxisLocal, yAxisLocal]
+  );
+  
+  const earthDirLocal = useMemo(() => {
+    if (!earthDirLocalRaw) return null;
+    const dot = earthDirLocalRaw.dot(viewAxisLocal); // >0 = côté visible
+    return (dot < 0 ? earthDirLocalRaw.clone().negate() : earthDirLocalRaw.clone()).normalize();
+  }, [earthDirLocalRaw, viewAxisLocal]);
+
+  // --- Eclipse overlay materials (two passes) ---
+  // 1) Shadow multiply pass: darkens where Earth shadow covers the “disc”
+  const eclipseShadowUniforms = useMemo(() => ({
+    uXAxis:        { value: xAxisLocal },
+    uYAxis:        { value: yAxisLocal },
+    uViewAxis:     { value: viewAxisLocal },
+    uEarthDir:     { value: earthDirLocal ?? new THREE.Vector3(0,0,1) },
+    // FIX: plafonds élargis pour valeurs physiques (umbra~2.6R, penumbra~4.7R)
+    uRUmbra:       { value: Math.max(0.05, Math.min(6.0, umbraRadiusRel)) },
+    uRPenumbra:    { value: Math.max(0.06, Math.min(8.0, Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel))) },
+    uStrength:     { value: Math.max(0, Math.min(1, eclipseStrength)) },
+  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, eclipseStrength]);
+
+  
+  const eclipseShadowVs = `
+    varying vec3 vPos;
+    void main() {
+      vPos = position;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `;
+
+  const eclipseShadowFs = `
+  precision highp float;
+  varying vec3 vPos;
+  uniform vec3 uXAxis;
+  uniform vec3 uYAxis;
+  uniform vec3 uViewAxis;     // centre -> caméra
+  uniform vec3 uEarthDir;     // centre de l'ombre (antisolaire) projeté
+  uniform float uRUmbra;      // rayon umbra (en Rlunaire)
+  uniform float uRPenumbra;   // rayon penumbra (en Rlunaire, > uRUmbra)
+  uniform float uStrength;
+
+  void main() {
+    if (uStrength <= 0.0001) discard;
+
+    vec3 p = normalize(vPos);
+    float w = dot(p, normalize(uViewAxis));
+    if (w <= 0.0) discard; // hémisphère arrière
+
+    vec3 xA = normalize(uXAxis);
+    vec3 yA = normalize(uYAxis);
+
+    // Coordonnées "écran"
+    vec2 uv = vec2(dot(p, xA), dot(p, yA));
+    vec2 c  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
+    float d = length(uv - c);
+
+    // Pénombre: 1 au bord interne (umbra), 0 au bord externe de la pénombre
+    float pen = 1.0 - smoothstep(uRUmbra, uRPenumbra, d);
+    // Ombre: 1 au centre, 0 au bord de l'umbra
+    float umb = 1.0 - smoothstep(0.0, uRUmbra, d);
+
+    // Adoucir les profils
+    pen = pow(pen, 1.2);
+    umb = pow(umb, 0.7);
+
+    // Opacités cibles (ajuste si besoin)
+    const float ALPHA_PENUM = 1.55;  // densité en pénombre
+    const float ALPHA_UMBRA = 1.93;  // densité au cœur de l’ombre
+
+    float alpha = uStrength * (ALPHA_PENUM * pen + (ALPHA_UMBRA - ALPHA_PENUM) * umb);
+
+    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+  }
+`;
+
+  // 2) Red glow additive pass
+  const eclipseRedUniforms = useMemo(() => ({
+    uXAxis:        { value: xAxisLocal },
+    uYAxis:        { value: yAxisLocal },
+    uViewAxis:     { value: viewAxisLocal },
+    uEarthDir:     { value: earthDirLocal ?? new THREE.Vector3(0,0,1) },
+    uRUmbra:       { value: Math.max(0.05, Math.min(6.0, umbraRadiusRel)) },
+    uRPenumbra:    { value: Math.max(0.06, Math.min(8.0, Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel))) },
+    uRedGain:      { value: Math.max(0, Math.min(1, redGlowStrength * eclipseStrength)) },
+  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, redGlowStrength, eclipseStrength]);
+
+  const eclipseRedVs = eclipseShadowVs;
+  const eclipseRedFs = `
+    precision highp float;
+    varying vec3 vPos;
+    uniform vec3 uXAxis;
+    uniform vec3 uYAxis;
+    uniform vec3 uViewAxis;     // centre -> caméra
+    uniform vec3 uEarthDir;
+    uniform float uRUmbra;
+    uniform float uRPenumbra;
+    uniform float uRedGain;
+
+    void main() {
+      if (uRedGain <= 0.0001) discard;
+
+      vec3 p = normalize(vPos);
+      float w = dot(p, normalize(uViewAxis));
+      if (w <= 0.0) discard;
+
+      vec3 xA = normalize(uXAxis);
+      vec3 yA = normalize(uYAxis);
+
+      vec2 uv = vec2(dot(p, xA), dot(p, yA));
+      vec2 c  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
+
+      float d = length(uv - c);
+
+      // Profondeur d'ombre: 1 au centre de l'umbra, 0 au bord de l'umbra
+      float deep = clamp((uRUmbra - d) / max(1e-5, uRUmbra), 0.0, 1.0);
+      deep = smoothstep(0.0, 1.0, deep);
+      deep *= deep; // adoucir
+
+      vec3 tint = vec3(0.85, 0.16, 0.08) * (uRedGain * deep);
+      gl_FragColor = vec4(tint, 1.0);
+    }
+  `;
+
   React.useEffect(() => { onMounted?.(); }, [onMounted]);
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
       {debugMask && <axesHelper args={[targetPx * 0.6]} />}
 
-      {/* Rendu principal de la Lune (déjà centré & préparé) */}
+      {/* Rendu principal de la Lune */}
       <primitive object={centeredScene} />
 
+      {/* Moon card / markers */}
       {showMoonCard && (
         <group>
           {/* Équateur: torus plein avant */}
@@ -458,12 +635,54 @@ function Model({
           <meshStandardMaterial color="#1e3a8a" emissive="#1e40af" emissiveIntensity={0.6} transparent opacity={0.95} depthTest depthWrite={false} />
         </mesh>
       )}
-     </group>
-   );
-   
- }
 
- // Helper: calls onReady after 2 rendered frames once 'armed' becomes true
+      {/* NEW: Eclipse overlays (rendered after the Moon to modulate lighting) */}
+      {eclipseStrength > 0.001 && earthDirLocal && (
+        <>
+          {/* Debug: centre de l’ombre (valider orientation) */}
+          {debugMask && (
+            <mesh position={earthDirLocal?.clone().normalize().multiplyScalar(radius * 1.01).toArray() as any} renderOrder={13}>
+              <sphereGeometry args={[radius * 0.03, 16, 16]} />
+              <meshBasicMaterial color="#ef4444" depthTest={false} depthWrite={false} />
+            </mesh>
+          )}
+          {/* Multiply shadow -> passe alpha noire (Normal blending) */}
+          <mesh renderOrder={14}>
+            <sphereGeometry args={[radius * 1.01, 64, 64]} />
+            <shaderMaterial
+              key="eclipse-shadow"
+              uniforms={eclipseShadowUniforms}
+              vertexShader={eclipseShadowVs}
+              fragmentShader={eclipseShadowFs}
+              transparent
+              depthTest={false}
+              depthWrite={false}
+              blending={THREE.NormalBlending}
+              side={THREE.FrontSide}
+            />
+          </mesh>
+          {/* Additive red glow */}
+          <mesh renderOrder={15}>
+            <sphereGeometry args={[radius * 1.012, 64, 64]} />
+            <shaderMaterial
+              key="eclipse-red"
+              uniforms={eclipseRedUniforms}
+              vertexShader={eclipseRedVs}
+              fragmentShader={eclipseRedFs}
+              transparent
+              depthTest={false}
+              depthWrite={false}
+              blending={THREE.AdditiveBlending}
+              side={THREE.FrontSide}
+            />
+          </mesh>
+        </>
+      )}
+    </group>
+  );
+}
+
+// Helper: calls onReady after 2 rendered frames once 'armed' becomes true
 function ReadyPing({ armed, onReady }: { armed: boolean; onReady?: () => void }) {
   const frames = React.useRef(0);
   const done = React.useRef(false);
@@ -495,6 +714,13 @@ export default function Moon3D({
   brightLimbAngleDeg,
   earthshine = false,
   reliefScale = MOON_RELIEF_SCALE_DEFAULT,
+  // NEW overrides physiques (optionnels)
+  eclipseStrength: eclipseStrengthProp,
+  umbraRadiusRel: umbraRelProp,
+  penumbraOuterRel: penumbraRelProp,
+  redGlowStrength: redStrengthProp,
+  // Debug
+  forceEclipse,
   onReady,
 }: Props) {
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
@@ -504,11 +730,16 @@ export default function Moon3D({
   // Aligner la direction Lune vers la caméra (cam regarde -Z)
   const R = useMemo(() => rotateAToB(vMoon, [0,0,-1]), [vMoon]);
 
+  
+
   // Compute Sun direction in camera space from Moon card data when available.
   // If illumFraction and a limb angle are provided, derive s_cam from:
   //   f = (1 + cos(gamma)) / 2, gamma = arccos(2f - 1)
   //   azimuth in image plane = bright limb angle (0=N, 90°=E).
   // Otherwise fall back to alt/az-based mapping (mul(R, vSun)).
+  const PHASE_SNAP_DEG = 6;     // zone morte angulaire ~6°
+  const FRACTION_SNAP = 0.01;   // zone morte sur fraction éclairée 5%
+  const lastStableLightCamY = React.useRef<number | undefined>(undefined);
   const lightCam = useMemo((): Vec3 => {
     const fNum = toFiniteNumber(illumFraction);
     const paCandidate = brightLimbAngleDeg != null ? brightLimbAngleDeg : librationTopo?.paDeg;
@@ -517,32 +748,60 @@ export default function Moon3D({
     const hasF = typeof fNum === 'number';
     const hasPa = typeof paNum === 'number';
 
-    if (hasF && hasPa) {
-      const f = Math.min(1, Math.max(0, fNum as number));
+    if (hasF) {
+      const clamp01 = (n: number) => Math.min(1, Math.max(0, n));
+      const f = clamp01(fNum as number);
+
       const c = Math.max(-1, Math.min(1, 2 * f - 1));
-      const gamma = Math.acos(c); // 0=Full, π=New
-      // Correct the bright limb azimuth by the parallactic rotation already applied to the GLB
-      const qPar = Number.isFinite(limbAngleDeg) ? (limbAngleDeg as number) : 0;
-      const a = (((paNum as number) - qPar) * Math.PI) / 180; // image-plane azimuth adjusted by parallactic angle
-      // Image plane unit vector: +Y=N (0°), +X=E (90°)
-      const px = Math.sin(a);
-      const py = Math.cos(a);
-      // Sun direction in camera frame (pointing from Moon to Sun)
-      const sx = Math.sin(gamma) * px;
-      const sy = Math.sin(gamma) * py;
-      const sz = Math.cos(gamma); // +Z for Full, -Z for New
-      return [sx, sy, sz];
+      const s = Math.sqrt(Math.max(0, 1 - c * c));
+
+      const sSnap = Math.sin((PHASE_SNAP_DEG * Math.PI) / 180);
+      const inDeadZone = f <= FRACTION_SNAP || f >= 1 - FRACTION_SNAP || s <= sSnap;
+
+      if (hasPa) {
+        const qPar = Number.isFinite(limbAngleDeg) ? (limbAngleDeg as number) : 0;
+        const norm360 = (d: number) => ((d % 360) + 360) % 360;
+        const delta = norm360((paNum as number) - qPar);
+        const aDeg = delta > 180 ? delta - 360 : delta;
+        const a = (aDeg * Math.PI) / 180;
+
+        // Plan image: +Y=N (0°), +X=E (90°)
+        const px = Math.sin(a);
+        const py = Math.cos(a);
+
+        let sx = s * px;
+        let sy = s * py;
+        let sz = c;
+
+        const snap0 = (v: number) => (Math.abs(v) < 1e-8 ? 0 : v);
+        sx = snap0(sx); sy = snap0(sy);
+        const len = Math.hypot(sx, sy, sz) || 1;
+        const nx = sx / len;
+        const ny = sy / len;
+        const nz = sz / len;
+
+        // Zone morte: conserver l'ancien Y stable pour éviter la rotation apparente
+        if (inDeadZone) {
+          const yHeld = lastStableLightCamY.current ?? 0;
+          return [nx, yHeld, nz] as Vec3;
+        }
+        // Hors zone morte: mettre à jour la mémoire Y et renvoyer le vecteur complet
+        lastStableLightCamY.current = ny;
+        return [nx, ny, nz] as Vec3;
+      }
+
+      // Pas de PA -> fallback alt/az pour les phases intermédiaires
+      return mul(R, vSun);
     }
 
+    // Pas d'illumFraction -> fallback
     if (illumFraction != null || brightLimbAngleDeg != null || librationTopo?.paDeg != null) {
       console.warn('[Moon3D] Fallback to alt/az. Provided:', {
         illumFraction,
         brightLimbAngleDeg,
         paDeg: librationTopo?.paDeg,
-        parsed: { fNum, paNum }
       });
     }
-    // Fallback: compute from Sun alt/az
     return mul(R, vSun);
   }, [illumFraction, brightLimbAngleDeg, librationTopo?.paDeg, limbAngleDeg, R, vSun]);
 
@@ -554,6 +813,12 @@ export default function Moon3D({
     (camRotDegZ * Math.PI) / 180,
     'XYZ'
   ), [camRotDegX, camRotDegY, camRotDegZ]);
+
+  // Camera forward in world (nécessaire pour définir l’hémisphère visible en espace local)
+  const camForwardWorld = useMemo((): Vec3 => {
+    const f = new THREE.Vector3(0, 0, -1).applyEuler(camEuler).normalize();
+    return [f.x, f.y, f.z];
+  }, [camEuler]);
 
   const baseLightPos = useMemo(() => {
     const q = new THREE.Quaternion().setFromEuler(camEuler).invert();
@@ -568,6 +833,58 @@ export default function Moon3D({
     d.normalize();
     return [d.x, d.y, d.z];
   }, [baseLightPos]);
+
+  // NEW: heuristique d’éclipse + paramètres visuels (ombres + rougeoiement)
+  const sunMoonSepDeg = useMemo(() => {
+    const dot = vMoon[0]*vSun[0] + vMoon[1]*vSun[1] + vMoon[2]*vSun[2];
+    const c = Math.max(-1, Math.min(1, dot));
+    return Math.acos(c) * 180 / Math.PI;
+  }, [vMoon, vSun]);
+
+  const phaseFracNum = useMemo(() => {
+    const f = toFiniteNumber(illumFraction);
+    if (typeof f === 'number') return Math.max(0, Math.min(1, f));
+    const sep = (sunMoonSepDeg * Math.PI) / 180;
+    return 0.5 * (1 - Math.cos(sep));
+  }, [illumFraction, sunMoonSepDeg]);
+
+  const oppositionOffsetDeg = useMemo(() => Math.abs(180 - sunMoonSepDeg), [sunMoonSepDeg]);
+
+  const oppGate = useMemo(() => {
+    const a = oppositionOffsetDeg;
+    const t0 = 18, t1 = 2;
+    const s = (t0 - a) / (t0 - t1);
+    return Math.max(0, Math.min(1, s));
+  }, [oppositionOffsetDeg]);
+
+  const phaseGate = useMemo(() => {
+    const s = (phaseFracNum - 0.85) / (0.995 - 0.85);
+    return Math.max(0, Math.min(1, s));
+  }, [phaseFracNum]);
+
+  // Choix final: overrides physiques > forceEclipse > heuristique
+  const eclipseStrength = useMemo(() => {
+    if (typeof eclipseStrengthProp === 'number') {
+      return Math.max(0, Math.min(1, eclipseStrengthProp));
+    }
+    if (forceEclipse) return 1;
+    return Math.max(0, Math.min(1, oppGate * phaseGate));
+  }, [eclipseStrengthProp, forceEclipse, oppGate, phaseGate]);
+
+  const umbraRadiusRel = useMemo(() => {
+    if (typeof umbraRelProp === 'number') return umbraRelProp;
+    return 1.02 - 0.35 * eclipseStrength;
+  }, [umbraRelProp, eclipseStrength]);
+
+  const penumbraOuterRel = useMemo(() => {
+    if (typeof penumbraRelProp === 'number') return penumbraRelProp;
+    return 1.18 + 0.10 * eclipseStrength;
+  }, [penumbraRelProp, eclipseStrength]);
+
+  const redGlowStrength = useMemo(() => {
+    if (typeof redStrengthProp === 'number') return Math.max(0, Math.min(1, redStrengthProp));
+    return Math.max(0, Math.min(1, 0.35 + 0.45 * eclipseStrength));
+  }, [redStrengthProp, eclipseStrength]);
 
   // Rotations (en degrés) dues à la libration appliquées au modèle: Ry(-lon), Rx(+lat), Rz=0
   const libLonDegNorm = (() => {
@@ -725,7 +1042,7 @@ export default function Moon3D({
         <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="rgba(176,176,176,0.45)" /></mesh>}>
           <Model
             limbAngleDeg={limbAngleDeg}
-            targetPx={targetPx}     // model rescales each tick; canvas stays stable
+            targetPx={targetPx}
             modelUrl={modelUrl}
             librationTopo={librationTopo}
             rotOffsetDegX={rotOffsetDegX}
@@ -736,6 +1053,12 @@ export default function Moon3D({
             sunDirWorld={sunDirWorld}
             showSubsolarCone={true}
             reliefScale={reliefScale}
+            // NEW: eclipse overlay params
+            eclipseStrength={eclipseStrength}
+            umbraRadiusRel={umbraRadiusRel}
+            penumbraOuterRel={penumbraOuterRel}
+            redGlowStrength={redGlowStrength}
+            camForwardWorld={camForwardWorld}
             onMounted={() => setModelMounted(true)}
           />
         </Suspense>

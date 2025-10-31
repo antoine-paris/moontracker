@@ -51,7 +51,6 @@ import { copyAndDownloadNodeAsPngAndJpeg } from './utils/capture';
 import { unrefractAltitudeDeg } from "./utils/refraction"; 
 import InfoModal from "./components/info/InfoModal"; 
 import {
-  startDomSnapshotRecorder,
   type DomRecorderHandle,
   type CanvasRecorderHandle,
   startDomCfrRecorder,

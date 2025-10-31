@@ -4,7 +4,8 @@ export const NASA_IMG_TOTAL = 730;
 export const NASA_IMG_MARGIN = 53; // each side
 export const MOON_DISC_DIAMETER = NASA_IMG_TOTAL - 2 * NASA_IMG_MARGIN; // 624
 export const MOON_SCALE = 0.2; // 20%
-export const MOON_RENDER_DIAMETER = MOON_DISC_DIAMETER * MOON_SCALE; // ~124.8 px
+export const MOON_RENDER_DIAMETER = 160; // ~124.8 px
+export const PLANET_RENDER_DIAMETER = 120; // ~124.8 px
 
 export const Z = { sun: 10, moon: 20, phase: 30, horizon: 40, ui: 50 } as const;
 
