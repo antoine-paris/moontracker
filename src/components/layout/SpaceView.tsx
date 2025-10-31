@@ -182,7 +182,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     astro,
     eclipticNorthAltAz,
     sunAltForProj,
-    moonAltForProj,
     sunScreen,
     moonScreen,
     bodySizes,
@@ -191,7 +190,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     phaseFraction,
     brightLimbAngleDeg,
     maskAngleDeg,
-    moonRenderMode,
     moonRenderModeEffective,
   } = useSunMoonModel({
     date, latDeg, lngDeg,
