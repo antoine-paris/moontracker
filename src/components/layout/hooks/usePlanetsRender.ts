@@ -9,6 +9,7 @@ import { unrefractAltitudeDeg } from "../../../utils/refraction";
 import { sepDeg } from "../../../astro/eclipse";
 import { localUpAngleOnScreen, localPoleAngleOnScreen, correctedSpriteRotationDeg } from "../../../render/orientation";
 import { getPlanetOrientationAngles, type PlanetId } from "../../../astro/planets";
+import { PLANET_RENDER_DIAMETER } from "../../../render/constants";
 
 export interface PlanetRenderItem {
   id: string;
@@ -165,9 +166,19 @@ export function usePlanetsRender(params: UsePlanetsRenderParams) {
       const appDiamDeg = Number((p as any).appDiamDeg ?? 0);
       const computedSize = appDiamDeg > 0 ? appDiamDeg * pxPerDeg : 0;
 
-      let sizePx = enlargeObjects ? Math.max(20, computedSize) : computedSize; // keep minimum similar to moon render diameter if needed
+      // OLD
+      // let sizePx = enlargeObjects ? Math.max(20, computedSize) : computedSize;
+      // const hasValidSize = Number.isFinite(computedSize) && computedSize > 0;
+      // if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
+
+      // NEW: quand enlargeObjects, imposer au moins la taille de la Lune
       const hasValidSize = Number.isFinite(computedSize) && computedSize > 0;
-      if (!hasValidSize && !enlargeObjects) sizePx = PLANET_DOT_MIN_PX;
+      let sizePx = computedSize;
+      if (enlargeObjects) {
+        sizePx = Math.max(PLANET_RENDER_DIAMETER, hasValidSize ? computedSize : 0);
+      } else if (!hasValidSize) {
+        sizePx = PLANET_DOT_MIN_PX;
+      }
 
       const mode: "dot" | "sprite" | "3d" =
         enlargeObjects

@@ -1,23 +1,16 @@
 import React, { useMemo, useState, useEffect, useCallback, forwardRef } from "react";
 
 // Astro core
-import { getSunAndMoonAltAzDeg, getSunOrientationAngles, sunOnMoon } from "../../astro/aeInterop";
-import { getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm } from "../../astro/aeInterop";
-import { sunApparentDiameterDeg } from "../../astro/sun";
-import { moonApparentDiameterDeg } from "../../astro/moon";
 import { getPlanetsEphemerides, type PlanetId } from "../../astro/planets";
 import { altAzFromRaDec } from "../../astro/stars";
 
-import { getMoonOrientationAngles } from "../../astro/aeInterop";
-
 // Math/projection utils
-import { norm360, clamp } from "../../utils/math";
+import {  clamp } from "../../utils/math";
 import { projectToScreen } from "../../render/projection";
 import type { ProjectionMode } from "../../render/projection";
-import { localPoleAngleOnScreen, localUpAngleOnScreen, correctedSpriteRotationDeg } from "../../render/orientation";
 
 // Render constants & registry
-import { Z, MOON_RENDER_DIAMETER } from "../../render/constants";
+import { Z } from "../../render/constants";
 import { PLANET_REGISTRY } from "../../render/PlanetRegistry";
 // NEW: imports to format HUD values
 import { formatDeg } from "../../utils/format";
@@ -37,8 +30,8 @@ import Planet3D from "../stage/Planet3D";
 import Markers from "../stage/Markers";
 import Ground from "../stage/Ground"; 
 import Ecliptique from "../stage/Ecliptique";
-import { unrefractAltitudeDeg } from "../../utils/refraction"; 
 import { usePlanetsRender } from "./hooks/usePlanetsRender";
+import { useSunMoonModel } from "./hooks/useSunMoonModel";
   
 // Local marker colors
 const POLARIS_COLOR = "#86efac";
@@ -47,10 +40,6 @@ const POLARIS_DEC_DEG = 89.264167;
 const CRUX_COLOR = "#a78bfa";
 const CRUX_CENTROID_RA_DEG = 187.539271;
 const CRUX_CENTROID_DEC_DEG = -59.6625;
-
-// Moon render thresholds (px)
-const MOON_DOT_PX = 5;
-const MOON_3D_SWITCH_PX = 20;
 
 // FIXED retain frames for long pose compositor
 const LONGPOSE_RETAIN_FRAMES = 400;
@@ -151,7 +140,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     onFramePresented,
   } = props;
 
-  
   React.useEffect(() => {
     let cancelled = false;
     // Wait two RAFs to ensure canvases/DOM are presented
@@ -163,7 +151,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     return () => { cancelled = true; };
   }, [presentKey, onFramePresented]);
 
-  
   // Capture root for querying child canvases
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const setRootRef = React.useCallback((node: HTMLDivElement | null) => {
@@ -190,243 +177,41 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     return hn.replace(/^www\./, '') || 'MoonTracker';
   }, []);
 
-  // Sun/Moon + sizes
-  const astro = useMemo(() => {
-    const both = getSunAndMoonAltAzDeg(date, latDeg, lngDeg);
-    const sun = both.sun;
-    const moon = both.moon;
-
-    const illum = getMoonIllumination(date);
-    const sunDiamDeg = sunApparentDiameterDeg(date, sun.distAU);
-
-    const moonParallaxDeg = moonHorizontalParallaxDeg(moon.distanceKm);
-    const moonTopoKm = topocentricMoonDistanceKm(moon.distanceKm, moon.altDeg );
-    const moonDiamDeg = moonApparentDiameterDeg(moonTopoKm);
-
-    let moonLibrationTopo: { latDeg: number; lonDeg: number; paDeg: number } | undefined;
-    try { moonLibrationTopo = getMoonLibration(date, { lat: latDeg, lng: lngDeg }); } catch { /* ignore */ }
-
-    return {
-      sun: { alt: sun.altDeg, az: sun.azDeg, distAU: sun.distAU, appDiamDeg: sunDiamDeg },
-      moon: {
-        alt: moon.altDeg,
-        az: moon.azDeg,
-        parallacticDeg: moonParallaxDeg,
-        distKm: moon.distanceKm,
-        topoDistKm: moonTopoKm,
-        appDiamDeg: moonDiamDeg,
-        librationTopo: moonLibrationTopo,
-      },
-      illum,
-    };
-  }, [date, latDeg, lngDeg]);
-
-  // Ecliptic tilt and sprite rotations (projection-aware)
-  const sunOrientation = useMemo(
-    () => getSunOrientationAngles(date, latDeg, lngDeg),
-    [date, latDeg, lngDeg]
-  );
-  const rotationToHorizonDegSun = sunOrientation.rotationToHorizonDegSolarNorth;
-
-  const moonOrientation = useMemo(
-    () => getMoonOrientationAngles(date, latDeg, lngDeg),
-    [date, latDeg, lngDeg]
-  );
-  const rotationToHorizonDegMoon = moonOrientation.rotationToHorizonDegMoonNorth;
-
-  // Helper: altitude à projeter selon le mode
-  const sunAltForProj = useMemo(
-    () => (showRefraction ? astro.sun.alt : unrefractAltitudeDeg(astro.sun.alt)),
-    [showRefraction, astro.sun.alt]
-  );
-  const moonAltForProj = useMemo(
-    () => (showRefraction ? astro.moon.alt : unrefractAltitudeDeg(astro.moon.alt)),
-    [showRefraction, astro.moon.alt]
-  );
-  
-  const eclipticNorthAltAz = useMemo(
-    () => altAzFromRaDec(date, latDeg, lngDeg, 270, 66.5607),
-    [date, latDeg, lngDeg]
-  );
-
-  
-  // small signed angular diff helper
-  const angDiff = (a: number, b: number) => {
-    let d = (a - b + 540) % 360 - 180;
-    return d;
-  };
-
-  // --- Sun: horizon vs ecliptic local angles ---
-  const sunAngles = useMemo(() => {
-    const ctx = {
-      refAz: refAzDeg, refAlt: refAltDeg,
-      viewport: { w: viewport.w, h: viewport.h },
-      fovXDeg, fovYDeg, projectionMode,
-      lockHorizon,
-      eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
-      eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
-    };
-    const aH = localUpAngleOnScreen(astro.sun.az, sunAltForProj, ctx);
-    const aE = localPoleAngleOnScreen(astro.sun.az, sunAltForProj, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg, ctx);
-    return { aH, aE };
-  }, [astro.sun.az, sunAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, lockHorizon, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg]);
-
-  // --- Moon: horizon vs ecliptic local angles ---
-  const moonAngles = useMemo(() => {
-    const ctx = {
-      refAz: refAzDeg, refAlt: refAltDeg,
-      viewport: { w: viewport.w, h: viewport.h },
-      fovXDeg, fovYDeg, projectionMode,
-      lockHorizon,
-      eclipticUpAzDeg: eclipticNorthAltAz.azDeg,
-      eclipticUpAltDeg: eclipticNorthAltAz.altDeg,
-    };
-    const aH = localUpAngleOnScreen(astro.moon.az, moonAltForProj, ctx);
-    const aE = localPoleAngleOnScreen(astro.moon.az, moonAltForProj, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg, ctx);
-    return { aH, aE };
-  }, [astro.moon.az, moonAltForProj, refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode, lockHorizon, eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg]);
-
-  // Choose reference and rebase rotation from horizon->chosen (only when ecliptic-locked)
-  const rotationDegSunScreen = useMemo(() => {
-    const chosenAngle = lockHorizon ? sunAngles.aH : sunAngles.aE;
-    const deltaRef = lockHorizon ? 0 : angDiff(sunAngles.aE, sunAngles.aH);
-    const rotationToChosen = rotationToHorizonDegSun - deltaRef;
-    return correctedSpriteRotationDeg(rotationToChosen, chosenAngle);
-  }, [rotationToHorizonDegSun, lockHorizon, sunAngles.aH, sunAngles.aE]);
-
-  const rotationDegMoonScreen = useMemo(() => {
-    const chosenAngle = lockHorizon ? moonAngles.aH : moonAngles.aE;
-    const deltaRef = lockHorizon ? 0 : angDiff(moonAngles.aE, moonAngles.aH);
-    const rotationToChosen = rotationToHorizonDegMoon - deltaRef;
-    return correctedSpriteRotationDeg(rotationToChosen, chosenAngle);
-  }, [rotationToHorizonDegMoon, lockHorizon, moonAngles.aH, moonAngles.aE]);
-
-
-  
-
-  // Sizes at local px/deg scale for Sun/Moon
-   // Sizes at local px/deg scale for Sun/Moon (utilise altForProj)
-  const bodySizes = useMemo(() => {
-    const centerSun = projectToScreen(
-      astro.sun.az, sunAltForProj, refAzDeg,
-      viewport.w, viewport.h,
-      refAltDeg,
-      0,
-      fovXDeg, fovYDeg, projectionMode,
-      lockHorizon,
-      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-    );
-    const centerMoon = projectToScreen(
-      astro.moon.az, moonAltForProj, refAzDeg,
-      viewport.w, viewport.h,
-      refAltDeg,
-      0,
-      fovXDeg, fovYDeg, projectionMode,
-      lockHorizon,
-      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-    );
-    const pxPerDegXSun = centerSun.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
-    const pxPerDegYSun = centerSun.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
-    const pxPerDegXMoon = centerMoon.pxPerDegX || (viewport.w / Math.max(1e-9, fovXDeg));
-    const pxPerDegYMoon = centerMoon.pxPerDegY || (viewport.h / Math.max(1e-9, fovYDeg));
-
-    const sunWCalc = (astro.sun.appDiamDeg ?? 0) * pxPerDegXSun;
-    const sunHCalc = (astro.sun.appDiamDeg ?? 0) * pxPerDegYSun;
-    const sunW = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, sunWCalc) : sunWCalc;
-    const sunH = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, sunHCalc) : sunHCalc;
-
-    const moonWCalc = (astro.moon.appDiamDeg ?? 0) * pxPerDegXMoon;
-    const moonHCalc = (astro.moon.appDiamDeg ?? 0) * pxPerDegYMoon;
-    const moonW = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, moonWCalc) : moonWCalc;
-    const moonH = enlargeObjects ? Math.max(MOON_RENDER_DIAMETER, moonHCalc) : moonHCalc;
-
-    const sunR = Math.max(sunW, sunH) / 2;
-    const moonR = Math.max(moonW, moonH) / 2;
-
-    return { sun: { w: sunW, h: sunH, r: sunR }, moon: { w: moonW, h: moonH, r: moonR } };
-  }, [
-    viewport, fovXDeg, fovYDeg, projectionMode,
-    astro.sun.az, sunAltForProj, astro.moon.az, moonAltForProj,
-    astro.sun.appDiamDeg, astro.moon.appDiamDeg, refAzDeg, refAltDeg, enlargeObjects,
+  // Sun/Moon model (astro, projections, sizes, rotations, phase/mask)
+  const {
+    astro,
+    eclipticNorthAltAz,
+    sunAltForProj,
+    moonAltForProj,
+    sunScreen,
+    moonScreen,
+    bodySizes,
+    rotationDegSunScreen,
+    rotationDegMoonScreen,
+    phaseFraction,
+    brightLimbAngleDeg,
+    maskAngleDeg,
+    moonRenderMode,
+    moonRenderModeEffective,
+  } = useSunMoonModel({
+    date, latDeg, lngDeg,
+    viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
     lockHorizon,
-    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-  ]);
+    showRefraction,
+    enlargeObjects,
+    glbLoading,
+  });
 
+  // NEW: remember if Moon has ever completed its first 3D render (persist for session)
+  const [everReadyMoon, setEverReadyMoon] = useState<boolean>(false);
 
-  const sunScreen = useMemo(() => {
-    const s = projectToScreen(
-      astro.sun.az, sunAltForProj,
-      refAzDeg,
-      viewport.w, viewport.h,
-      refAltDeg,
-      0,
-      fovXDeg, fovYDeg, projectionMode, lockHorizon,
-      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-    );
-    return { ...s, x: viewport.x + s.x, y: viewport.y + s.y };
-  }, [
-    astro.sun.az, sunAltForProj,
-    refAzDeg, refAltDeg,
-    viewport, fovXDeg, fovYDeg, projectionMode, lockHorizon,
-      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-  ]);
-
-  const moonScreen = useMemo(() => {
-    const m = projectToScreen(
-      astro.moon.az, moonAltForProj,
-      refAzDeg,
-      viewport.w, viewport.h,
-      refAltDeg,
-      0,
-      fovXDeg, fovYDeg, projectionMode, lockHorizon,
-      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-    );
-    return { ...m, x: viewport.x + m.x, y: viewport.y + m.y };
-  }, [
-    astro.moon.az, moonAltForProj,
-    refAzDeg, refAltDeg,
-    viewport, fovXDeg, fovYDeg, projectionMode,
-    lockHorizon,
-    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-  ]);
-
-
-  // Apparent Moon size in px decides render mode
-  const moonApparentPx = useMemo(() => {
-    // Utiliser la même altitude que celle de projection pour éviter un basculement de mode au passage de l’horizon
-    const p = projectToScreen(astro.moon.az, moonAltForProj, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
-      lockHorizon,
-      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-    );
-    const pxPerDegX = p.pxPerDegX ?? (viewport.w / Math.max(1e-9, fovXDeg));
-    const pxPerDegY = p.pxPerDegY ?? (viewport.h / Math.max(1e-9, fovYDeg));
-    const pxPerDeg = (pxPerDegX + pxPerDegY) / 2;
-    return (astro.moon.appDiamDeg ?? 0) * pxPerDeg;
-  }, [astro.moon.az, moonAltForProj, astro.moon.appDiamDeg, refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode,
-    lockHorizon,
-    eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
-  ]);
-
-  const moonRenderMode = useMemo<'dot' | 'sprite' | '3d'>(() => {
-    if (enlargeObjects) return '3d';
-    if (!Number.isFinite(moonApparentPx)) return 'sprite';
-    if (moonApparentPx < MOON_DOT_PX) return 'dot';
-    if (moonApparentPx < MOON_3D_SWITCH_PX) return 'sprite';
-    return '3d';
-  }, [enlargeObjects, moonApparentPx]);
-
-  const moonRenderModeEffective = glbLoading && moonRenderMode === '3d' ? 'sprite' : moonRenderMode;
-
-  // Track readiness for Moon3D when it's needed/visible in 3D
+  // Apparent Moon 3D readiness gate
   const [moon3DReady, setMoon3DReady] = useState<boolean>(true);
   const needMoon3D = useMemo(
     () => !!(showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY),
     [showMoon, glbLoading, moonRenderModeEffective, moonScreen.visibleX, moonScreen.visibleY]
   );
   useEffect(() => { setMoon3DReady(!needMoon3D); }, [needMoon3D]);
-
-  // NEW: remember if Moon has ever completed its first 3D render (persist for session)
-  const [everReadyMoon, setEverReadyMoon] = useState<boolean>(false);
 
   // Planets ephemerides (for selected ids)
   const selectedPlanetIds = useMemo(
@@ -445,7 +230,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     }
   }, [selectedPlanetIds, date, latDeg, lngDeg]);
 
-   
   // Per-planet render bundle
   const { planetsRender, planetsReady, markPlanetReady } = usePlanetsRender({
     planetsEphemArr,
@@ -469,30 +253,15 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     glbLoading,
   });
 
-
-  // Scene readiness: show overlay only for the first time a body needs 3D and hasn't completed once yet
+  // Scene readiness
   const sceneReady = useMemo(
     () =>
       !glbLoading &&
-      // Moon gates only until its first 3D render has completed
       ((everReadyMoon || !needMoon3D || moon3DReady) &&
-       // Planets gate only for the subset that has never been ready before
        planetsReady),
     [glbLoading, everReadyMoon, needMoon3D, moon3DReady, planetsReady]
   );
   useEffect(() => { onSceneReadyChange?.(sceneReady); }, [sceneReady, onSceneReadyChange]);
-
-  
-  // Sun-on-Moon info (phase & limb)
-  const sunOnMoonInfo = useMemo(() => sunOnMoon(date), [date]);
-  const brightLimbAngleDeg = useMemo(() => sunOnMoonInfo.bearingDeg, [sunOnMoonInfo]);
-  const maskAngleBase = useMemo(() => norm360(brightLimbAngleDeg - 90), [brightLimbAngleDeg]);
-  const maskAngleDeg = useMemo(() => {
-    const litVecAngle = norm360(maskAngleBase + 90);
-    let d = norm360(litVecAngle - brightLimbAngleDeg); if (d > 180) d = 360 - d;
-    return d > 90 ? norm360(maskAngleBase + 180) : maskAngleBase;
-  }, [maskAngleBase, brightLimbAngleDeg]);
-  const phaseFraction = astro.illum.fraction ?? 0;
 
   // Polaris / Crux + horizon body ticks
   const polarisAltAz = useMemo(
@@ -503,7 +272,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     () => altAzFromRaDec(date, latDeg, lngDeg, CRUX_CENTROID_RA_DEG, CRUX_CENTROID_DEC_DEG),
     [date, latDeg, lngDeg]
   );
-
 
   const polarisScreen = useMemo(() => {
     const p = projectToScreen(
@@ -642,19 +410,14 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const cssH = viewport.h;
     const retain = Math.max(1, Math.round(LONGPOSE_RETAIN_FRAMES || 1));
 
-    // Optional: slightly slower fade for longer trails (set >1 to boost)
-    const DECAY_GAIN = 10; // try 1.2–1.5 if you want even longer/brighter ghosts
+    const DECAY_GAIN = 10;
 
     // Fade previous frames
     ctx.globalCompositeOperation = 'destination-out';
     ctx.globalAlpha = Math.min(1, 1 / (retain * DECAY_GAIN));
     ctx.fillRect(0, 0, cssW, cssH);
 
-
-    // Draw current canvases:
-    // - Skip our persistence overlay
-    // - Skip any canvas inside a [data-3d-layer="1"] wrapper (Moon3D/Planet3D)
-    // - Include everything else (2D and Stars, even if WebGL)
+    // Draw current canvases (excluding 3D layers and our overlay)
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
 
@@ -665,7 +428,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       if (c === overlay) return false;
       const el = c as HTMLElement;
       if (el.closest('[data-3d-layer="1"]')) return false;
-      if (el.hasAttribute('data-longpose-exclude') || el.closest('[data-longpose-exclude="1"]')) return false; // exclure
+      if (el.hasAttribute('data-longpose-exclude') || el.closest('[data-longpose-exclude="1"]')) return false;
       return true;
     });
 
@@ -675,13 +438,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
       const isStars = !!(src as HTMLElement).closest('[data-stars-layer="1"]');
 
-      const STAR_TRAIL_GAIN = 10.5; // 1=no boost, try 1.2–2.0
-      const STAR_DECAY_GAIN  = DECAY_GAIN; // per-stars decay (default matches global)
+      const STAR_TRAIL_GAIN = 10.5;
+      const STAR_DECAY_GAIN  = DECAY_GAIN;
 
-      // Use additive for Stars so black background doesn't erase ghosts
       if (isStars) {
         ctx.globalCompositeOperation = 'lighter';
-        // Normalize by retain and global decay; boost with per-stars DECAY
         ctx.globalAlpha = Math.min(1, (STAR_TRAIL_GAIN * STAR_DECAY_GAIN) / (retain * DECAY_GAIN));
       } else {
         ctx.globalCompositeOperation = 'source-over';
@@ -698,26 +459,22 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
 
       try {
         ctx.drawImage(src, sx, sy, sWidth, sHeight, 0, 0, cssW, cssH);
-      } catch {
-        // ignore
-      }
+      } catch {}
     }
-    // reset
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
 
-    // Trail gains/decays for manual disks (Sun, Moon, planets)
+    // Trail gains/decays
     const SUN_TRAIL_GAIN    = 1000.5;
-    const SUN_DECAY_GAIN    = DECAY_GAIN; // set < or > DECAY_GAIN to shorten/lengthen Sun trails
+    const SUN_DECAY_GAIN    = DECAY_GAIN;
 
     const MOON_TRAIL_GAIN   = 100 + 400 * clamp(phaseFraction ?? 0, 0, 1);
     const MOON_DECAY_GAIN   = DECAY_GAIN;
 
     const PLANET_DECAY_GAIN = DECAY_GAIN;
 
-    // Helper: darken color as illumination decreases (supports hex #rgb/#rrggbb)
     const darkenByIllum = (color: string, illum: number) => {
-      const k = Math.max(0.3, Math.min(1, illum)); // keep some visibility at low phases
+      const k = Math.max(0.3, Math.min(1, illum));
       let s = (color || '').trim();
       if (s.startsWith('#')) s = s.slice(1);
       if (s.length === 3) s = s.split('').map(ch => ch + ch).join('');
@@ -727,10 +484,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         const b = Math.max(0, Math.min(255, Math.round(parseInt(s.slice(4, 6), 16) * k)));
         return `rgb(${r}, ${g}, ${b})`;
       }
-      return color; // fallback for non-hex inputs
+      return color;
     };
 
-    // Manual persistence for sprites/dots (Sun, Moon, planets)
     const drawDisk = (
       x: number,
       y: number,
@@ -751,11 +507,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.arc(lx, ly, r, 0, Math.PI * 2);
       ctx.fillStyle = color;
       ctx.fill();
-
       ctx.restore();
     };
 
-    // New: stroke + fill with separate gains
     const drawDiskWithStroke = (
       x: number,
       y: number,
@@ -773,15 +527,13 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
 
-      // Stroke (contour) at 2x gain
       ctx.beginPath();
       ctx.arc(lx, ly, r, 0, Math.PI * 2);
       ctx.strokeStyle = color;
-      ctx.lineWidth = 2; // thin outline in CSS px
+      ctx.lineWidth = 2;
       ctx.globalAlpha = alphaFor(strokeGain);
       ctx.stroke();
 
-      // Fill at base gain
       ctx.beginPath();
       ctx.arc(lx, ly, r, 0, Math.PI * 2);
       ctx.fillStyle = color;
@@ -802,8 +554,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         moonScreen.x, moonScreen.y,
         bodySizes.moon.w, bodySizes.moon.h,
         'hsla(180, 1%, 38%, 1.00)',
-        MOON_TRAIL_GAIN,           // fill
-        MOON_TRAIL_GAIN * 2,       // stroke
+        MOON_TRAIL_GAIN,
+        MOON_TRAIL_GAIN * 2,
         MOON_DECAY_GAIN
       );
     }
@@ -812,17 +564,16 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     for (const p of planetsRender) {
       if (!p.visibleX || !p.visibleY) continue;
       const S = Math.max(4, Math.round(p.sizePx));
-      
       const illum = clamp(p.phaseFrac ?? 0, 0, 1);
-      const planetGain = 10 + 20 * illum; // same rule as Moon
+      const planetGain = 10 + 20 * illum;
       const trailColor = darkenByIllum(p.color, illum);
 
       drawDiskWithStroke(
         p.x, p.y,
         S, S,
         trailColor,
-        planetGain,            // fill = GAIN
-        planetGain * 4,        // stroke = GAIN * 2
+        planetGain,
+        planetGain * 4,
         PLANET_DECAY_GAIN
       );
     }
@@ -831,7 +582,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     showSun, showMoon,
     sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
     moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
-    planetsRender,enlargeObjects, phaseFraction,
+    planetsRender, enlargeObjects, phaseFraction,
   ]);
 
   // Timelapse mode: accumulate once per utcMs change and ACK
@@ -898,10 +649,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     };
   }, [longPoseEnabled, timeLapseEnabled, compositeLongPose]);
 
-
-
-  
-
   // Clear overlay when toggles/settings or observer/camera change
   useEffect(() => {
     const c = lpCanvasRef.current;
@@ -943,8 +690,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       ctx.clearRect(0, 0, viewport.w, viewport.h);
     }
   }, [longPoseClearSeq, viewport.w, viewport.h]);
-
-
 
   return (
     <div ref={setRootRef} className="absolute inset-0">
@@ -1131,7 +876,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       {/* Sun */}
       {showSun && (
         <div className="absolute inset-0" 
-          
           style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}
         >
           <SunSprite
@@ -1147,7 +891,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         </div>
       )}
 
-      {/* Moon */}
+      {/* Moon dot */}
       {showMoon && !glbLoading && moonRenderModeEffective === 'dot' && moonScreen.visibleX && moonScreen.visibleY && (
         <div
           className="absolute"
@@ -1164,6 +908,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         />
       )}
 
+      {/* Moon sprite */}
       {showMoon && !glbLoading  && (
         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
           <MoonSprite
@@ -1183,6 +928,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         </div>
       )}
 
+      {/* Moon 3D */}
       {showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
          <div className="absolute inset-0" 
           data-longpose-exclude="1" // exclure du long pose
@@ -1280,7 +1026,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           );
         }
 
-        // effectiveMode === '3d'
         return (
           <div key={p.id} 
             data-longpose-exclude="1"
