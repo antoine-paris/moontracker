@@ -523,7 +523,68 @@ function Model({
     }
   `;
 
-  React.useEffect(() => { onMounted?.(); }, [onMounted]);
+  // Stable fallback vector (évite de recréer un new Vector3 à chaque render)
+  const fallbackEarth = React.useMemo(() => new THREE.Vector3(0, 0, 1), []);
+
+  // UNIFORMS: objets stables (une seule instance par passe)
+  const shadowUniformsRef = React.useRef({
+    uXAxis:     { value: new THREE.Vector3() },
+    uYAxis:     { value: new THREE.Vector3() },
+    uViewAxis:  { value: new THREE.Vector3() }, // centre -> caméra (local)
+    uEarthDir:  { value: new THREE.Vector3() },
+    uRUmbra:    { value: 1.3 },
+    uRPenumbra: { value: 4.0 },
+    uStrength:  { value: 1.0 },
+  });
+  const redUniformsRef = React.useRef({
+    uXAxis:     { value: new THREE.Vector3() },
+    uYAxis:     { value: new THREE.Vector3() },
+    uViewAxis:  { value: new THREE.Vector3() },
+    uEarthDir:  { value: new THREE.Vector3() },
+    uRUmbra:    { value: 1.3 },
+    uRPenumbra: { value: 4.0 },
+    uRedGain:   { value: 0.8 },
+  });
+
+  // Références sur les matériaux pour marquer needsUpdate si nécessaire
+  const shadowMatRef = React.useRef<THREE.ShaderMaterial | null>(null);
+  const redMatRef    = React.useRef<THREE.ShaderMaterial | null>(null);
+
+  // Mettre à jour les uniforms "in place" dès que la géométrie spatiale change
+  React.useEffect(() => {
+    // Clamp util
+    const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+
+    // Shadow uniforms
+    {
+      const u = shadowUniformsRef.current;
+      u.uXAxis.value.copy(xAxisLocal);
+      u.uYAxis.value.copy(yAxisLocal);
+      u.uViewAxis.value.copy(viewAxisLocal);
+      u.uEarthDir.value.copy(earthDirLocal ?? fallbackEarth);
+      u.uRUmbra.value    = clamp(umbraRadiusRel, 0.05, 6.0);
+      u.uRPenumbra.value = clamp(Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel), 0.06, 8.0);
+      u.uStrength.value  = clamp(eclipseStrength, 0, 1);
+      if (shadowMatRef.current) shadowMatRef.current.needsUpdate = true;
+    }
+    // Red uniforms
+    {
+      const u = redUniformsRef.current;
+      u.uXAxis.value.copy(xAxisLocal);
+      u.uYAxis.value.copy(yAxisLocal);
+      u.uViewAxis.value.copy(viewAxisLocal);
+      u.uEarthDir.value.copy(earthDirLocal ?? fallbackEarth);
+      u.uRUmbra.value    = clamp(umbraRadiusRel, 0.05, 6.0);
+      u.uRPenumbra.value = clamp(Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel), 0.06, 8.0);
+      u.uRedGain.value   = clamp(redGlowStrength * eclipseStrength, 0, 1);
+      if (redMatRef.current) redMatRef.current.needsUpdate = true;
+    }
+  }, [
+    xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal,
+    umbraRadiusRel, penumbraOuterRel, eclipseStrength, redGlowStrength,
+    fallbackEarth
+  ]);
+
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
       {debugMask && <axesHelper args={[targetPx * 0.6]} />}
@@ -646,12 +707,13 @@ function Model({
               <meshBasicMaterial color="#ef4444" depthTest={false} depthWrite={false} />
             </mesh>
           )}
+          {/* Multiply shadow pass */}
           {/* Multiply shadow -> passe alpha noire (Normal blending) */}
           <mesh renderOrder={14}>
             <sphereGeometry args={[radius * 1.01, 64, 64]} />
             <shaderMaterial
-              key="eclipse-shadow"
-              uniforms={eclipseShadowUniforms}
+              ref={shadowMatRef}
+              uniforms={shadowUniformsRef.current}   // <= stable
               vertexShader={eclipseShadowVs}
               fragmentShader={eclipseShadowFs}
               transparent
@@ -661,12 +723,13 @@ function Model({
               side={THREE.FrontSide}
             />
           </mesh>
+
           {/* Additive red glow */}
           <mesh renderOrder={15}>
             <sphereGeometry args={[radius * 1.012, 64, 64]} />
             <shaderMaterial
-              key="eclipse-red"
-              uniforms={eclipseRedUniforms}
+              ref={redMatRef}
+              uniforms={redUniformsRef.current}      // <= stable
               vertexShader={eclipseRedVs}
               fragmentShader={eclipseRedFs}
               transparent
@@ -965,7 +1028,25 @@ export default function Moon3D({
   }, [camEuler, targetPx]);
 
   const [modelMounted, setModelMounted] = React.useState(false);
-  
+
+  // Call onReady only once
+  const readyOnceRef = React.useRef(false);
+  const safeOnReady = React.useCallback(() => {
+    if (readyOnceRef.current) return;
+    readyOnceRef.current = true;
+    onReady?.();
+  }, [onReady]);
+
+  // Fallback: arm readiness once Canvas is created (even if Model is late)
+  const [canvasCreated, setCanvasCreated] = React.useState(false);
+
+  // Last-resort timeout: release after 800ms if model not mounted yet
+  React.useEffect(() => {
+    if (modelMounted || !showMoonCard) return; // optional: tie to UI need
+    const t = setTimeout(() => safeOnReady(), 800);
+    return () => clearTimeout(t);
+  }, [modelMounted, showMoonCard, safeOnReady]);
+
   return (
     <div
       style={{
@@ -990,6 +1071,7 @@ export default function Moon3D({
           gl.toneMappingExposure = 2.2;
           invalidate();
           requestAnimationFrame(() => invalidate());
+          setCanvasCreated(true);           // <= arm via Canvas creation too
         }}
       >
         <OrthographicCamera
@@ -1039,7 +1121,15 @@ export default function Moon3D({
             )}
           </>
         )}
-        <Suspense fallback={<mesh><sphereGeometry args={[canvasPx * 0.45, 32, 32]} /><meshStandardMaterial color="rgba(176,176,176,0.45)" /></mesh>}>
+        <Suspense
+          fallback={
+            <mesh>
+              <sphereGeometry args={[canvasPx * 0.45, 32, 32]} />
+              {/* Three.js n’accepte pas rgba dans color; utiliser hex + opacity */}
+              <meshStandardMaterial color="#b0b0b0" transparent opacity={0.45} />
+            </mesh>
+          }
+        >
           <Model
             limbAngleDeg={limbAngleDeg}
             targetPx={targetPx}
@@ -1062,15 +1152,12 @@ export default function Moon3D({
             onMounted={() => setModelMounted(true)}
           />
         </Suspense>
-        <ReadyPing armed={modelMounted} onReady={onReady} />
+
+        {/* Ping after 2 frames once armed */}
+        <ReadyPing armed={modelMounted || canvasCreated} onReady={safeOnReady} />
       </Canvas>
-      {debugMask ? (
-         <div style={{ position: 'absolute', left: 8, top: 8, color: '#fff', background: 'rgba(0,0,0,0.55)', padding: '6px 8px', fontSize: 12, lineHeight: 1.3, borderRadius: 4 }}>
-           <div>Libration RX: {libRotXDeg.toFixed(1)}° — {tiltHint}</div>
-           <div>Libration RY: {libRotYDeg.toFixed(1)}° — {eastHint}</div>
-           <div>Libration RZ: {libRotZDeg.toFixed(1)}°</div>
-         </div>
-       ) : null}
-     </div>
-   );
+
+      {/* ...debug HUD... */}
+    </div>
+  );
  }
