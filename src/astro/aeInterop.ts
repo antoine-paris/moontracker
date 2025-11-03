@@ -475,11 +475,16 @@ export function earthShadowAtMoon(date: Date): {
   moonDistKm: number;
   umbraRadiusKm: number;      // rayon de l'ombre (si négatif -> pas d’ombre, on clamp à 0)
   penumbraRadiusKm: number;   // rayon de la pénombre
-  axisOffsetKm: number;       // distance perpendiculaire entre axe Terre→anti-Soleil et centre Lune
+  axisOffsetKm: number;       // distance perpendiculaire (scalaire)
+  // Direction pour offset 2D
+  axisPerpVecKm: { x: number; y: number; z: number }; // vecteur ⟂ à l’axe (EQ of-date, km)
+  axisPerpUnit:  { x: number; y: number; z: number }; // unitaire, même repère
+  axisPADeg: number;          // PA (E depuis N) RÉFÉRENCE NORD LUNAIRE
+  axisPAEarthDeg: number;     // PA (E depuis N) RÉFÉRENCE NORD CÉLESTE (pour debug)
 } {
   const t = new AstroTime(date);
 
-  // Vecteurs géocentriques en UA
+  // Vecteurs géocentriques en UA (of-date)
   const vSun = GeoVector(Body.Sun, t, true);   // Terre -> Soleil
   const vMoon = GeoVector(Body.Moon, t, true); // Terre -> Lune
 
@@ -487,7 +492,7 @@ export function earthShadowAtMoon(date: Date): {
   const sunDistKm  = Math.hypot(vSun.x, vSun.y, vSun.z) * AU_KM;
   const moonDistKm = Math.hypot(vMoon.x, vMoon.y, vMoon.z) * AU_KM;
 
-  // Axe ombre: u = direction Terre -> anti-Soleil
+  // Axe ombre: u = direction Terre -> anti-Soleil (unit)
   const ux = -vSun.x, uy = -vSun.y, uz = -vSun.z;
   const un = Math.hypot(ux, uy, uz) || 1;
   const u0 = ux / un, u1 = uy / un, u2 = uz / un;
@@ -495,23 +500,65 @@ export function earthShadowAtMoon(date: Date): {
   // Composante perpendiculaire de la position lunaire par rapport à l’axe
   const rx = vMoon.x, ry = vMoon.y, rz = vMoon.z;
   const dot = rx * u0 + ry * u1 + rz * u2;
-  const px = rx - dot * u0;
-  const py = ry - dot * u1;
-  const pz = rz - dot * u2;
-  const axisOffsetKm = Math.hypot(px, py, pz) * AU_KM;
+  const pxAU = rx - dot * u0;
+  const pyAU = ry - dot * u1;
+  const pzAU = rz - dot * u2;
 
-  // Rayon de l’ombre/pénombre au plan de la Lune (triangles semblables)
+  const axisOffsetKm = Math.hypot(pxAU, pyAU, pzAU) * AU_KM;
+
+  // Distance le long de l’axe antisolaire (proj. de la Lune sur u), en km
+  const LaxisKm = Math.max(0, dot) * AU_KM; // clamp à 0 côté Soleil
+
+  // Vecteur perpendiculaire en km + unitaire (même repère EQ of-date)
+  const axisPerpVecKm = { x: pxAU * AU_KM, y: pyAU * AU_KM, z: pzAU * AU_KM };
+  const plen = Math.max(1e-12, Math.hypot(axisPerpVecKm.x, axisPerpVecKm.y, axisPerpVecKm.z));
+  const axisPerpUnit = { x: axisPerpVecKm.x / plen, y: axisPerpVecKm.y / plen, z: axisPerpVecKm.z / plen };
+
+  // Rayon de l’ombre/pénombre au plan de la Lune
   const Re = EARTH_RADIUS_KM;
   const Rs = R_SUN_KM;
-
-  // Ombre: décroît linéairement : r_u(d) = Re - d * (Rs - Re) / D_es  (tronquée à 0 si négative)
-  let umbraRadiusKm = Re - moonDistKm * (Rs - Re) / Math.max(1, sunDistKm);
+  let umbraRadiusKm = Re - LaxisKm * (Rs - Re) / Math.max(1, sunDistKm);
   if (umbraRadiusKm < 0) umbraRadiusKm = 0;
+  const penumbraRadiusKm = Re + LaxisKm * (Rs + Re) / Math.max(1, sunDistKm);
+  
+  // Position angle sur le ciel (E de N) du vecteur perpendiculaire au centre lunaire
+  const time = MakeTime(date);
+  const eqMoon = Equator(Body.Moon, time, new Observer(0, 0, 0), true, true);
+  const ra = eqMoon.ra * D2R * 15.0;
+  const dec = eqMoon.dec * D2R;
 
-  // Pénombre: croît linéairement : r_p(d) = Re + d * (Rs + Re) / D_es
-  const penumbraRadiusKm = Re + moonDistKm * (Rs + Re) / Math.max(1, sunDistKm);
+  // Base (N,E) céleste (au centre lunaire)
+  let e_alpha = { x: -Math.cos(dec) * Math.sin(ra), y: Math.cos(dec) * Math.cos(ra), z: 0 }; // Est
+  let e_delta = { x: -Math.sin(dec) * Math.cos(ra), y: -Math.sin(dec) * Math.sin(ra), z: Math.cos(dec) }; // Nord
+  const na = Math.hypot(e_alpha.x, e_alpha.y, e_alpha.z) || 1;
+  const nd = Math.hypot(e_delta.x, e_delta.y, e_delta.z) || 1;
+  e_alpha = { x: e_alpha.x / na, y: e_alpha.y / na, z: e_alpha.z / na };
+  e_delta = { x: e_delta.x / nd, y: e_delta.y / nd, z: e_delta.z / nd };
 
-  return { sunDistKm, moonDistKm, umbraRadiusKm, penumbraRadiusKm, axisOffsetKm };
+  // PA par rapport au Nord céleste (Earth North)
+  const projE = axisPerpUnit.x * e_alpha.x + axisPerpUnit.y * e_alpha.y + axisPerpUnit.z * e_alpha.z;
+  const projN = axisPerpUnit.x * e_delta.x + axisPerpUnit.y * e_delta.y + axisPerpUnit.z * e_delta.z;
+  let axisPAEarthDeg = Math.atan2(projE, projN) * R2D; // [-180,180], E from N
+  if (axisPAEarthDeg <= -180) axisPAEarthDeg += 360;
+  if (axisPAEarthDeg >   180) axisPAEarthDeg -= 360;
+
+  // Angle du pôle lunaire vs Nord céleste (P), E depuis N (of-date via libration Meeus)
+  const P = getMoonLibration(date).paDeg; // E from N, of-date
+
+  // Converti en Nord lunaire: PA_lunar = PA_earth - P
+  let axisPALunarDeg = axisPAEarthDeg - P;
+  // normaliser vers [-180,180]
+  axisPALunarDeg = ((axisPALunarDeg + 180) % 360 + 360) % 360 - 180;
+
+  return {
+    sunDistKm, moonDistKm,
+    umbraRadiusKm, penumbraRadiusKm,
+    axisOffsetKm,
+    axisPerpVecKm,
+    axisPerpUnit,
+    axisPADeg: axisPALunarDeg,   // désormais PA en Nord lunaire (E depuis N_lunaire)
+    axisPAEarthDeg,              // pour debug
+  };
 }
 
 

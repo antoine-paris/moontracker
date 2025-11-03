@@ -209,7 +209,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const penumbraRel  = g.penumbraRadiusKm / RMOON_KM;
     const offsetRel    = g.axisOffsetKm     / RMOON_KM;
 
-
     // Intensité: 1 en ombre, décroît linéairement jusqu'au bord de la pénombre, 0 au-delà
     let strength = 0;
     if (offsetRel <= umbraRel) {
@@ -231,6 +230,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       strength,
       redGlow: red,
       offsetRel,
+      axisPADeg: g.axisPADeg, // NEW: PA (Est depuis Nord) au centre lunaire
     };
   }, [date]);
 
@@ -996,6 +996,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             penumbraOuterRel={eclipsePhys.penumbraRel}
             redGlowStrength={eclipsePhys.redGlow}
             eclipseOffsetRel={eclipsePhys.offsetRel} 
+            eclipseAxisPADeg={eclipsePhys.axisPADeg} 
           />
         </div>
       )}

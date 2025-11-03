@@ -83,6 +83,7 @@ type Props = {
   onReady?: () => void;
   // décalage du centre de l’ombre en Rlunaire (axe Earth shadow vs centre Lune)
   eclipseOffsetRel?: number;
+  eclipseAxisPADeg?: number;
 };
 
 type Vec3 = [number, number, number];
@@ -171,6 +172,7 @@ function Model({
   camForwardWorld,
   onMounted,
   eclipseOffsetRel = 0,
+  eclipseAxisPADeg,
 }: {
   limbAngleDeg: number; targetPx: number; modelUrl: string;
   librationTopo?: { latDeg: number; lonDeg: number; paDeg: number };
@@ -186,6 +188,7 @@ function Model({
   camForwardWorld?: [number, number, number];
   onMounted?: () => void;
   eclipseOffsetRel?: number;
+  eclipseAxisPADeg?: number;
 }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   const { scene } = useGLTF(modelUrl);
@@ -380,6 +383,11 @@ function Model({
     return sLocal.clone().negate().normalize(); // toward Earth
   }, [sunDirWorld, quaternionFinal]);
 
+  const earthDirLocal = useMemo(() => {
+    if (!earthDirLocalRaw) return null;
+    // Garder la direction géométrique (pas de flip côté visible) pour une progression continue
+    return earthDirLocalRaw.clone().normalize();
+  }, [earthDirLocalRaw]);
 
   // Front facing (view axis) and disk axes for stable “screen” overlay
   // Camera forward expressed in the model's local space (compte la rotation du groupe)
@@ -406,11 +414,7 @@ function Model({
     [viewAxisLocal, yAxisLocal]
   );
   
-  const earthDirLocal = useMemo(() => {
-    if (!earthDirLocalRaw) return null;
-    const dot = earthDirLocalRaw.dot(viewAxisLocal); // >0 = côté visible
-    return (dot < 0 ? earthDirLocalRaw.clone().negate() : earthDirLocalRaw.clone()).normalize();
-  }, [earthDirLocalRaw, viewAxisLocal]);
+  
 
   // --- Eclipse overlay materials (two passes) ---
   // 1) Shadow multiply pass: darkens where Earth shadow covers the “disc”
@@ -434,58 +438,76 @@ function Model({
     }
   `;
 
-  const eclipseShadowFs = `
-  precision highp float;
-  varying vec3 vPos;
-  uniform vec3 uXAxis;
-  uniform vec3 uYAxis;
-  uniform vec3 uViewAxis;     // centre -> caméra
-  uniform vec3 uEarthDir;     // direction antisolaire
-  uniform float uRUmbra;      // rayon umbra (en Rlunaire)
-  uniform float uRPenumbra;   // rayon penumbra (en Rlunaire, > uRUmbra)
-  uniform float uStrength;
-  uniform float uOffsetRel;   // décalage du centre de l'ombre (en Rlunaire)
+   const eclipseShadowFs = `
+    precision highp float;
+    varying vec3 vPos;
+    uniform vec3 uXAxis;
+    uniform vec3 uYAxis;
+    uniform vec3 uViewAxis;
+    uniform vec3 uEarthDir;
+    uniform float uRUmbra;
+    uniform float uRPenumbra;
+    uniform float uStrength;
+    uniform float uOffsetRel;
+    uniform float uAxisPA;      // radians (E depuis N, Nord lunaire)
+    uniform float uUsePA;
+    uniform float uPenWidth;    // [0.2..1.0] proportion de largeur de pénombre
+    uniform float uRedScale;    // rayon "efficace" du rouge
+    uniform float uHoleGain;    // [0..1] force du "trou" dans l'ombre
+    uniform float uHoleScale;   // NEW: >1 => trou un peu plus large que le rouge
 
-  void main() {
-    if (uStrength <= 0.0001) discard;
+    void main() {
+      if (uStrength <= 0.0001) discard;
 
-    vec3 p = normalize(vPos);
-    float w = dot(p, normalize(uViewAxis));
-    if (w <= 0.0) discard; // hémisphère arrière
+      vec3 p = normalize(vPos);
+      vec3 xA = normalize(uXAxis);
+      vec3 yA = normalize(uYAxis);
+      vec3 vA = normalize(uViewAxis);
+      vec3 u  = normalize(uEarthDir);
 
-    vec3 xA = normalize(uXAxis);
-    vec3 yA = normalize(uYAxis);
+      float w = dot(p, vA);
+      if (w <= 0.0) discard;
 
-    // Projeter l'axe d'ombre dans le plan écran, puis normaliser pour obtenir la direction
-    vec2 e2  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
-    float el = length(e2);
-    vec2 dir = el > 1e-6 ? (e2 / el) : vec2(0.0, 0.0);
+      vec2 dir2;
+      if (uUsePA > 0.5) {
+        // centre d'ombre opposé à axisPerp (PA)
+        dir2 = -vec2(sin(uAxisPA), cos(uAxisPA));
+      } else {
+        vec3 r_hat = normalize(-vA);
+        vec3 r_perp = r_hat - u * dot(r_hat, u);
+        float rlen = length(r_perp);
+        vec3 dir3 = rlen > 1e-6 ? (r_perp / rlen) : normalize(cross(u, vec3(0.0, 0.0, 1.0)));
+        if (length(dir3) < 1e-6) dir3 = normalize(cross(u, vec3(0.0, 1.0, 0.0)));
+        dir2 = vec2(dot(dir3, xA), dot(dir3, yA));
+        float d2l = length(dir2);
+        if (d2l > 1e-6) dir2 /= d2l;
+      }
 
-    // Centre 2D de l'ombre à une distance uOffsetRel (en rayons lunaires)
-    vec2 c = dir * max(0.0, uOffsetRel);
+      vec2 c = dir2 * max(0.0, uOffsetRel);
+      vec2 uv = vec2(dot(p, xA), dot(p, yA));
+      float d = length(uv - c);
 
-    // Coordonnées "écran" du point courant
-    vec2 uv = vec2(dot(p, xA), dot(p, yA));
-    float d = length(uv - c);
+      // Pénombre plus "nette"
+      float outer = mix(uRUmbra, uRPenumbra, clamp(uPenWidth, 0.2, 1.0));
+      float pen = 1.0 - smoothstep(uRUmbra, outer, d);
+      float umb = 1.0 - smoothstep(0.0,       uRUmbra,   d);
+      pen = pow(pen, 1.45);
+      umb = pow(umb, 0.7);
 
-    // Pénombre: 1 au bord interne (umbra), 0 au bord externe de la pénombre
-    float pen = 1.0 - smoothstep(uRUmbra, uRPenumbra, d);
-    // Ombre: 1 au centre, 0 au bord de l'umbra
-    float umb = 1.0 - smoothstep(0.0, uRUmbra, d);
+      const float ALPHA_PENUM = 3.45;
+      const float ALPHA_UMBRA = 1.93;
+      float alpha = uStrength * (ALPHA_PENUM * pen + (ALPHA_UMBRA - ALPHA_PENUM) * umb);
 
-    // Adoucir les profils
-    pen = pow(pen, 1.2);
-    umb = pow(umb, 0.7);
+       // NEW: "trou" doux dans la passe sombre là où le rouge est fort
+      float uR = uRUmbra * max(1.0, uRedScale) * max(1.0, uHoleScale);
+      float deep = clamp((uR - d) / max(1e-5, uR), 0.0, 1.0);
+      deep = smoothstep(0.0, 1.0, deep);
+      alpha *= (1.0 - clamp(uHoleGain, 0.0, 1.0) * deep);
 
-    // Opacités cibles
-    const float ALPHA_PENUM = 1.55;
-    const float ALPHA_UMBRA = 1.93;
+      gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
+    }
+  `;
 
-    float alpha = uStrength * (ALPHA_PENUM * pen + (ALPHA_UMBRA - ALPHA_PENUM) * umb);
-
-    gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
-  }
-`;
 
   // 2) Red glow additive pass
   const eclipseRedUniforms = useMemo(() => ({
@@ -505,41 +527,64 @@ function Model({
     varying vec3 vPos;
     uniform vec3 uXAxis;
     uniform vec3 uYAxis;
-    uniform vec3 uViewAxis;     // centre -> caméra
+    uniform vec3 uViewAxis;
     uniform vec3 uEarthDir;
     uniform float uRUmbra;
     uniform float uRPenumbra;
-    uniform float uRedGain;
+    uniform float uRedGain;     // [0..1] intensité globale
     uniform float uOffsetRel;
+    uniform float uAxisPA;
+    uniform float uUsePA;
+    uniform float uRedScale;    // >1 => rouge plus large
+    uniform float uRedDark;     // NEW: [0..1.5] profondeur de noircissement
 
     void main() {
       if (uRedGain <= 0.0001) discard;
 
       vec3 p = normalize(vPos);
-      float w = dot(p, normalize(uViewAxis));
-      if (w <= 0.0) discard;
-
       vec3 xA = normalize(uXAxis);
       vec3 yA = normalize(uYAxis);
+      vec3 vA = normalize(uViewAxis);
+      vec3 u  = normalize(uEarthDir);
 
-      vec2 e2  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
-      float el = length(e2);
-      vec2 dir = el > 1e-6 ? (e2 / el) : vec2(0.0);
-      vec2 c   = dir * max(0.0, uOffsetRel);
+      float w = dot(p, vA);
+      if (w <= 0.0) discard;
+
+      vec2 dir2;
+      if (uUsePA > 0.5) {
+        // centre d'ombre opposé à axisPerp (PA)
+        dir2 = -vec2(sin(uAxisPA), cos(uAxisPA));
+      } else {
+        vec3 r_hat = normalize(-vA);
+        vec3 r_perp = r_hat - u * dot(r_hat, u);
+        float rlen = length(r_perp);
+        vec3 dir3 = rlen > 1e-6 ? (r_perp / rlen) : normalize(cross(u, vec3(0.0, 0.0, 1.0)));
+        if (length(dir3) < 1e-6) dir3 = normalize(cross(u, vec3(0.0, 1.0, 0.0)));
+        dir2 = vec2(dot(dir3, xA), dot(dir3, yA));
+        float d2l = length(dir2);
+        if (d2l > 1e-6) dir2 /= d2l;
+      }
+
+      vec2 c = dir2 * max(0.0, uOffsetRel);
 
       vec2 uv = vec2(dot(p, xA), dot(p, yA));
       float d = length(uv - c);
 
-      // Profondeur d'ombre: 1 au centre de l'umbra, 0 au bord de l'umbra
-      float deep = clamp((uRUmbra - d) / max(1e-5, uRUmbra), 0.0, 1.0);
+      // "Profondeur" autour de l'umbra élargi
+      float uR = uRUmbra * max(1.0, uRedScale);
+      float deep = clamp((uR - d) / max(1e-5, uR), 0.0, 1.0);
       deep = smoothstep(0.0, 1.0, deep);
       deep *= deep;
 
-      vec3 tint = vec3(0.85, 0.16, 0.08) * (uRedGain * deep);
-      gl_FragColor = vec4(tint, 1.0);
+      // Facteur multiplicatif sombre, plus fort sur G/B pour une teinte rouge foncé
+      float k = clamp(uRedGain, 0.0, 1.0) * clamp(uRedDark, 0.0, 1.5) * deep;
+      vec3 mul = vec3(1.0)
+               - k * vec3(0.35, 0.85, 0.90); // R baisse peu, G/B baissent plus => bordeaux
+      mul = clamp(mul, 0.0, 1.0);
+
+      gl_FragColor = vec4(mul, 1.0);
     }
   `;
-
 
   // Stable fallback vector (évite de recréer un new Vector3 à chaque render)
   const fallbackEarth = React.useMemo(() => new THREE.Vector3(0, 0, 1), []);
@@ -548,14 +593,20 @@ function Model({
   const shadowUniformsRef = React.useRef({
     uXAxis:     { value: new THREE.Vector3() },
     uYAxis:     { value: new THREE.Vector3() },
-    uViewAxis:  { value: new THREE.Vector3() }, // centre -> caméra (local)
+    uViewAxis:  { value: new THREE.Vector3() },
     uEarthDir:  { value: new THREE.Vector3() },
     uRUmbra:    { value: 1.3 },
     uRPenumbra: { value: 4.0 },
     uStrength:  { value: 1.0 },
-    uOffsetRel: { value: 0.0 }, 
+    uOffsetRel: { value: 0.0 },
+    uAxisPA:    { value: 0.0 },
+    uUsePA:     { value: 0.0 },
+    uPenWidth:  { value: 0.52 },
+    uRedScale:  { value: 1.30 }, // ...existing code...
+    uHoleGain:  { value: 0.90 }, // NEW: trou plus marqué
+    uHoleScale: { value: 1.0 }, // NEW: trou un peu plus grand que le rouge
   });
-  const redUniformsRef = React.useRef({
+   const redUniformsRef = React.useRef({
     uXAxis:     { value: new THREE.Vector3() },
     uYAxis:     { value: new THREE.Vector3() },
     uViewAxis:  { value: new THREE.Vector3() },
@@ -563,8 +614,13 @@ function Model({
     uRUmbra:    { value: 1.3 },
     uRPenumbra: { value: 4.0 },
     uRedGain:   { value: 0.8 },
-    uOffsetRel: { value: 0.0 }, 
+    uOffsetRel: { value: 0.0 },
+    uAxisPA:    { value: 0.0 },
+    uUsePA:     { value: 0.0 },
+    uRedScale:  { value: 1.40 },
+    uRedDark:   { value: 1.0 }, // NEW: intensité du noircissement
   });
+
 
   // Références sur les matériaux pour marquer needsUpdate si nécessaire
   const shadowMatRef = React.useRef<THREE.ShaderMaterial | null>(null);
@@ -574,6 +630,11 @@ function Model({
   React.useEffect(() => {
     // Clamp util
     const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
+    const paRad = ( Number.isFinite(eclipseAxisPADeg as number) ? ((eclipseAxisPADeg as number) * Math.PI / 180) : 0);
+    const usePA = Number.isFinite(eclipseAxisPADeg as number) ? 1 : 0;
+
+    //console.log("eclipseOffsetRel, eclipseAxisPADeg,",eclipseOffsetRel, eclipseAxisPADeg);
+
 
     // Shadow uniforms
     {
@@ -585,8 +646,15 @@ function Model({
       u.uRUmbra.value    = clamp(umbraRadiusRel, 0.05, 6.0);
       u.uRPenumbra.value = clamp(Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel), 0.06, 8.0);
       u.uStrength.value  = clamp(eclipseStrength, 0, 1);
-      u.uOffsetRel.value = Math.max(0, eclipseOffsetRel || 0); // <-- NEW
+      u.uOffsetRel.value = Math.max(0, eclipseOffsetRel || 0);
+      u.uAxisPA.value    = paRad;
+      u.uUsePA.value     = usePA;
+      u.uPenWidth.value  = 0.72;
+      u.uRedScale.value  = 1.60; // élargit le rouge (et base du trou)
+      u.uHoleGain.value  = 0.90; // trou plus visible
+      u.uHoleScale.value = 1.18; // trou encore un peu plus large que le rouge
       if (shadowMatRef.current) shadowMatRef.current.needsUpdate = true;
+
     }
     // Red uniforms
     {
@@ -598,13 +666,18 @@ function Model({
       u.uRUmbra.value    = clamp(umbraRadiusRel, 0.05, 6.0);
       u.uRPenumbra.value = clamp(Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel), 0.06, 8.0);
       u.uRedGain.value   = clamp(redGlowStrength * eclipseStrength, 0, 1);
-      u.uOffsetRel.value = Math.max(0, eclipseOffsetRel || 0); // <-- NEW
+      u.uOffsetRel.value = Math.max(0, eclipseOffsetRel || 0);
+      u.uAxisPA.value    = paRad;
+      u.uUsePA.value     = usePA;
+      u.uRedScale.value  = 2.80;
+      u.uRedDark.value   = 1.2; // 0.7..1.2 pour ajuster "plus sombre"
       if (redMatRef.current) redMatRef.current.needsUpdate = true;
+
     }
   }, [
     xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal,
     umbraRadiusRel, penumbraOuterRel, eclipseStrength, redGlowStrength,
-    eclipseOffsetRel, 
+    eclipseOffsetRel, eclipseAxisPADeg,
     fallbackEarth
   ]);
 
@@ -748,18 +821,18 @@ function Model({
             />
           </mesh>
 
-          {/* Additive red glow */}
+          {/* Additive red glow -> devient Multiply sombre rouge */}
           <mesh renderOrder={15}>
             <sphereGeometry args={[radius * 1.012, 64, 64]} />
             <shaderMaterial
               ref={redMatRef}
-              uniforms={redUniformsRef.current}      // <= stable
+              uniforms={redUniformsRef.current}
               vertexShader={eclipseRedVs}
               fragmentShader={eclipseRedFs}
               transparent
               depthTest={false}
               depthWrite={false}
-              blending={THREE.AdditiveBlending}
+              blending={THREE.MultiplyBlending}  // was AdditiveBlending
               side={THREE.FrontSide}
             />
           </mesh>
@@ -810,6 +883,7 @@ export default function Moon3D({
   forceEclipse,
   onReady,
   eclipseOffsetRel,
+  eclipseAxisPADeg,
 }: Props) {
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 
@@ -869,10 +943,10 @@ export default function Moon3D({
         const nz = sz / len;
 
         // Zone morte: conserver l'ancien Y stable pour éviter la rotation apparente
-        if (inDeadZone) {
+        /*if (inDeadZone) {
           const yHeld = lastStableLightCamY.current ?? 0;
           return [nx, yHeld, nz] as Vec3;
-        }
+        }*/
         // Hors zone morte: mettre à jour la mémoire Y et renvoyer le vecteur complet
         lastStableLightCamY.current = ny;
         return [nx, ny, nz] as Vec3;
@@ -1176,6 +1250,7 @@ export default function Moon3D({
             camForwardWorld={camForwardWorld}
             onMounted={() => setModelMounted(true)}
             eclipseOffsetRel={eclipseOffsetRel || 0} 
+            eclipseAxisPADeg={eclipseAxisPADeg}
           />
         </Suspense>
 
