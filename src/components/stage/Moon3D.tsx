@@ -173,6 +173,7 @@ function Model({
   onMounted,
   eclipseOffsetRel = 0,
   eclipseAxisPADeg,
+  eclipseActive = true,
 }: {
   limbAngleDeg: number; targetPx: number; modelUrl: string;
   librationTopo?: { latDeg: number; lonDeg: number; paDeg: number };
@@ -189,6 +190,7 @@ function Model({
   onMounted?: () => void;
   eclipseOffsetRel?: number;
   eclipseAxisPADeg?: number;
+  eclipseActive?: boolean;
 }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   const { scene } = useGLTF(modelUrl);
@@ -415,21 +417,6 @@ function Model({
   );
   
   
-
-  // --- Eclipse overlay materials (two passes) ---
-  // 1) Shadow multiply pass: darkens where Earth shadow covers the “disc”
-  const eclipseShadowUniforms = useMemo(() => ({
-    uXAxis:        { value: xAxisLocal },
-    uYAxis:        { value: yAxisLocal },
-    uViewAxis:     { value: viewAxisLocal },
-    uEarthDir:     { value: earthDirLocal ?? new THREE.Vector3(0,0,1) },
-    uRUmbra:       { value: Math.max(0.05, Math.min(6.0, umbraRadiusRel)) },
-    uRPenumbra:    { value: Math.max(0.06, Math.min(8.0, Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel))) },
-    uStrength:     { value: Math.max(0, Math.min(1, eclipseStrength)) },
-    uOffsetRel:    { value: Math.max(0, eclipseOffsetRel || 0) }, 
-  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, eclipseStrength, eclipseOffsetRel]);
-
-  
   const eclipseShadowVs = `
     varying vec3 vPos;
     void main() {
@@ -507,19 +494,6 @@ function Model({
       gl_FragColor = vec4(0.0, 0.0, 0.0, alpha);
     }
   `;
-
-
-  // 2) Red glow additive pass
-  const eclipseRedUniforms = useMemo(() => ({
-    uXAxis:        { value: xAxisLocal },
-    uYAxis:        { value: yAxisLocal },
-    uViewAxis:     { value: viewAxisLocal },
-    uEarthDir:     { value: earthDirLocal ?? new THREE.Vector3(0,0,1) },
-    uRUmbra:       { value: Math.max(0.05, Math.min(6.0, umbraRadiusRel)) },
-    uRPenumbra:    { value: Math.max(0.06, Math.min(8.0, Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel))) },
-    uRedGain:      { value: Math.max(0, Math.min(1, redGlowStrength * eclipseStrength)) },
-    uOffsetRel:    { value: Math.max(0, eclipseOffsetRel || 0) }, // <-- NEW
-  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, redGlowStrength, eclipseStrength, eclipseOffsetRel]);
 
   const eclipseRedVs = eclipseShadowVs;
   const eclipseRedFs = `
@@ -628,6 +602,7 @@ function Model({
 
   // Mettre à jour les uniforms "in place" dès que la géométrie spatiale change
   React.useEffect(() => {
+    if (!eclipseActive) return;
     // Clamp util
     const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
     const paRad = ( Number.isFinite(eclipseAxisPADeg as number) ? ((eclipseAxisPADeg as number) * Math.PI / 180) : 0);
@@ -675,6 +650,7 @@ function Model({
 
     }
   }, [
+    eclipseActive,
     xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal,
     umbraRadiusRel, penumbraOuterRel, eclipseStrength, redGlowStrength,
     eclipseOffsetRel, eclipseAxisPADeg,
@@ -795,7 +771,7 @@ function Model({
       )}
 
       {/* NEW: Eclipse overlays (rendered after the Moon to modulate lighting) */}
-      {eclipseStrength > 0.001 && earthDirLocal && (
+      {eclipseActive && eclipseStrength > 0.001 && earthDirLocal && (
         <>
           {/* Debug: centre de l’ombre (valider orientation) */}
           {debugMask && (
@@ -891,6 +867,9 @@ export default function Moon3D({
   const vSun  = useMemo(() => altAzToVec(sunAltDeg,  sunAzDeg ), [sunAltDeg,  sunAzDeg ]);
   // Aligner la direction Lune vers la caméra (cam regarde -Z)
   const R = useMemo(() => rotateAToB(vMoon, [0,0,-1]), [vMoon]);
+
+  // Fraction fournie (si string -> number)
+  const illumFNum = useMemo(() => toFiniteNumber(illumFraction), [illumFraction]);
 
   
 
@@ -1009,6 +988,13 @@ export default function Moon3D({
     const sep = (sunMoonSepDeg * Math.PI) / 180;
     return 0.5 * (1 - Math.cos(sep));
   }, [illumFraction, sunMoonSepDeg]);
+
+  // Seuil CPU: n’activer l’éclipse que si illum ≥ 0.95 (sinon, fallback sur l’estimation)
+  const eclipseActive = useMemo(() => {
+    if (!showPhase) return false;
+    if (typeof illumFNum === 'number') return illumFNum >= 0.95;
+    return (phaseFracNum >= 0.95);
+  }, [showPhase,illumFNum, phaseFracNum]);
 
   const oppositionOffsetDeg = useMemo(() => Math.abs(180 - sunMoonSepDeg), [sunMoonSepDeg]);
 
@@ -1251,6 +1237,7 @@ export default function Moon3D({
             onMounted={() => setModelMounted(true)}
             eclipseOffsetRel={eclipseOffsetRel || 0} 
             eclipseAxisPADeg={eclipseAxisPADeg}
+            eclipseActive={eclipseActive}  
           />
         </Suspense>
 
