@@ -81,6 +81,8 @@ type Props = {
   forceEclipse?: boolean;
   // notify parent when the 3D canvas has rendered a couple of frames
   onReady?: () => void;
+  // décalage du centre de l’ombre en Rlunaire (axe Earth shadow vs centre Lune)
+  eclipseOffsetRel?: number;
 };
 
 type Vec3 = [number, number, number];
@@ -168,6 +170,7 @@ function Model({
   redGlowStrength = 0.8,
   camForwardWorld,
   onMounted,
+  eclipseOffsetRel = 0,
 }: {
   limbAngleDeg: number; targetPx: number; modelUrl: string;
   librationTopo?: { latDeg: number; lonDeg: number; paDeg: number };
@@ -182,6 +185,7 @@ function Model({
   redGlowStrength?: number;
   camForwardWorld?: [number, number, number];
   onMounted?: () => void;
+  eclipseOffsetRel?: number;
 }) {
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   const { scene } = useGLTF(modelUrl);
@@ -415,11 +419,11 @@ function Model({
     uYAxis:        { value: yAxisLocal },
     uViewAxis:     { value: viewAxisLocal },
     uEarthDir:     { value: earthDirLocal ?? new THREE.Vector3(0,0,1) },
-    // FIX: plafonds élargis pour valeurs physiques (umbra~2.6R, penumbra~4.7R)
     uRUmbra:       { value: Math.max(0.05, Math.min(6.0, umbraRadiusRel)) },
     uRPenumbra:    { value: Math.max(0.06, Math.min(8.0, Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel))) },
     uStrength:     { value: Math.max(0, Math.min(1, eclipseStrength)) },
-  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, eclipseStrength]);
+    uOffsetRel:    { value: Math.max(0, eclipseOffsetRel || 0) }, 
+  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, eclipseStrength, eclipseOffsetRel]);
 
   
   const eclipseShadowVs = `
@@ -436,10 +440,11 @@ function Model({
   uniform vec3 uXAxis;
   uniform vec3 uYAxis;
   uniform vec3 uViewAxis;     // centre -> caméra
-  uniform vec3 uEarthDir;     // centre de l'ombre (antisolaire) projeté
+  uniform vec3 uEarthDir;     // direction antisolaire
   uniform float uRUmbra;      // rayon umbra (en Rlunaire)
   uniform float uRPenumbra;   // rayon penumbra (en Rlunaire, > uRUmbra)
   uniform float uStrength;
+  uniform float uOffsetRel;   // décalage du centre de l'ombre (en Rlunaire)
 
   void main() {
     if (uStrength <= 0.0001) discard;
@@ -451,9 +456,16 @@ function Model({
     vec3 xA = normalize(uXAxis);
     vec3 yA = normalize(uYAxis);
 
-    // Coordonnées "écran"
+    // Projeter l'axe d'ombre dans le plan écran, puis normaliser pour obtenir la direction
+    vec2 e2  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
+    float el = length(e2);
+    vec2 dir = el > 1e-6 ? (e2 / el) : vec2(0.0, 0.0);
+
+    // Centre 2D de l'ombre à une distance uOffsetRel (en rayons lunaires)
+    vec2 c = dir * max(0.0, uOffsetRel);
+
+    // Coordonnées "écran" du point courant
     vec2 uv = vec2(dot(p, xA), dot(p, yA));
-    vec2 c  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
     float d = length(uv - c);
 
     // Pénombre: 1 au bord interne (umbra), 0 au bord externe de la pénombre
@@ -465,9 +477,9 @@ function Model({
     pen = pow(pen, 1.2);
     umb = pow(umb, 0.7);
 
-    // Opacités cibles (ajuste si besoin)
-    const float ALPHA_PENUM = 1.55;  // densité en pénombre
-    const float ALPHA_UMBRA = 1.93;  // densité au cœur de l’ombre
+    // Opacités cibles
+    const float ALPHA_PENUM = 1.55;
+    const float ALPHA_UMBRA = 1.93;
 
     float alpha = uStrength * (ALPHA_PENUM * pen + (ALPHA_UMBRA - ALPHA_PENUM) * umb);
 
@@ -484,7 +496,8 @@ function Model({
     uRUmbra:       { value: Math.max(0.05, Math.min(6.0, umbraRadiusRel)) },
     uRPenumbra:    { value: Math.max(0.06, Math.min(8.0, Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel))) },
     uRedGain:      { value: Math.max(0, Math.min(1, redGlowStrength * eclipseStrength)) },
-  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, redGlowStrength, eclipseStrength]);
+    uOffsetRel:    { value: Math.max(0, eclipseOffsetRel || 0) }, // <-- NEW
+  }), [xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal, umbraRadiusRel, penumbraOuterRel, redGlowStrength, eclipseStrength, eclipseOffsetRel]);
 
   const eclipseRedVs = eclipseShadowVs;
   const eclipseRedFs = `
@@ -497,6 +510,7 @@ function Model({
     uniform float uRUmbra;
     uniform float uRPenumbra;
     uniform float uRedGain;
+    uniform float uOffsetRel;
 
     void main() {
       if (uRedGain <= 0.0001) discard;
@@ -508,20 +522,24 @@ function Model({
       vec3 xA = normalize(uXAxis);
       vec3 yA = normalize(uYAxis);
 
-      vec2 uv = vec2(dot(p, xA), dot(p, yA));
-      vec2 c  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
+      vec2 e2  = vec2(dot(normalize(uEarthDir), xA), dot(normalize(uEarthDir), yA));
+      float el = length(e2);
+      vec2 dir = el > 1e-6 ? (e2 / el) : vec2(0.0);
+      vec2 c   = dir * max(0.0, uOffsetRel);
 
+      vec2 uv = vec2(dot(p, xA), dot(p, yA));
       float d = length(uv - c);
 
       // Profondeur d'ombre: 1 au centre de l'umbra, 0 au bord de l'umbra
       float deep = clamp((uRUmbra - d) / max(1e-5, uRUmbra), 0.0, 1.0);
       deep = smoothstep(0.0, 1.0, deep);
-      deep *= deep; // adoucir
+      deep *= deep;
 
       vec3 tint = vec3(0.85, 0.16, 0.08) * (uRedGain * deep);
       gl_FragColor = vec4(tint, 1.0);
     }
   `;
+
 
   // Stable fallback vector (évite de recréer un new Vector3 à chaque render)
   const fallbackEarth = React.useMemo(() => new THREE.Vector3(0, 0, 1), []);
@@ -535,6 +553,7 @@ function Model({
     uRUmbra:    { value: 1.3 },
     uRPenumbra: { value: 4.0 },
     uStrength:  { value: 1.0 },
+    uOffsetRel: { value: 0.0 }, 
   });
   const redUniformsRef = React.useRef({
     uXAxis:     { value: new THREE.Vector3() },
@@ -544,6 +563,7 @@ function Model({
     uRUmbra:    { value: 1.3 },
     uRPenumbra: { value: 4.0 },
     uRedGain:   { value: 0.8 },
+    uOffsetRel: { value: 0.0 }, 
   });
 
   // Références sur les matériaux pour marquer needsUpdate si nécessaire
@@ -565,6 +585,7 @@ function Model({
       u.uRUmbra.value    = clamp(umbraRadiusRel, 0.05, 6.0);
       u.uRPenumbra.value = clamp(Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel), 0.06, 8.0);
       u.uStrength.value  = clamp(eclipseStrength, 0, 1);
+      u.uOffsetRel.value = Math.max(0, eclipseOffsetRel || 0); // <-- NEW
       if (shadowMatRef.current) shadowMatRef.current.needsUpdate = true;
     }
     // Red uniforms
@@ -577,13 +598,16 @@ function Model({
       u.uRUmbra.value    = clamp(umbraRadiusRel, 0.05, 6.0);
       u.uRPenumbra.value = clamp(Math.max(umbraRadiusRel + 1e-3, penumbraOuterRel), 0.06, 8.0);
       u.uRedGain.value   = clamp(redGlowStrength * eclipseStrength, 0, 1);
+      u.uOffsetRel.value = Math.max(0, eclipseOffsetRel || 0); // <-- NEW
       if (redMatRef.current) redMatRef.current.needsUpdate = true;
     }
   }, [
     xAxisLocal, yAxisLocal, viewAxisLocal, earthDirLocal,
     umbraRadiusRel, penumbraOuterRel, eclipseStrength, redGlowStrength,
+    eclipseOffsetRel, 
     fallbackEarth
   ]);
+
 
   return (
     <group scale={[scale, scale, scale]} quaternion={quaternionFinal}>
@@ -785,6 +809,7 @@ export default function Moon3D({
   // Debug
   forceEclipse,
   onReady,
+  eclipseOffsetRel,
 }: Props) {
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
 
@@ -1150,6 +1175,7 @@ export default function Moon3D({
             redGlowStrength={redGlowStrength}
             camForwardWorld={camForwardWorld}
             onMounted={() => setModelMounted(true)}
+            eclipseOffsetRel={eclipseOffsetRel || 0} 
           />
         </Suspense>
 
@@ -1158,6 +1184,14 @@ export default function Moon3D({
       </Canvas>
 
       {/* ...debug HUD... */}
+      {debugMask ? (
+        <div style={{ position: 'absolute', left: 8, top: 8, color: '#fff', background: 'rgba(0,0,0,0.55)', padding: '6px 8px', fontSize: 12, lineHeight: 1.3, borderRadius: 4 }}>
+          <div>Libration RX: {libRotXDeg.toFixed(1)}° — {tiltHint}</div>
+          <div>Libration RY: {libRotYDeg.toFixed(1)}° — {eastHint}</div>
+          <div>Libration RZ: {libRotZDeg.toFixed(1)}°</div>
+        </div>
+      ) : null}
+
     </div>
   );
  }

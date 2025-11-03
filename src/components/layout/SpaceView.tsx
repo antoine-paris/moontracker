@@ -209,6 +209,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     const penumbraRel  = g.penumbraRadiusKm / RMOON_KM;
     const offsetRel    = g.axisOffsetKm     / RMOON_KM;
 
+
     // Intensité: 1 en ombre, décroît linéairement jusqu'au bord de la pénombre, 0 au-delà
     let strength = 0;
     if (offsetRel <= umbraRel) {
@@ -229,6 +230,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       penumbraRel: Math.max(umbraRel, penumbraRel),
       strength,
       redGlow: red,
+      offsetRel,
     };
   }, [date]);
 
@@ -993,6 +995,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             umbraRadiusRel={eclipsePhys.umbraRel}
             penumbraOuterRel={eclipsePhys.penumbraRel}
             redGlowStrength={eclipsePhys.redGlow}
+            eclipseOffsetRel={eclipsePhys.offsetRel} 
           />
         </div>
       )}
