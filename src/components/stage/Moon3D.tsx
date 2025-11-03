@@ -991,10 +991,10 @@ export default function Moon3D({
 
   // Seuil CPU: n’activer l’éclipse que si illum ≥ 0.95 (sinon, fallback sur l’estimation)
   const eclipseActive = useMemo(() => {
-    if (!showPhase) return false;
+    if (!showPhase || !earthshine) return false;
     if (typeof illumFNum === 'number') return illumFNum >= 0.95;
     return (phaseFracNum >= 0.95);
-  }, [showPhase,illumFNum, phaseFracNum]);
+  }, [showPhase, earthshine, illumFNum, phaseFracNum]);
 
   const oppositionOffsetDeg = useMemo(() => Math.abs(180 - sunMoonSepDeg), [sunMoonSepDeg]);
 

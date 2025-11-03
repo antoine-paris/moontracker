@@ -1366,7 +1366,7 @@ export default function TopBar({
             <IconToggleButton
               active={earthshine}
               onClick={() => setEarthshine(!earthshine)}
-              title={showPhase ? "Afficher le clair de Terre" : "Activez « Phase de la Lune » pour autoriser le clair de Terre"}
+              title={showPhase ? "Activer l'ombre et le clair de Terre" : "Activez « Phase de la Lune » pour autoriser le clair de Terre"}
               icon="earthshine"
               disabled={!showPhase}
             />

@@ -893,8 +893,8 @@ export default function HelpTab() {
         <li><I id="earth" />Affiche ou cache le sol opaque (la Terre). Le désactiver permet de suivre le trajet des objets spatiaux même quand ils sont cachés à un observateur (sous l’horizon).</li>
         <li><I id="atmo" />Affiche ou cache un effet d’atmosphère. L’activer rend les étoiles et les planètes difficiles à voir (comme dans la réalité).</li>
         <li><I id="refraction" />Réfraction atmosphérique : modifie la position des étoiles et des planètes proches de l’horizon. La désactiver permet de fluidifier les animations qui traversent l’horizon.</li>
-        <li><I id="phase" />Phase de la Lune et des planètes : affiche les phases selon la position relative du Soleil, de la Terre et de la Lune/planète. Quand cette option est désactivée, la Lune est éclairée tout au long de sa phase.</li>
-        <li><I id="phase" />Clair de Terre : rétréclairage bleuté du limbe ombré de la Lune par la lumière qui se réfléchit sur la Terre.</li>
+        <li><I id="phase" />Phase de la Lune et des planètes : affiche les phases selon la position relative du Soleil, de la Terre et de la Lune/planète. Quand cette option est désactivée, la Lune est éclairée tout au long de sa phase et les éclipses de lune sont désactivées.</li>
+        <li><I id="phase" />Clair de Terre / Ombre de terre  : rétréclairage bleuté du limbe ombré de la Lune par la lumière qui se réfléchit sur la Terre. Active ou désactive l'ombre de la terre et donc les éclipses de lune (lune rouge).</li>
         </ul><ul className="list-disc pl-6 grid grid-cols-1 md:grid-cols-2  gap-x-8 gap-y-2">
         <li><I id="sun" />Affiche ou cache le Soleil</li>
         <li><I id="moon" />Affiche ou cache la Lune</li>

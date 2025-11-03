@@ -37,10 +37,10 @@ export default function SimulationsTab() {
       img : '/img/examples/export-eclipse-dallas-2024.jpg'
     },
     {
-      label: 'Éclipse lunaire totale — 2025-03-14 (Paris)',
+      label: 'Éclipse lunaire totale — 2025-09-08 (Australie)',
       desc: 'La Lune traverse la pénombre puis l’ombre terrestre (ombre centrale). Au maximum, elle rougit: la lumière solaire, réfractée par l’atmosphère, est filtrée par diffusion Rayleigh — la Lune voit simultanément toutes les aurores et couchers de Soleil du globe. La teinte/obscurité varient avec la transparence atmosphérique (échelle de Danjon). Observation: sans protection, à l’œil nu ou aux jumelles; un horizon dégagé est utile aux levants/couchants. Photo: pendant la totalité, luminosité très basse — essayez ≈ 1/4 à 2 s, ISO 400–1600, f/4–f/8 selon la focale; hors totalité, revenez à des temps courts. Comparez l’orientation et la vitesse du bord sombre (ombre) avec la simulation.',
-      url: '/?tl=2i2p.m55zs0&lp=74&l=5391959&t=m5608o&F=0&p=1&d=nikon-p1000&z=p1000-2000eq&b=aw1z&pl=2&sr=0.0167',
-      
+      url: '/?tl=3wn5.t2875e&lp=5xc&g=rhby8kxye&tz=Australia%2FDarwin&t=t2884e&F=1&p=0&d=custom&k=1&f=1fy&b=9hcf&pl=a&sr=-101.041',
+      img : '/img/examples/export-red-moon.jpg'
     },
     {
       label: 'Croix du Sud — visibilité australe (Santiago)',
