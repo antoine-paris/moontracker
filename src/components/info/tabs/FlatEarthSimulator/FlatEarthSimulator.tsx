@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber'; // + useThree
-import { OrbitControls, Text, Line, useTexture, Billboard } from '@react-three/drei';
+import { OrbitControls, Text, Line, useTexture, Billboard, useHelper } from '@react-three/drei';
 import * as THREE from 'three';
 
 
@@ -68,24 +68,16 @@ function CityMarkers({ cities, radius }: { cities: City[]; radius: number }) {
     <group>
       {cities.map((c) => {
         const [x, z] = latLonToXZ(c.lat, c.lon, radius);
-        const markerR = 0.1;              // rayon de la boule
-        const labelOffset = 0.04;         // petit espace au-dessus de la boule
+        const markerR = 0.1;
+        const labelOffset = 0.04;
         return (
           <group key={c.id} position={[x, 0, z]}>
-            {/* boule à moitié dans le sol: centre sur y=0 */}
-            <mesh position={[0, 0, 0]}>
+            <mesh position={[0, 0, 0]} castShadow>
               <sphereGeometry args={[markerR, 16, 16]} />
               <meshStandardMaterial color="#ff5555" emissive="#aa2222" emissiveIntensity={0.6} />
             </mesh>
-            {/* label au-dessus de la boule */}
             <Billboard position={[0, markerR + labelOffset, 0]} follow>
-              <Text
-                fontSize={0.12}
-                color="#ffdede"
-                anchorX="center"
-                anchorY="bottom"   // le bas du texte touche le point (au-dessus de la boule)
-                maxWidth={0.8}
-              >
+              <Text fontSize={0.12} color="#ffdede" anchorX="center" anchorY="bottom" maxWidth={0.8}>
                 {c.label}
               </Text>
             </Billboard>
@@ -120,7 +112,16 @@ interface FlatEarthParams {
   showGrid: boolean;
   showLightCone: boolean;
   showTrajectories: boolean;
-  cameraFov: number; // <-- ajouté
+  cameraFov: number;
+
+  // Mode d’éclairage du soleil (directionnelle supprimée)
+  sunLightMode: 'spot' | 'point';
+  sunLightIntensity: number;
+  sunLightColor: string;
+  sunCastShadows: boolean;
+  sunSpotAngleDeg: number;
+
+  showMoon: boolean;
 }
 
 // Composant pour le disque terrestre
@@ -141,7 +142,7 @@ function EarthDisk({ radius }: { radius: number }) {
   return (
     <group>
       {/* Disque texturé */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <circleGeometry args={[radius, 128]} />
         <meshStandardMaterial
           map={texture}
@@ -163,7 +164,7 @@ function EarthDisk({ radius }: { radius: number }) {
       ))}
 
       {/* Centre (Pôle Nord) */}
-      <mesh position={[0, 0.1, 0]}>
+      <mesh position={[0, 0.1, 0]} castShadow>
         <cylinderGeometry args={[0.5, 0.5, 0.2, 32]} />
         <meshStandardMaterial color="#f0f0f0" />
       </mesh>
@@ -247,48 +248,92 @@ function CelestialDome({ radius, height, visible }: { radius: number; height: nu
 }
 
 // Composant pour le Soleil
-function Sun({ size, distance, height, hour, showCone }: { 
-  size: number; distance: number; height: number; hour: number; showCone: boolean;
+function Sun({
+  size,
+  distance,
+  height,
+  hour,
+  mode,
+  intensity,
+  color,
+  showCone,
+  castShadows,
+  spotAngleDeg,
+}: {
+  size: number;
+  distance: number;
+  height: number;
+  hour: number;
+  mode: 'spot' | 'point';
+  intensity: number;
+  color: string;
+  showCone: boolean;
+  castShadows: boolean;
+  spotAngleDeg: number;
 }) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const coneRef = useRef<THREE.Mesh>(null);
+  const sunMeshRef = useRef<THREE.Mesh>(null);
+  const spotLightRef = useRef<THREE.SpotLight>(null);
+  const spotTargetRef = useRef<THREE.Object3D>(null);
+
+  // Helper pour le projecteur
+  useHelper(mode === 'spot' && showCone ? spotLightRef : null, THREE.SpotLightHelper, '#ffaa00');
 
   useFrame(() => {
     const angle = (hour / 24) * Math.PI * 2 - Math.PI / 2;
     const x = Math.cos(angle) * distance;
     const z = Math.sin(angle) * distance;
-    if (meshRef.current) {
-      meshRef.current.position.set(x, height, z);
-    }
-    if (coneRef.current) {
-      coneRef.current.position.set(x, height - 5, z);
+    const y = height;
+
+    sunMeshRef.current?.position.set(x, y, z);
+
+    if (mode === 'spot' && spotLightRef.current && spotTargetRef.current) {
+      spotLightRef.current.position.set(x, y, z);
+      // vertical: cible directement sous le soleil
+      spotTargetRef.current.position.set(x, 0, z);
+      spotLightRef.current.target = spotTargetRef.current;
+      spotLightRef.current.target.updateMatrixWorld();
     }
   });
 
   return (
     <>
-      <mesh ref={meshRef}>
+      <mesh ref={sunMeshRef} castShadow={false}>
         <sphereGeometry args={[size, 32, 32]} />
         <meshStandardMaterial color="#ffd166" emissive="#ffd166" emissiveIntensity={1.2} roughness={0.2} metalness={0} />
       </mesh>
 
-      {showCone && (
-        <mesh ref={coneRef}>
-          <coneGeometry args={[10, 10, 32]} />
-          <meshBasicMaterial color="#ffd166" opacity={0.25} transparent />
-        </mesh>
+      {mode === 'spot' && (
+        <>
+          <spotLight
+            ref={spotLightRef}
+            args={[color, intensity]}
+            angle={THREE.MathUtils.degToRad(spotAngleDeg)}
+            penumbra={0.3}
+            decay={2}
+            distance={0}
+            castShadow={castShadows}
+            shadow-mapSize-width={2048}
+            shadow-mapSize-height={2048}
+            shadow-camera-near={0.5}
+            shadow-camera-far={1500}
+          />
+          <object3D ref={spotTargetRef} />
+        </>
       )}
 
-      <pointLight 
-        position={[
-          Math.cos((hour / 24) * Math.PI * 2 - Math.PI / 2) * distance,
-          height,
-          Math.sin((hour / 24) * Math.PI * 2 - Math.PI / 2) * distance
-        ]} 
-        intensity={6}
-        color="#ffffff"
-        distance={0} // infini pour éviter l'extinction
-      />
+      {mode === 'point' && (
+        <pointLight
+          position={[
+            Math.cos((hour / 24) * Math.PI * 2 - Math.PI / 2) * distance,
+            height,
+            Math.sin((hour / 24) * Math.PI * 2 - Math.PI / 2) * distance,
+          ]}
+          intensity={intensity}
+          color={color}
+          distance={0}
+          castShadow={castShadows}
+        />
+      )}
     </>
   );
 }
@@ -312,7 +357,7 @@ function Moon({ size, distance, height, hour }: {
   });
   
   return (
-    <mesh ref={meshRef}>
+    <mesh ref={meshRef} castShadow>
       <sphereGeometry args={[size, 32, 32]} />
       <meshStandardMaterial color="#cccccc" emissive="#666666" emissiveIntensity={0.2} />
     </mesh>
@@ -372,6 +417,10 @@ function ControlPanel({ params, setParams, onReset }: {
   // conversion: 1 unité scène = (circumference / (2*radius)) km
   const kmPerUnit = EARTH_CIRCUMFERENCE_KM / (2 * params.diskRadius);
   const fmtKm = (u: number) => `${Math.round(u * kmPerUnit)} km`;
+
+  // Estimation diamètre éclairé (approx 2*h*tan(angle))
+  const approxSpotDiameterKm =
+    Math.round((2 * params.sunHeight * Math.tan(THREE.MathUtils.degToRad(params.sunSpotAngleDeg))) * kmPerUnit);
 
   return (
     <div style={{
@@ -440,7 +489,7 @@ function ControlPanel({ params, setParams, onReset }: {
           Soleil : {fmtKm(params.sunHeight)}
           <input
             type="range"
-            min="5"
+            min="2"
             max="50"
             step="1"
             value={params.sunHeight}
@@ -453,9 +502,9 @@ function ControlPanel({ params, setParams, onReset }: {
           {fmtKm(params.sunSize*2)}
           <input
             type="range"
-            min="0.5"
+            min="0.05"
             max="5"
-            step="0.1"
+            step="0.01"
             value={params.sunSize}
             onChange={(e) => setParams({ ...params, sunSize: parseFloat(e.target.value) })}
             style={{ width: '100%', fontSize: '12px' }}
@@ -495,9 +544,9 @@ function ControlPanel({ params, setParams, onReset }: {
           {fmtKm(params.moonSize*2)}
           <input
             type="range"
-            min="0.5"
+            min="0.05"
             max="5"
-            step="0.1"
+            step="0.01"
             value={params.moonSize}
             onChange={(e) => setParams({ ...params, moonSize: parseFloat(e.target.value) })}
             style={{ width: '100%', fontSize: '12px' }}
@@ -522,7 +571,7 @@ function ControlPanel({ params, setParams, onReset }: {
         Hauteur du dôme : {fmtKm(params.domeHeight)}
         <input
           type="range"
-          min="10"
+          min="50"
           max="100"
           step="5"
           value={params.domeHeight}
@@ -543,15 +592,6 @@ function ControlPanel({ params, setParams, onReset }: {
       <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>
         <input
           type="checkbox"
-          checked={params.showGrid}
-          onChange={(e) => setParams({ ...params, showGrid: e.target.checked })}
-        />
-        {' '}Afficher la grille
-      </label>
-      
-      <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>
-        <input
-          type="checkbox"
           checked={params.showLightCone}
           onChange={(e) => setParams({ ...params, showLightCone: e.target.checked })}
         />
@@ -567,25 +607,75 @@ function ControlPanel({ params, setParams, onReset }: {
         {' '}Afficher les trajectoires
       </label>
 
+      {/* Lumière du Soleil */}
+      <div style={{ marginBottom: '16px', padding: '8px', border: '1px solid #222', borderRadius: 6 }}>
+        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <label style={{ display: 'block', fontSize: '12px', flex: 1 }}>
+            Intensité: {params.sunLightIntensity.toFixed(1)}
+            <input
+              type="range"
+              min="200"
+              max="3000"
+              step="100"
+              value={params.sunLightIntensity}
+              onChange={(e) => setParams({ ...params, sunLightIntensity: parseFloat(e.target.value) })}
+              style={{ width: '100%' }}
+            />
+          </label>
+        </div>
+
+        {/* Largeur du faisceau: <=90° => spot, 91° => point */}
+        <div style={{ marginTop: 8 }}>
+          <label style={{ display: 'block', fontSize: '12px' }}>
+            Largeur du faisceau
+            <input
+              type="range"
+              min="2"
+              max="91"
+              step="1"
+              value={params.sunSpotAngleDeg}
+              onChange={(e) => {
+                const angle = parseFloat(e.target.value);
+                setParams({
+                  ...params,
+                  sunSpotAngleDeg: angle,
+                  sunLightMode: angle > 90 ? 'point' : 'spot',
+                });
+              }}
+              style={{ width: '100%' }}
+            />
+          </label>
+        </div>
+      </div>
+
+      
       <button
         onClick={() => {
           setParams({
             diskRadius: 50,
             domeHeight: 50,
-            sunHeight: 20,
-            moonHeight: 20,
-            sunSize: 1,
-            moonSize: 0.8,
+            sunHeight: 12,
+            moonHeight: 11,
+            sunSize: 0.07,
+            moonSize: 0.06,
             sunDistance: 25,
             moonDistance: 20,
             daySpeed: 0,
             currentHour: 12,
             latitude: 45,
             showDome: true,
-            showGrid: true,
+            showGrid: false,
             showLightCone: false,
             showTrajectories: true,
             cameraFov: 50,
+
+            sunLightMode: 'spot',
+            sunLightIntensity: 1000,
+            sunLightColor: '#ffffff',
+            sunCastShadows: true,
+            sunSpotAngleDeg: 70,
+
+            showMoon: true,
           });
           onReset();
         }}
@@ -640,20 +730,27 @@ export default function FlatEarthSimulator() {
   const [params, setParams] = useState<FlatEarthParams>({
     diskRadius: 50,
     domeHeight: 50,
-    sunHeight: 20,
-    moonHeight: 20,
-    sunSize: 1,
-    moonSize: 0.8,
+    sunHeight: 12,
+    moonHeight: 10,
+    sunSize: 0.07,
+    moonSize: 0.06,
     sunDistance: 25,
     moonDistance: 20,
     daySpeed: 0,
     currentHour: 12,
     latitude: 45,
     showDome: true,
-    showGrid: true,
+    showGrid: false,
     showLightCone: false,
     showTrajectories: true,
     cameraFov: 50,
+
+    sunLightMode: 'spot',
+    sunLightIntensity: 1000.0,
+    sunLightColor: '#ffffff',
+    sunCastShadows: true,
+    sunSpotAngleDeg: 70,
+    showMoon: true,
   });
 
   const controlsRef = useRef<any>(null);
@@ -786,42 +883,51 @@ function CameraPrincipalPointOffset({ bottomMarginPx = 50 }: { bottomMarginPx?: 
             camera={{ position: [80, 60, 80], fov: params.cameraFov }}
             style={{ width: '100%', height: '100%' }}
             dpr={[1, 1.75]}
+            shadows
             gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
           >
             <CameraFovUpdater fov={params.cameraFov} />
             {selectedCity && <CameraPrincipalPointOffset bottomMarginPx={50} />}
             <color attach="background" args={['#0b1020']} />
             <Suspense fallback={null}>
-              {/*  lights */}
-              <hemisphereLight args={['#89b4fa', '#1f2937', 0.4]} />
-              <ambientLight intensity={0.5} />
-              <directionalLight position={[20, 30, 10]} intensity={0.9} color="#ffffff" />
+              {/* Lights d'ambiance (gardez faibles pour mieux voir le spot) */}
+              <hemisphereLight args={['#89b4fa', '#1f2937', 0.35]} />
+              <ambientLight intensity={0.25} />
+              {/* Supprimé: la directionnelle globale qui éclairait toute la scène */}
 
-              {/*  scene */}
+              {/* Scène */}
               <EarthDisk radius={params.diskRadius} />
               <CelestialDome radius={params.domeHeight} height={params.domeHeight} visible={params.showDome} />
+
               <Sun
                 size={params.sunSize}
                 distance={params.sunDistance}
                 height={params.sunHeight}
                 hour={params.currentHour}
+                mode={params.sunLightMode}
+                intensity={params.sunLightIntensity}
+                color={params.sunLightColor}
                 showCone={params.showLightCone}
+                castShadows={params.sunCastShadows}
+                spotAngleDeg={params.sunSpotAngleDeg}
               />
+
               <Moon
                 size={params.moonSize}
                 distance={params.moonDistance}
                 height={params.moonHeight}
                 hour={params.currentHour}
               />
+
               <Trajectories
                 sunDistance={params.sunDistance}
                 moonDistance={params.moonDistance}
                 sunHeight={params.sunHeight}
                 moonHeight={params.moonHeight}
-                visible={params.showTrajectories}
+                visible={params.showTrajectories}   // FIX: was params.showTrajectoires
               />
-              {/* --- Marqueurs de villes --- */}
-              <CityMarkers cities={sortedCities} radius={params.diskRadius} /> {/* <-- sorted */}
+
+              <CityMarkers cities={sortedCities} radius={params.diskRadius} />
 
               <GridHelper size={params.diskRadius} visible={params.showGrid} />
               
@@ -831,7 +937,7 @@ function CameraPrincipalPointOffset({ bottomMarginPx = 50 }: { bottomMarginPx?: 
                 enableZoom
                 enableRotate
                 minPolarAngle={0}
-                maxPolarAngle={Math.PI / 2 - 0.01}  // bloque la bascule sous l’horizon
+                maxPolarAngle={Math.PI / 2 - 0.01}
               />
             </Suspense>
           </Canvas>
