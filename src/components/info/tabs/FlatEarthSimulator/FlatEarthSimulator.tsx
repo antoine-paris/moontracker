@@ -1,10 +1,11 @@
 import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber'; // + useThree
-import { OrbitControls, Text, Line, useTexture, Billboard, useHelper } from '@react-three/drei';
+import { OrbitControls, Text, Line, useTexture, Billboard, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
-
 const EARTH_CIRCUMFERENCE_KM = 40075; // diamètre du disque = circonférence terrestre
+const CITY_VIEW_BOTTOM_MARGIN = 50;   // marge utilisée quand on centre la caméra en bas de l'écran
+const EARTH_DISK_THICKNESS = 5;
 
 // --- Ajouts: villes + projection ---
 type City = { id: string; label: string; lat: number; lon: number };
@@ -63,24 +64,109 @@ function latLonToXZ(latDeg: number, lonDeg: number, diskRadius: number) {
   return [x, z] as const;
 }
 
-function CityMarkers({ cities, radius }: { cities: City[]; radius: number }) {
+function CityMarkers({
+  cities,
+  radius,
+  lonOffsetDeg,
+  lonClockwise,
+}: {
+  cities: City[];
+  radius: number;
+  lonOffsetDeg: number;
+  lonClockwise: boolean;
+}) {
+  const { camera } = useThree();
+
+  // km per scene unit depends on disk radius (1 unit = EARTH_CIRCUMFERENCE_KM / (2*radius) km)
+  const kmPerUnit = EARTH_CIRCUMFERENCE_KM / (2 * radius);
+
+  // Desired real-world sizes
+  const cylDiameterKm = 80.15;
+  const cylHeightKm = 1;
+
+  // Convert to scene units
+  const cylRadiusUnits = (cylDiameterKm / 2) / kmPerUnit;
+  const cylHeightUnits = cylHeightKm / kmPerUnit;
+
+  // Seuil d'affichage en km
+  const MAX_LABEL_DISTANCE_KM = 10000;
+  const maxDistanceUnits = MAX_LABEL_DISTANCE_KM / kmPerUnit;
+
+  // Offset vertical du label
+  const labelOffsetUnits = 0.04;
+
+  // Pré-calcul des positions des labels
+  const positions = useMemo(
+    () =>
+      cities.map((c) => {
+        const lon = (lonClockwise ? -c.lon : c.lon) + lonOffsetDeg;
+        const theta = THREE.MathUtils.degToRad(lon);
+        const colat = 90 - c.lat;
+        const r = (colat / 180) * radius;
+        const x = r * Math.sin(theta);
+        const z = r * Math.cos(theta);
+        return { id: c.id, x, y: cylHeightUnits + labelOffsetUnits, z, city: c };
+      }),
+    [cities, radius, cylHeightUnits, lonOffsetDeg, lonClockwise]
+  );
+
+  // Visibilité par ville
+  const [visibleById, setVisibleById] = useState<Record<string, boolean>>({});
+  const prevVisibleRef = useRef<Record<string, boolean>>({});
+
+  useFrame(() => {
+    const cam = camera.position;
+    let changed = false;
+    const next: Record<string, boolean> = {};
+
+    for (const p of positions) {
+      const dx = cam.x - p.x;
+      const dy = cam.y - p.y;
+      const dz = cam.z - p.z;
+      const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      const vis = dist <= maxDistanceUnits;
+      next[p.id] = vis;
+      if (prevVisibleRef.current[p.id] !== vis) changed = true;
+    }
+
+    if (changed) {
+      prevVisibleRef.current = next;
+      setVisibleById(next);
+    }
+  });
+
   return (
     <group>
-      {cities.map((c) => {
-        const [x, z] = latLonToXZ(c.lat, c.lon, radius);
-        const markerR = 0.1;
-        const labelOffset = 0.04;
+      {positions.map((p) => {
+        const c = p.city;
+        const isVisible = visibleById[c.id] !== false; // par défaut visible jusqu'au 1er calcul
+
         return (
-          <group key={c.id} position={[x, 0, z]}>
-            <mesh position={[0, 0, 0]} castShadow>
-              <sphereGeometry args={[markerR, 16, 16]} />
+          <group key={c.id} position={[p.x, 0, p.z]}>
+            {/* Cylinder base at ground: center at y = height/2 */}
+            <mesh position={[0, cylHeightUnits / 2, 0]} castShadow>
+              <cylinderGeometry args={[cylRadiusUnits, cylRadiusUnits, cylHeightUnits, 24]} />
               <meshStandardMaterial color="#ff5555" emissive="#aa2222" emissiveIntensity={0.6} />
             </mesh>
-            <Billboard position={[0, markerR + labelOffset, 0]} follow>
-              <Text fontSize={0.12} color="#ffdede" anchorX="center" anchorY="bottom" maxWidth={0.8}>
-                {c.label}
-              </Text>
-            </Billboard>
+
+            {/* Label en taille constante (DOM), centré, occlus, et masqué si trop loin */}
+            <Html
+              position={[0, cylHeightUnits + labelOffsetUnits, 0]}
+              center
+              occlude
+              transform={false}
+              style={{
+                display: isVisible ? 'block' : 'none',
+                pointerEvents: 'none',
+                color: '#ffdede',
+                fontSize: '12px',
+                fontWeight: 500,
+                whiteSpace: 'nowrap',
+                textShadow: '0 1px 2px rgba(0,0,0,0.9)',
+              }}
+            >
+              {c.label}
+            </Html>
           </group>
         );
       })}
@@ -122,11 +208,15 @@ interface FlatEarthParams {
   sunSpotAngleDeg: number;
 
   showMoon: boolean;
+  // Projection texture (centrée pôle Nord)
+  mapLonOffsetDeg: number;     // décale le méridien 0° sur la texture
+  mapLonClockwise: boolean;    // inverse Est/Ouest si la texture est miroir
+  showProjectionDebug?: boolean;
+
 }
 
 // Composant pour le disque terrestre
 function EarthDisk({ radius }: { radius: number }) {
-  // Texture depuis le dossier public => accessible via /img/flatearth/flatearth.png
   const texture = useTexture('/img/flatearth/flatearth.png');
   useMemo(() => {
     if ('colorSpace' in texture) {
@@ -141,60 +231,68 @@ function EarthDisk({ radius }: { radius: number }) {
 
   return (
     <group>
-      {/* Disque texturé */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <circleGeometry args={[radius, 128]} />
+      {/* Cylindre fermé: top à y=0, épaisseur vers -Y */}
+      <mesh position={[0, -EARTH_DISK_THICKNESS / 2, 0]} receiveShadow>
+        <cylinderGeometry
+          args={[radius, radius, EARTH_DISK_THICKNESS, 128, 1, false]}
+        />
+        {/* group order: 0=side, 1=top, 2=bottom */}
         <meshStandardMaterial
+          attach="material-0"
+          color="#233141"
+          roughness={0.9}
+          metalness={0.0}
+        />
+        <meshStandardMaterial
+          attach="material-1"
           map={texture}
           color="#ffffff"
           roughness={0.9}
           metalness={0.0}
-          side={THREE.DoubleSide}
-          transparent
-          alphaTest={0.1}
+          side={THREE.FrontSide}
+        />
+        <meshStandardMaterial
+          attach="material-2"
+          color="#0b0f1a"
+          roughness={0.9}
+          metalness={0.0}
+          side={THREE.FrontSide}
         />
       </mesh>
-
-      {/* Cercles concentriques pour les latitudes (légers) */}
-      {[0.2, 0.4, 0.6, 0.8].map((ratio) => (
-        <mesh key={ratio} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, 0]}>
-          <ringGeometry args={[radius * ratio - 0.1, radius * ratio + 0.1, 64]} />
-          <meshBasicMaterial color="#ffffff" opacity={0.18} transparent />
-        </mesh>
-      ))}
-
-      {/* Centre (Pôle Nord) */}
-      <mesh position={[0, 0.1, 0]} castShadow>
-        <cylinderGeometry args={[0.5, 0.5, 0.2, 32]} />
-        <meshStandardMaterial color="#f0f0f0" />
-      </mesh>
-
-      
     </group>
   );
 }
 
 // Composant pour le dôme céleste
-function CelestialDome({ radius, height, visible }: { radius: number; height: number; visible: boolean }) {
+function CelestialDome({ radius, height, visible, currentHour, daySpeed }: { radius: number; height: number; visible: boolean; currentHour: number; daySpeed: number }) {
   const starsRef = useRef<THREE.Points>(null);
+  const starsDaysRef = useRef(currentHour / 24);
+
+  useEffect(() => {
+    // When paused, sync phase to slider; when playing, we keep integrating.
+    if (daySpeed <= 0) starsDaysRef.current = currentHour / 24;
+  }, [currentHour, daySpeed]);
 
   const starsGeometry = useMemo(() => {
     const geometry = new THREE.BufferGeometry();
     const vertices: number[] = [];
-    for (let i = 0; i < 1200; i++) {
+    const N = 2500; // a bit more stars
+    for (let i = 0; i < N; i++) {
+      // Uniform hemisphere: y >= 0
       const theta = Math.random() * Math.PI * 2;
-      const phi = Math.random() * Math.PI / 2;
-      const r = radius * 0.95;
+      const mu = Math.random();              // cos(phi) in [0,1]
+      const phi = Math.acos(mu);             // phi in [0, pi/2]
+      const r = radius * 0.98;
+
       const x = r * Math.sin(phi) * Math.cos(theta);
-      const y = r * Math.sin(phi) * Math.sin(theta);
-      const z = r * Math.cos(phi);
-      vertices.push(x, z, y);
+      const y = r * Math.cos(phi);
+      const z = r * Math.sin(phi) * Math.sin(theta);
+      vertices.push(x, y, z);
     }
     geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
     return geometry;
   }, [radius]);
 
-  // Sprite circulaire pour étoiles (rond + bord doux)
   const starSprite = useMemo(() => {
     const size = 64;
     const canvas = document.createElement('canvas');
@@ -218,29 +316,42 @@ function CelestialDome({ radius, height, visible }: { radius: number; height: nu
     return tex;
   }, []);
 
-  useFrame(() => {
-    if (starsRef.current) starsRef.current.rotation.y += 0.0001;
+  useFrame((state, delta) => {
+    if (!starsRef.current) return;
+
+    // Integrate elapsed days when playing (no modulo so ratio accumulates across days)
+    if (daySpeed > 0) {
+      starsDaysRef.current += ((daySpeed / 6) * delta) / 24;
+    } else {
+      starsDaysRef.current = currentHour / 24;
+    }
+
+    const STARS_SPEED_RATIO = 364 / 365;
+    // Keep clockwise for stars
+    const angle = -(starsDaysRef.current) * Math.PI * 2 * STARS_SPEED_RATIO;
+    starsRef.current.rotation.y = angle;
   });
 
   if (!visible) return null;
 
   return (
     <group>
-      <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      {/* Upper hemisphere aligned with +Y (no rotation) */}
+      <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[radius, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        <meshBasicMaterial color="#0b1e3a" opacity={0.1} transparent side={THREE.BackSide} />
+        <meshBasicMaterial color="#1b2b5a" opacity={0.15} transparent side={THREE.BackSide} />
       </mesh>
       <points ref={starsRef}>
         <primitive attach="geometry" object={starsGeometry} />
         <pointsMaterial
           attach="material"
           color="#ffffff"
-          size={0.75}              // plus petites
+          size={0.5}
           sizeAttenuation
-          map={starSprite}         // rondes via sprite
+          map={starSprite}
           transparent
-          alphaTest={0.5}          // coupe les pixels carrés
-          depthWrite={false}       // meilleur blending
+          alphaTest={0.5}
+          depthWrite={false}
         />
       </points>
     </group>
@@ -253,6 +364,7 @@ function Sun({
   distance,
   height,
   hour,
+  daySpeed,
   mode,
   intensity,
   color,
@@ -264,6 +376,7 @@ function Sun({
   distance: number;
   height: number;
   hour: number;
+  daySpeed: number;
   mode: 'spot' | 'point';
   intensity: number;
   color: string;
@@ -274,12 +387,21 @@ function Sun({
   const sunMeshRef = useRef<THREE.Mesh>(null);
   const spotLightRef = useRef<THREE.SpotLight>(null);
   const spotTargetRef = useRef<THREE.Object3D>(null);
+  const pointLightRef = useRef<THREE.PointLight>(null);
+  const sunDaysRef = useRef(hour / 24);
+  useEffect(() => {
+    if (daySpeed <= 0) sunDaysRef.current = hour / 24;
+  }, [hour, daySpeed]);
 
-  // Helper pour le projecteur
-  useHelper(mode === 'spot' && showCone ? spotLightRef : null, THREE.SpotLightHelper, '#ffaa00');
+  useFrame((state, delta) => {
+    if (daySpeed > 0) {
+      sunDaysRef.current += ((daySpeed / 6) * delta) / 24;
+    } else {
+      sunDaysRef.current = hour / 24;
+    }
 
-  useFrame(() => {
-    const angle = (hour / 24) * Math.PI * 2 - Math.PI / 2;
+    // Counterclockwise sun now
+    const angle = (sunDaysRef.current) * Math.PI * 2 - Math.PI / 2;
     const x = Math.cos(angle) * distance;
     const z = Math.sin(angle) * distance;
     const y = height;
@@ -288,10 +410,12 @@ function Sun({
 
     if (mode === 'spot' && spotLightRef.current && spotTargetRef.current) {
       spotLightRef.current.position.set(x, y, z);
-      // vertical: cible directement sous le soleil
       spotTargetRef.current.position.set(x, 0, z);
       spotLightRef.current.target = spotTargetRef.current;
       spotLightRef.current.target.updateMatrixWorld();
+    }
+    if (mode === 'point' && pointLightRef.current) {
+      pointLightRef.current.position.set(x, y, z);
     }
   });
 
@@ -300,6 +424,10 @@ function Sun({
       <mesh ref={sunMeshRef} castShadow={false}>
         <sphereGeometry args={[size, 32, 32]} />
         <meshStandardMaterial color="#ffd166" emissive="#ffd166" emissiveIntensity={1.2} roughness={0.2} metalness={0} />
+        {/* Cone locked to sun position */}
+        {mode === 'spot' && showCone && (
+          <AttachedSunCone height={height} angleDeg={spotAngleDeg} groundY={0} />
+        )}
       </mesh>
 
       {mode === 'spot' && (
@@ -323,36 +451,147 @@ function Sun({
 
       {mode === 'point' && (
         <pointLight
-          position={[
-            Math.cos((hour / 24) * Math.PI * 2 - Math.PI / 2) * distance,
-            height,
-            Math.sin((hour / 24) * Math.PI * 2 - Math.PI / 2) * distance,
-          ]}
+          ref={pointLightRef}
           intensity={intensity}
           color={color}
           distance={0}
           castShadow={castShadows}
         />
       )}
+
+      
     </>
   );
 }
 
+// Composant visuel du cône de lumière du Soleil
+function SunLightCone({
+  distance,
+  height,
+  hour,
+  daySpeed,
+  angleDeg,
+}: {
+  distance: number;
+  height: number;
+  hour: number;
+  daySpeed: number;
+  angleDeg: number;
+}) {
+  const coneRef = useRef<THREE.Mesh>(null);
+  const sunDaysRef = useRef(hour / 24);
+  useEffect(() => {
+    if (daySpeed <= 0) sunDaysRef.current = hour / 24;
+  }, [hour, daySpeed]);
+
+
+  // Géométrie unitaire (radius=1, height=1) que l’on met à l’échelle
+  const geometry = useMemo(() => new THREE.ConeGeometry(1, 1, 48, 1, true), []);
+
+  useFrame((_, delta) => {
+    if (!coneRef.current) return;
+
+    if (daySpeed > 0) {
+      sunDaysRef.current += ((daySpeed / 6) * delta) / 24;
+    } else {
+      sunDaysRef.current = hour / 24;
+    }
+
+    // Same direction as Sun (counterclockwise)
+    const angle = (sunDaysRef.current) * Math.PI * 2 - Math.PI / 2;
+    const x = Math.cos(angle) * distance;
+    const z = Math.sin(angle) * distance;
+    const y = height;
+
+    const halfAngleRad = THREE.MathUtils.degToRad(angleDeg);
+    const baseRadius = Math.max(0, Math.tan(halfAngleRad) * height);
+
+    coneRef.current.scale.set(baseRadius, height, baseRadius);
+    coneRef.current.position.set(x, y - height / 2, z);
+  });
+
+  return (
+    <mesh ref={coneRef} castShadow={false} receiveShadow={false} geometry={geometry}>
+      <meshBasicMaterial
+        color="rgba(166, 213, 246, 1)"
+        transparent
+        opacity={0.82}
+        depthWrite={false}
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  );
+}
+
+function AttachedSunCone({
+  height,
+  angleDeg,
+  groundY = 0,
+  overshoot = 0.25,
+}: {
+  height: number;
+  angleDeg: number;
+  groundY?: number;
+  overshoot?: number;
+}) {
+  const beamLen = Math.max(0.001, (height - groundY) + overshoot);
+  const halfAngleRad = THREE.MathUtils.degToRad(angleDeg);
+  const baseRadius = Math.max(0, Math.tan(halfAngleRad) * beamLen);
+
+  return (
+    <mesh
+      // Render after the earth disk and ignore depth to prevent being cut
+      renderOrder={1000}
+      position={[0, -beamLen / 2, 0]}
+      scale={[baseRadius, beamLen, baseRadius]}
+      castShadow={false}
+      receiveShadow={false}
+    >
+      <coneGeometry args={[1, 1, 48, 1, true]} />
+      <meshBasicMaterial
+        color="rgba(102, 179, 255, 1)"
+        transparent
+        opacity={0.72}
+        depthWrite={false}
+        depthTest={false}     // was true -> prevents disk from cutting the cone
+        side={THREE.DoubleSide}
+        blending={THREE.AdditiveBlending}
+      />
+    </mesh>
+  );
+}
+
 // Composant pour la Lune
-function Moon({ size, distance, height, hour }: { 
+function Moon({ size, distance, height, hour, daySpeed }: { 
   size: number; 
   distance: number; 
   height: number; 
   hour: number;
+  daySpeed: number;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const moonDaysRef = useRef(hour / 24);
+  useEffect(() => {
+    if (daySpeed <= 0) moonDaysRef.current = hour / 24;
+  }, [hour, daySpeed]);
   
-  useFrame(() => {
-    const angle = ((hour + 12) / 24) * Math.PI * 2 - Math.PI / 2;
+  useFrame((state, delta) => {
+    if (daySpeed > 0) {
+      moonDaysRef.current += ((daySpeed / 6) * delta) / 24;
+    } else {
+      moonDaysRef.current = hour / 24;
+    }
+
+    const MOON_SPEED_RATIO = 1 / 29;
+    // Counterclockwise, continuous across day wrap
+    const angle = (moonDaysRef.current) * Math.PI * 2 * MOON_SPEED_RATIO - Math.PI / 2;
     if (meshRef.current) {
-      meshRef.current.position.x = Math.cos(angle) * distance;
-      meshRef.current.position.z = Math.sin(angle) * distance;
-      meshRef.current.position.y = height;
+      meshRef.current.position.set(
+        Math.cos(angle) * distance,
+        height,
+        Math.sin(angle) * distance
+      );
     }
   });
   
@@ -363,7 +602,6 @@ function Moon({ size, distance, height, hour }: {
     </mesh>
   );
 }
-
 // Composant pour les observateurs
 
 
@@ -422,6 +660,9 @@ function ControlPanel({ params, setParams, onReset }: {
   const approxSpotDiameterKm =
     Math.round((2 * params.sunHeight * Math.tan(THREE.MathUtils.degToRad(params.sunSpotAngleDeg))) * kmPerUnit);
 
+  // Etat du bouton Lecture/Pause
+  const isPlaying = params.daySpeed > 0;
+
   return (
     <div style={{
       height: '100%',
@@ -432,6 +673,7 @@ function ControlPanel({ params, setParams, onReset }: {
       color: 'white',
       maxWidth: '100%',
       maxHeight: '100%',
+      textAlign: 'left',
       overflowY: 'auto',
       boxSizing: 'border-box',
       fontSize: '12px',        // <-- texte réduit globalement
@@ -456,7 +698,7 @@ function ControlPanel({ params, setParams, onReset }: {
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: 12 }}>
           <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-            Heure du jour : {params.currentHour.toFixed(1)}h
+            Animation (24h)
             <input
               type="range"
               min="0"
@@ -468,25 +710,64 @@ function ControlPanel({ params, setParams, onReset }: {
             />
           </label>
 
-          <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-            Vitesse du temps : ×{params.daySpeed}
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="1"
-              value={params.daySpeed}
-              onChange={(e) => setParams({ ...params, daySpeed: parseFloat(e.target.value) })}
-              style={{ width: '100%', fontSize: '12px' }}
-            />
-          </label>
+          {/* Bouton Play/Pause remplaçant le slider de vitesse */}
+          <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+            <button
+              aria-label={isPlaying ? 'Mettre en pause' : 'Lecture'}
+              title={isPlaying ? 'Pause' : 'Lecture'}
+              aria-pressed={isPlaying}
+              onClick={() =>
+                setParams({
+                  ...params,
+                  daySpeed: isPlaying ? 0 : 10,
+                })
+              }
+              style={{
+                width: 36,
+                height: 28,
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: isPlaying ? '#2563eb' : '#1f2937',
+                color: '#e5e7eb',
+                border: '1px solid #2b3545',
+                borderRadius: 6,
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              {/* SVG sans texte */}
+              {isPlaying ? (
+                // Pause
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <rect x="6" y="4" width="4" height="16" rx="1" />
+                  <rect x="14" y="4" width="4" height="16" rx="1" />
+                </svg>
+              ) : (
+                // Play
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                  <polygon points="6,4 6,20 18,12" />
+                </svg>
+              )}
+            </button>
+          </div>
         </div>
-      </div>
+      </div>        
+        <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>
+          <input
+            type="checkbox"
+            checked={params.showTrajectories}
+            onChange={(e) => setParams({ ...params, showTrajectories: e.target.checked })}
+          />
+          {' '}Afficher les trajectoires
+        </label>
+
       
       {/* Sliders Soleil sur une seule ligne */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-          Soleil : {fmtKm(params.sunHeight)}
+      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px',marginBottom: '16px', color:'white' }}>Soleil</h4>
+      <div style={{ display: 'flex', gap: 12 }}>
+        <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1, minWidth: 0 }}>
+           Hauteur: {fmtKm(params.sunHeight)}
           <input
             type="range"
             min="2"
@@ -498,8 +779,8 @@ function ControlPanel({ params, setParams, onReset }: {
           />
         </label>
 
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-          {fmtKm(params.sunSize*2)}
+        <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1, minWidth: 0 }}>
+          Taille: {fmtKm(params.sunSize*2)}
           <input
             type="range"
             min="0.05"
@@ -511,8 +792,8 @@ function ControlPanel({ params, setParams, onReset }: {
           />
         </label>
 
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-          {fmtKm(params.sunDistance)}
+        <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1, minWidth: 0 }}>
+          Orbite: {fmtKm(params.sunDistance)}
           <input
             type="range"
             min="5"
@@ -525,10 +806,56 @@ function ControlPanel({ params, setParams, onReset }: {
         </label>
       </div>
 
+      {/* Lumière du Soleil */}
+      <div style={{ display: 'flex', gap: 12 }}>
+        <label style={{ display: 'block', fontSize: '10px', flex: 1 }}>
+          Intensité
+          <input
+            type="range"
+            min="200"
+            max="3000"
+            step="100"
+            value={params.sunLightIntensity}
+            onChange={(e) => setParams({ ...params, sunLightIntensity: parseFloat(e.target.value) })}
+            style={{ width: '100%' }}
+          />
+        </label>
+
+        <label style={{ display: 'block', fontSize: '10px', flex: 1 }}>
+          Largeur du faisceau
+          <input
+            type="range"
+            min="2"
+            max="91"
+            step="1"
+            value={params.sunSpotAngleDeg}
+            onChange={(e) => {
+              const angle = parseFloat(e.target.value);
+              setParams({
+                ...params,
+                sunSpotAngleDeg: angle,
+                sunLightMode: angle > 90 ? 'point' : 'spot',
+              });
+            }}
+            style={{ width: '100%' }}
+          />
+        </label>
+         
+          <input
+            type="checkbox"
+            checked={params.showLightCone}
+            onChange={(e) => setParams({ ...params, showLightCone: e.target.checked })}
+          />
+          
+        
+      </div>
+
+
       {/* Sliders Lune sur une seule ligne */}
+      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px',marginBottom: '16px', color:'white' }}>Lune</h4>
       <div style={{ display: 'flex', gap: 12, marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px' }}>
-          ☾ {fmtKm(params.moonHeight)}
+        <label style={{ display: 'block', fontSize: '10px', marginBottom: '8px' }}>
+          Hauteur: {fmtKm(params.moonHeight)}
           <input
             type="range"
             min="5"
@@ -540,8 +867,8 @@ function ControlPanel({ params, setParams, onReset }: {
           />
         </label>
 
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px' }}>
-          {fmtKm(params.moonSize*2)}
+        <label style={{ display: 'block', fontSize: '10px', marginBottom: '8px' }}>
+          Taille: {fmtKm(params.moonSize*2)}
           <input
             type="range"
             min="0.05"
@@ -553,8 +880,8 @@ function ControlPanel({ params, setParams, onReset }: {
           />
         </label>
         
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px' }}>
-          {fmtKm(params.moonDistance)}
+        <label style={{ display: 'block', fontSize: '10px', marginBottom: '8px' }}>
+          Orbite:{fmtKm(params.moonDistance)}
           <input
             type="range"
             min="5"
@@ -567,107 +894,50 @@ function ControlPanel({ params, setParams, onReset }: {
         </label>
       </div>
 
-      <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px' }}>
-        Hauteur du dôme : {fmtKm(params.domeHeight)}
-        <input
-          type="range"
-          min="50"
-          max="100"
-          step="5"
-          value={params.domeHeight}
-          onChange={(e) => setParams({ ...params, domeHeight: parseFloat(e.target.value) })}
-          style={{ width: '100%', fontSize: '12px' }}
-        />
-      </label>
-    
-      <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>
-        <input
-          type="checkbox"
-          checked={params.showDome}
-          onChange={(e) => setParams({ ...params, showDome: e.target.checked })}
-        />
-        {' '}Afficher le dôme
-      </label>
-      
-      <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>
-        <input
-          type="checkbox"
-          checked={params.showLightCone}
-          onChange={(e) => setParams({ ...params, showLightCone: e.target.checked })}
-        />
-        {' '}Afficher le cône de lumière
-      </label>
-      
-      <label style={{ display: 'block', marginBottom: '6px', fontSize: '12px' }}>
-        <input
-          type="checkbox"
-          checked={params.showTrajectories}
-          onChange={(e) => setParams({ ...params, showTrajectories: e.target.checked })}
-        />
-        {' '}Afficher les trajectoires
-      </label>
+      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px',marginBottom: '16px', color:'white' }}>Etoiles</h4>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: '8px' }}>
+        <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1 }}>
+          Hauteur du dôme : {fmtKm(params.domeHeight)}
+          <input
+            type="range"
+            min="50"
+            max="100"
+            step="5"
+            value={params.domeHeight}
+            onChange={(e) => setParams({ ...params, domeHeight: parseFloat(e.target.value) })}
+            style={{ width: '100%', fontSize: '12px' }}
+          />
+        </label>
 
-      {/* Lumière du Soleil */}
-      <div style={{ marginBottom: '16px', padding: '8px', border: '1px solid #222', borderRadius: 6 }}>
-        <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-          <label style={{ display: 'block', fontSize: '12px', flex: 1 }}>
-            Intensité: {params.sunLightIntensity.toFixed(1)}
-            <input
-              type="range"
-              min="200"
-              max="3000"
-              step="100"
-              value={params.sunLightIntensity}
-              onChange={(e) => setParams({ ...params, sunLightIntensity: parseFloat(e.target.value) })}
-              style={{ width: '100%' }}
-            />
-          </label>
-        </div>
-
-        {/* Largeur du faisceau: <=90° => spot, 91° => point */}
-        <div style={{ marginTop: 8 }}>
-          <label style={{ display: 'block', fontSize: '12px' }}>
-            Largeur du faisceau
-            <input
-              type="range"
-              min="2"
-              max="91"
-              step="1"
-              value={params.sunSpotAngleDeg}
-              onChange={(e) => {
-                const angle = parseFloat(e.target.value);
-                setParams({
-                  ...params,
-                  sunSpotAngleDeg: angle,
-                  sunLightMode: angle > 90 ? 'point' : 'spot',
-                });
-              }}
-              style={{ width: '100%' }}
-            />
-          </label>
-        </div>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '10px', marginBottom: 0 }}>
+          <input
+            type="checkbox"
+            checked={params.showDome}
+            onChange={(e) => setParams({ ...params, showDome: e.target.checked })}
+          />
+          Afficher
+        </label>
       </div>
-
-      
+         
       <button
         onClick={() => {
           setParams({
             diskRadius: 50,
             domeHeight: 50,
             sunHeight: 12,
-            moonHeight: 11,
-            sunSize: 0.07,
-            moonSize: 0.06,
+            moonHeight: 8,
+            sunSize: 0.7,
+            moonSize: 0.6,
             sunDistance: 25,
-            moonDistance: 20,
-            daySpeed: 0,
+            moonDistance: 25,
+            daySpeed: 10,
             currentHour: 12,
             latitude: 45,
             showDome: true,
             showGrid: false,
             showLightCone: false,
             showTrajectories: true,
-            cameraFov: 50,
+            cameraFov: 60,
 
             sunLightMode: 'spot',
             sunLightIntensity: 1000,
@@ -676,6 +946,10 @@ function ControlPanel({ params, setParams, onReset }: {
             sunSpotAngleDeg: 70,
 
             showMoon: true,
+            
+            mapLonOffsetDeg: -90,
+            mapLonClockwise: false,
+            showProjectionDebug: false,
           });
           onReset();
         }}
@@ -686,6 +960,7 @@ function ControlPanel({ params, setParams, onReset }: {
           color: 'white',
           border: 'none',
           borderRadius: '5px',
+          marginTop: '12px',
           cursor: 'pointer',
           fontSize: '12px'
         }}
@@ -725,25 +1000,165 @@ function CameraFovUpdater({ fov }: { fov: number }) {
   return null;
 }
 
+// Driver de la rose des vents: calcule la rotation et l'applique sur un élément DOM
+function CompassRoseYawDriver({ rotRef }: { rotRef: React.RefObject<HTMLDivElement> }) {
+  const { camera } = useThree();
+
+  useFrame(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+
+    // Yaw caméra (direction regardée) projeté sur XZ
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    forward.y = 0;
+    if (forward.lengthSq() < 1e-8) return;
+    const yawCam = Math.atan2(forward.x, forward.z);
+
+    // "Nord" = direction radiale vers le centre du disque (origine)
+    const cp = cam.position.clone(); cp.y = 0;
+    let yawNorth = 0;
+    if (cp.lengthSq() > 1e-8) yawNorth = Math.atan2(-cp.x, -cp.z);
+
+    // On fait tourner le disque des lettres pour que la flèche fixe (haut) pointe vers le Nord
+    const rot = -(yawCam - yawNorth);
+    if (rotRef.current) rotRef.current.style.transform = `rotate(${rot}rad)`;
+  });
+
+  return null;
+}
+
+// --- Rose des vents (overlay bas-droite) ---
+// bottomPx: distance au bord bas de l'écran (px)
+function CompassRoseOverlay({ bottomPx = 12 }: { bottomPx?: number }) {
+  const { camera } = useThree();
+  const rotRef = useRef<HTMLDivElement>(null);
+
+  useFrame(() => {
+    const cam = camera as THREE.PerspectiveCamera;
+
+    // Yaw caméra (direction regardée) projeté sur XZ
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    forward.y = 0;
+    if (forward.lengthSq() < 1e-8) return;
+    const yawCam = Math.atan2(forward.x, forward.z);
+
+    // "Nord" = direction radiale vers le centre du disque (origine)
+    const cp = cam.position.clone(); cp.y = 0;
+    let yawNorth = 0; // fallback si trop proche du centre
+    if (cp.lengthSq() > 1e-8) {
+      // vecteur vers l'origine depuis la caméra => (-x, 0, -z)
+      yawNorth = Math.atan2(-cp.x, -cp.z);
+    }
+
+    // On veut que la pointe fixe (triangle en haut) indique le Nord.
+    // Donc on tourne le disque des lettres de -(yawCam - yawNorth).
+    const rot = -(yawCam - yawNorth);
+    if (rotRef.current) {
+      rotRef.current.style.transform = `rotate(${rot}rad)`;
+    }
+  });
+
+  return (
+    <Html fullscreen transform={false} pointerEvents="none">
+      <div
+        style={{
+          position: 'absolute',
+          right: 12,
+          bottom: bottomPx,
+          width: 84,
+          height: 84,
+          color: '#e5e7eb',
+          fontFamily: 'system-ui, sans-serif',
+          userSelect: 'none',
+          zIndex: 9999,
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            background: 'rgba(13,16,24,0.55)',
+            border: '1px solid #2b3545',
+            boxShadow: '0 0 8px rgba(0,0,0,0.45) inset',
+          }}
+        />
+        {/* disque rotatif (N/E/S/O) */}
+        <div ref={rotRef} style={{ position: 'absolute', inset: 0 }}>
+          <span style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12, fontWeight: 700, color: '#fca5a5' }}>N</span>
+          <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>E</span>
+          <span style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }}>S</span>
+          <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>O</span>
+          {/* flèche fixe (haut d'écran) */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 10,
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderBottom: '8px solid #9ca3af',
+              opacity: 0.9,
+            }}
+          />
+          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+            <div
+              key={deg}
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: 2,
+                height: deg % 90 === 0 ? 10 : 6,
+                background: '#4b5563',
+                transformOrigin: 'center calc(42px)',
+                transform: `translate(-50%, -42px) rotate(${deg}deg)`,
+                borderRadius: 1,
+                opacity: deg % 90 === 0 ? 0.9 : 0.6,
+              }}
+            />
+          ))}
+        </div>
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 6,
+            height: 6,
+            background: '#94a3b8',
+            borderRadius: '50%',
+            transform: 'translate(-50%, -50%)',
+            boxShadow: '0 0 4px rgba(255,255,255,0.4)',
+          }}
+        />
+      </div>
+    </Html>
+  );
+}
+// --- Fin rose des vents ---
+
 // Composant principal
 export default function FlatEarthSimulator() {
   const [params, setParams] = useState<FlatEarthParams>({
     diskRadius: 50,
     domeHeight: 50,
     sunHeight: 12,
-    moonHeight: 10,
-    sunSize: 0.07,
-    moonSize: 0.06,
+    moonHeight: 8,
+    sunSize: 0.7,
+    moonSize: 0.6,
     sunDistance: 25,
-    moonDistance: 20,
-    daySpeed: 0,
+    moonDistance: 25,
+    daySpeed: 10,
     currentHour: 12,
     latitude: 45,
     showDome: true,
     showGrid: false,
     showLightCone: false,
     showTrajectories: true,
-    cameraFov: 50,
+    cameraFov: 60,
 
     sunLightMode: 'spot',
     sunLightIntensity: 1000.0,
@@ -751,10 +1166,14 @@ export default function FlatEarthSimulator() {
     sunCastShadows: true,
     sunSpotAngleDeg: 70,
     showMoon: true,
+    mapLonOffsetDeg: -90,
+    mapLonClockwise: false,
+    showProjectionDebug: false,
   });
 
   const controlsRef = useRef<any>(null);
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const compassRotRef = useRef<HTMLDivElement>(null); // <-- ref du disque rotatif
 
   // --- sort cities alphabetically by label for UI ---
   const sortedCities = useMemo(
@@ -778,14 +1197,19 @@ export default function FlatEarthSimulator() {
   };
 
   // -- focus caméra sur ville + orbite autour de la ville --
-const focusCity = (city: City) => {
+  const focusCity = (city: City) => {
     const controls = controlsRef.current;
     if (!controls) return;
     const cam = controls.object as THREE.PerspectiveCamera;
 
-    const [x, z] = latLonToXZ(city.lat, city.lon, params.diskRadius);
+    // Projection azimutale équidistante avec offset/orientation texture
+    const lon = (params.mapLonClockwise ? -city.lon : city.lon) + params.mapLonOffsetDeg;
+    const theta = THREE.MathUtils.degToRad(lon);
+    const colat = 90 - city.lat;
+    const r = (colat / 180) * params.diskRadius;
+    const x = r * Math.sin(theta);
+    const z = r * Math.cos(theta);
 
-    const r = Math.hypot(x, z) || 1;
     const vx = x / r;
     const vz = z / r;
 
@@ -802,7 +1226,7 @@ const focusCity = (city: City) => {
 
 
   // Shift the camera principal point so the "center" is near the bottom (+50px)
-function CameraPrincipalPointOffset({ bottomMarginPx = 50 }: { bottomMarginPx?: number }) {
+function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }: { bottomMarginPx?: number }) {
   const { camera, size, gl } = useThree();
   useEffect(() => {
     const cam = camera as THREE.PerspectiveCamera;
@@ -844,103 +1268,252 @@ function CameraPrincipalPointOffset({ bottomMarginPx = 50 }: { bottomMarginPx?: 
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex' }}>
-      {/* Colonne gauche: barre villes au-dessus + Canvas en dessous */}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
-        {/* --- Barre de villes --- */}
-        <div style={{
+      {/* Global thin dark scrollbar styles */}
+      <style>{`
+        .thin-scroll {
+          scrollbar-width: thin;              /* Firefox */
+          scrollbar-color: #374151 #0d0f12;  /* thumb track */
+        }
+        .thin-scroll::-webkit-scrollbar {
+          width: 8px;                        /* Chrome/Edge/Safari */
+        }
+        .thin-scroll::-webkit-scrollbar-track {
+          background: #0d0f12;
+        }
+        .thin-scroll::-webkit-scrollbar-thumb {
+          background-color: #374151;
+          border-radius: 8px;
+          border: 2px solid #0d0f12;
+        }
+        .thin-scroll::-webkit-scrollbar-thumb:hover {
+          background-color: #4b5563;
+        }
+      `}</style>  {/* Barre de villes verticale (gauche) */}
+      <div
+        style={{
+          width: 160,
+          minWidth: 140,
+          maxWidth: 220,
+          height: '100%',
           display: 'flex',
-          gap: 8,
-          alignItems: 'center',
-          padding: '8px 10px',
+          flexDirection: 'column',
           background: '#0d0f12',
-          borderBottom: '1px solid #222',
-          overflowX: 'auto',
-          whiteSpace: 'nowrap',
-          color: '#ddd'
-        }}>
-          {sortedCities.map((c) => (
+          borderRight: '1px solid #222',
+        }}
+      >
+        <div
+          className="thin-scroll"
+          style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}
+        >
+        
+          <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
             <button
-              key={c.id}
-              onClick={() => focusCity(c)}
+              onClick={resetCamera}
+              title="Réinitialiser la vue"
               style={{
-                background: '#1f2937',
+                width: '100%',
+                minHeight: 24,
+                textAlign: 'left',
+                background: 'rgba(66, 38, 60, 1)',
                 border: '1px solid #2b3545',
                 color: '#e5e7eb',
-                padding: '6px 10px',
+                padding: '2px 2px',
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontSize: 12,
-                whiteSpace: 'nowrap'
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               }}
             >
-              {c.label}
+              Toute la terre
             </button>
-          ))}
+            {sortedCities.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => focusCity(c)}
+                style={{
+                  width: '100%',
+                  minHeight: 24,
+                  textAlign: 'left',
+                  background: '#1f2937',
+                  border: '1px solid #2b3545',
+                  color: '#e5e7eb',
+                  padding: '2px 2px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 12,
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                }}
+              >
+                {c.label}
+              </button>
+            ))}
+          </div>
         </div>
-        {/* --- Canvas prend le reste --- */}
-        <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-          <Canvas
-            camera={{ position: [80, 60, 80], fov: params.cameraFov }}
-            style={{ width: '100%', height: '100%' }}
-            dpr={[1, 1.75]}
-            shadows
-            gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
-          >
-            <CameraFovUpdater fov={params.cameraFov} />
-            {selectedCity && <CameraPrincipalPointOffset bottomMarginPx={50} />}
-            <color attach="background" args={['#0b1020']} />
-            <Suspense fallback={null}>
-              {/* Lights d'ambiance (gardez faibles pour mieux voir le spot) */}
-              <hemisphereLight args={['#89b4fa', '#1f2937', 0.35]} />
-              <ambientLight intensity={0.25} />
-              {/* Supprimé: la directionnelle globale qui éclairait toute la scène */}
+      </div>
 
-              {/* Scène */}
-              <EarthDisk radius={params.diskRadius} />
-              <CelestialDome radius={params.domeHeight} height={params.domeHeight} visible={params.showDome} />
+      {/* Vue 3D (centre) */}
+      <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
+        <Canvas
+          camera={{ position: [80, 60, 80], fov: params.cameraFov }}
+          style={{ width: '100%', height: '100%' }}
+          dpr={[1, 1.75]}
+          shadows
+          gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
+        >
+          <CameraFovUpdater fov={params.cameraFov} />
+          {selectedCity && <CameraPrincipalPointOffset bottomMarginPx={CITY_VIEW_BOTTOM_MARGIN} />}
+          <color attach="background" args={['#0b1020']} />
+          <Suspense fallback={null}>
+            {/* Lights d'ambiance (gardez faibles pour mieux voir le spot) */}
+            <hemisphereLight args={['#89b4fa', '#1f2937', 0.35]} />
+            <ambientLight intensity={0.05} />
 
-              <Sun
-                size={params.sunSize}
-                distance={params.sunDistance}
-                height={params.sunHeight}
-                hour={params.currentHour}
-                mode={params.sunLightMode}
-                intensity={params.sunLightIntensity}
-                color={params.sunLightColor}
-                showCone={params.showLightCone}
-                castShadows={params.sunCastShadows}
-                spotAngleDeg={params.sunSpotAngleDeg}
+            {/* Scène */}
+            <EarthDisk radius={params.diskRadius} />
+            <CelestialDome
+              radius={params.domeHeight}
+              height={params.domeHeight}
+              visible={params.showDome}
+              currentHour={params.currentHour}
+              daySpeed={params.daySpeed}
+            />
+            <Sun
+              size={params.sunSize}
+              distance={params.sunDistance}
+              height={params.sunHeight}
+              hour={params.currentHour}
+              daySpeed={params.daySpeed}
+              mode={params.sunLightMode}
+              intensity={params.sunLightIntensity}
+              color={params.sunLightColor}
+              showCone={params.showLightCone}
+              castShadows={params.sunCastShadows}
+              spotAngleDeg={params.sunSpotAngleDeg}
+            />
+
+            <Moon
+              size={params.moonSize}
+              distance={params.moonDistance}
+              height={params.moonHeight}
+              hour={params.currentHour}
+              daySpeed={params.daySpeed}
+            />
+
+            <Trajectories
+              sunDistance={params.sunDistance}
+              moonDistance={params.moonDistance}
+              sunHeight={params.sunHeight}
+              moonHeight={params.moonHeight}
+              visible={params.showTrajectories}
+            />
+
+            <CityMarkers
+              cities={sortedCities}
+              radius={params.diskRadius}
+              lonOffsetDeg={params.mapLonOffsetDeg}
+              lonClockwise={params.mapLonClockwise}
+            />
+            <GridHelper size={params.diskRadius} visible={params.showGrid} />
+
+            <OrbitControls
+              ref={controlsRef}
+              enablePan
+              enableZoom
+              enableRotate
+              minPolarAngle={0}
+              maxPolarAngle={Math.PI - 0.01}
+            />
+          </Suspense>
+
+          {/* Driver qui met à jour la rotation du disque DOM */}
+          <CompassRoseYawDriver rotRef={compassRotRef} />
+        </Canvas>
+
+        {/* Rose des vents: DOM absolu ancré au conteneur de la Canvas (fixe) */}
+        <div
+          style={{
+            position: 'absolute',
+            right: 12,
+            bottom: selectedCity ? 12 + CITY_VIEW_BOTTOM_MARGIN : 12,
+            width: 84,
+            height: 84,
+            color: '#e5e7eb',
+            fontFamily: 'system-ui, sans-serif',
+            userSelect: 'none',
+            zIndex: 5,
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              borderRadius: '50%',
+              background: 'rgba(13,16,24,0.55)',
+              border: '1px solid #2b3545',
+              boxShadow: '0 0 8px rgba(0,0,0,0.45) inset',
+            }}
+          />
+          {/* disque rotatif (N/E/S/O) */}
+          <div ref={compassRotRef} style={{ position: 'absolute', inset: 0 }}>
+            <span style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12, fontWeight: 700, color: '#fca5a5' }}>N</span>
+            <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>E</span>
+            <span style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }}>S</span>
+            <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>O</span>
+
+            {/* ticks */}
+            {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+              <div
+                key={deg}
+                style={{
+                  position: 'absolute',
+                  left: '50%',
+                  top: '50%',
+                  width: 2,
+                  height: deg % 90 === 0 ? 10 : 6,
+                  background: '#4b5563',
+                  transformOrigin: 'center calc(42px)',
+                  transform: `translate(-50%, -42px) rotate(${deg}deg)`,
+                  borderRadius: 1,
+                  opacity: deg % 90 === 0 ? 0.9 : 0.6,
+                }}
               />
+            ))}
+          </div>
 
-              <Moon
-                size={params.moonSize}
-                distance={params.moonDistance}
-                height={params.moonHeight}
-                hour={params.currentHour}
-              />
-
-              <Trajectories
-                sunDistance={params.sunDistance}
-                moonDistance={params.moonDistance}
-                sunHeight={params.sunHeight}
-                moonHeight={params.moonHeight}
-                visible={params.showTrajectories}   // FIX: was params.showTrajectoires
-              />
-
-              <CityMarkers cities={sortedCities} radius={params.diskRadius} />
-
-              <GridHelper size={params.diskRadius} visible={params.showGrid} />
-              
-              <OrbitControls
-                ref={controlsRef}
-                enablePan
-                enableZoom
-                enableRotate
-                minPolarAngle={0}
-                maxPolarAngle={Math.PI / 2 - 0.01}
-              />
-            </Suspense>
-          </Canvas>
+          {/* flèche fixe (haut d'écran) */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: 10,
+              transform: 'translateX(-50%)',
+              width: 0,
+              height: 0,
+              borderLeft: '6px solid transparent',
+              borderRight: '6px solid transparent',
+              borderBottom: '8px solid #9ca3af',
+              opacity: 0.9,
+            }}
+          />
+          {/* centre */}
+          <div
+            style={{
+              position: 'absolute',
+              left: '50%',
+              top: '50%',
+              width: 6,
+              height: 6,
+              background: '#94a3b8',
+              borderRadius: '50%',
+              transform: 'translate(-50%, -50%)',
+              boxShadow: '0 0 4px rgba(255,255,255,0.4)',
+            }}
+          />
         </div>
       </div>
 

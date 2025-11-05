@@ -46,36 +46,37 @@ export default function FlatEarthTab() {
         avec le pôle Nord au centre (comme le moyeu d'une roue de vélo) et l'Antarctique formant un mur de glace 
         tout autour du bord (comme le pneu de cette roue).
       </p>
-      {/* Container pour le simulateur avec hauteur fixe */}
-      <div style={{ 
-        width: '100%', 
-        height: '600px', 
-        position: 'relative',
-        border: '2px solid #333',
-        borderRadius: '10px',
-        overflow: 'hidden',
-        marginBottom: '20px',
-        backgroundColor: '#0b1020' // fond sombre stable
-      }}>
-        <ErrorBoundary onRetry={() => setReloadKey(k => k + 1)}>
-          <Suspense fallback={
-            <div style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              height: '100%',
-              fontSize: '20px',
-              color: '#fff',
-              background: '#0b1020'
-            }}>
-              ⏳ Chargement du simulateur 3D...
-            </div>
-          }>
-            <FlatEarthSimulator key={reloadKey} />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
-
+      <p>
+        {/* Container pour le simulateur avec hauteur fixe */}
+        <div style={{ 
+          width: '100%', 
+          height: '520px', 
+          position: 'relative',
+          border: '2px solid #333',
+          borderRadius: '10px',
+          overflow: 'hidden',
+          marginBottom: '20px',
+          backgroundColor: '#0b1020' // fond sombre stable
+        }}>
+          <ErrorBoundary onRetry={() => setReloadKey(k => k + 1)}>
+            <Suspense fallback={
+              <div style={{
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                height: '100%',
+                fontSize: '20px',
+                color: '#fff',
+                background: '#0b1020'
+              }}>
+                ⏳ Chargement du simulateur 3D...
+              </div>
+            }>
+              <FlatEarthSimulator key={reloadKey} />
+            </Suspense>
+          </ErrorBoundary>
+        </div>
+      </p>
       <p>Dans ce modèle :</p>
       <ul>
         <li><strong>Le Soleil et la Lune</strong> sont de petites boules (environ 50 km de diamètre) qui tournent en cercle au-dessus du disque, à environ 5000 km d'altitude</li>
