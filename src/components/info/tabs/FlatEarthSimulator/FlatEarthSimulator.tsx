@@ -84,9 +84,16 @@ function CityMarkers({
   const cylDiameterKm = 80.15;
   const cylHeightKm = 1;
 
+  // Gnomon: 10 km high, 5 km diameter 
+  const gnomonHeightKm = 10;
+  const gnomonDiameterKm = 5;
+
   // Convert to scene units
   const cylRadiusUnits = (cylDiameterKm / 2) / kmPerUnit;
   const cylHeightUnits = cylHeightKm / kmPerUnit;
+
+  const gnomonRadiusUnits = (gnomonDiameterKm / 2) / kmPerUnit;
+  const gnomonHeightUnits = gnomonHeightKm / kmPerUnit;
 
   // Seuil d'affichage en km
   const MAX_LABEL_DISTANCE_KM = 10000;
@@ -105,9 +112,16 @@ function CityMarkers({
         const r = (colat / 180) * radius;
         const x = r * Math.sin(theta);
         const z = r * Math.cos(theta);
-        return { id: c.id, x, y: cylHeightUnits + labelOffsetUnits, z, city: c };
+        return {
+          id: c.id,
+          x,
+          // distance check from camera to top of gnomon + offset
+          y: cylHeightUnits + gnomonHeightUnits + labelOffsetUnits,
+          z,
+          city: c
+        };
       }),
-    [cities, radius, cylHeightUnits, lonOffsetDeg, lonClockwise]
+    [cities, radius, cylHeightUnits, gnomonHeightUnits, labelOffsetUnits, lonOffsetDeg, lonClockwise]
   );
 
   // Visibilité par ville
@@ -143,15 +157,21 @@ function CityMarkers({
 
         return (
           <group key={c.id} position={[p.x, 0, p.z]}>
-            {/* Cylinder base at ground: center at y = height/2 */}
-            <mesh position={[0, cylHeightUnits / 2, 0]} castShadow>
+            {/* Base marker: cylinder at ground */}
+            <mesh position={[0, cylHeightUnits / 2, 0]}  receiveShadow>
               <cylinderGeometry args={[cylRadiusUnits, cylRadiusUnits, cylHeightUnits, 24]} />
               <meshStandardMaterial color="#ff5555" emissive="#aa2222" emissiveIntensity={0.6} />
             </mesh>
 
-            {/* Label en taille constante (DOM), centré, occlus, et masqué si trop loin */}
+            {/* Gnomon: thin cylinder rising from top of the base marker */}
+            <mesh position={[0, cylHeightUnits + gnomonHeightUnits / 2 , 0]} castShadow receiveShadow>
+              <cylinderGeometry args={[gnomonRadiusUnits, gnomonRadiusUnits, gnomonHeightUnits, 16]} />
+              <meshStandardMaterial color="#d6c28b" roughness={0.6} metalness={0.1} />
+            </mesh>
+
+            {/* Label above the gnomon */}
             <Html
-              position={[0, cylHeightUnits + labelOffsetUnits, 0]}
+              position={[0, cylHeightUnits + gnomonHeightUnits + labelOffsetUnits, 0]}
               center
               occlude
               transform={false}
@@ -442,8 +462,8 @@ function Sun({
             castShadow={castShadows}
             shadow-mapSize-width={2048}
             shadow-mapSize-height={2048}
-            shadow-camera-near={0.5}
-            shadow-camera-far={1500}
+            shadow-bias={-0.0005}
+            shadow-normalBias={0.02}
           />
           <object3D ref={spotTargetRef} />
         </>
@@ -943,7 +963,7 @@ function ControlPanel({ params, setParams, onReset }: {
             sunLightIntensity: 1000,
             sunLightColor: '#ffffff',
             sunCastShadows: true,
-            sunSpotAngleDeg: 70,
+            sunSpotAngleDeg: 60,
 
             showMoon: true,
             
@@ -1164,7 +1184,7 @@ export default function FlatEarthSimulator() {
     sunLightIntensity: 1000.0,
     sunLightColor: '#ffffff',
     sunCastShadows: true,
-    sunSpotAngleDeg: 70,
+    sunSpotAngleDeg: 60,
     showMoon: true,
     mapLonOffsetDeg: -90,
     mapLonClockwise: false,
@@ -1362,6 +1382,10 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
           style={{ width: '100%', height: '100%' }}
           dpr={[1, 1.75]}
           shadows
+          onCreated={({ gl }) => {
+            gl.shadowMap.enabled = true;
+            gl.shadowMap.type = THREE.PCFSoftShadowMap; // softer, more stable shadows
+          }}
           gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
         >
           <CameraFovUpdater fov={params.cameraFov} />
