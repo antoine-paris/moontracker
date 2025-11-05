@@ -444,9 +444,8 @@ function Sun({
       <mesh ref={sunMeshRef} castShadow={false}>
         <sphereGeometry args={[size, 32, 32]} />
         <meshStandardMaterial color="#ffd166" emissive="#ffd166" emissiveIntensity={1.2} roughness={0.2} metalness={0} />
-        {/* Cone locked to sun position */}
         {mode === 'spot' && showCone && (
-          <AttachedSunCone height={height} angleDeg={spotAngleDeg} groundY={0} />
+          <AttachedSunCone height={height} angleDeg={spotAngleDeg} groundY={0} penumbra={0.1} />
         )}
       </mesh>
 
@@ -549,36 +548,57 @@ function AttachedSunCone({
   angleDeg,
   groundY = 0,
   overshoot = 0.25,
+  penumbra = 0,              // NEW: match SpotLight.penumbra
 }: {
   height: number;
   angleDeg: number;
   groundY?: number;
   overshoot?: number;
+  penumbra?: number;
 }) {
   const beamLen = Math.max(0.001, (height - groundY) + overshoot);
-  const halfAngleRad = THREE.MathUtils.degToRad(angleDeg);
-  const baseRadius = Math.max(0, Math.tan(halfAngleRad) * beamLen);
+  const outerHalfRad = THREE.MathUtils.degToRad(angleDeg);
+  const innerHalfRad = Math.max(0, outerHalfRad * (1 - penumbra));
+
+  const outerR = Math.max(0, Math.tan(outerHalfRad) * beamLen);
+  const innerR = Math.max(0, Math.tan(innerHalfRad) * beamLen);
 
   return (
-    <mesh
+    <group
       // Render after the earth disk and ignore depth to prevent being cut
       renderOrder={1000}
       position={[0, -beamLen / 2, 0]}
-      scale={[baseRadius, beamLen, baseRadius]}
-      castShadow={false}
-      receiveShadow={false}
     >
-      <coneGeometry args={[1, 1, 48, 1, true]} />
-      <meshBasicMaterial
-        color="rgba(102, 179, 255, 1)"
-        transparent
-        opacity={0.72}
-        depthWrite={false}
-        depthTest={false}     // was true -> prevents disk from cutting the cone
-        side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
-      />
-    </mesh>
+      {/* Inner bright cone (matches perceived light) */}
+      <mesh scale={[innerR, beamLen, innerR]} castShadow={false} receiveShadow={false}>
+        <coneGeometry args={[1, 1, 48, 1, true]} />
+        <meshBasicMaterial
+          color="rgba(102, 179, 255, 1)"
+          transparent
+          opacity={0.72}
+          depthWrite={false}
+          depthTest={false}
+          side={THREE.DoubleSide}
+          blending={THREE.AdditiveBlending}
+        />
+      </mesh>
+
+      {/* Optional outer penumbra cone (faint) */}
+      {penumbra > 0 && outerR > innerR && (
+        <mesh scale={[outerR, beamLen, outerR]} castShadow={false} receiveShadow={false}>
+          <coneGeometry args={[1, 1, 48, 1, true]} />
+          <meshBasicMaterial
+            color="rgba(102, 179, 255, 1)"
+            transparent
+            opacity={0.18}
+            depthWrite={false}
+            depthTest={false}
+            side={THREE.DoubleSide}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      )}
+    </group>
   );
 }
 
