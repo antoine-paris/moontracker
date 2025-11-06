@@ -42,10 +42,21 @@ export default function FlatEarthTab() {
       
       <h3>Le modèle de base : la Terre-disque</h3>
       <p>
-        Imagine une grande crêpe posée sur une table. C'est l'image la plus simple d'une Terre plate : un disque plat 
-        avec le pôle Nord au centre (comme le moyeu d'une roue de vélo) et l'Antarctique formant un mur de glace 
+        Certaines personnes n'arrivent pas à croire en une terre sphérique. Comment leur en vouloir ? 
+        Quand on regarde nos pieds et qu'on écarte les bras, c'est ce que nos sens nous disent. 
+        Il serait donc facile d'imaginer la terre comme une grande crêpe. 
+      </p>
+      <p>
+        L'image la plus répendue d'une Terre plate se présente comme ceci : un disque plat avec le pôle Nord au 
+        centre (comme le moyeu d'une roue de vélo) et l'Antarctique (le pôle sud) formant un mur de glace 
         tout autour du bord (comme le pneu de cette roue).
       </p>
+      <p>Dans ce modèle :</p>
+      <ul>
+        <li><strong>Le Soleil et la Lune</strong> sont de petites boules (environ 50 km de diamètre) qui tournent en cercle au-dessus du disque, à environ 5000 km d'altitude</li>
+        <li><strong>Le jour et la nuit</strong> s'expliquent parce que le Soleil agit comme un projecteur : il n'éclaire qu'une zone limitée du disque</li>
+        <li><strong>Les saisons</strong> arrivent parce que le Soleil change de cercle : il tourne plus près du centre en été de l'hémisphère nord, et plus près du bord en hiver</li>
+      </ul>
       <p>
         {/* Container pour le simulateur avec hauteur fixe */}
         <div style={{ 
@@ -77,12 +88,7 @@ export default function FlatEarthTab() {
           </ErrorBoundary>
         </div>
       </p>
-      <p>Dans ce modèle :</p>
-      <ul>
-        <li><strong>Le Soleil et la Lune</strong> sont de petites boules (environ 50 km de diamètre) qui tournent en cercle au-dessus du disque, à environ 5000 km d'altitude</li>
-        <li><strong>Le jour et la nuit</strong> s'expliquent parce que le Soleil agit comme un projecteur : il n'éclaire qu'une zone limitée du disque</li>
-        <li><strong>Les saisons</strong> arrivent parce que le Soleil change de cercle : il tourne plus près du centre en été de l'hémisphère nord, et plus près du bord en hiver</li>
-      </ul>
+      
       
       <h3>Les variations du modèle</h3>
       <p>Comme une recette de gâteau qu'on modifie, il existe plusieurs versions :</p>

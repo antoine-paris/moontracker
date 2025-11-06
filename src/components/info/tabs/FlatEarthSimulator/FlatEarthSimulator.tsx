@@ -936,26 +936,13 @@ function ControlPanel({ params, setParams, onReset }: {
 
       <h4 style={{ display: 'flex', gap: 12, fontSize: '14px',marginBottom: '16px', color:'white' }}>Etoiles</h4>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: '8px' }}>
-        <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1 }}>
-          Hauteur du dôme : {fmtKm(params.domeHeight)}
-          <input
-            type="range"
-            min="50"
-            max="100"
-            step="5"
-            value={params.domeHeight}
-            onChange={(e) => setParams({ ...params, domeHeight: parseFloat(e.target.value) })}
-            style={{ width: '100%', fontSize: '12px' }}
-          />
-        </label>
-
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '10px', marginBottom: 0 }}>
           <input
             type="checkbox"
             checked={params.showDome}
             onChange={(e) => setParams({ ...params, showDome: e.target.checked })}
           />
-          Afficher
+          Afficher le dôme
         </label>
       </div>
          
