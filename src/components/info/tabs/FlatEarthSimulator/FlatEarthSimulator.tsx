@@ -645,7 +645,7 @@ function Moon({ size, distance, height, hour, daySpeed }: {
 // Composant pour les observateurs
 
 
-// Composant pour afficher les trajectoires
+// Composant pour afficher les Trajectories
 function Trajectories({ sunDistance, moonDistance, sunHeight, moonHeight, visible }: {
   sunDistance: number;
   moonDistance: number;
@@ -687,10 +687,12 @@ function GridHelper({ size, visible }: { size: number; visible: boolean }) {
 }
 
 // Panneau de contrôle
-function ControlPanel({ params, setParams, onReset }: { 
+function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }: { 
   params: FlatEarthParams; 
   setParams: React.Dispatch<React.SetStateAction<FlatEarthParams>>;
   onReset: () => void;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
 }) {
   // conversion: 1 unité scène = (circumference / (2*radius)) km
   const kmPerUnit = EARTH_CIRCUMFERENCE_KM / (2 * params.diskRadius);
@@ -716,23 +718,44 @@ function ControlPanel({ params, setParams, onReset }: {
       textAlign: 'left',
       overflowY: 'auto',
       boxSizing: 'border-box',
-      fontSize: '12px',        // <-- texte réduit globalement
+      fontSize: '12px',
       lineHeight: 1.2
     }}>
-      {/* Slider FOV AVANT "Temps" */}
+      {/* Slider FOV + bouton Agrandir/Retour */}
       <div style={{ marginBottom: '16px' }}>
-        <label style={{ display: 'block', fontSize: '12px', marginBottom: '8px' }}>
-          Champ de vision (FOV) : {params.cameraFov.toFixed(0)}°
-          <input
-            type="range"
-            min={50}
-            max={120}
-            step={1}
-            value={params.cameraFov}
-            onChange={(e) => setParams({ ...params, cameraFov: parseFloat(e.target.value) })}
-            style={{ width: '100%', fontSize: '12px' }}
-          />
-        </label>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
+          <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
+            Champ de vision (FOV) : {params.cameraFov.toFixed(0)}°
+            <input
+              type="range"
+              min={50}
+              max={120}
+              step={1}
+              value={params.cameraFov}
+              onChange={(e) => setParams({ ...params, cameraFov: parseFloat(e.target.value) })}
+              style={{ width: '100%', fontSize: '12px' }}
+            />
+          </label>
+
+          <button
+            onClick={onToggleExpand}
+            title={isExpanded ? 'Retour' : 'Agrandir'}
+            aria-label={isExpanded ? 'Retour' : 'Agrandir'}
+            style={{
+              padding: '6px 10px',
+              background: '#1f2937',
+              color: '#e5e7eb',
+              border: '1px solid #2b3545',
+              borderRadius: 6,
+              cursor: 'pointer',
+              fontSize: 12,
+              userSelect: 'none',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {isExpanded ? 'Retour' : 'Agrandir'}
+          </button>
+        </div>
       </div>
 
       <div style={{ marginBottom: '16px' }}>
@@ -799,12 +822,12 @@ function ControlPanel({ params, setParams, onReset }: {
             checked={params.showTrajectories}
             onChange={(e) => setParams({ ...params, showTrajectories: e.target.checked })}
           />
-          {' '}Afficher les trajectoires
+          {' '}Afficher les Trajectories
         </label>
 
       
       {/* Sliders Soleil sur une seule ligne */}
-      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px',marginBottom: '16px', color:'white' }}>Soleil</h4>
+      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px', color:'white' }}>Soleil</h4>
       <div style={{ display: 'flex', gap: 12 }}>
         <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1, minWidth: 0 }}>
            Hauteur: {fmtKm(params.sunHeight)}
@@ -892,7 +915,7 @@ function ControlPanel({ params, setParams, onReset }: {
 
 
       {/* Sliders Lune sur une seule ligne */}
-      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px',marginBottom: '16px', color:'white' }}>Lune</h4>
+      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px', color:'white' }}>Lune</h4>
       <div style={{ display: 'flex', gap: 12, marginBottom: '16px' }}>
         <label style={{ display: 'block', fontSize: '10px', marginBottom: '8px' }}>
           Hauteur: {fmtKm(params.moonHeight)}
@@ -934,17 +957,18 @@ function ControlPanel({ params, setParams, onReset }: {
         </label>
       </div>
 
-      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px',marginBottom: '16px', color:'white' }}>Etoiles</h4>
-      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: '8px' }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '10px', marginBottom: 0 }}>
-          <input
-            type="checkbox"
-            checked={params.showDome}
-            onChange={(e) => setParams({ ...params, showDome: e.target.checked })}
-          />
-          Afficher le dôme
-        </label>
-      </div>
+       {/* Etoiles: titre + checkbox sur une même ligne */}
+       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '16px 0 8px' }}>
+         <h4 style={{ fontSize: '14px', color: 'white', margin: 0 }}>Etoiles</h4>
+         <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '10px', margin: 0 }}>
+           <input
+             type="checkbox"
+             checked={params.showDome}
+             onChange={(e) => setParams({ ...params, showDome: e.target.checked })}
+           />
+           Afficher le dôme
+         </label>
+       </div>
          
       <button
         onClick={() => {
@@ -994,6 +1018,12 @@ function ControlPanel({ params, setParams, onReset }: {
       >
         Réinitialiser
       </button>
+      <small>
+      Avec cette application, simulez votre hypothèse de terre plate et comparez au simulateur MoonTracker (qui est basé sur une terre sphérique).
+      Dans cette version, la lune fait un "tour" en 29 jours.
+
+      <br/><strong style={{ color: 'white' }}>Si vous pensez que nous devons rajouter un paramètre réglable pour tester votre hypothèse, contactez nous sur les réseaux sociaux.</strong>
+      </small>
     </div>
   );
 }
@@ -1046,7 +1076,7 @@ function CompassRoseYawDriver({ rotRef }: { rotRef: React.RefObject<HTMLDivEleme
     if (cp.lengthSq() > 1e-8) yawNorth = Math.atan2(-cp.x, -cp.z);
 
     // On fait tourner le disque des lettres pour que la flèche fixe (haut) pointe vers le Nord
-    const rot = -(yawCam - yawNorth);
+    const rot = (yawCam - yawNorth);
     if (rotRef.current) rotRef.current.style.transform = `rotate(${rot}rad)`;
   });
 
@@ -1202,6 +1232,9 @@ export default function FlatEarthSimulator() {
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const compassRotRef = useRef<HTMLDivElement>(null); // <-- ref du disque rotatif
 
+  // NEW: état d’agrandissement
+  const [isExpanded, setIsExpanded] = useState(false);
+
   // --- sort cities alphabetically by label for UI ---
   const sortedCities = useMemo(
     () => [...CITIES].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })),
@@ -1294,76 +1327,72 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
   }, [params.daySpeed]);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex' }}>
-      {/* Global thin dark scrollbar styles */}
-      <style>{`
-        .thin-scroll {
-          scrollbar-width: thin;              /* Firefox */
-          scrollbar-color: #374151 #0d0f12;  /* thumb track */
-        }
-        .thin-scroll::-webkit-scrollbar {
-          width: 8px;                        /* Chrome/Edge/Safari */
-        }
-        .thin-scroll::-webkit-scrollbar-track {
-          background: #0d0f12;
-        }
-        .thin-scroll::-webkit-scrollbar-thumb {
-          background-color: #374151;
-          border-radius: 8px;
-          border: 2px solid #0d0f12;
-        }
-        .thin-scroll::-webkit-scrollbar-thumb:hover {
-          background-color: #4b5563;
-        }
-      `}</style>  {/* Barre de villes verticale (gauche) */}
-      <div
-        style={{
-          width: 160,
-          minWidth: 140,
-          maxWidth: 220,
-          height: '100%',
-          display: 'flex',
-          flexDirection: 'column',
-          background: '#0d0f12',
-          borderRight: '1px solid #222',
-        }}
-      >
+    // NEW wrapper: bascule entre mode normal et plein navigateur
+    <div
+      style={
+        isExpanded
+          ? {
+              position: 'fixed',
+              inset: 0,
+              zIndex: 9999,
+              background: '#0b1020',
+            }
+          : {
+              position: 'relative',
+              width: '100%',
+              height: '100%',
+            }
+      }
+    >
+      {/* Contenu principal inchangé, juste déplacé dans un conteneur qui remplit 100% */}
+      <div style={{ width: '100%', height: '100%', display: 'flex' }}>
+        {/* Global thin dark scrollbar styles */}
+        <style>{`
+          .thin-scroll {
+            scrollbar-width: thin;              /* Firefox */
+            scrollbar-color: #374151 #0d0f12;  /* thumb track */
+          }
+          .thin-scroll::-webkit-scrollbar {
+            width: 8px;                        /* Chrome/Edge/Safari */
+          }
+          .thin-scroll::-webkit-scrollbar-track {
+            background: #0d0f12;
+          }
+          .thin-scroll::-webkit-scrollbar-thumb {
+            background-color: #374151;
+            border-radius: 8px;
+            border: 2px solid #0d0f12;
+          }
+          .thin-scroll::-webkit-scrollbar-thumb:hover {
+            background-color: #4b5563;
+          }
+        `}</style>
+        {/* Barre de villes (gauche) */}
         <div
-          className="thin-scroll"
-          style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}
+          style={{
+            width: 160,
+            minWidth: 140,
+            maxWidth: 220,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#0d0f12',
+            borderRight: '1px solid #222',
+          }}
         >
-        
-          <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
-            <button
-              onClick={resetCamera}
-              title="Réinitialiser la vue"
-              style={{
-                width: '100%',
-                minHeight: 24,
-                textAlign: 'left',
-                background: 'rgba(66, 38, 60, 1)',
-                border: '1px solid #2b3545',
-                color: '#e5e7eb',
-                padding: '2px 2px',
-                borderRadius: 6,
-                cursor: 'pointer',
-                fontSize: 12,
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              }}
-            >
-              Toute la terre
-            </button>
-            {sortedCities.map((c) => (
+          <div
+            className="thin-scroll"
+            style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}
+          >
+            <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <button
-                key={c.id}
-                onClick={() => focusCity(c)}
+                onClick={resetCamera}
+                title="Réinitialiser la vue"
                 style={{
                   width: '100%',
                   minHeight: 24,
                   textAlign: 'left',
-                  background: '#1f2937',
+                  background: 'rgba(66, 38, 60, 1)',
                   border: '1px solid #2b3545',
                   color: '#e5e7eb',
                   padding: '2px 2px',
@@ -1375,182 +1404,198 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
                   textOverflow: 'ellipsis',
                 }}
               >
-                {c.label}
+                Toute la terre
               </button>
-            ))}
+              {sortedCities.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => focusCity(c)}
+                  style={{
+                    width: '100%',
+                    minHeight: 24,
+                    textAlign: 'left',
+                    background: '#1f2937',
+                    border: '1px solid #2b3545',
+                    color: '#e5e7eb',
+                    padding: '2px 2px',
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    fontSize: 12,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Vue 3D (centre) */}
-      <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
-        <Canvas
-          camera={{ position: [80, 60, 80], fov: params.cameraFov }}
-          style={{ width: '100%', height: '100%' }}
-          dpr={[1, 1.75]}
-          shadows
-          onCreated={({ gl }) => {
-            gl.shadowMap.enabled = true;
-            gl.shadowMap.type = THREE.PCFSoftShadowMap; // softer, more stable shadows
-          }}
-          gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
-        >
-          <CameraFovUpdater fov={params.cameraFov} />
-          {selectedCity && <CameraPrincipalPointOffset bottomMarginPx={CITY_VIEW_BOTTOM_MARGIN} />}
-          <color attach="background" args={['#0b1020']} />
-          <Suspense fallback={null}>
-            {/* Lights d'ambiance (gardez faibles pour mieux voir le spot) */}
-            <hemisphereLight args={['#89b4fa', '#1f2937', 0.35]} />
-            <ambientLight intensity={0.05} />
+        {/* Vue 3D (centre) */}
+        <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
+          <Canvas
+            camera={{ position: [80, 60, 80], fov: params.cameraFov }}
+            style={{ width: '100%', height: '100%' }}
+            dpr={[1, 1.75]}
+            shadows
+            onCreated={({ gl }) => {
+              gl.shadowMap.enabled = true;
+              gl.shadowMap.type = THREE.PCFSoftShadowMap;
+            }}
+            gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.ACESFilmicToneMapping }}
+          >
+            <CameraFovUpdater fov={params.cameraFov} />
+            {selectedCity && <CameraPrincipalPointOffset bottomMarginPx={CITY_VIEW_BOTTOM_MARGIN} />}
+            <color attach="background" args={['#0b1020']} />
+            <Suspense fallback={null}>
+              {/* Lights d'ambiance (gardez faibles pour mieux voir le spot) */}
+              <hemisphereLight args={['#89b4fa', '#1f2937', 0.35]} />
+              <ambientLight intensity={0.05} />
 
-            {/* Scène */}
-            <EarthDisk radius={params.diskRadius} />
-            <CelestialDome
-              radius={params.domeHeight}
-              height={params.domeHeight}
-              visible={params.showDome}
-              currentHour={params.currentHour}
-              daySpeed={params.daySpeed}
+              {/* Scène */}
+              <EarthDisk radius={params.diskRadius} />
+              <CelestialDome
+                radius={params.domeHeight}
+                height={params.domeHeight}
+                visible={params.showDome}
+                currentHour={params.currentHour}
+                daySpeed={params.daySpeed}
+              />
+              <Sun
+                size={params.sunSize}
+                distance={params.sunDistance}
+                height={params.sunHeight}
+                hour={params.currentHour}
+                daySpeed={params.daySpeed}
+                mode={params.sunLightMode}
+                intensity={params.sunLightIntensity}
+                color={params.sunLightColor}
+                showCone={params.showLightCone}
+                castShadows={params.sunCastShadows}
+                spotAngleDeg={params.sunSpotAngleDeg}
+              />
+              <Moon
+                size={params.moonSize}
+                distance={params.moonDistance}
+                height={params.moonHeight}
+                hour={params.currentHour}
+                daySpeed={params.daySpeed}
+              />
+              <Trajectories
+                sunDistance={params.sunDistance}
+                moonDistance={params.moonDistance}
+                sunHeight={params.sunHeight}
+                moonHeight={params.moonHeight}
+                visible={params.showTrajectories}
+              />
+              <CityMarkers
+                cities={sortedCities}
+                radius={params.diskRadius}
+                lonOffsetDeg={params.mapLonOffsetDeg}
+                lonClockwise={params.mapLonClockwise}
+              />
+              <GridHelper size={params.diskRadius} visible={params.showGrid} />
+
+              <OrbitControls
+                ref={controlsRef}
+                enablePan
+                enableZoom
+                enableRotate
+                minPolarAngle={0}
+                maxPolarAngle={Math.PI - 0.01}
+              />
+            </Suspense>
+            <CompassRoseYawDriver rotRef={compassRotRef} />
+          </Canvas>
+
+          {/* Rose des vents */}
+          <div
+            style={{
+              position: 'absolute',
+              right: 12,
+              bottom: selectedCity ? 12 + CITY_VIEW_BOTTOM_MARGIN : 12,
+              width: 84,
+              height: 84,
+              color: '#e5e7eb',
+              fontFamily: 'system-ui, sans-serif',
+              userSelect: 'none',
+              zIndex: 5,
+              pointerEvents: 'none',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '50%',
+                background: 'rgba(13,16,24,0.55)',
+                border: '1px solid #2b3545',
+                boxShadow: '0 0 8px rgba(0,0,0,0.45) inset',
+              }}
             />
-            <Sun
-              size={params.sunSize}
-              distance={params.sunDistance}
-              height={params.sunHeight}
-              hour={params.currentHour}
-              daySpeed={params.daySpeed}
-              mode={params.sunLightMode}
-              intensity={params.sunLightIntensity}
-              color={params.sunLightColor}
-              showCone={params.showLightCone}
-              castShadows={params.sunCastShadows}
-              spotAngleDeg={params.sunSpotAngleDeg}
+            <div ref={compassRotRef} style={{ position: 'absolute', inset: 0 }}>
+              <span style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12, fontWeight: 700, color: '#fca5a5' }}>N</span>
+              <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>E</span>
+              <span style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }}>S</span>
+              <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>O</span>
+              {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+                <div
+                  key={deg}
+                  style={{
+                    position: 'absolute',
+                    left: '50%',
+                    top: '50%',
+                    width: 2,
+                    height: deg % 90 === 0 ? 10 : 6,
+                    background: '#4b5563',
+                    transformOrigin: 'center calc(42px)',
+                    transform: `translate(-50%, -42px) rotate(${deg}deg)`,
+                    borderRadius: 1,
+                    opacity: deg % 90 === 0 ? 0.9 : 0.6,
+                  }}
+                />
+              ))}
+            </div>
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '50%',
+                width: 6,
+                height: 6,
+                background: '#94a3b8',
+                borderRadius: '50%',
+                transform: 'translate(-50%, -50%)',
+                boxShadow: '0 0 4px rgba(255,255,255,0.4)',
+              }}
             />
+          </div>
+        </div>
 
-            <Moon
-              size={params.moonSize}
-              distance={params.moonDistance}
-              height={params.moonHeight}
-              hour={params.currentHour}
-              daySpeed={params.daySpeed}
-            />
-
-            <Trajectories
-              sunDistance={params.sunDistance}
-              moonDistance={params.moonDistance}
-              sunHeight={params.sunHeight}
-              moonHeight={params.moonHeight}
-              visible={params.showTrajectories}
-            />
-
-            <CityMarkers
-              cities={sortedCities}
-              radius={params.diskRadius}
-              lonOffsetDeg={params.mapLonOffsetDeg}
-              lonClockwise={params.mapLonClockwise}
-            />
-            <GridHelper size={params.diskRadius} visible={params.showGrid} />
-
-            <OrbitControls
-              ref={controlsRef}
-              enablePan
-              enableZoom
-              enableRotate
-              minPolarAngle={0}
-              maxPolarAngle={Math.PI - 0.01}
-            />
-          </Suspense>
-
-          {/* Driver qui met à jour la rotation du disque DOM */}
-          <CompassRoseYawDriver rotRef={compassRotRef} />
-        </Canvas>
-
-        {/* Rose des vents: DOM absolu ancré au conteneur de la Canvas (fixe) */}
+        {/* Panneau droit */}
         <div
           style={{
-            position: 'absolute',
-            right: 12,
-            bottom: selectedCity ? 12 + CITY_VIEW_BOTTOM_MARGIN : 12,
-            width: 84,
-            height: 84,
-            color: '#e5e7eb',
-            fontFamily: 'system-ui, sans-serif',
-            userSelect: 'none',
-            zIndex: 5,
-            pointerEvents: 'none',
+            width: 340,
+            height: '100%',
+            borderLeft: '1px solid #222',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#0d0f12',
           }}
         >
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              borderRadius: '50%',
-              background: 'rgba(13,16,24,0.55)',
-              border: '1px solid #2b3545',
-              boxShadow: '0 0 8px rgba(0,0,0,0.45) inset',
-            }}
-          />
-          {/* disque rotatif (N/E/S/O) */}
-          <div ref={compassRotRef} style={{ position: 'absolute', inset: 0 }}>
-            <span style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12, fontWeight: 700, color: '#fca5a5' }}>N</span>
-            <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>E</span>
-            <span style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }}>S</span>
-            <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>O</span>
-
-            {/* ticks */}
-            {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-              <div
-                key={deg}
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '50%',
-                  width: 2,
-                  height: deg % 90 === 0 ? 10 : 6,
-                  background: '#4b5563',
-                  transformOrigin: 'center calc(42px)',
-                  transform: `translate(-50%, -42px) rotate(${deg}deg)`,
-                  borderRadius: 1,
-                  opacity: deg % 90 === 0 ? 0.9 : 0.6,
-                }}
-              />
-            ))}
+          {/* Contenu du panneau (scroll si nécessaire) */}
+          <div style={{ flex: 1, minHeight: 0 }}>
+            <ControlPanel
+              params={params}
+              setParams={setParams}
+              onReset={resetCamera}
+              isExpanded={isExpanded}
+              onToggleExpand={() => setIsExpanded((v) => !v)}
+            />
           </div>
-
-          {/* flèche fixe (haut d'écran) */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: 10,
-              transform: 'translateX(-50%)',
-              width: 0,
-              height: 0,
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderBottom: '8px solid #9ca3af',
-              opacity: 0.9,
-            }}
-          />
-          {/* centre */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: '50%',
-              width: 6,
-              height: 6,
-              background: '#94a3b8',
-              borderRadius: '50%',
-              transform: 'translate(-50%, -50%)',
-              boxShadow: '0 0 4px rgba(255,255,255,0.4)',
-            }}
-          />
         </div>
-      </div>
-
-      {/* Panneau droit */}
-      <div style={{ width: 340, height: '100%', borderLeft: '1px solid #222' }}>
-        <ControlPanel params={params} setParams={setParams} onReset={resetCamera} />
       </div>
     </div>
   );
