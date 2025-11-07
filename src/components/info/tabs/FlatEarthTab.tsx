@@ -37,8 +37,12 @@ export default function FlatEarthTab() {
   return (
     <article>
       <h1>Explorer les modèles de la Terre : Une invitation à l'observation</h1>
-      
+
       <h2>Les modèles de Terre plate - Ce qu'ils expliquent... et ce qu'ils n'expliquent pas</h2>
+
+      <p style={{ fontWeight: 'bold', backgroundColor: '#7a0000', color: '#ffffff', padding: '12px 16px', borderRadius: '6px', lineHeight: 1.5 }}>
+        Un simulateur de terre plate est disponible plus bas sur cette page. Mais avant de
+        l'utiliser, lisez la page pour bien comprendre comment l'utiliser, et pourquoi le simulateur est à votre disposition.</p>
       
       <h3>Le modèle de base : la Terre-disque</h3>
       <p>
@@ -49,24 +53,40 @@ export default function FlatEarthTab() {
       <p>
         L'image la plus répendue d'une Terre plate se présente comme ceci : un disque plat avec le pôle Nord au 
         centre (comme le moyeu d'une roue de vélo) et l'Antarctique (le pôle sud) formant un mur de glace 
-        tout autour du bord (comme le pneu de cette roue).
-      </p>
-      <p>Dans ce modèle :</p>
-      <ul>
-        <li><strong>Le Soleil et la Lune</strong> seraient de petites boules (environ 50 km de diamètre) qui tournent en cercle au-dessus de la terre, à environ 5000 km d'altitude</li>
-        <li><strong>Le jour et la nuit</strong> s'expliquent, dans ce modèle, parce que le Soleil agit comme un projecteur : il n'éclaire qu'une zone limitée du disque</li>
-        <li><strong>Les saisons</strong> arrivent parce que le Soleil change de cercle : il tourne plus près du centre en été de l'hémisphère nord, et plus près du bord en hiver</li>
-        <li><strong>Les étoiles</strong> seraient accrochées (ou seraient des petits trous) sur un dôme qui entoure la terre</li>
-      </ul>
-     
+        tout autour du bord (comme le pneu de cette roue).</p>
       
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 360px', minWidth: '280px' }}>
+
+        <p>Dans ce modèle :</p>
+          <ul style={{ marginRight: '0',}}>
+            <li><strong>Le Soleil et la Lune</strong> seraient de petites boules (environ 50 km de diamètre) qui tournent en cercle au-dessus de la terre, à environ 5000 km d'altitude</li>
+            <li><strong>Le jour et la nuit</strong> s'expliquent, dans ce modèle, parce que le Soleil agit comme un projecteur : il n'éclaire qu'une zone limitée du disque</li>
+            <li><strong>Les saisons</strong> arrivent parce que le Soleil change de cercle : il tourne plus près du centre en été, et plus près du bord en hiver</li>
+            <li><strong>Les étoiles</strong> seraient accrochées (ou seraient des petits trous) sur un dôme qui entoure la terre</li>
+          </ul>
+        </div>
+        <figure style={{ marginLeft: '0', marginRight: '5rem', flex: '0 0 320px', maxWidth: '420px' }}>
+          <img
+            src="/img/capture/fe.png"
+            alt="Image classique d'une terre plate"
+            loading="lazy"
+            style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #333' }}
+          />
+          <figcaption style={{ fontSize: '0.9em', color: '#aaa', marginTop: '6px' }}>
+            <small>Modèle de Terre plate le plus courant.</small>
+          </figcaption>
+        </figure>
+      </div>
+
       <h3>Ce que la terre plate explique à peu près</h3>
       <ul>
-        <li><strong>L'horizon plat</strong> : Quand tu regardes l'océan, il semble effectivement plat. Mais ce modèle a du mal à expliquer pourquoi on ne voit pas l'autre rive de l'océan (Par exemple Le brésil depuis l'afrique, ou Londres depuis la tour eifel), même avec des téléscopes ultra puissants.</li>
+        <li><strong>L'horizon plat</strong> : Quand tu regardes l'océan, il semble effectivement plat. Mais ce modèle a du mal à expliquer pourquoi on ne voit pas l'autre rive de l'océan (Par exemple Le brésil depuis l'afrique, ou Londres depuis la tour eifel), même avec des téléscopes ultra puissants, on ne voit pas plus loin que l'horizon.</li>
         <li><strong>Les fuseaux horaires</strong> : Différentes zones du disque 
         sont éclairées à différents moments. Il peut faire jour à New York et nuit 
         à Tokyo au même moment. Ca ça fonctionne "à peu près", mais on va voir que ce n'est pas toujours aussi précis avec une terre plate qu'avec une terre sphérique.</li>
-        <li><strong>Les ombres à midi</strong> : Les ombres n'ont pas toujours la même longueur d'après notre position sur la terre. Il y a plus de 2000 ans en Egypte, Ératosthène avait repéré que :
+        <li><strong>Les ombres à midi</strong> : Les ombres n'ont pas toujours la même longueur d'après notre position sur la terre. C'est quelque chose qu'on "sait" depuis
+         plus de 2000 ans. C'est en Égypte qu'Ératosthène avait déja repéré que :
         <br/>- À Syène (aujourd'hui Assouan), au sud de l'Égypte, le Soleil était directement au dessus de sa tête le jour du solstice d'été (21 juin) à midi - Son baton ne faisait pas d'ombre du tout
         <br/>- À Alexandrie, 800 km plus au nord, au même moment, les objets faisaient une ombre, qu'on pouvait mesurer et avec laquelle on pouvait faire de la géométrie pour calculer plein de choses
         <br/>Il a donc calculé qu'il ne pouvait y avoir que deux géométries possibles :
@@ -92,7 +112,7 @@ export default function FlatEarthTab() {
         <li>Tous les objets célestes (Lune, planètes) sont des sphères, pourquoi pas la Terre ?</li>
       </ul>
       
-      <p><strong>Vers 240 avant J.-C. - Ératosthène</strong> : Le champion ! Il mesure la circonférence de la Terre avec juste des bâtons et des ombres ! À Syène (Assouan aujourd'hui), le Soleil éclaire le fond des puits à midi le jour du solstice d'été. Le même jour à Alexandrie, 800 km plus au nord, les objets font une ombre. En mesurant l'angle de cette ombre (7,2°), il calcule : 7,2° c'est 1/50 d'un cercle, donc la Terre fait 50 × 800 = 40 000 km de tour. Bingo ! C'est la bonne réponse !</p>
+      <p><strong>Vers 240 avant J.-C. - Ératosthène</strong> : Le champion ! Il calcule la circonférence de la Terre avec juste des bâtons et des ombres ! À Syène (Assouan aujourd'hui), le Soleil éclaire le fond des puits à midi le jour du solstice d'été. Le même jour à Alexandrie, 800 km plus au nord, les objets font une ombre. En mesurant l'angle de cette ombre (7,2°), il calcule : 7,2° c'est 1/50 d'un cercle, donc la Terre fait 50 × 800 = 40 000 km de tour. Bingo ! C'est la bonne réponse !</p>
       
       <h3>Le Moyen Âge : on n'a jamais cru que la Terre était plate !</h3>
       
@@ -106,7 +126,7 @@ export default function FlatEarthTab() {
       
       <h3>Les grandes explorations : la preuve par le voyage</h3>
       
-      <p><strong>1519-1522 - Magellan</strong> : Son expédition fait le premier tour complet de la Terre. Ils partent vers l'ouest et reviennent par l'est. Difficile à faire sur un disque !</p>
+      <p><strong>1519-1522 - Magellan</strong> : Son expédition fait le premier tour complet de la Terre. Ils partent vers l'ouest et reviennent par l'est. </p>
       
       <p><strong>Les navigateurs</strong> : Tous utilisent les étoiles pour naviguer. La hauteur de l'étoile Polaire au-dessus de l'horizon donne directement la latitude (la distance au nord de l'équateur). Ça ne marche que sur une sphère !</p>
       
@@ -127,23 +147,25 @@ export default function FlatEarthTab() {
       
       <p><strong>Conclusion du chapitre</strong> : Ce n'est donc pas "juste la NASA" qui affirme que la Terre est sphérique. C'est l'humanité entière, depuis 2500 ans, à travers toutes les cultures, tous les pays, toutes les époques !</p>
       
-      <h3>Ce que la terre plate n'expique pas du tout</h3>
+      <h2>Ce que la terre plate n'expique pas du tout</h2>
 
       <p>Pour vous permettre d'essayer toutes les hypothèses de terre plate et les réglages possibles, On vous propose ce <strong>simulateur de terre plate</strong> :</p>
 
       <p>Vous pouvez essayer toutes sortes de combinaisons de taille, de distance et d'éclairage, et aussi choisir la ville depuis laquelle vous observez le ciel.</p>
-       <p>
+       
         {/* Container pour le simulateur avec hauteur fixe */}
-        <div style={{ 
-          width: '100%', 
-          height: '520px', 
-          position: 'relative',
-          border: '2px solid #333',
-          borderRadius: '10px',
-          overflow: 'hidden',
-          marginBottom: '20px',
-          backgroundColor: '#0b1020' // fond sombre stable
-        }}>
+        <div 
+          id="flat-earth-simulator"
+          style={{ 
+            width: '100%', 
+            height: '520px', 
+            position: 'relative',
+            border: '2px solid #333',
+            borderRadius: '10px',
+            overflow: 'hidden',
+            marginBottom: '20px',
+            backgroundColor: '#0b1020', // fond sombre stable
+          }}>
           <ErrorBoundary onRetry={() => setReloadKey(k => k + 1)}>
             <Suspense fallback={
               <div style={{
@@ -153,7 +175,7 @@ export default function FlatEarthTab() {
                 height: '100%',
                 fontSize: '20px',
                 color: '#fff',
-                background: '#0b1020'
+                background: '#0b1020',
               }}>
                 ⏳ Chargement du simulateur 3D...
               </div>
@@ -162,22 +184,22 @@ export default function FlatEarthTab() {
             </Suspense>
           </ErrorBoundary>
         </div>
-      </p>
+      
 
       <p>Si vous utilisez ce simulateur, et que vous le comparez avec ce que vous pouvez observer dans la réalité (ou ce que vous donne le simulateur en "Terre Sphérique" de MoonTracker), vous verrez qu'il y a beaucoup de choses qu'on arrive pas à expliquer sur une terre plate.</p>
-      <p>
+      <h3>Le couché de soleil</h3>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
         <div style={{ flex: '1 1 360px', minWidth: '280px' }}>
-          <strong>Le couché et le lever de soleil ou de lune</strong> : Sur une 
-          terre sphérique, on voit très bien que le soleil se lève à l'est et se 
-          couche à l'ouest (parfois un peu au sud, parfois un peu au nord). Sur une terre plate, il est difficile d'expliquer
+          <p style={{ marginRight: 0}}>Sur une 
+          terre sphérique, on voit très bien que le soleil se lève à l'Est et se 
+          couche à l'Ouest (parfois un peu au Sud, parfois un peu au Nord). Sur une terre plate, il est difficile d'expliquer
           pourquoi le soleil disparaît sous l'horizon.
-          Le simulateur nous montre que si on était sur une terre plate, peu importe comment on place le soleil ou peu importe d'où on regarde, 
-          le soleil devrait tourner dans le ciel en venant du nord est pour aller au nord ouest. Le simulateur le montre, sur une terre plate, l'après midi, 
-          le soleil s'éloignerait de nous, aparaitrait de plus en plus petit, se rapprocherait de l'horizon
-           (à cause de la pespective), mais ne toucherait jamais l'horizon.
+          Le simulateur nous montre que si on était sur une terre plate, peu importe comment on place le soleil ou peu importe d'où on regarde,
+          le soleil devrait tourner dans le ciel en venant du Nord-Est pour aller au Nord-Ouest. Le simulateur le montre, sur une terre plate, l'après-midi,
+          le soleil s'éloignerait de nous, apparaîtrait de plus en plus petit, se rapprocherait de l'horizon
+           (à cause de la perspective), mais ne toucherait jamais l'horizon.</p>
         </div>
-        <figure style={{ margin: 0, flex: '0 0 320px', maxWidth: '420px' }}>
+        <figure style={{ marginTop : 0, marginRight: '5em', flex: '0 0 320px', maxWidth: '420px' }}>
           <img
             src="/img/capture/fe-sun-to-north.png"
             alt="Trajectoire attendue du Soleil vers le nord sur un modèle de Terre plate"
@@ -189,15 +211,72 @@ export default function FlatEarthTab() {
           </figcaption>
         </figure>
       </div>
+
+      <h3>Les fuseaux horraire</h3>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 360px', minWidth: '280px' }}>
+          <p style={{ marginRight: 0}}>On a vu qu'avec le modèle de terre plate on explique pourquoi il peut faire jour à un endroit et nuit à un autre endroit au même moment.
+          <br/> Mais on a beau "jouer" avec le simulateur de terre plate, changer la largeur du faisceau de soleil, modifier son orbite ou sa hauteur, on arrive pas à "tomber juste".
+          <br/>
+          <br/> Par exemple, 
+          <br/> - Le 21 mars de chaque année à 12:25, le soleil est pile au dessus de Kisangani, une grande ville (quasiment) sur l'équateur au milieu de l'Afrique.
+          <br/> - Au même moment à New York, il est 6h25 et il fait encore nuit.&nbsp;
+          <br/> - Au même moment à Porto Velho au Brésil, il est 6h25 et le soleil vient de se lever.&nbsp;
+          <br/>
+          <a
+            href='?tl=2i2o.t5d2ax&lp=5xc&l=3662762&t=stgybb&F=0&p=5&d=custom&k=1&f=3p&b=94vp&pl=n&sr=-82.675&pc=5128581.212730.3662762'
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline"
+          >
+            (simulation en terre sphérique)
+          </a>
+          </p>          
+        </div>
+        <figure style={{ marginTop : 0, marginBottom : 0, marginRight: '5em', flex: '0 0 320px', maxWidth: '420px' }}>
+          <img
+            src="/img/capture/capture-earth-noon-at-congo.png"
+            alt="Sur une terre sphérique la moitié de la planète est éclairée, et l'autre moitié ne l'est pas"
+            loading="lazy"
+            style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #333' }}
+          />
+          <figcaption style={{ fontSize: '0.9em', color: '#aaa', marginTop: '6px' }}>
+            <small>Sur une terre sphérique la moitié de la planète est éclairée, et l'autre moitié ne l'est pas.</small>
+          </figcaption>
+        </figure>
+      </div>
+
+      <p >
+        Et bien avec le simulateur de terre plate on a beaucoup de mal à trouver une configuration où ça fonctionne (en fait, on y est pas arrivé).
+        <br/>On peut voir que si le soleil est à la verticale de Kisangani (en bleu), le soleil va éclairer New York (en rouge) bien avant d'éclairer Porto Velho (en vert).
+      </p>
+        <figure style={{ marginTop : 0, marginBottom : 0, marginRight: '5em', marginLeft: '5em' }}>
+          <img
+            src="/img/capture/fe-noon-at-congo.png"
+            alt="Sur une terre plate en Mars, le soleil se leve à New York avant de se lever à l'Est du brésil. Dans la vraie vie c'est le contraire."
+            loading="lazy"
+            style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #333' }}
+          />
+          <figcaption style={{ fontSize: '0.9em', color: '#aaa', marginTop: '6px' }}>
+            <small>Sur une terre plate en Mars, le soleil se leve à New York avec de se lever à l'Est du brésil. Dans la vraie vie c'est le contraire.</small>
+          </figcaption>
+        </figure>
+      <p>
+        En effet, sur une terre plate éclairée par une "lampe de poche", les fuseaux horraires et le cercle éclairé ne conincident pas.
+         <br/>La raison est simple, le Faisceau donne un éclairage rond, et les fuseaux horraires, sur une terre plate,  sont des triangles.
       </p>
 
-      <p><strong>La Lune</strong> : Sur une terre plate on ne verrait pas la même image
+      <h3>La lune</h3>
+      <p>Sur une terre plate on devrait pas voir la même image
        de la lune d'après le lieux où on l'observe (puisque les "Platistes" la théorisent à 5 000 km 
        d'altitude - et que la terre platte fait 40 000 km d'un bout à l'autre), alors que
         sur le simulateur MoonTracket (et dans la vrai vie) on voit toujours la même face et
        phase de la lune, et ce peu importe où on se place (puisque pour les "sphéristes", la lune est à presque 400 000 km).
        <br/>Sur la terre sphérique on voit aussi un nouvel effet : la lune est bien la même, mais on la voit se tourner (jusqu'à avoir "la tête en bas")<br/>
-       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">
+       </p>
+       <div 
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
           <figure className="m-0">
             <img
               src="/img/capture/moontracker-application-moon-paris.jpg"
@@ -244,12 +323,32 @@ export default function FlatEarthTab() {
             </figcaption>
           </figure>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">
+        <p>Sur le simulateur de terre plate, La lune est toujours vue sous un angle différent si on la voit d'un nouvel endroit</p>
+        <div 
+          style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">
+          <style>{`
+            .crop570x597 {
+              width: 100%;
+              height: auto;
+              aspect-ratio: 570 / 597;
+              object-fit: cover;
+              display: block;
+            }
+            @media (max-width: 620px) {
+              .crop570x597 {
+                width: 100%;
+                height: auto;
+                aspect-ratio: 570 / 597;
+                object-fit: cover;
+              }
+            }
+          `}</style>
           <figure className="m-0">
             <img
               src="/img/capture/fe-moon-paris.png"
               alt="Simulation de la Lune vue de Paris sur une terre plate"
-              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+              className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
@@ -260,7 +359,7 @@ export default function FlatEarthTab() {
             <img
               src="/img/capture/fe-moon-dakar.png"
               alt="Simulation de la Lune vue de Dakar sur une terre plate"
-              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+              className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
@@ -271,7 +370,7 @@ export default function FlatEarthTab() {
             <img
               src="/img/capture/fe-moon-mexico.png"
               alt="Simulation de la Lune vue de Mexico sur une terre plate"
-              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+              className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
@@ -282,7 +381,7 @@ export default function FlatEarthTab() {
             <img
               src="/img/capture/fe-moon-rio.png"
               alt="Simulation de la Lune vue de Rio de Janeiro sur une terre plate"
-              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+              className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
@@ -291,15 +390,19 @@ export default function FlatEarthTab() {
             </figcaption>
           </figure>
         </div>
-       </p>
-
-      <p><strong>Les étoiles</strong> : Sur une terre plate, on devrait voir les mêmes étoiles peu importe où on se trouve. Pourtant, les observateurs en Australie voient des étoiles qui sont invisibles depuis 
-      l'Europe ! De plus sur la terre plate, les étoiles devraient apparaître plus proches de l'horizon à mesure que l'on s'éloigne du pôle Nord, ce qui n'est pas le cas.
-      <br/>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
+       
+      <h3>Les étoiles</h3>
+      <p>Sur une terre plate, on devrait voir les mêmes étoiles peu importe où on se trouve.
+      Pourtant, les observateurs en Australie voient des étoiles qui sont invisibles depuis
+      l'Europe !
+      <br />De plus quand on "timelapse" les étoiles sur une terre plate, on devrait les voir tourner autour du "nord" et ce, peu importe d'où on les observe, alors que sur une terre sphérique, on voit tourner les étoiles dans le sens des aiguilles d'une montre au pôle sud, et dans le sens inverse au pôle nord.<br/>
+      Dans ces vidéo faites sur MoonTracket, on voit d'ailleurs que quand on est sur l'équateur, et qu'on regarde au nord, elles tournent dans le sens inverse de quand on regarde au sud.</p>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginLeft: '5em', marginRight: '5em', flexWrap: 'wrap' }}>
         <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
           <video
-            controls
+            autoPlay
+            muted
+            loop
             preload="metadata"
             playsInline
             className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
@@ -313,7 +416,9 @@ export default function FlatEarthTab() {
         </figure>
         <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
           <video
-            controls
+            autoPlay
+            muted
+            loop
             preload="metadata"
             playsInline
             className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
@@ -326,161 +431,209 @@ export default function FlatEarthTab() {
           </figcaption>
         </figure>
       </div>
-    </p>
+    
+      <h3>Les éclises solaires</h3>
+      <p>Lors des éclipses solaires, la lune passe entre nous et le soleil. 
+      Donc il faut forcément que la lune soit plus proche de nous que ne l'est le soleil. 
+      C'est possible dans le simulateur de terre plate ci dessus, mais c'est compliqué de trouver comment placer la lune et le soleil pour obtenir les éclipses telles qu'on les observe depuis différents lieux. 
+      <br/>Si on essaye avec la prochaine éclipse (qui sera visible le 12 aout 2026 entre l'Europe et l'Afrique du Nord) : 
+      Les captures suivantes (faites avec MoonTracker) nous prédisent comment l'éclipse sera à exactement 20h32 (heure de paris). depuis différents endroits :
+      <br/>
+      </p>
+      <div 
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-oslo.jpg"
+              alt="Oslo, Norvège, le 12 aout 2026 à 20h32 (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
-      <p><strong>Le problème des éclipses</strong> : Qu'est-ce qui passe devant le Soleil lors d'une éclipse solaire si la Lune est toujours au-dessus du disque ? Et comment la Lune devient-elle rouge lors d'une éclipse lunaire ?</p>
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Oslo, Norvège, le 12 aout 2026 à 20h32 (simulation Moontracker)
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-london.jpg"
+              alt="London, UK, le 12 aout 2026 à 19h32 (heure locale) (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              London, UK, le 12 aout 2026 à 19h32 (heure locale) (simulation Moontracker)
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-berlin.jpg"
+              alt="Berlin, Allemagne, le 12 aout 2026 à 20h32 (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Berlin, Allemagne, le 12 aout 2026 à 20h32 (simulation Moontracker)
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-paris.jpg"
+              alt="Paris, France, le 12 aout 2026 à 20h32 (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Paris, France, le 12 aout 2026 à 20h32 (simulation Moontracker)
+              
+            </figcaption>
+          </figure>
+        </div>
+      <div 
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-madrid.jpg"
+              alt="Madrid, Espagne, le 12 aout 2026 à 20h32 (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Madrid, Espagne, le 12 aout 2026 à 20h32 (simulation Moontracker)
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-Rabat.jpg"
+              alt="Rabat, Maroc, le 12 aout 2026 à 19h32 locale (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Rabat, Maroc, le 12 aout 2026 à 19h32 locale (simulation Moontracker)
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-alger.jpg"
+              alt="Alger, Algérie, le 12 aout 2026 à 19h32 locale (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Alger, Algérie, le 12 aout 2026 à 19h32 locale (simulation Moontracker)
+            </figcaption>
+          </figure>
+          <figure className="m-0">
+            <img
+              src="/img/capture/moontracker-eclipse-2026-dakar.jpg"
+              alt="Dakar, Sénégal, le 12 aout 2026 à 18h32 locale (simulation Moontracker)"
+              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+            />
+            <figcaption className="text-sm text-gray-500 mt-1">
+              Dakar, Sénégal, le 12 aout 2026 à 18h32 locale (simulation Moontracker)
+              
+            </figcaption>
+          </figure>
+        </div>
+      <p>
+        Ces 8 images sont simulées (et pourront être vérifiées sur place) <strong>exactement</strong> au même moment. Donc appelez vos amis pendant l'éclipse et &nbsp;
+      <a
+        href="/?tl=2i2o.t5cuxn&lp=5xc&l=3117735&t=tjo65c&F=0&p=0&d=nikon-p1000&z=p1000-2000eq&b=94p3&pl=a&sr=0.0167&pc=3117735.2988507.2643743.2507480.2538475.2950159.2253354.3143244"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline"
+      >
+        Comparez à la simulation MoonTracker (terre sphérique)
+      </a>
+      <br/>Jusqu'ici personne n'a trouvé de configuration de terre plate qui puisse expliquer toutes ces images en même temps.
+      </p>
+      <h3>Les éclipses lunaires</h3>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 360px', minWidth: '280px' }}>
+          <p style={{ marginRight: 0 }}>
+          Lors des éclipses lunaires, la lune passe "derrière la terre" et traverse l'ombre de notre planète. 
+          Au début et à la fin de l'éclipse, on peut voir la forme arrondie de notre planète (le bord de l'ombre).
+          C'est une des évidences les plus anciennes qu'on a de la rotondité de la terre (Aristote l'avait déjà remarquée en 350 avant J.-C.).
+          Sur une terre plate, on ne peut pas expliquer pourquoi l'ombre de la terre est toujours ronde pendant une éclipse lunaire.
+          <br/>De plus, lors d'une éclipse lunaire, la lune devient rouge (à cause de la diffusion de la lumière dans l'atmosphère terrestre). 
+          Sur une terre plate,  on ne peut pas expliquer pourquoi la lune devient rouge pendant une éclipse lunaire.
+          </p>
+        </div>
+        <figure style={{ marginLeft: '0', marginRight: '5rem', flex: '0 0 320px', maxWidth: '420px' }}>
+          <img
+            src="/img/examples/export-red-moon.jpg"
+            alt="Phase de lune rouge d'une éclipse lunaire"
+            loading="lazy"
+            style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #333' }}
+          />
+          <figcaption style={{ fontSize: '0.9em', color: '#aaa', marginTop: '6px' }}>
+            <small>Phase de lune rouge d'une éclipse lunaire.</small>
+          </figcaption>
+        </figure>
+      </div>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginLeft: '5em', marginRight: '5em', flexWrap: 'wrap' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+          <video
+            autoPlay
+            muted
+            loop
+            preload="metadata"
+            playsInline
+            className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
+          >
+            <source src="/img/capture/video-moon-eclipse-australia.webm" type="video/webm" />
+            Votre navigateur ne supporte pas la lecture de vidéos WebM.
+          </video>
+          <figcaption className="text-sm text-gray-500 mt-1">
+            Début de l'éclipse lunaire vue depuis l'Australie. On voit l'ombre de la terre avancer (durée réelle 38 minutes)
+          </figcaption>
+        </figure>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+          <video
+            autoPlay
+            muted
+            loop
+            preload="metadata"
+            playsInline
+            className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
+          >
+            <source src="/img/capture/video-moon-eclipse-japan.webm" type="video/webm" />
+            Votre navigateur ne supporte pas la lecture de vidéos WebM.
+          </video>
+          <figcaption className="text-sm text-gray-500 mt-1">
+            Même éclipse lunaire vue depuis le Japon.
+          </figcaption>
+        </figure>
+      </div>
+      <p>
       
-      
-      <h2>Chapitre 3 : Teste par toi-même avec l'application !</h2>
-      
-      <p>Voici des expériences que tu peux faire avec cette application pour comprendre la forme de notre planète. Pour chaque test, compare ce que montre l'application avec ce que tu peux observer dans la vraie vie !</p>
-      
-      <h3>Expérience 1 : Le mystère du Soleil de minuit</h3>
-      
-      <p><strong>Ce qu'on teste</strong> : Le Soleil qui ne se couche jamais en été près des pôles</p>
-      
-      <p><strong>Dans l'application</strong> :</p>
-      <ol>
-        <li>Mets la date au 21 juin (solstice d'été)</li>
-        <li>Place-toi à Tromsø, Norvège (69°N) ou utilise ce <a href="/?tl=2i2p.tgyag0&lp=5xd&lat=69.6492&lng=18.9553&tz=Europe/Oslo&t=tgyc2c&F=b&p=0&d=VM&z=vm173&b=9hcl&pl=n&sr=24.0167&dh=89.9" target="_blank" rel="noopener noreferrer">lien direct</a></li>
-        <li>Active le time-lapse rapide (×1000) sur 24h</li>
-        <li>Observe : le Soleil fait un cercle complet sans toucher l'horizon !</li>
-      </ol>
-      
-      <p><strong>Ce qu'on verrait sur une Terre plate</strong> :</p>
-      <ul>
-        <li>Le Soleil devrait disparaître quand il s'éloigne de ta zone</li>
-        <li>Il ne pourrait pas faire un cercle complet visible depuis un seul point</li>
-      </ul>
-      
-      <p><strong>Dans la vraie vie</strong> : Des millions de personnes vivent cette expérience chaque été en Alaska, Norvège, Islande... et chaque été en Antarctique aussi !</p>
-      
-      <h3>Expérience 2 : La danse étrange des planètes</h3>
-      
-      <p><strong>Ce qu'on teste</strong> : Le mouvement rétrograde de Mars (quand elle semble reculer dans le ciel)</p>
-      
-      <p><strong>Dans l'application</strong> :</p>
-      <ol>
-        <li>Suis Mars pendant un an avec un point par semaine</li>
-        <li>Active la pose longue et observe sa trajectoire</li>
-        <li>Remarque la boucle qu'elle fait ! <a href="/?tl=1og5.t5ieo0&lp=5xc&l=2988507&t=t5z2o0&F=0&p=5&d=custom&k=1&f=r&b=35vp&pl=4&sr=168.0167" target="_blank" rel="noopener noreferrer">Lancer la simulation</a></li>
-      </ol>
-      
-      <p><strong>Ce qu'on verrait sur une Terre plate</strong> :</p>
-      <ul>
-        <li>Mars devrait juste tourner en cercle au-dessus du disque</li>
-        <li>Pas de raison qu'elle fasse marche arrière !</li>
-      </ul>
-      
-      <p><strong>L'explication sphérique</strong> : La Terre double Mars sur son orbite (comme quand tu doubles une voiture sur l'autoroute, elle semble reculer par rapport au paysage).</p>
-      
-      <h3>Expérience 3 : Les étoiles impossibles</h3>
-      
-      <p><strong>Ce qu'on teste</strong> : Voir différentes étoiles selon où on est sur Terre</p>
-      
-      <p><strong>Dans l'application</strong> :</p>
-      <ol>
-        <li>Place-toi à Paris et regarde vers le nord : tu vois la Grande Ourse - <a href="/?tl=1og5.t5ieo0&lp=75&l=2988507&t=t5z2o0&F=b&p=0&d=VM&z=vm173&b=8s6t&pl=n&sr=0.0167&dh=45.0" target="_blank" rel="noopener noreferrer">Voir depuis Paris</a></li>
-        <li>Téléporte-toi à Sydney, Australie - <a href="/?tl=1og5.t5ieo0&lp=75&lat=-33.8688&lng=151.2093&tz=Australia/Sydney&t=t5z2o0&F=b&p=0&d=VM&z=vm173&b=8s7o&pl=n&sr=0.0167&dh=-45.0" target="_blank" rel="noopener noreferrer">Voir depuis Sydney</a></li>
-        <li>Regarde vers le nord : plus de Grande Ourse ! Mais vers le sud : la Croix du Sud !</li>
-        <li>Bonus : mets-toi à l'équateur - tu peux voir les deux ! - <a href="/?tl=1og5.tczxg0&lp=75&lat=0.000000&lng=-78.467&tz=America/Guayaquil&t=tdcw40&F=b&p=0&d=VM&z=vm173&b=8s7p&pl=n&sr=0.0167&da=-51.76&dh=89.9" target="_blank" rel="noopener noreferrer">Voir depuis l'Équateur</a></li>
-      </ol>
-      
-      <p><strong>Ce qu'on verrait sur une Terre plate</strong> :</p>
-      <ul>
-        <li>Tout le monde devrait voir les mêmes étoiles</li>
-        <li>Ou alors le "dôme" devrait être magique et montrer des choses différentes selon où on est (compliqué !)</li>
-      </ul>
-      
-      <h3>Expérience 4 : L'ombre révélatrice de la Terre</h3>
-      
-      <p><strong>Ce qu'on teste</strong> : Les éclipses de Lune</p>
-      
-      <p><strong>Dans l'application</strong> :</p>
-      <ol>
-        <li>Trouve une date d'éclipse lunaire (par exemple : 14 mars 2025) - <a href="/?tl=2i2p.u1xnk0&lp=5xc&l=2988507&t=u1y2o0&F=1&p=0&d=custom&k=1&f=1fy&b=9hcf&pl=a&sr=4.0167" target="_blank" rel="noopener noreferrer">Voir l'éclipse</a></li>
-        <li>Place-toi n'importe où d'où l'éclipse est visible</li>
-        <li>Observe l'ombre qui passe sur la Lune</li>
-        <li>Change de lieu d'observation : l'ombre est toujours ronde !</li>
-      </ol>
-      
-      <p><strong>Ce qu'on verrait sur une Terre plate</strong> :</p>
-      <ul>
-        <li>L'ombre devrait être ovale ou en forme de ligne</li>
-        <li>Elle changerait selon l'angle d'observation</li>
-      </ul>
-      
-      <p><strong>Bonus</strong> : Mesure le rapport entre la taille de l'ombre et celle de la Lune. Tu peux en déduire que la Terre fait environ 3,7 fois le diamètre de la Lune !</p>
-      
-      <h3>Expérience 5 : Le Soleil qui ne rétrécit pas</h3>
-      
-      <p><strong>Ce qu'on teste</strong> : La taille apparente du Soleil</p>
-      
-      <p><strong>Dans l'application</strong> :</p>
-      <ol>
-        <li>Mesure la taille du Soleil à différents moments de la journée - <a href="/?tl=2i2p.t5ieo0&lp=5xd&l=2988507&t=t5z2o0&F=0&p=0&d=nikon-p1000&z=p1000-2000eq&b=9hc7&pl=n&sr=12.0167" target="_blank" rel="noopener noreferrer">Lancer le test</a></li>
-        <li>Use la fonction zoom pour bien voir</li>
-        <li>Compare lever, midi, coucher</li>
-      </ol>
-      
-      <p><strong>Ce qu'on verrait sur une Terre plate</strong> :</p>
-      <ul>
-        <li>Si le Soleil s'éloignait (modèle du projecteur), il devrait paraître 2-3 fois plus petit au coucher qu'à midi</li>
-        <li>Les time-lapses montreraient un Soleil qui grandit et rétrécit</li>
-      </ul>
-      
-      <p><strong>La réalité</strong> : Le Soleil garde la même taille (environ 0,5°) toute la journée. Il peut même paraître plus gros à l'horizon (mais c'est une illusion d'optique !).</p>
-      
-      <h3>Expérience 6 : Les distances qui ne collent pas</h3>
-      
-      <p><strong>Ce qu'on teste</strong> : Les vols dans l'hémisphère sud</p>
-      
-      <p><strong>Dans l'application</strong> :</p>
-      <ol>
-        <li>Trace une ligne entre Sydney et Santiago du Chili - <a href="/?tl=1og5.t5ieo0&lp=75&lat=-33.8688&lng=151.2093&tz=Australia/Sydney&t=t5z2o0&F=b&p=0&d=VM&z=vm173&b=8s7o&pl=n&sr=0.0167&da=-70.0&dh=0.0" target="_blank" rel="noopener noreferrer">Sydney-Santiago</a></li>
-        <li>Regarde la distance et la direction</li>
-        <li>Fais pareil avec Johannesburg - Sydney - <a href="/?tl=1og5.t5ieo0&lp=75&lat=-26.2041&lng=28.0473&tz=Africa/Johannesburg&t=t5z2o0&F=b&p=0&d=VM&z=vm173&b=8s7o&pl=n&sr=0.0167&da=120.0&dh=0.0" target="_blank" rel="noopener noreferrer">Johannesburg-Sydney</a></li>
-      </ol>
-      
-      <p><strong>Sur une carte de Terre plate</strong> :</p>
-      <ul>
-        <li>Ces vols devraient faire d'énormes détours</li>
-        <li>Sydney-Santiago devrait passer près du pôle Nord (!)</li>
-        <li>Les vols devraient durer 25-30 heures</li>
-      </ul>
-      
-      <p><strong>La réalité</strong> :</p>
-      <ul>
-        <li>Vol direct Sydney-Santiago : 12h30, en passant au-dessus de l'Antarctique</li>
-        <li>Les pilotes confirment voir le continent blanc en dessous !</li>
-      </ul>
-      
-      <h3>Expérience 7 : Le test ultime - Crée ton propre modèle !</h3>
-      
-      <p><strong>Le défi</strong> : Essaie de créer UN SEUL modèle qui explique TOUS ces phénomènes :</p>
-      <ul>
-        <li>Le Soleil de minuit aux deux pôles</li>
-        <li>Les phases de la Lune vues pareil partout</li>
-        <li>Les éclipses</li>
-        <li>Les saisons inversées nord/sud</li>
-        <li>Les étoiles différentes selon la latitude</li>
-        <li>Les fuseaux horaires</li>
-        <li>La taille constante du Soleil et de la Lune</li>
-      </ul>
-      
-      <p>Spoiler : Des milliers de personnes ont essayé... Le seul modèle qui marche pour tout, c'est la sphère !</p>
-      
-      <h3>Pour aller plus loin</h3>
-      
-      <p>L'application te permet de voyager dans le temps et l'espace. Profites-en pour :</p>
-      <ul>
-        <li>Observer les transits de Vénus (super rares !) - <a href="/?tl=2i2p.m55zs0&lp=74&l=5391959&t=m5608o&F=0&p=1&d=nikon-p1000&z=p1000-2000eq&b=aw1z&pl=2&sr=0.0167" target="_blank" rel="noopener noreferrer">Transit de 2012</a></li>
-        <li>Suivre les éclipses historiques - <a href="/?tl=1og4.-qelao0&lp=5xc&g=s0m1ryjyn&tz=Africa/Malabo&t=-qel6g4&F=0&p=5&d=custom&k=1&f=1k&b=2t6v&pl=n&sr=2.0167" target="_blank" rel="noopener noreferrer">Éclipse de 1919 (Einstein)</a></li>
-        <li>Comprendre pourquoi les anciens ont appelé les planètes "étoiles errantes" - <a href="/?tl=-teqghl.s6l39p&lp=5xc&l=2988507&t=s793kh&F=9&p=0&d=VM&z=vm173&b=9hec&pl=a&sr=-6.9833&da=34.73&dh=89.9" target="_blank" rel="noopener noreferrer">Voir le mouvement</a></li>
-        <li>Voir comment le ciel change selon où tu es sur Terre</li>
-      </ul>
-      
-      <p><strong>Le message final</strong> : La science, ce n'est pas croire aveuglément ce qu'on te dit. C'est observer, tester, vérifier. Cette application te donne les outils. À toi de jouer ! Compare ce que tu vois dans l'application avec le vrai ciel. Pose-toi des questions. Cherche des explications.</p>
+      <br/>Jusqu'ici personne n'a trouvé de configuration de terre plate qui puisse expliquer à la fois l'ombre qui apparait sur la lune en 30-40 minutes, et le fait qu'on ne la voit pas orientée de la même façon dans l'hémisphère sud et nord.  &nbsp;
+      <a
+        href='/?tl=3wn4.t2884e&lp=5xc&g=rhby8kxye&tz=Australia%2FDarwin&t=t287xz&F=1&p=0&d=custom&k=1&f=1fy&b=9hcf&pl=a&sr=2.0167'
+        target="_blank"
+        rel="noopener noreferrer"
+        className="underline"
+      >
+        Voir la simulation en terre sphérique
+      </a>
+      </p>
+
+      <p>
+        <a
+          href="#flat-earth-simulator"
+          className="inline-block bg-blue-600 hover:bg-blue-700 text-white font-medium px-4 py-2 rounded-md transition"
+          style={{color:'white'}}
+        >
+          Essayer quand même avec le simulateur de terre plate
+        </a>
+      </p>
+
+      <h2>Et si elle était sphérique ?</h2>
+    
+      <p>La science, ce n'est pas croire aveuglément ce qu'on te dit. C'est observer, tester, vérifier. Cette application te donne les outils. À toi de jouer ! Compare ce que tu vois dans l'application avec le vrai ciel. Pose-toi des questions. Cherche des explications.</p>
       
       <p>Et souviens-toi : si la Terre était vraiment plate, il faudrait une conspiration impliquant des millions de personnes (scientifiques, pilotes, marins, ingénieurs...) de tous les pays, depuis des siècles, sans qu'aucun ne vende la mèche pour devenir riche et célèbre.</p>
       
