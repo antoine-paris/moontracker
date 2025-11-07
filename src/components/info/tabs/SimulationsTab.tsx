@@ -85,7 +85,7 @@ export default function SimulationsTab() {
       img: '/img/examples/export-sun-path-north-finland.jpg'
     },
     {
-      label: 'Soleil de (presque) minuit — 21 juin (Jyvaeskylae - Finlande)',
+      label: 'Soleil de (presque) minuit — 21 juin (Jyvaeskylae - Finlande) - vue horizontale',
       desc: 'Une autre vue du soleil qui semble tourner autour de nous le 21 juin à Jyvaeskylae, Finlande, au‑delà du cercle polaire où le Soleil reste au‑dessus de l’horizon 24 h au solstice d’été. Dans cette ville de Finlande, le 21 juin, le soleil va se se lever (au nord) à 2h30, et se coucher (au nord) à 23h00. Tout au long de cette journée, le soleil va tourner autour de vous.',
       url: '/?tl=7aps.tgyc2c&lp=5xd&l=655194&t=tgyhou&F=0&p=5&d=custom&k=1&f=7&b=9hh1&pl=n&sr=30.0167&dh=-20.61',
       img: '/img/examples/export-sun-path-north-finland-2.jpg'
@@ -194,8 +194,8 @@ export default function SimulationsTab() {
       {examples.map((ex) => (
         <div key={ex.label}>
           <h2 className="text-lg font-semibold">{ex.label}</h2>
-          <p>
-          <table className="w-full border-collapse" aria-label="Simulations — Exemples partageables">
+          
+          <table style={{ marginLeft:'5em', marginRight:'5em' }} className="w-full border-collapse" aria-label="Simulations — Exemples partageables">
             <tbody>
               <tr key={ex.label} className="align-top border-b last:border-0">
                 <td className="pr-4 w-120 py-0 align-top">
@@ -234,7 +234,7 @@ export default function SimulationsTab() {
               </tr>
             </tbody>
           </table>
-          </p>
+          
         </div>
       ))}
 

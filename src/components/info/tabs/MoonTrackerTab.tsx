@@ -136,38 +136,38 @@ export default function MoonTrackerTab() {
         <li>Montrer la danse de Vénus/Mercure, les saisons du Soleil ou la libration lunaire en timelapse.</li>
       </ul>
 
-      <p>
-        <figure className="m-0">
-          <img
-            src="/img/capture/moontracker-application-export-1.png"
-            alt="Fonction de capture et d’exportation de la scène"
-            className="w-full h-auto rounded-md border border-black/10 shadow-sm"
-          />
-          <figcaption className="text-sm text-gray-500 mt-1">
-            Vue depuis Paris de l’éclipse solaire de 2026 avec Mercure et Jupiter.
-          </figcaption>
-        </figure>
-      </p>
+      
+      <figure className="m-0" style={{ marginLeft: '5em', marginRight: '5em' }}>
+        <img
+          src="/img/capture/moontracker-application-export-1.png"
+          alt="Fonction de capture et d’exportation de la scène"
+          className="w-full h-auto rounded-md border border-black/10 shadow-sm"
+        />
+        <figcaption className="text-sm text-gray-500 mt-1">
+          Vue depuis Paris de l’éclipse solaire de 2026 avec Mercure et Jupiter.
+        </figcaption>
+      </figure>
+    
       
       <h2>FAQ</h2>
-      <p>
-      <details>
-        <summary>MoonTracker est‑il gratuit ?</summary>
-        <p>Oui, open‑source sous licence MIT, utilisable gratuitement dans un navigateur moderne.</p>
-      </details>
-      <details>
-        <summary>Puis‑je exporter une vidéo ou une image ?</summary>
-        <p>Oui, export image (PNG/copier) et enregistrement vidéo .webm intégrés.</p>
-      </details>
-      <details>
-        <summary>Les projections grand‑angle sont‑elles supportées ?</summary>
-        <p>Oui: Recti‑Panini, Stéréographique centré, Orthographique, Rectilinéaire, Cylindrique.</p>
-      </details>
-      <details>
-        <summary>La simulation inclut‑elle la réfraction et les phases ?</summary>
-        <p>Oui: réfraction atmosphérique optionnelle, phases fidèles, libration et clair de Terre.</p>
-      </details>
-      </p>
+      <div style={{ marginLeft:'5em', marginRight:'5em' }}>
+        <details >
+          <summary>MoonTracker est‑il gratuit ?</summary>
+          <p>Oui, open‑source sous licence MIT, utilisable gratuitement dans un navigateur moderne.</p>
+        </details>
+        <details>
+          <summary>Puis‑je exporter une vidéo ou une image ?</summary>
+          <p>Oui, export image (PNG/copier) et enregistrement vidéo .webm intégrés.</p>
+        </details>
+        <details>
+          <summary>Les projections grand‑angle sont‑elles supportées ?</summary>
+          <p>Oui: Recti‑Panini, Stéréographique centré, Orthographique, Rectilinéaire, Cylindrique.</p>
+        </details>
+        <details>
+          <summary>La simulation inclut‑elle la réfraction et les phases ?</summary>
+          <p>Oui: réfraction atmosphérique optionnelle, phases fidèles, libration et clair de Terre.</p>
+        </details>
+      </div>
       <h2>Open‑source et crédits</h2>
       <p>
         Code source: <a href="https://github.com/antoine-paris/moontracker" target="_blank" rel="noopener noreferrer" itemProp="url">GitHub</a> —

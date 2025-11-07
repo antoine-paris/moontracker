@@ -328,7 +328,7 @@ export default function FlatEarthTab() {
             </figcaption>
           </figure>
         </div>
-        <p>Sur le simulateur de Terre plate, la Lune est toujours vue sous un angle différent si on la observe depuis un autre endroit.</p>
+        <p>Sur le simulateur de Terre plate, la Lune est vue sous un angle différent si on l'observe depuis un endroit différet.</p>
         <div 
           style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}
           className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">

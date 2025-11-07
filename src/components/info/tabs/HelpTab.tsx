@@ -1,4 +1,3 @@
-
 type IconId =
   | 'info' | 'panels' | 'play' | 'pause' | 'rec' | 'stop' | 'share' | 'capture'
   | 'sun' | 'moon' | 'planet' | 'stars'
@@ -319,9 +318,9 @@ export default function HelpTab() {
 
       <h3><I id="capture" />Capture d’image</h3>
       <p>Enregistre une image du rendu à l’écran et la copie dans le presse‑papier. Masquez l’interface ( <I id="fullscreen" size="small" />) pour l’activer.</p>
-      <p>Utile pour partager un projet d’astrophotographie, un transit ou un lever/coucher précis.
+      <p>Utile pour partager un projet d’astrophotographie, un transit ou un lever/coucher précis.</p>
       {/* Galerie 2 colonnes */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <figure className="m-0">
           <img
             src="/img/capture/moontracker-application-export-1.png"
@@ -343,7 +342,7 @@ export default function HelpTab() {
           </figcaption>
         </figure>
       </div>
-      </p>
+      
 
       <h2 ><I id="panels" />Suivi d’objet spatial, angle de vue, champ de vision</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
@@ -353,7 +352,7 @@ export default function HelpTab() {
             automatiquement suivre un objet spatial (Soleil, Lune, planète). Elle permet aussi de choisir un appareil photo et un objectif, ou de choisir un angle de prise de vue personnalisé.
           </p>
         </div>
-        <div className="m-0 md:col-span- md:mr-[5em]">
+        <div className="m-0 md:col-span-1 md:mr-[5em]">
           <figure className="mt-0">
             <img
               src="/img/capture/moontracker-application-follow-1.png"
@@ -574,19 +573,19 @@ export default function HelpTab() {
       <h3><I id="device" />Cadre photo</h3>
       <p>
         Quand vous choisissez un appareil photo particulier, la zone de rendu est entourée par un cadre (en gris) proportionnel au capteur de l’appareil choisi.
-        Des pointillés indiquent le format 16:9.
-        <figure className="m-0">
-              <img
-                src="/img/capture/moontracker-application-capture-cadre-iphone.jpg"
-                alt="Photo de la Lune avec un iPhone 15 Pro. Le cadre gris est aux dimensions du capteur de l’iPhone."
-                className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
-              />
-              <figcaption className="text-sm text-gray-500 mt-1">
-                Photo de la Lune avec un iPhone 15 Pro. Le cadre gris est aux dimensions du capteur de l’iPhone.
-              </figcaption>
-            </figure>
+        Des pointillés indiquent le format 16:9.</p>
+      <figure style={{ marginLeft:'5em', marginRight:'5em' }}  className="m-0">
+        <img
+          src="/img/capture/moontracker-application-capture-cadre-iphone.jpg"
+          alt="Photo de la Lune avec un iPhone 15 Pro. Le cadre gris est aux dimensions du capteur de l’iPhone."
+          className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
+        />
+        <figcaption className="text-sm text-gray-500 mt-1">
+          Photo de la Lune avec un iPhone 15 Pro. Le cadre gris est aux dimensions du capteur de l’iPhone.
+        </figcaption>
+      </figure>
         
-      </p>  
+      
       
       <h2>Barre latérale « Lieux » — se déplacer sur la Terre</h2>
       <p>Choisissez un lieu d’observation sur Terre (latitude, longitude) pour voir le ciel et l’horizon depuis cet endroit. Plusieurs outils facilitent la recherche, la navigation et le positionnement précis.
@@ -594,27 +593,27 @@ export default function HelpTab() {
       </p>
 
       <h3><I id="globe" />Globe terrestre</h3>
-      <p>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
-          <figure className="m-0">
-            <img
-              src="/img/capture/moontracker-application-capture-globe.jpg"
-              alt="Indicateur du lieu et de la direction d’observation"
-              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
-            />
-            <figcaption className="text-sm text-gray-500 mt-1">
-              Indicateur du lieu et de la direction d’observation
-            </figcaption>
-          </figure>
-          <div>
-            Avec ce globe, vous pouvez vous déplacer d’est en ouest, ce qui mettra à jour la liste des villes dans l’onglet « Villes ». 
-            <br/>
-            Sur le globe, la position de l’observateur est indiquée par un marqueur et une flèche indique la direction de la prise de vue.
-            <br/>
-            Quand la flèche est rouge, elle indique que l’observateur regarde sous l’horizon (altitude négative).
-          </div>
-        </div>
-      </p>
+      
+      <div style={{ marginLeft:'5em', marginRight:'5em' }}  className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-capture-globe.jpg"
+            alt="Indicateur du lieu et de la direction d’observation"
+            className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            Indicateur du lieu et de la direction d’observation
+          </figcaption>
+        </figure>
+        <p>
+          Avec ce globe, vous pouvez vous déplacer d’est en ouest, ce qui mettra à jour la liste des villes dans l’onglet « Villes ». 
+          <br/>
+          Sur le globe, la position de l’observateur est indiquée par un marqueur et une flèche indique la direction de la prise de vue.
+          <br/>
+          Quand la flèche est rouge, elle indique que l’observateur regarde sous l’horizon (altitude négative).
+        </p>
+      </div>
+      
 
       <h3><I id="location" />Onglet Villes, favoris et navigation</h3>
       <p>
@@ -624,78 +623,77 @@ export default function HelpTab() {
         Dans l’onglet « Villes », elles sont présentées du nord <I id="N" size='small' /> au sud <I id="S" size='small' /> (à 1° de latitude), permettant de se déplacer d’une ville à l’autre sur la même latitude en un seul clic.
         <br/>
       </p>
+      
+      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-capture-cities.jpg"
+            alt="Se déplacer sur la Terre avec l’onglet Villes"
+            className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            Se déplacer sur la Terre avec l’onglet Villes
+          </figcaption>
+        </figure>
+      <div> {/* inner text block (cities) */}
+      <p>    
+        <br/>
+        Les deux boutons est  <I id="E" size='small' /> et ouest  <I id="O" size='small' /> permettent
+        de naviguer dans la liste des villes en restant sur la même longitude (à 1° près).
+        <br/>
+        <br/>
+        Cette organisation permet de mettre en évidence la sphéricité de la planète puisqu’en se déplaçant d’est en ouest ou du nord au sud, la scène rendue va pivoter.
+        <br/>
+      </p>
+      {/* Galerie 2 colonnes */}
+      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-moon-paris.jpg"
+            alt="Simulation de la Lune vue de Paris"
+            className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            La Lune vue de Paris
+          </figcaption>
+        </figure>
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-moon-cotonou.jpg"
+            alt="Simulation de la Lune vue de Cotonou"
+            className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            La Lune vue de Cotonou (au sud de Paris)
+          </figcaption>
+        </figure>
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-moon-somalia.jpg"
+            alt="Simulation de la Lune vue de Somalie"
+            className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            La Lune vue de Somalie (à l’est de Cotonou)
+          </figcaption>
+        </figure>
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-moon-madagascar.jpg"
+            alt="Simulation de la Lune vue de Madagascar"
+            className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
+
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            La Lune vue de Madagascar (au sud de la Somalie)
+          </figcaption>
+        </figure>
+      </div>
       <p>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
-         <figure className="m-0">
-            <img
-              src="/img/capture/moontracker-application-capture-cities.jpg"
-              alt="Se déplacer sur la Terre avec l’onglet Villes"
-              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
-            />
-            <figcaption className="text-sm text-gray-500 mt-1">
-              Se déplacer sur la Terre avec l’onglet Villes
-            </figcaption>
-          </figure>
-          <div>
-           
-            <br/>
-            Les deux boutons est  <I id="E" size='small' /> et ouest  <I id="O" size='small' /> permettent
-            de naviguer dans la liste des villes en restant sur la même longitude (à 1° près).
-            <br/>
-            <br/>
-            Cette organisation permet de mettre en évidence la sphéricité de la planète puisqu’en se déplaçant d’est en ouest ou du nord au sud, la scène rendue va pivoter.
-            <br/>
-            {/* Galerie 2 colonnes */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">
-              <figure className="m-0">
-                <img
-                  src="/img/capture/moontracker-application-moon-paris.jpg"
-                  alt="Simulation de la Lune vue de Paris"
-                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
-
-                />
-                <figcaption className="text-sm text-gray-500 mt-1">
-                  La Lune vue de Paris
-                </figcaption>
-              </figure>
-              <figure className="m-0">
-                <img
-                  src="/img/capture/moontracker-application-moon-cotonou.jpg"
-                  alt="Simulation de la Lune vue de Cotonou"
-                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
-
-                />
-                <figcaption className="text-sm text-gray-500 mt-1">
-                  La Lune vue de Cotonou (au sud de Paris)
-                </figcaption>
-              </figure>
-              <figure className="m-0">
-                <img
-                  src="/img/capture/moontracker-application-moon-somalia.jpg"
-                  alt="Simulation de la Lune vue de Somalie"
-                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
-
-                />
-                <figcaption className="text-sm text-gray-500 mt-1">
-                  La Lune vue de Somalie (à l’est de Cotonou)
-                </figcaption>
-              </figure>
-              <figure className="m-0">
-                <img
-                  src="/img/capture/moontracker-application-moon-madagascar.jpg"
-                  alt="Simulation de la Lune vue de Madagascar"
-                  className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
-
-                />
-                <figcaption className="text-sm text-gray-500 mt-1">
-                  La Lune vue de Madagascar (au sud de la Somalie)
-                 
-                </figcaption>
-              </figure>
-            </div>
-            Ces quatre photos (simulées par l’application) montrent la Lune vue de Paris, Cotonou, Somalie et Madagascar au même instant. L’effet de rotation n’est possible que sur une Terre sphérique.  
-          </div>
-        </div>
+        Ces quatre photos (simulées par l’application) montrent la Lune vue de Paris, Cotonou, Somalie et Madagascar au même instant. L’effet de rotation n’est possible que sur une Terre sphérique.
       </p>
       <p>
         Ce déplacement <I id="O" size='small' /><I id="N" size='small' /><I id="S" size='small' /><I id="E" size='small' /> est 
@@ -704,29 +702,29 @@ export default function HelpTab() {
         <br/>
         Avec le bouton « + » (situé à côté de chaque ville), vous pouvez créer une liste de villes préférées pour faciliter la navigation entre ces villes.
       </p>
+      </div> {/* CLOSE inner text block */}
+    </div> {/* CLOSE grid (cities) */}
       <h3><I id="location" />Onglet Coordonnées (lat/lon) et déplacements par pas de 100 km</h3>
-      <p>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
-          <figure className="m-0">
-            <img
-              src="/img/capture/moontracker-application-capture-coord.jpg"
-              alt="Se déplacer sur la Terre avec l’onglet Coordonnées"
-              className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
-            />
-            <figcaption className="text-sm text-gray-500 mt-1">
-              Se déplacer sur la Terre avec l’onglet Coordonnées
-            </figcaption>
-          </figure>
-          <div>
-            Dans cet onglet, vous pouvez saisir directement la latitude et la longitude de l’observateur.
-            <br/><br/>
-            Les boutons <I id="O" size='small' /><I id="N" size='small' /><I id="S" size='small' /><I id="E" size='small' /> permettent de se déplacer par pas de 100 km dans chaque direction.
-            <br/><br/>
-            Il est aussi possible de se déplacer rapidement en utilisant les touches du pavé numérique de votre clavier.
-            <br/>
-          </div>
+      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+        <figure className="m-0">
+          <img
+            src="/img/capture/moontracker-application-capture-coord.jpg"
+            alt="Se déplacer sur la Terre avec l’onglet Coordonnées"
+            className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
+          />
+          <figcaption className="text-sm text-gray-500 mt-1">
+            Se déplacer sur la Terre avec l’onglet Coordonnées
+          </figcaption>
+        </figure>
+        <div>
+          Dans cet onglet, vous pouvez saisir directement la latitude et la longitude de l’observateur.
+          <br/><br/>
+          Les boutons <I id="O" size='small' /><I id="N" size='small' /><I id="S" size='small' /><I id="E" size='small' /> permettent de se déplacer par pas de 100 km dans chaque direction.
+          <br/><br/>
+          Il est aussi possible de se déplacer rapidement en utilisant les touches du pavé numérique de votre clavier.
+          <br/>
         </div>
-      </p>
+      </div>
       <h2 ><I id="panels" />Date, heure et animation</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         <div className="md:col-span-2">
@@ -741,7 +739,7 @@ export default function HelpTab() {
             
           </p>
         </div>
-        <div className="m-0 md:col-span- md:mr-[5em]">
+        <div className="m-0 md:col-span-1 md:mr-[5em]">
           <figure className="mt-0">
             <img
               src="/img/capture/moontracker-application-capture-date.jpg"
@@ -804,11 +802,13 @@ export default function HelpTab() {
       </p>
 
       <h3><I id="longpose" />Pose longue (empilement)</h3>
-      <p>
-        Superpose plusieurs trames pour simuler une pose longue (traînées, lueurs). Ajustez le nombre d’images conservées, et videz à la demande.
-        En mode time‑lapse, la progression attend la consolidation de la pose longue pour éviter des manques.
+      <div>
+        <p>
+          Superpose plusieurs trames pour simuler une pose longue (traînées, lueurs). Ajustez le nombre d’images conservées, et videz à la demande.
+          En mode time‑lapse, la progression attend la consolidation de la pose longue pour éviter des manques.
+        </p>
         {/* Galerie 4 colonnes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div style={{marginLeft: '5em', marginRight: '5em'}} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <figure className="m-0">
             <img
               src="/img/capture/moontracker-application-sun-noon-followup.jpg"
@@ -832,7 +832,7 @@ export default function HelpTab() {
             </figcaption>
           </figure>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div style={{marginLeft: '5em', marginRight: '5em'}} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <figure className="m-0">
             <img
               src="/img/capture/moontracker-application-venus-transit.png"
@@ -856,9 +856,10 @@ export default function HelpTab() {
             </figcaption>
           </figure>
         </div>
-      </p>
+      </div>
       <h2><I id="panels" /> Objets spatiaux visibles dans la scène et assistance visuelle</h2>
 
+      <div>{/* wrap visibility option lists */}
       <ul className="list-disc pl-6  gap-x-8 gap-y-2">
         <li><I id="enlarge" />Agrandit les objets par rapport à la taille qu’ils devraient avoir avec le niveau de zoom choisi.
           <br/>
@@ -894,8 +895,9 @@ export default function HelpTab() {
         <li><I id="atmo" />Affiche ou cache un effet d’atmosphère. L’activer rend les étoiles et les planètes difficiles à voir (comme dans la réalité).</li>
         <li><I id="refraction" />Réfraction atmosphérique : modifie la position des étoiles et des planètes proches de l’horizon. La désactiver permet de fluidifier les animations qui traversent l’horizon.</li>
         <li><I id="phase" />Phase de la Lune et des planètes : affiche les phases selon la position relative du Soleil, de la Terre et de la Lune/planète. Quand cette option est désactivée, la Lune est éclairée tout au long de sa phase et les éclipses de lune sont désactivées.</li>
-        <li><I id="phase" />Clair de Terre / Ombre de terre  : rétréclairage bleuté du limbe ombré de la Lune par la lumière qui se réfléchit sur la Terre. Active ou désactive l'ombre de la terre et donc les éclipses de lune (lune rouge).</li>
-        </ul><ul className="list-disc pl-6 grid grid-cols-1 md:grid-cols-2  gap-x-8 gap-y-2">
+        <li><I id="earthshine" />Clair de Terre / Ombre de terre : rétréclairage bleuté du limbe ombré de la Lune par la lumière qui se réfléchit sur la Terre. Active ou désactive l'ombre de la Terre et donc les éclipses de Lune (Lune rouge).</li>
+      </ul>
+      <ul className="list-disc pl-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
         <li><I id="sun" />Affiche ou cache le Soleil</li>
         <li><I id="moon" />Affiche ou cache la Lune</li>
         <li><I id="mercure" />Affiche ou cache Mercure.</li>
@@ -905,7 +907,8 @@ export default function HelpTab() {
         <li><I id="saturne" />Affiche ou cache Saturne.</li>
         <li><I id="uranus" />Affiche ou cache Uranus.</li>
         <li><I id="neptune" />Affiche ou cache Neptune.</li>
-        </ul><ul className="list-disc pl-6  gap-x-8 gap-y-2">
+      </ul>
+      <ul className="list-disc pl-6  gap-x-8 gap-y-2">
         <li><I id="grid" />Affiche ou cache la grille de référence. Elle trace un trait tous les 15°.</li>
         <li><I id="markers" />Affiche ou cache les marqueurs (réticule sur les objets spatiaux).</li>
         <li><I id="ecliptic" />Affiche ou cache le plan de l’écliptique.
@@ -935,11 +938,11 @@ export default function HelpTab() {
           </figure>
         </li>
       </ul>
-
+      </div>
       <h3>Télémétrie d’observation</h3>
-      <p>
-        En bas de la scène : des informations télémétriques sur la Lune et le Soleil.
-        <figure className="m-0">
+      <div>
+        <p>En bas de la scène : des informations télémétriques sur la Lune et le Soleil.</p>
+        <figure style={{marginLeft: '5em', marginRight: '5em'}}  className="m-0">
             <img
               src="/img/capture/moontracker-application-moon3d.jpg"
               alt="Lune rendue en 3D avec effet de libration, orientation et phase"
@@ -950,7 +953,7 @@ export default function HelpTab() {
               Lune rendue en 3D avec effet de libration, orientation et phase
             </figcaption>
           </figure>
-          <figure className="m-0">
+          <figure style={{marginLeft: '5em', marginRight: '5em'}} className="m-0">
             <img
               src="/img/capture/moontracker-application-telemetry.jpg"
               alt="Télémétrie de l’application"
@@ -961,7 +964,7 @@ export default function HelpTab() {
               Télémétrie de l’application
             </figcaption>
           </figure>
-      </p>
+      </div>
     </article>
   );
 }
