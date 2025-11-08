@@ -35,7 +35,7 @@ function geohashDecode(gh: string): { lat: number; lon: number } {
   let minLat = -90, maxLat = 90, minLon = -180, maxLon = 180;
   let evenBit = true;
   for (const c of gh) {
-    let bits = GH_MAP[c];
+    const bits = GH_MAP[c];
     for (let n = 4; n >= 0; n--) {
       const bit = (bits >> n) & 1;
       if (evenBit) {
@@ -262,27 +262,44 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     setPreselectedCityIds, 
   } = args;
 
+  // Define list of recognized parameters to prevent unhandled params from affecting state
+  const RECOGNIZED_PARAMS = new Set([
+    't', 'lat', 'lng', 'g', 'l', 'tz', 'F', 'da', 'dh', 'p', 'd', 'z', 'f', 'x', 'y', 'k',
+    'b', 'pl', 'sr', 's', 'spd', 'tl', 'lp', 'pc'
+  ]);
+
+  // Only process recognized parameters
+  const processedParams = new Set<string>();
+  
+  // Helper to safely get and mark parameter as processed
+  const safeGet = (key: string): string | null => {
+    if (!RECOGNIZED_PARAMS.has(key)) return null;
+    processedParams.add(key);
+    return q.get(key);
+  };
+
   // Time: base36 unix seconds
-  const t = q.get('t');
+  const t = safeGet('t');
   if (t) {
     const ms = timeFromB36(t);
-    if (Number.isFinite(ms)) {
+    if (Number.isFinite(ms) && ms > 0 && ms < Date.now() + 365 * 24 * 60 * 60 * 1000) { // reasonable time bounds
       whenMsRef.current = ms;
       setWhenMs(ms);
     }
   }
 
   // Location: lat/lng, geohash, or id
-  const latQ = q.get('lat');
-  const lngQ = q.get('lng');
-  const gh = q.get('g');
-  const lId = q.get('l');
-  const tzQ = q.get('tz');
+  const latQ = safeGet('lat');
+  const lngQ = safeGet('lng');
+  const gh = safeGet('g');
+  const lId = safeGet('l');
+  const tzQ = safeGet('tz');
 
   if (latQ && lngQ) {
     const lat = Number(latQ);
     const lng = Number(lngQ);
-    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    if (Number.isFinite(lat) && Number.isFinite(lng) && 
+        lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) { // validate coordinate bounds
       const tz = tzQ || 'UTC';
       const label = `Lat ${lat.toFixed(4)}, Lng ${lng.toFixed(4)}`;
       setLocation({
@@ -293,73 +310,90 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         timeZone: tz,
       });
     }
-  } else if (gh) {
+  } else if (gh && /^[0-9bcdefghjkmnpqrstuvwxyz]+$/.test(gh) && gh.length <= 12) { // validate geohash format
     try {
       const { lat, lon } = geohashDecode(gh);
-      const tz = tzQ || 'UTC';
-      setLocation({
-        id: `g@${gh}`,
-        label: `Lat ${lat.toFixed(4)}, Lng ${lon.toFixed(4)}`,
-        lat,
-        lng: lon,
-        timeZone: tz,
-      });
+      if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) { // validate decoded coordinates
+        const tz = tzQ || 'UTC';
+        setLocation({
+          id: `g@${gh}`,
+          label: `Lat ${lat.toFixed(4)}, Lng ${lon.toFixed(4)}`,
+          lat,
+          lng: lon,
+          timeZone: tz,
+        });
+      }
     } catch {
       // ignore invalid geohash
     }
-  } else if (lId) {
+  } else if (lId && typeof lId === 'string' && lId.length <= 100) { // basic validation for location ID
     const found = locations.find(l => l.id === lId);
     if (found) setLocation(found);
   }
 
   // Follow: F=index(base36)
-  const F = q.get('F');
+  const F = safeGet('F');
   if (F != null) {
     const idx = fromB36Int(F);
-    const v = FOLLOW_ALLOWED[idx as keyof typeof FOLLOW_ALLOWED] as FollowMode | undefined;
-    if (v) setFollow(v);
+    if (Number.isInteger(idx) && idx >= 0 && idx < FOLLOW_ALLOWED.length) {
+      const v = FOLLOW_ALLOWED[idx] as FollowMode;
+      setFollow(v);
+    }
   }
 
   // DirectionalKeypad deltas
-  const da = q.get('da');
-  const dh = q.get('dh');
+  const da = safeGet('da');
+  const dh = safeGet('dh');
   if (da != null) {
     const v = Number(da);
-    if (Number.isFinite(v)) setDeltaAzDeg(v);
+    if (Number.isFinite(v) && Math.abs(v) <= 3600) { // reasonable delta bounds (10 full rotations)
+      setDeltaAzDeg(v);
+    }
   }
   if (dh != null) {
     const v = Number(dh);
-    if (Number.isFinite(v)) setDeltaAltDeg(v);
+    if (Number.isFinite(v) && Math.abs(v) <= 180) { // altitude delta bounds
+      setDeltaAltDeg(v);
+    }
   }
 
   // Projection: p=index(base36)
-  const pIdx = q.get('p');
+  const pIdx = safeGet('p');
   if (pIdx != null) {
     const idx = fromB36Int(pIdx);
-    if (Number.isFinite(idx) && idx >= 0 && Number.isInteger(idx) && idx < PROJ_LIST.length) {
+    if (Number.isInteger(idx) && idx >= 0 && idx < PROJ_LIST.length) {
       const v = PROJ_LIST[idx];
       setProjectionMode(v);
     }
   }
 
   // Device / zoom / focal / FOV
-  const dev = q.get('d');
-  const zm = q.get('z');
-  const focal = q.get('f');
-  const fovx = q.get('x');
-  const fovy = q.get('y');
-  const link = q.get('k');
+  const dev = safeGet('d');
+  const zm = safeGet('z');
+  const focal = safeGet('f');
+  const fovx = safeGet('x');
+  const fovy = safeGet('y');
+  const link = safeGet('k');
 
-  if (dev) {
+  if (dev && typeof dev === 'string' && dev.length <= 50) { // validate device ID format
     const exists = devices.some(d => d.id === dev);
-    const finalDev = exists ? dev : CUSTOM_DEVICE_ID;
-    setDeviceId(finalDev);
-    if (exists && zm && devices.find(d => d.id === finalDev)?.zooms.some(z => z.id === zm)) {
-      setZoomId(zm);
+    if (exists) {
+      // Only set device if it's valid - don't change default for invalid values
+      setDeviceId(dev);
+      if (zm && typeof zm === 'string' && zm.length <= 50) { // validate zoom ID format
+        const deviceObj = devices.find(d => d.id === dev);
+        if (deviceObj?.zooms.some(z => z.id === zm)) {
+          setZoomId(zm);
+        }
+      }
     }
+    // If device doesn't exist, silently ignore and keep default
   }
 
-  const wantsCustom = (dev === CUSTOM_DEVICE_ID) || (!dev);
+  // Handle custom device parameters (only if explicitly set to custom ID or has FOV/focal params)
+  const hasCustomParams = focal || fovx || fovy || link;
+  const wantsCustom = (dev === CUSTOM_DEVICE_ID) || (hasCustomParams && !dev);
+  
   if (wantsCustom) {
     setDeviceId(CUSTOM_DEVICE_ID);
     setZoomId('custom-theo');
@@ -371,28 +405,36 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     const fyQ = fovy ? Number(fovy) : NaN;
 
     if (!linkFlag && (Number.isFinite(fxQ) || Number.isFinite(fyQ))) {
-      if (Number.isFinite(fxQ)) setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
-      if (Number.isFinite(fyQ)) setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
+      if (Number.isFinite(fxQ) && fxQ > 0 && fxQ <= 360) { // validate FOV bounds
+        setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
+      }
+      if (Number.isFinite(fyQ) && fyQ > 0 && fyQ <= 360) { // validate FOV bounds
+        setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
+      }
     } else {
       const fmm = focal ? parseIntB36OrDec(focal) : NaN;
-      if (Number.isFinite(fmm) && fmm > 0) {
+      if (Number.isFinite(fmm) && fmm > 0 && fmm <= 10000) { // reasonable focal length bounds
         const FF_W = 36, FF_H = 24;
         const fx = 2 * Math.atan(FF_W / (2 * fmm)) * 180 / Math.PI;
         const fy = 2 * Math.atan(FF_H / (2 * fmm)) * 180 / Math.PI;
         setFovXDeg(clamp(fx, FOV_DEG_MIN, FOV_DEG_MAX));
         setFovYDeg(clamp(fy, FOV_DEG_MIN, FOV_DEG_MAX));
       } else {
-        if (Number.isFinite(fxQ)) setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
-        if (Number.isFinite(fyQ)) setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
+        if (Number.isFinite(fxQ) && fxQ > 0 && fxQ <= 360) {
+          setFovXDeg(clamp(fxQ, FOV_DEG_MIN, FOV_DEG_MAX));
+        }
+        if (Number.isFinite(fyQ) && fyQ > 0 && fyQ <= 360) {
+          setFovYDeg(clamp(fyQ, FOV_DEG_MIN, FOV_DEG_MAX));
+        }
       }
     }
   }
 
   // Visibility toggles + panels + animation (compact bitmask first)
-  const b = q.get('b');
+  const b = safeGet('b');
   if (b != null) {
     const mask = fromB36Int(b);
-    if (Number.isFinite(mask)) {
+    if (Number.isInteger(mask) && mask >= 0 && mask <= 0xFFFFFFFF) { // validate bitmask bounds
       const u = unpackMaskToToggles(mask);
       setShowSun(u.sun);
       setShowMoon(u.moon);
@@ -414,13 +456,11 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       setShowRefraction(u.refraction); 
       setLockHorizon(u.lockHorizon);
     }
-  } else {
-    // No legacy fallback
   }
 
   // Planets selection (compact first)
-  const pl = q.get('pl');
-  if (pl) {
+  const pl = safeGet('pl');
+  if (pl && typeof pl === 'string' && pl.length <= 10) { // validate planet parameter format
     if (pl === 'n') {
       const allFalse = Object.fromEntries(allPlanetIds.map(id => [id, false]));
       setShowPlanets(allFalse);
@@ -429,7 +469,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       setShowPlanets(allTrue);
     } else {
       const mask = fromB36Int(pl);
-      if (Number.isFinite(mask)) {
+      if (Number.isInteger(mask) && mask >= 0 && mask <= 0xFFFFFFFF) { // validate planet mask bounds
         const m = mask >>> 0;
         const next: Record<string, boolean> = {};
         allPlanetIds.forEach((id, i) => { next[id] = !!(m & (1 << i)); });
@@ -438,46 +478,72 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     }
   }
 
-  const lp = q.get('lp');
-  if (lp) {
+  const lp = safeGet('lp');
+  if (lp && typeof lp === 'string' && lp.length <= 20) { // validate long pose parameter format
     const parts = lp.split('.');
-    const bytes = unpackBytes(parts[0], 2);
-    const header = bytes[0] ?? 0;
-    const rShort = bytes[1] ?? 0;
-    let retain = rShort;
-    if (parts[1]) {
-      const rExt = parseIntB36OrDec(parts[1]);
-      if (Number.isFinite(rExt)) retain = rExt;
+    if (parts.length <= 3) { // reasonable number of parts
+      const bytes = unpackBytes(parts[0], 2);
+      const header = bytes[0] ?? 0;
+      const rShort = bytes[1] ?? 0;
+      let retain = rShort;
+      if (parts[1]) {
+        const rExt = parseIntB36OrDec(parts[1]);
+        if (Number.isFinite(rExt) && rExt >= 1 && rExt <= 10000) { // reasonable bounds
+          retain = rExt;
+        }
+      }
+      const enabled = !!(header & 1);
+      const retainClamped = Math.max(1, Math.min(10000, Math.round(retain || 1))); // clamp bounds
+      setLongPoseEnabled(enabled);
+      setLongPoseRetainFrames(retainClamped);
     }
-    const enabled = !!(header & 1);
-    const retainClamped = Math.max(1, Math.round(retain || 1));
-    setLongPoseEnabled(enabled);
-    setLongPoseRetainFrames(retainClamped);
   }
 
-  // NEW: Preselected cities (ids) — dot-separated to keep compact
-  const pc = q.get('pc');
-  if (pc) {
+  // Preselected cities (ids) — dot-separated to keep compact
+  const pc = safeGet('pc');
+  if (pc && typeof pc === 'string' && pc.length <= 1000) { // validate preselected cities format
     const parts = pc.split('.').filter(Boolean);
-    if (parts.length) {
+    if (parts.length <= 50) { // reasonable limit on number of cities
       const known = new Set(locations.map(l => l.id));
-      const ids = parts.filter(id => known.has(id));
-      setPreselectedCityIds(ids.slice(0, 200)); // safety cap
+      const ids = parts.filter(id => 
+        typeof id === 'string' && 
+        id.length <= 50 && 
+        /^[a-zA-Z0-9_-]+$/.test(id) && // basic ID format validation
+        known.has(id)
+      );
+      setPreselectedCityIds(ids.slice(0, 50)); // reasonable safety cap
     }
   }
 
-  // Speed: try precise 'sr' first, then compact 's', then legacy 'spd'
-  const sr = q.get('sr');
+  // Speed: try precise 'sr' first, then legacy fallbacks
+  const sr = safeGet('sr');
   if (sr != null) {
     const v = Number(sr);
-    if (Number.isFinite(v)) setSpeedMinPerSec(v);
+    if (Number.isFinite(v) && Math.abs(v) <= 3600) { // reasonable speed bounds (max 1 hour/sec)
+      setSpeedMinPerSec(v);
+    }
+  } else {
+    // Legacy fallbacks with validation
+    const s = safeGet('s');
+    const spd = safeGet('spd');
+    if (s != null) {
+      const v = Number(s);
+      if (Number.isFinite(v) && Math.abs(v) <= 3600) {
+        setSpeedMinPerSec(v);
+      }
+    } else if (spd != null) {
+      const v = Number(spd);
+      if (Number.isFinite(v) && Math.abs(v) <= 3600) {
+        setSpeedMinPerSec(v);
+      }
+    }
   }
 
-  // NEW: Timelapse MORE compact: tl = HPSL.T where HPSL is packed 4-byte base36
-  const tl = q.get('tl');
-  if (tl) {
+  // Timelapse: compact format tl = HPSL.T where HPSL is packed 4-byte base36
+  const tl = safeGet('tl');
+  if (tl && typeof tl === 'string' && tl.length <= 50) { // validate timelapse parameter format
     const parts = tl.split('.');
-    if (parts.length >= 2) {
+    if (parts.length >= 2 && parts.length <= 6) { // reasonable number of parts
       const [hpsl, tPart] = parts;
       const bytes = unpackBytes(hpsl, 4);
       const h = bytes[0];
@@ -491,42 +557,69 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
       const l = parts[4] ? parseIntB36OrDec(parts[4]) : lHigh;
       const t0ms = timeFromB36(tPart);
 
-      if (Number.isFinite(h)) {
+      if (Number.isInteger(h) && h >= 0 && h <= 255) {
         const enabled = !!(h & 1);
         const unitIdx = (h >> 1) & 0x7;
         const unit = TL_UNITS[unitIdx] ?? TL_UNITS[0];
 
         setTimeLapseEnabled(enabled);
-        if (Number.isFinite(p)) setTimeLapsePeriodMs(Math.max(1, p));
-        if (Number.isFinite(s)) setTimeLapseStepValue(Math.max(1, s));
-        setTimeLapseStepUnit(unit as any);
-        if (Number.isFinite(l)) setTimeLapseLoopAfter(Math.max(0, l));
-        if (Number.isFinite(t0ms)) timeLapseStartMsRef.current = t0ms;
+        
+        // Validate and clamp values to reasonable bounds
+        if (Number.isFinite(p) && p >= 1 && p <= 10000) {
+          setTimeLapsePeriodMs(Math.max(1, Math.min(10000, p)));
+        }
+        if (Number.isFinite(s) && s >= 1 && s <= 1000) {
+          setTimeLapseStepValue(Math.max(1, Math.min(1000, s)));
+        }
+        setTimeLapseStepUnit(unit);
+        if (Number.isFinite(l) && l >= 0 && l <= 10000) {
+          setTimeLapseLoopAfter(Math.max(0, Math.min(10000, l)));
+        }
+        if (Number.isFinite(t0ms) && t0ms > 0 && t0ms < Date.now() + 365 * 24 * 60 * 60 * 1000) {
+          timeLapseStartMsRef.current = t0ms;
+        }
       }
-    } else {
-      // OLD format: H.P.S.L.T
-      const tlParts = tl.split('.');
-      if (tlParts.length >= 5) {
-        const h = fromB36Int(tlParts[0]);
-        const p = parseIntB36OrDec(tlParts[1]);
-        const s = parseIntB36OrDec(tlParts[2]);
-        const l = parseIntB36OrDec(tlParts[3]);
-        const t0ms = timeFromB36(tlParts[4]);
+    } else if (parts.length >= 5) {
+      // OLD format: H.P.S.L.T - validate with bounds
+      const h = fromB36Int(parts[0]);
+      const p = parseIntB36OrDec(parts[1]);
+      const s = parseIntB36OrDec(parts[2]);
+      const l = parseIntB36OrDec(parts[3]);
+      const t0ms = timeFromB36(parts[4]);
 
-        if (Number.isFinite(h)) {
-          const enabled = !!(h & 1);
-          const unitIdx = (h >> 1) & 0x7;
-          const unit = TL_UNITS[unitIdx] ?? TL_UNITS[0];
+      if (Number.isInteger(h) && h >= 0 && h <= 255) {
+        const enabled = !!(h & 1);
+        const unitIdx = (h >> 1) & 0x7;
+        const unit = TL_UNITS[unitIdx] ?? TL_UNITS[0];
 
-          setTimeLapseEnabled(enabled);
-          if (Number.isFinite(p)) setTimeLapsePeriodMs(Math.max(1, p));
-          if (Number.isFinite(s)) setTimeLapseStepValue(Math.max(1, s));
-          setTimeLapseStepUnit(unit as any);
-          if (Number.isFinite(l)) setTimeLapseLoopAfter(Math.max(0, l));
-          if (Number.isFinite(t0ms)) timeLapseStartMsRef.current = t0ms;
+        setTimeLapseEnabled(enabled);
+        if (Number.isFinite(p) && p >= 1 && p <= 10000) {
+          setTimeLapsePeriodMs(Math.max(1, Math.min(10000, p)));
+        }
+        if (Number.isFinite(s) && s >= 1 && s <= 1000) {
+          setTimeLapseStepValue(Math.max(1, Math.min(1000, s)));
+        }
+        setTimeLapseStepUnit(unit);
+        if (Number.isFinite(l) && l >= 0 && l <= 10000) {
+          setTimeLapseLoopAfter(Math.max(0, Math.min(10000, l)));
+        }
+        if (Number.isFinite(t0ms) && t0ms > 0 && t0ms < Date.now() + 365 * 24 * 60 * 60 * 1000) {
+          timeLapseStartMsRef.current = t0ms;
         }
       }
     }
+  }
+
+  // Log warning about any unrecognized parameters (for debugging/monitoring)
+  const unrecognizedParams: string[] = [];
+  for (const [key] of q.entries()) {
+    if (!processedParams.has(key) && !RECOGNIZED_PARAMS.has(key)) {
+      unrecognizedParams.push(key);
+    }
+  }
+  
+  if (unrecognizedParams.length > 0) {
+    console.warn('Unrecognized URL parameters ignored:', unrecognizedParams);
   }
 }
 
