@@ -1,0 +1,49 @@
+{
+  "navigation": {
+    "back": "← Retour à l'application",
+    "close": "Fermer",
+    "expand": "Agrandir",
+    "return": "Retour",
+    "goToApp": "Aller sur l'application"
+  },
+  "time": {
+    "now": "Maintenant",
+    "setCurrentTime": "Régler l'heure actuelle",
+    "enterDateTime": "Saisir la date et l'heure locale à votre navigateur",
+    "goToMinusHour": "Aller à -1 heure",
+    "goToPlusHour": "Aller à +1 heure"
+  },
+  "recording": {
+    "inProgress": "Enregistrement en cours",
+    "frame": "Image",
+    "timecode": "{{hours}}:{{minutes}}:{{seconds}}"
+  },
+  "loading": {
+    "locations": "Chargement des localisations…",
+    "models": "Chargement des modèles 3D… {{percent}}%",
+    "sceneRendering": "Rendu de la scène en cours…"
+  },
+  "directions": {
+    "north": "Nord",
+    "south": "Sud", 
+    "east": "Est",
+    "west": "Ouest",
+    "northAbbrev": "N",
+    "southAbbrev": "S",
+    "eastAbbrev": "E",
+    "westAbbrev": "O",
+    "toNorth": "Aller vers le Nord (100 km)",
+    "toSouth": "Aller vers le Sud (100 km)",
+    "toEast": "Aller vers l'Est (100 km)",
+    "toWest": "Aller vers l'Ouest (100 km)"
+  },
+  "location": {
+    "nearNorthPole": "Proche Pôle Nord",
+    "nearSouthPole": "Proche Pôle Sud",
+    "kmFromNorthPole": "{{km}} km du Pôle Nord",
+    "kmFromSouthPole": "{{km}} km du Pôle Sud",
+    "coordinates": "Lat: {{lat}} Lng: {{lng}}",
+    "coordinatesWithDistance": "Lat: {{lat}} Lng: {{lng}} ({{km}} km {{direction}} de {{city}})",
+    "localTime": "heure locale"
+  }
+}

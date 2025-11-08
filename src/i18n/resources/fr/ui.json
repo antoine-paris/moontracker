@@ -1,0 +1,119 @@
+{
+  "controls": {
+    "play": "Lecture",
+    "pause": "Pause",
+    "settings": "Paramètres",
+    "share": "Partager",
+    "capture": "Capturer",
+    "record": "Enregistrer",
+    "info": "Informations",
+    "help": "Aide",
+    "stopRecording": "Arrêter l'enregistrement",
+    "startRecording": "Démarrer l'enregistrement",
+    "startRecordingWithPlay": "Démarrer l'enregistrement (active Lecture si nécessaire)",
+    "copyUrl": "Copier l'URL actuelle",
+    "copyUrlWithParams": "Copier l'URL actuelle (avec paramètres)",
+    "linkCopied": "Lien copié !",
+    "toolbar": "Barre d'outils"
+  },
+  "device": {
+    "custom": "Personnalisé",
+    "theoreticalFocal": "Focale théorique {{focal}}mm eq 24/36",
+    "select": "Sélectionner l'appareil",
+    "selectLens": "Sélectionner l'objectif/zoom",
+    "calculatedFocal": "Focale calculée depuis le champ de vision horizontal"
+  },
+  "projection": {
+    "rectilinear": "Rectilinéaire + Panini",
+    "stereographic": "Stéréographique centré",
+    "orthographic": "Orthographique",
+    "stereocentered": "Stéréo-Centré"
+  },
+  "alignment": {
+    "horizon": "Horizon terrestre aligné à l'écran",
+    "ecliptic": "Ecliptique aligné à l'écran"
+  },
+  "phase": {
+    "enableEarthshine": "Activer l'ombre et le clair de Terre",
+    "enablePhaseFirst": "Activez « Phase de la Lune » pour autoriser le clair de Terre"
+  },
+  "followModes": {
+    "sun": "Soleil",
+    "moon": "Lune",
+    "north": "Nord",
+    "east": "Est", 
+    "south": "Sud",
+    "west": "Ouest",
+    "mercury": "Mercure",
+    "venus": "Vénus",
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturne",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "followSun": "Suivre le Soleil",
+    "followMoon": "Suivre la Lune",
+    "followMercury": "Suivre Mercure",
+    "followVenus": "Suivre Vénus",
+    "followMars": "Suivre Mars",
+    "followJupiter": "Suivre Jupiter",
+    "followSaturn": "Suivre Saturne",
+    "followUranus": "Suivre Uranus",
+    "followNeptune": "Suivre Neptune",
+    "pointNorth": "Pointer vers le Nord",
+    "pointEast": "Pointer vers l'Est",
+    "pointSouth": "Pointer vers le Sud",
+    "pointWest": "Pointer vers l'Ouest"
+  },
+  "optics": {
+    "fieldOfView": "Champ de vision",
+    "focalLength": "Focale",
+    "sensor": "Capteur",
+    "sensors": "Capteurs",
+    "objective": "Objectif",
+    "zoom": "Zoom"
+  },
+  "time": {
+    "animation": "Animation",
+    "speed": "Vitesse",
+    "hour": "Heure",
+    "date": "Date",
+    "follow": "Suivre",
+    "realTime": "Temps réel",
+    "now": "Maintenant",
+    "goBackOneHour": "Aller à -1 heure",
+    "goForwardOneHour": "Aller à +1 heure",
+    "setCurrentTime": "Régler l'heure actuelle",
+    "animateRealTime": "Animer en temps réel",
+    "enterDateTime": "Saisir la date et l'heure locale à votre navigateur",
+    "stepValue": "Valeur entière du saut par image",
+    "stepUnit": "Unité du saut (UTC) appliqué entre images",
+    "every": "toutes les",
+    "pastDirection": " vers le passé à ",
+    "futureDirection": " vers le futur à ",
+    "sidereal": {
+      "day": "jour sidéral",
+      "days": "jours sidéraux"
+    },
+    "lunar": {
+      "cycle": "cycle lunaire sidéral",
+      "cycles": "cycles lunaires sidéraux",
+      "day": "jour lunaire",
+      "days": "jours lunaires"
+    },
+    "minute": "minute",
+    "minutes": "minutes",
+    "heures": "heures",
+    "jours": "jours",
+    "mois": "mois",
+    "perFrame": "par image"
+  },
+  "general": {
+    "help": "Aide",
+    "information": "Informations",
+    "close": "Fermer",
+    "open": "Ouvrir",
+    "calculate": "Calculer",
+    "nearestCity": "Ville de + de 100 000 habitants la plus proche"
+  }
+}

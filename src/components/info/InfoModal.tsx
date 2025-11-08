@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import InfoTabs from './InfoTabs';
 import InfoLogo from './InfoLogo';
 
@@ -10,6 +11,7 @@ type Props = {
 };
 
 export default function InfoModal({ open, initialTab = 'spaceview', onClose }: Props) {
+  const { t } = useTranslation('common');
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -46,23 +48,23 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
               <InfoLogo showBackground={false} size={64} />
               <div className="flex flex-col leading-tight">
                 <span className="text-base font-semibold">SpaceView.me</span>
-                <span className="text-xs text-gray-600">Informations et Aide</span>
+                <span className="text-xs text-gray-600">{t('ui:general.information')} et {t('ui:general.help')}</span>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={onClose}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
-                aria-label="Retour à l’application"
-                title="Retour à l’application"
+                aria-label={t('navigation.back')}
+                title={t('navigation.back')}
               >
-                ← Retour à l’application
+                {t('navigation.back')}
               </button>
               <button
                 onClick={onClose}
                 className="rounded px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                aria-label="Fermer"
-                title="Fermer"
+                aria-label={t('navigation.close')}
+                title={t('navigation.close')}
               >
                 ✕
               </button>

@@ -1,4 +1,5 @@
 import React, { useMemo } from "react";
+import { useTranslation } from 'react-i18next';
 import type { FollowMode } from "../../types";
 import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
@@ -164,6 +165,7 @@ export default function TopBar({
   
   onLongPoseClear,
 }: Props) {
+  const { t } = useTranslation('ui');
   
   // Browser local time and UTC time
   const currentDate = useMemo(() => new Date(currentUtcMs), [currentUtcMs]);
@@ -252,16 +254,16 @@ export default function TopBar({
     if (!timeLapseEnabled) return '';
     const n = Math.max(1, Math.round(timeLapseStepValue || 1));
     const label =
-      timeLapseStepUnit === 'minute' ? (n > 1 ? 'minutes' : 'minute') :
-      timeLapseStepUnit === 'hour' ? (n > 1 ? 'heures' : 'heure') :
-      timeLapseStepUnit === 'day' ? (n > 1 ? 'jours' : 'jour') :
-      timeLapseStepUnit === 'sidereal-day' ? (n > 1 ? 'jours sidéraux' : 'jour sidéral') :
-      timeLapseStepUnit === 'month' ? 'mois' :
-      timeLapseStepUnit === 'synodic-fraction' ? (n > 1 ? 'jours lunaires' : 'jour lunaire') :
-      timeLapseStepUnit === 'lunar-fraction' ? (n > 1 ? 'cycles lunaires sidéraux' : 'cycle lunaire sidéral') :
+      timeLapseStepUnit === 'minute' ? (n > 1 ? t('time.minutes') : t('time.minute')) :
+      timeLapseStepUnit === 'hour' ? (n > 1 ? t('time.heures') : t('time.hour')) :
+      timeLapseStepUnit === 'day' ? (n > 1 ? t('time.jours') : t('time.jour')) :
+      timeLapseStepUnit === 'sidereal-day' ? (n > 1 ? t('time.sidereal.days') : t('time.sidereal.day')) :
+      timeLapseStepUnit === 'month' ? t('time.mois') :
+      timeLapseStepUnit === 'synodic-fraction' ? (n > 1 ? t('time.lunar.days') : t('time.lunar.day')) :
+      timeLapseStepUnit === 'lunar-fraction' ? (n > 1 ? t('time.lunar.cycles') : t('time.lunar.cycle')) :
       '';
-    return `${n} ${label} par image`;
-  }, [timeLapseEnabled, timeLapseStepValue, timeLapseStepUnit]);
+    return `${n} ${label} ${t('time.perFrame')}`;
+  }, [timeLapseEnabled, timeLapseStepValue, timeLapseStepUnit, t]);
 
   // Update local input when UTC time changes externally (e.g., from animation)
   // but only if user is not currently editing
@@ -802,24 +804,24 @@ export default function TopBar({
                 className={`px-3 py-1.5 rounded-lg border text-sm cursor-pointer ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
                 onClick={() => { setFollow(opt); onLongPoseClear(); }}
                 title={
-                  opt === 'SOLEIL' ? 'Suivre le Soleil'
-                  : opt === 'LUNE' ? 'Suivre la Lune'
-                  : opt === 'MERCURE' ? 'Suivre Mercure'
-                  : opt === 'VENUS' ? 'Suivre Vénus'
-                  : opt === 'MARS' ? 'Suivre Mars'
-                  : opt === 'JUPITER' ? 'Suivre Jupiter'
-                  : opt === 'SATURNE' ? 'Suivre Saturne'
-                  : opt === 'URANUS' ? 'Suivre Uranus'
-                  : opt === 'NEPTUNE' ? 'Suivre Neptune'
-                  : opt === 'N' ? 'Pointer vers le Nord'
+                  opt === 'SOLEIL' ? t('followModes.followSun')
+                  : opt === 'LUNE' ? t('followModes.followMoon')
+                  : opt === 'MERCURE' ? t('followModes.followMercury')
+                  : opt === 'VENUS' ? t('followModes.followVenus')
+                  : opt === 'MARS' ? t('followModes.followMars')
+                  : opt === 'JUPITER' ? t('followModes.followJupiter')
+                  : opt === 'SATURNE' ? t('followModes.followSaturn')
+                  : opt === 'URANUS' ? t('followModes.followUranus')
+                  : opt === 'NEPTUNE' ? t('followModes.followNeptune')
+                  : opt === 'N' ? t('followModes.pointNorth')
                   : opt === 'E' ? 'Pointer vers l’Est'
-                  : opt === 'S' ? 'Pointer vers le Sud'
+                  : opt === 'S' ? t('followModes.pointSouth')
                   : opt === 'O' ? 'Pointer vers l’Ouest'
-                  : `Suivre ${opt}`
+                  : `${t('time.follow')} ${opt}`
                 }
               >
-                {opt === 'SOLEIL' ? <ToggleIcon id='sun'  label='Suivre le Soleil' />  
-                : opt === 'LUNE' ? <ToggleIcon id='moon'  label='Suivre la Lune' />  
+                {opt === 'SOLEIL' ? <ToggleIcon id='sun'  label={t('followModes.followSun')} />  
+                : opt === 'LUNE' ? <ToggleIcon id='moon'  label={t('followModes.followMoon')} />  
                 : opt === 'MERCURE' ? <span>&#9791;</span>
                 : opt === 'VENUS' ? <span>&#9792;</span>
                 : opt === 'MARS' ? <span>&#9794;</span>
@@ -840,14 +842,14 @@ export default function TopBar({
             <IconToggleButton
               active={lockHorizon}
               onClick={() => setLockHorizon(!lockHorizon)}
-              title="Horizon terrestre aligné à l'écran"
+              title={t('alignment.horizon')}
               icon="horizon"
             />
             {/* Ecliptique */}
             <IconToggleButton
               active={!lockHorizon}
               onClick={() => setLockHorizon(!lockHorizon)}
-              title="Ecliptique aligné à l'écran"
+              title={t('alignment.ecliptic')}
               icon="ecliptic"
             />
           </div>
@@ -950,7 +952,7 @@ export default function TopBar({
                 <div className="mt-1 flex flex-wrap gap-2">
                   {[ {id: 'recti-panini' as const, label: 'Recti-Panini' },
                     { id: 'rectilinear' as const, label: 'Recti-Perspective' },
-                    { id: 'stereo-centered' as const, label: 'Stéréo-Centré' },
+                    { id: 'stereo-centered' as const, label: t('projection.stereocentered') },
                     { id: 'ortho' as const, label: 'Orthographique' },
                     { id: 'cylindrical' as const, label: 'Cylindrique' },
                     { id: 'cylindrical-horizon' as const, label: 'Cylindrique (Horizon)' },
@@ -1081,9 +1083,9 @@ export default function TopBar({
                 >
                   {timeLapseEnabled
                     ? timeLapsePerFrameLabel
-                    : (Math.round(speedMinPerSec) == 0 ? 'Temps réel' 
+                    : (Math.round(speedMinPerSec) == 0 ? t('time.realTime') 
                     : (Math.round(speedMinPerSec) > 0 ? Math.round(speedMinPerSec) + ' min/s' 
-                    : ' vers le passé à ' + Math.abs(Math.round(speedMinPerSec)) + ' min/s') )
+                    : t('time.pastDirection') + Math.abs(Math.round(speedMinPerSec)) + ' min/s') )
                   }
                 </span>
               </div>
@@ -1155,7 +1157,7 @@ export default function TopBar({
                       onLongPoseClear(); 
                       setTimeLapseEnabled(false);
                     }}
-                    title="Animer en temps réel"
+                    title={t('time.animateRealTime')}
                     className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
@@ -1246,7 +1248,7 @@ export default function TopBar({
 
                 {/* Period per frame (integer, safe while editing) */}
                 <div className="mt-1 flex items-center gap-3 flex-wrap">
-                  <span className="text-sm text-white/80">toutes les</span>
+                  <span className="text-sm text-white/80">{t('time.every')}</span>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -1366,7 +1368,7 @@ export default function TopBar({
             <IconToggleButton
               active={earthshine}
               onClick={() => setEarthshine(!earthshine)}
-              title={showPhase ? "Activer l'ombre et le clair de Terre" : "Activez « Phase de la Lune » pour autoriser le clair de Terre"}
+              title={showPhase ? t('phase.enableEarthshine') : t('phase.enablePhaseFirst')}
               icon="earthshine"
               disabled={!showPhase}
             />

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LocationOption } from '../../data/locations';
 import {
   clampLat,
@@ -29,6 +30,7 @@ export default function SidebarLocationsCoord({
   collapsed,
   isActive,
 }: Props) {
+  const { t } = useTranslation('common');
   const [lat, setLat] = useState<number>(selectedLocation.lat);
   const [lng, setLng] = useState<number>(selectedLocation.lng);
 
@@ -358,28 +360,28 @@ export default function SidebarLocationsCoord({
       {/* Move pad (100 km steps) */}
       <div style={styles.padWrap} role="group" aria-label="Déplacement de 100 km">
         <div style={styles.padSpacer} />
-        <button type="button" style={styles.padBtn} title="Aller vers le Nord (100 km)" onClick={() => move100(0)}>
+        <button type="button" style={styles.padBtn} title={t('directions.toNorth')} onClick={() => move100(0)}>
           <span style={{ transform: 'rotate(270deg)', display: 'inline-block' }}>&#x27A4;</span>
         </button>
         <div style={styles.padSpacer} />
 
-        <button type="button" style={styles.padBtn} title="Aller vers l’Ouest (100 km)" onClick={() => move100(270)}>
+        <button type="button" style={styles.padBtn} title={t('directions.toWest')} onClick={() => move100(270)}>
           <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>&#x27A4;</span>
         </button>
         <div style={styles.padSpacer} />
-        <button type="button" style={styles.padBtn} title="Aller vers l’Est (100 km)" onClick={() => move100(90)}>
+        <button type="button" style={styles.padBtn} title={t('directions.toEast')} onClick={() => move100(90)}>
           <span style={{ transform: 'rotate(0deg)', display: 'inline-block' }}>&#x27A4;</span>
         </button>
 
         <div style={styles.padSpacer} />
-        <button type="button" style={styles.padBtn} title="Aller vers le Sud (100 km)" onClick={() => move100(180)}>
+        <button type="button" style={styles.padBtn} title={t('directions.toSouth')} onClick={() => move100(180)}>
           <span style={{ transform: 'rotate(90deg)', display: 'inline-block' }}>&#x27A4;</span>
         </button>
         <div style={styles.padSpacer} />
       </div>
 
       <div style={styles.footerNote}>
-        (*) Ville de + de 100 000 habitants la plus proche
+        (*) {t('ui:general.nearestCity')}
       </div>
     </div>
   );

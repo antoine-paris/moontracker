@@ -1,0 +1,120 @@
+{
+  "controls": {
+    "play": "Play",
+    "pause": "Pause",
+    "settings": "Settings",
+    "share": "Share",
+    "capture": "Capture",
+    "record": "Record",
+    "info": "Information",
+    "help": "Help",
+    "stopRecording": "Stop recording",
+    "startRecording": "Start recording",
+    "startRecordingWithPlay": "Start recording (activates Play if needed)",
+    "copyUrl": "Copy current URL",
+    "copyUrlWithParams": "Copy current URL (with parameters)",
+    "linkCopied": "Link copied!",
+    "toolbar": "Toolbar"
+  },
+  "device": {
+    "custom": "Custom",
+    "theoreticalFocal": "Theoretical focal {{focal}}mm eq 24/36",
+    "select": "Select device",
+    "selectLens": "Select lens/zoom",
+    "calculatedFocal": "Focal length calculated from horizontal field of view"
+  },
+  "projection": {
+    "rectilinear": "Rectilinear + Panini",
+    "stereographic": "Stereographic centered",
+    "orthographic": "Orthographic",
+    "stereocentered": "Stereo-Centered"
+  },
+  "alignment": {
+    "horizon": "Terrestrial horizon aligned to screen",
+    "ecliptic": "Ecliptic aligned to screen"
+  },
+  "phase": {
+    "enableEarthshine": "Enable shadow and earthshine",
+    "enablePhaseFirst": "Enable \"Moon Phase\" to allow earthshine"
+  },
+  "followModes": {
+    "sun": "Sun",
+    "moon": "Moon",
+    "north": "North",
+    "east": "East", 
+    "south": "South",
+    "west": "West",
+    "mercury": "Mercury",
+    "venus": "Venus",
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturn",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "followSun": "Follow the Sun",
+    "followMoon": "Follow the Moon",
+    "followMercury": "Follow Mercury",
+    "followVenus": "Follow Venus",
+    "followMars": "Follow Mars",
+    "followJupiter": "Follow Jupiter",
+    "followSaturn": "Follow Saturn",
+    "followUranus": "Follow Uranus",
+    "followNeptune": "Follow Neptune",
+    "pointNorth": "Point to North",
+    "pointEast": "Point to East",
+    "pointSouth": "Point to South",
+    "pointWest": "Point to West"
+  },
+  "optics": {
+    "fieldOfView": "Field of view",
+    "focalLength": "Focal length",
+    "sensor": "Sensor",
+    "sensors": "Sensors",
+    "objective": "Objective",
+    "zoom": "Zoom"
+  },
+  "time": {
+    "animation": "Animation",
+    "speed": "Speed",
+    "hour": "Hour",
+    "date": "Date",
+    "follow": "Follow",
+    "realTime": "Real time",
+    "now": "Now",
+    "goBackOneHour": "Go back one hour",
+    "goForwardOneHour": "Go forward one hour",
+    "setCurrentTime": "Set current time",
+    "animateRealTime": "Animate in real time",
+    "enterDateTime": "Enter local date and time for your browser",
+    "stepValue": "Integer value of step per frame",
+    "stepUnit": "Unit of step (UTC) applied between frames",
+    "every": "every",
+    "pastDirection": " toward past at ",
+    "futureDirection": " toward future at ",
+    "sidereal": {
+      "day": "sidereal day",
+      "days": "sidereal days"
+    },
+    "lunar": {
+      "cycle": "sidereal lunar cycle",
+      "cycles": "sidereal lunar cycles",
+      "day": "lunar day",
+      "days": "lunar days"
+    },
+    "minute": "minute",
+    "minutes": "minutes",
+    "hours": "hours",
+    "days": "days",
+    "month": "month",
+    "months": "months",
+    "perFrame": "per frame"
+  },
+  "general": {
+    "help": "Help",
+    "information": "Information",
+    "close": "Close",
+    "open": "Open",
+    "calculate": "Calculate",
+    "nearestCity": "Nearest city with 100,000+ inhabitants"
+  }
+}

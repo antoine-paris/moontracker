@@ -1,21 +1,27 @@
 import { useEffect, useMemo } from 'react';
 import { Outlet, useLocation, Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useLanguageFromPath } from '../hooks/useLanguageFromPath';
 import InfoNav from '../components/info/InfoNav';
 import InfoLogo from '../components/info/InfoLogo';
 
 export default function InfoPage() {
+  const { t } = useTranslation('info');
   const { pathname } = useLocation();
+  
+  // Handle language detection from URL
+  useLanguageFromPath();
 
   const seo = useMemo(() => {
     if (pathname === '/info' || pathname === '/info/') {
       return {
-        title: 'SpaceView.me — Informations, Aide, Simulations',
-        desc: 'Aide SpaceView, exemples de simulations, liens et guide de déclaration de bug. Visualisez Lune, Soleil, étoiles et planètes.',
+        title: t('info:meta.title'),
+        desc: t('info:meta.description'),
       };
     }
     if (pathname.startsWith('/info/aide')) {
       return {
-        title: 'SpaceView.me — Aide et documentation',
+        title: t('info:meta.helpTitle'),
         desc: 'Découvrez les options, projections, optiques et contrôles pour utiliser SpaceView.me efficacement.',
       };
     }
@@ -39,9 +45,9 @@ export default function InfoPage() {
     }
     return {
       title: 'SpaceView.me — Informations',
-      desc: 'Informations, aide et simulations pour SpaceView.me.',
+      desc: t('info:meta.defaultDescription'),
     };
-  }, [pathname]);
+  }, [pathname, t]);
 
   useEffect(() => {
     const prevTitle = document.title;
@@ -86,7 +92,7 @@ export default function InfoPage() {
             <InfoLogo showBackground={false} size={64} />
             <div className="flex flex-col leading-tight">
               <span className="text-base font-semibold">SpaceView.me</span>
-              <span className="text-xs text-gray-600">Informations et Aide</span>
+                <span className="text-xs text-gray-600">{t('site.subtitle')}</span>
             </div>
           </div>
           <div>
@@ -94,7 +100,7 @@ export default function InfoPage() {
               to="/?start=true"
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
             >
-              ← Aller sur l’application
+              {t('common:navigation.goToApp')}
             </Link>
           </div>
         </div>

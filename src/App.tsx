@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useTranslation } from 'react-i18next';
+import { useLanguageFromPath } from './hooks/useLanguageFromPath';
 // Astronomy-Engine wrapper centralisé
 import { getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg, getSunOrientationAngles } from "./astro/aeInterop";
 import { getMoonOrientationAngles } from "./astro/aeInterop";
@@ -59,6 +61,11 @@ import {
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
+  const { t } = useTranslation('common');
+  
+  // Handle language detection from URL
+  useLanguageFromPath();
+  
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
 
@@ -228,7 +235,7 @@ export default function App() {
   const [linkFov, setLinkFov] = useState<boolean>(true);
   // Appareil/Zoom sélection
   const [deviceId, setDeviceId] = useState<string>('nikon-p1000');
-  const devices = useMemo(() => [{ id: CUSTOM_DEVICE_ID, label: 'Personalisé', type: 'phone', aspect: 4/3, zooms: [] } as Device, ...DEVICES], []);
+  const devices = useMemo(() => [{ id: CUSTOM_DEVICE_ID, label: t('ui:device.custom'), type: 'phone', aspect: 4/3, zooms: [] } as Device, ...DEVICES], [t]);
   const device = useMemo(() => devices.find(d => d.id === deviceId)!, [devices, deviceId]);
   const [zoomId, setZoomId] = useState<string>('p1000-2000eq');
   const zoom = useMemo(() => device.zooms.find(z => z.id === zoomId) ?? device.zooms[0], [device, zoomId]);
@@ -280,11 +287,11 @@ export default function App() {
       const FULL_FRAME_ASPECT = 36 / 24; // 3:2
       const f35eq = f35FromFovBest(fovXDeg, fovYDeg, FULL_FRAME_ASPECT);
       const mmStr = f35eq < 10 ? f35eq.toFixed(1) : String(Math.round(f35eq));
-      const label = `Focale théorique ${mmStr}mm eq 24/36`;
+      const label = t('ui:device.theoreticalFocal', { focal: mmStr });
       return [{ id: 'custom-theo', label, kind: 'module', f35: f35eq } as ZoomModule];
     }
     return device.zooms;
-  }, [deviceId, device, fovXDeg, fovYDeg]);
+  }, [deviceId, device, fovXDeg, fovYDeg, t]);
 
   useEffect(() => { if (deviceId === CUSTOM_DEVICE_ID) setZoomId('custom-theo'); }, [deviceId]);
   const [showSun, setShowSun] = useState(true);
@@ -1343,10 +1350,10 @@ const handleFramePresented = React.useCallback(() => {
         <main className="relative flex-1">
           {(locationsLoading || glbLoading) && (
             <div className="absolute inset-0 flex flex-col gap-2 items-center justify-center text-white/70 text-sm pointer-events-none">
-              {locationsLoading && location.id === 'loading' && <div>Chargement des localisations…</div>}
+              {locationsLoading && location.id === 'loading' && <div>{t('loading.locations')}</div>}
               {glbLoading && (
                 <div>
-                  Chargement des modèles 3D… {glbProgress.total > 0 ? Math.round(glbProgress.loaded / glbProgress.total * 100) : 0}%
+                  {t('loading.models', { percent: glbProgress.total > 0 ? Math.round(glbProgress.loaded / glbProgress.total * 100) : 0 })}
                 </div>
               )}
             </div>
@@ -1355,7 +1362,7 @@ const handleFramePresented = React.useCallback(() => {
           {!locationsLoading && !glbLoading && !sceneReady && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white/80 text-sm pointer-events-none"
                  style={{ zIndex: Z.ui + 40 }}>
-              Rendu de la scène en cours…
+              {t('loading.sceneRendering')}
             </div>
           )}
 
@@ -1379,7 +1386,7 @@ const handleFramePresented = React.useCallback(() => {
               className="absolute top-2 left-1/2 -translate-x-1/2 px-3 py-1 rounded-md bg-black/70 border text-xs pointer-events-none"
               style={{ zIndex: Z.ui + 40, borderColor: 'rgba(244, 63, 94, 0.6)', color: 'rgba(252, 165, 165, 0.95)' }}
             >
-              {`Enregistrement en cours — Image ${recordingFrames} — ${formatTimecode(recordingFrames, Math.max(1, recFpsRef.current || 24))}`}
+              {`${t('recording.inProgress')} — ${t('recording.frame')} ${recordingFrames} — ${formatTimecode(recordingFrames, Math.max(1, recFpsRef.current || 24))}`}
             </div>
           )}
 

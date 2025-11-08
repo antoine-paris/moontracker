@@ -1,0 +1,49 @@
+{
+  "navigation": {
+    "back": "← Back to application",
+    "close": "Close",
+    "expand": "Expand",
+    "return": "Return",
+    "goToApp": "Go to application"
+  },
+  "time": {
+    "now": "Now",
+    "setCurrentTime": "Set current time",
+    "enterDateTime": "Enter local date and time for your browser",
+    "goToMinusHour": "Go to -1 hour",
+    "goToPlusHour": "Go to +1 hour"
+  },
+  "recording": {
+    "inProgress": "Recording in progress",
+    "frame": "Frame",
+    "timecode": "{{hours}}:{{minutes}}:{{seconds}}"
+  },
+  "loading": {
+    "locations": "Loading locations…",
+    "models": "Loading 3D models… {{percent}}%",
+    "sceneRendering": "Rendering scene…"
+  },
+  "directions": {
+    "north": "North",
+    "south": "South", 
+    "east": "East",
+    "west": "West",
+    "northAbbrev": "N",
+    "southAbbrev": "S",
+    "eastAbbrev": "E",
+    "westAbbrev": "W",
+    "toNorth": "Go North (100 km)",
+    "toSouth": "Go South (100 km)",
+    "toEast": "Go East (100 km)",
+    "toWest": "Go West (100 km)"
+  },
+  "location": {
+    "nearNorthPole": "Near North Pole",
+    "nearSouthPole": "Near South Pole",
+    "kmFromNorthPole": "{{km}} km from North Pole",
+    "kmFromSouthPole": "{{km}} km from South Pole",
+    "coordinates": "Lat: {{lat}} Lng: {{lng}}",
+    "coordinatesWithDistance": "Lat: {{lat}} Lng: {{lng}} ({{km}} km {{direction}} from {{city}})",
+    "localTime": "local time"
+  }
+}

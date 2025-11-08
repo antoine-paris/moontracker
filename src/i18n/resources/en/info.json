@@ -1,0 +1,24 @@
+{
+  "site": {
+    "title": "SpaceView.me",
+    "subtitle": "Information and Help",
+    "description": "Interactive astronomical simulation"
+  },
+  "tabs": {
+    "spaceview": "SpaceView",
+    "help": "Help",
+    "simulations": "Simulations",
+    "flatearth": "Flat Earth",
+    "bug": "Bug Report"
+  },
+  "metadata": {
+    "keywords": "astronomy, simulation, moon, sun, eclipse, observation",
+    "description": "SpaceView is an interactive astronomical simulation application for observing the Moon, Sun and planets from anywhere on Earth."
+  },
+  "meta": {
+    "title": "SpaceView.me — Information, Help, Simulations",
+    "description": "SpaceView help, simulation examples, links and bug reporting guide. Visualize Moon, Sun, stars and planets.",
+    "helpTitle": "SpaceView.me — Help and documentation",
+    "defaultDescription": "Information, help and simulations for SpaceView.me."
+  }
+}

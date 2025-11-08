@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from 'react-i18next';
 import { Z } from "../../render/constants";
 import { projectToScreen } from "../../render/projection";
 
@@ -77,6 +78,7 @@ export default function HorizonOverlay({
   eclipticUpAzDeg,
   eclipticUpAltDeg,
 }: Props) {
+  const { t } = useTranslation('astro');
   // NEW: avoid closer ±90° to prevent singularities
   const refAltDegSafe = refAltDeg > 89 ? 89 : (refAltDeg < -89 ? -89 : refAltDeg);
 
@@ -448,7 +450,7 @@ export default function HorizonOverlay({
             <>
               <path d={topPath} fill="none" stroke={debugMask ? COLOR_TOP : COLOR_MARKER} strokeWidth={1} strokeDasharray="4 4" />
               <text fontSize="10" fill={debugMask ? COLOR_TOP : COLOR_MARKER}>
-                <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">Haut</textPath>
+                <textPath href={`#${topPathId}`} startOffset="50%" textAnchor="middle">{t('directions.top')}</textPath>
               </text>
             </>
           )}
@@ -459,7 +461,7 @@ export default function HorizonOverlay({
               <path d={bottomPath} fill="none" stroke={debugMask ? COLOR_BOTTOM : COLOR_MARKER} strokeWidth={1} strokeDasharray="4 4" />
               {bottomLabelPath && (
                 <text fontSize="10" fill={debugMask ? COLOR_BOTTOM : COLOR_MARKER}>
-                  <textPath href={`#${bottomLabelPathId}`} startOffset="50%" textAnchor="middle">Bas</textPath>
+                  <textPath href={`#${bottomLabelPathId}`} startOffset="50%" textAnchor="middle">{t('directions.bottom')}</textPath>
                 </text>
               )}
             </>
