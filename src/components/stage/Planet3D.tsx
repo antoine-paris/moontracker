@@ -2,6 +2,7 @@ import React, { Suspense, useMemo } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { useGLTF, OrthographicCamera, Text, Billboard, Preload } from '@react-three/drei'
 import * as THREE from 'three';
+import { useTranslation } from 'react-i18next';
 import { Z } from '../../render/constants';
 import type { PlanetId } from '../../astro/planets';
 import { PLANET_REGISTRY } from '../../render/PlanetRegistry';
@@ -85,6 +86,7 @@ function Model({
   planetId?: PlanetId; 
   onMounted?: () => void; 
 }) {
+  const { t } = useTranslation('common');
   const { scene } = useGLTF(modelUrl);
 
   const { centeredScene, scale, radius } = useMemo(() => {
@@ -397,7 +399,7 @@ const qMeridianTorus = useMemo(() => {
             </mesh>
             <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.northAbbrev')}</Text>
             </Billboard>
           </group>
           {/* Axes Est, Sud, Ouest (même style) */}
@@ -409,7 +411,7 @@ const qMeridianTorus = useMemo(() => {
             </mesh>
             <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.eastAbbrev')}</Text>
             </Billboard>
             {/* Sud */}
             <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
@@ -418,7 +420,7 @@ const qMeridianTorus = useMemo(() => {
             </mesh>
             <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.southAbbrev')}</Text>
             </Billboard>
             {/* Ouest */}
             <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
@@ -427,7 +429,7 @@ const qMeridianTorus = useMemo(() => {
             </mesh>
             <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.westAbbrev')}</Text>
             </Billboard>
             {/* Proche Terre (sans étiquette) */}
             <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>

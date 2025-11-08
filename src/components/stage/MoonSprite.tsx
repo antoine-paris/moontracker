@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from 'react-i18next';
 import { Z } from "../../render/constants";
 import { sampleTerminatorLUT } from "../../astro/lut";
 import moonImg from "../../assets/moon.2709.jpg";
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export default function MoonSprite(props: Props) {
+  const { t } = useTranslation('common');
   const { x, y, visibleX, visibleY, rotationDeg, showPhase, earthshine, debugMask, showCard, phaseFraction, brightLimbAngleDeg, maskAngleDeg, wPx, hPx } = props;
 
   const R_SVG = 312;
@@ -142,13 +144,13 @@ export default function MoonSprite(props: Props) {
         <svg width={wPx} height={hPx} viewBox="0 0 624 624" style={{ position: 'absolute', inset: 0, pointerEvents: 'none' }}>
           <g>
             <line x1="312" y1="36" x2="312" y2="86" stroke="#93c5fd" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="312" y="60" textAnchor="middle" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">N</text>
+            <text x="312" y="60" textAnchor="middle" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">{t('directions.northAbbrev')}</text>
             <line x1="538" y1="312" x2="588" y2="312" stroke="#93c5fd" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="564" y="318" textAnchor="start" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">E</text>
+            <text x="564" y="318" textAnchor="start" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">{t('directions.eastAbbrev')}</text>
             <line x1="312" y1="538" x2="312" y2="588" stroke="#93c5fd" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="312" y="572" textAnchor="middle" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">S</text>
+            <text x="312" y="572" textAnchor="middle" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">{t('directions.southAbbrev')}</text>
             <line x1="36" y1="312" x2="86" y2="312" stroke="#93c5fd" strokeOpacity="0.9" strokeWidth="2" />
-            <text x="60" y="318" textAnchor="end" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">O</text>
+            <text x="60" y="318" textAnchor="end" fontSize="64" fontWeight="800" fill="#93c5fd" stroke="black" strokeWidth="6">{t('directions.westAbbrev')}</text>
           </g>
         </svg>
       )}

@@ -2,6 +2,7 @@ import React, { Suspense, useMemo } from 'react';
 import { Canvas, useFrame  } from '@react-three/fiber';
 import { useGLTF, OrthographicCamera, Text, Billboard } from '@react-three/drei';
 import * as THREE from 'three';
+import { useTranslation } from 'react-i18next';
 import { Z } from '../../render/constants';
 import { getOrProcess, MOON_RELIEF_SCALE_DEFAULT } from '../../render/modelPrewarm';
 
@@ -191,6 +192,7 @@ function Model({
   eclipseAxisPADeg?: number;
   eclipseActive?: boolean;
 }) {
+  const { t } = useTranslation('common');
   // Pas d'import Vite: on utilise un chemin direct pour le GLB
   const { scene } = useGLTF(modelUrl);
 
@@ -714,7 +716,7 @@ function Model({
             </mesh>
             <Billboard position={[labelPos.x, labelPos.y, labelPos.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>N</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.northAbbrev')}</Text>
             </Billboard>
           </group>
           {/* Axes Est, Sud, Ouest (même style) */}
@@ -726,7 +728,7 @@ function Model({
             </mesh>
             <Billboard position={[labelPosE.x, labelPosE.y, labelPosE.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>E</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.eastAbbrev')}</Text>
             </Billboard>
             {/* Sud */}
             <mesh position={[axisPosS.x, axisPosS.y, axisPosS.z]} quaternion={qAxisDiskS} renderOrder={11}>
@@ -735,7 +737,7 @@ function Model({
             </mesh>
             <Billboard position={[labelPosS.x, labelPosS.y, labelPosS.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>S</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.southAbbrev')}</Text>
             </Billboard>
             {/* Ouest */}
             <mesh position={[axisPosO.x, axisPosO.y, axisPosO.z]} quaternion={qAxisDiskO} renderOrder={11}>
@@ -744,7 +746,7 @@ function Model({
             </mesh>
             <Billboard position={[labelPosO.x, labelPosO.y, labelPosO.z]}>
               {/* FIX: taille de police fixe en pixels */}
-              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>O</Text>
+              <Text position={[0, 0, 0]} fontSize={textFontSizeLocal} color="#a78bfa" anchorX="center" anchorY="middle" renderOrder={12}>{t('directions.westAbbrev')}</Text>
             </Billboard>
             {/* Proche Terre (sans étiquette) */}
             <mesh position={[axisPosNear.x, axisPosNear.y, axisPosNear.z]} quaternion={qAxisNear} renderOrder={11}>

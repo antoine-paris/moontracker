@@ -2,11 +2,28 @@ import { useTranslation } from 'react-i18next';
 import { AU_KM } from "../../astro/sun";
 import { formatDeg } from "../../utils/format";
 import { norm360 } from "../../utils/math";
-import { ROSE_16 } from "../../render/constants";
 
-function compass16(az: number): string {
+function compass16(az: number, t: (key: string) => string): string {
+  const dirs = [
+    t('common:directions.northAbbrev'), // N
+    t('common:directions.northAbbrev') + t('common:directions.northAbbrev') + t('common:directions.eastAbbrev'), // NNE
+    t('common:directions.northAbbrev') + t('common:directions.eastAbbrev'), // NE
+    t('common:directions.eastAbbrev') + t('common:directions.northAbbrev') + t('common:directions.eastAbbrev'), // ENE
+    t('common:directions.eastAbbrev'), // E
+    t('common:directions.eastAbbrev') + t('common:directions.southAbbrev') + t('common:directions.eastAbbrev'), // ESE
+    t('common:directions.southAbbrev') + t('common:directions.eastAbbrev'), // SE
+    t('common:directions.southAbbrev') + t('common:directions.southAbbrev') + t('common:directions.eastAbbrev'), // SSE
+    t('common:directions.southAbbrev'), // S
+    t('common:directions.southAbbrev') + t('common:directions.southAbbrev') + t('common:directions.westAbbrev'), // SSW/SSO
+    t('common:directions.southAbbrev') + t('common:directions.westAbbrev'), // SW/SO
+    t('common:directions.westAbbrev') + t('common:directions.southAbbrev') + t('common:directions.westAbbrev'), // WSW/OSO
+    t('common:directions.westAbbrev'), // W/O
+    t('common:directions.westAbbrev') + t('common:directions.northAbbrev') + t('common:directions.westAbbrev'), // WNW/ONO
+    t('common:directions.northAbbrev') + t('common:directions.westAbbrev'), // NW/NO
+    t('common:directions.northAbbrev') + t('common:directions.northAbbrev') + t('common:directions.westAbbrev'), // NNW/NNO
+  ];
   const idx = Math.round(norm360(az) / 22.5) % 16;
-  return ROSE_16[idx] as string;
+  return dirs[idx];
 }
 
 export type Astro = {
@@ -43,7 +60,12 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
   const { t } = useTranslation('astro');
   const libG = astro.moon.libration;
   const libT = astro.moon.librationTopo;
-  const libQuadrant = libT ? (() => { const lnorm = ((libT.lonDeg + 180) % 360) - 180; const ns = libT.latDeg >= 0 ? 'N' : 'S'; const ew = lnorm >= 0 ? 'E' : 'O'; return ns + ew; })() : '—';
+  const libQuadrant = libT ? (() => { 
+    const lnorm = ((libT.lonDeg + 180) % 360) - 180; 
+    const ns = libT.latDeg >= 0 ? t('directions.northAbbrev') : t('directions.southAbbrev'); 
+    const ew = lnorm >= 0 ? t('directions.eastAbbrev') : t('directions.westAbbrev'); 
+    return ns + ew; 
+  })() : '—';
   const libContentG = libG ? (
     <>
       lat <span className="font-mono">{libG.latDeg.toFixed(1)}°</span>,{' '}
@@ -73,7 +95,7 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
       <div className="rounded-2xl border border-white/10 bg-black/50 backdrop-blur px-4 py-3 sm:col-span-2">
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold text-sky-300">{t('moon.title')}</div>
-          <div className="text-xs text-white/60">{compass16(astro.moon.az)}</div>
+          <div className="text-xs text-white/60">{compass16(astro.moon.az, t)}</div>
         </div>
 
         {/* New: 3-column layout for Moon info */}
@@ -109,7 +131,7 @@ export default function BottomTelemetry({ astro, rotationToHorizonDegMoon, phase
       <div className="rounded-2xl border border-white/10 bg-black/50 backdrop-blur px-4 py-3 sm:col-span-1">
         <div className="flex items-center justify-between">
           <div className="text-sm font-semibold text-amber-300">{t('sun.title')}</div>
-          <div className="text-xs text-white/60">{compass16(astro.sun.az)}</div>
+          <div className="text-xs text-white/60">{compass16(astro.sun.az, t)}</div>
         </div>
         <div className="mt-1 text-sm text-white/85">{t('sun.altitude')} : <span className="font-mono">{formatDeg(astro.sun.alt)}</span></div>
         <div className="text-sm text-white/85">{t('sun.azimuth')} : <span className="font-mono">{formatDeg(astro.sun.az)}</span></div>

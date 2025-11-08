@@ -119,6 +119,7 @@ export interface SpaceViewProps {
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
   const { t: tUi } = useTranslation('ui');
+  const { t } = useTranslation('common');
   
   // Dynamic planet registry that updates with language changes
   const PLANET_REGISTRY = getPlanetRegistry();
@@ -1165,7 +1166,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             className="absolute left-1/2 bottom-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
-            {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg)}`}
+            {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg, t)}`}
           </div>
 
           {/* Bas droite: Lune ou sous l'horizon (marge demi-diamètre) */}
@@ -1175,7 +1176,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
               ? tUi('hud.moonBelowHorizon')
-              : `${tUi('celestialBodies.moon')} Alt. ${formatDeg(astro.moon.alt, 0)} Az ${formatDeg(astro.moon.az, 1)} (${compass16(astro.moon.az)})`}
+              : `${tUi('celestialBodies.moon')} Alt. ${formatDeg(astro.moon.alt, 0)} Az ${formatDeg(astro.moon.az, 1)} (${compass16(astro.moon.az, t)})`}
           </div>
 
           {/* Bas gauche: Soleil ou sous l'horizon (marge demi-diamètre) */}
@@ -1185,7 +1186,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           >
             {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
               ? tUi('hud.sunBelowHorizon')
-              : `${tUi('celestialBodies.sun')} Alt. ${formatDeg(astro.sun.alt, 0)} Az ${formatDeg(astro.sun.az, 1)} (${compass16(astro.sun.az)})`}
+              : `${tUi('celestialBodies.sun')} Alt. ${formatDeg(astro.sun.alt, 0)} Az ${formatDeg(astro.sun.az, 1)} (${compass16(astro.sun.az, t)})`}
           </div>
 
           {/* Haut gauche: Appareil et zoom */}

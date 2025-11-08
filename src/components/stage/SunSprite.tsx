@@ -1,4 +1,5 @@
 
+import { useTranslation } from 'react-i18next';
 import { Z } from "../../render/constants";
 
 type Props = {
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showCard, wPx, hPx }: Props) {
+  const { t } = useTranslation('common');
   if (!visibleX || !visibleY) return null;
 
   // Force un carré pour conserver un cercle à l'écran
@@ -52,19 +54,19 @@ export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showC
           <g>
             <line x1="312" y1="36" x2="312" y2="86" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
             <text x="312" y="60" textAnchor="middle" fontSize="64" fill="white" stroke="black" strokeWidth="4">
-              N
+              {t('directions.northAbbrev')}
             </text>
             <line x1="538" y1="312" x2="588" y2="312" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
             <text x="564" y="318" textAnchor="start" fontSize="64" fill="white" stroke="black" strokeWidth="4">
-              E
+              {t('directions.eastAbbrev')}
             </text>
             <line x1="312" y1="538" x2="312" y2="588" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
             <text x="312" y="572" textAnchor="middle" fontSize="64" fill="white" stroke="black" strokeWidth="4">
-              S
+              {t('directions.southAbbrev')}
             </text>
             <line x1="36" y1="312" x2="86" y2="312" stroke="white" strokeOpacity="0.9" strokeWidth="2" />
             <text x="60" y="318" textAnchor="end" fontSize="64" fill="white" stroke="black" strokeWidth="4">
-              O
+              {t('directions.westAbbrev')}
             </text>
           </g>
         </svg>

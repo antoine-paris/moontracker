@@ -1,7 +1,6 @@
-import { ROSE_16 } from '../render/constants';
-import { norm360 } from '../utils/math';
+import { compass16 as compass16FromDirections } from './directions';
+import type { TFunction } from 'i18next';
 
-export function compass16(azDeg: number): string {
-  const idx = Math.round(norm360(azDeg) / 22.5) % 16;
-  return ROSE_16[idx] as string;
+export function compass16(azDeg: number, t: TFunction): string {
+  return compass16FromDirections(azDeg, t);
 }

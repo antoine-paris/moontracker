@@ -1,10 +1,11 @@
 import React from "react";
+import { useTranslation } from 'react-i18next';
 import { Z } from "../../render/constants";
 import { projectToScreen } from "../../render/projection";
 import { compass16 } from "../../utils/compass";
 import { angularDiff } from "../../utils/math";
 
-export type CardinalItem = { label: 'N' | 'E' | 'S' | 'O'; x: number; az: number };
+export type CardinalItem = { label: string; x: number; az: number };
 export type SecondaryCardinalItem = { label: string; x: number; az: number };
 export type BodyItem = { x: number; label: string; color: string; az: number };
 
@@ -35,6 +36,7 @@ export default function CardinalMarkers({
   eclipticUpAzDeg,
   eclipticUpAltDeg,
 }: Props) {
+  const { t } = useTranslation('common');
   const yForAz = (az: number) => {
     const p = projectToScreen(
       az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
@@ -63,10 +65,10 @@ export default function CardinalMarkers({
   // Compute primary N/E/S/O markers (dedup on x)
   const primaryItems: CardinalItem[] = React.useMemo(() => {
     const base = [
-      { label: 'N' as const, az: 0 },
-      { label: 'E' as const, az: 90 },
-      { label: 'S' as const, az: 180 },
-      { label: 'O' as const, az: 270 },
+      { label: t('directions.northAbbrev'), az: 0 },
+      { label: t('directions.eastAbbrev'), az: 90 },
+      { label: t('directions.southAbbrev'), az: 180 },
+      { label: t('directions.westAbbrev'), az: 270 },
     ];
     const projected = base
       .map(c => {
@@ -92,16 +94,16 @@ export default function CardinalMarkers({
       .sort((a, b) => a.x - b.x)
       .map(({ label, az, x }) => ({ label, az, x }));
   }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
-    lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+    lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg, t
   ]);
 
   // Compute secondary 16-wind markers (dedup on x, skip primaries)
   const secondaryItems: SecondaryCardinalItem[] = React.useMemo(() => {
-    const primaries = new Set(['N', 'E', 'S', 'O']);
+    const primaries = new Set([t('directions.northAbbrev'), t('directions.eastAbbrev'), t('directions.southAbbrev'), t('directions.westAbbrev')]);
     const items: { label: string; az: number; x: number; delta: number }[] = [];
     for (let i = 0; i < 16; i++) {
       const az = i * 22.5;
-      const label = compass16(az);
+      const label = compass16(az, t);
       if (primaries.has(label)) continue;
       const p = projectToScreen(
         az, 0, refAzDeg, viewport.w, viewport.h, refAltDeg, 0, fovXDeg, fovYDeg, projectionMode,
@@ -121,7 +123,7 @@ export default function CardinalMarkers({
     }
     return dedup.sort((a, b) => a.x - b.x).map(({ label, az, x }) => ({ label, az, x }));
   }, [refAzDeg, refAltDeg, viewport.w, viewport.h, fovXDeg, fovYDeg, projectionMode,
-    lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg
+    lockHorizon, eclipticUpAzDeg, eclipticUpAltDeg, t
   ]);
 
   return (

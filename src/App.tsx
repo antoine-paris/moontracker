@@ -49,6 +49,7 @@ import SpaceView from "./components/layout/SpaceView";
 import TopRightBar from "./components/layout/TopRightBar";
 import { parseUrlIntoState, buildShareUrl } from "./utils/urlState";
 import { normLng as normLngGeo, haversineKm, bearingDeg, dir8AbbrevFr, labelToCity } from "./utils/geo";
+import { getFrenchToLocalizedDirMap } from "./utils/directions";
 import { copyAndDownloadNodeAsPngAndJpeg } from './utils/capture';
 import { unrefractAltitudeDeg } from "./utils/refraction"; 
 import InfoModal from "./components/info/InfoModal"; 
@@ -512,16 +513,7 @@ export default function App() {
     const bearing = bearingDeg(best.lat, best.lng, location.lat, location.lng);
     const dirFr = dir8AbbrevFr(bearing);
     // Convert French direction to localized direction
-    const dirMap: Record<string, string> = {
-      'N': i18n.t('common:directions.northAbbrev'),
-      'NE': i18n.t('common:directions.northAbbrev') + i18n.t('common:directions.eastAbbrev'),
-      'E': i18n.t('common:directions.eastAbbrev'),
-      'SE': i18n.t('common:directions.southAbbrev') + i18n.t('common:directions.eastAbbrev'),
-      'S': i18n.t('common:directions.southAbbrev'),
-      'SO': i18n.t('common:directions.southAbbrev') + i18n.t('common:directions.westAbbrev'),
-      'O': i18n.t('common:directions.westAbbrev'),
-      'NO': i18n.t('common:directions.northAbbrev') + i18n.t('common:directions.westAbbrev'),
-    };
+    const dirMap = getFrenchToLocalizedDirMap(i18n.t);
     const dir = dirMap[dirFr] || dirFr;
     const nearestCityName = labelToCity(best.label);
 

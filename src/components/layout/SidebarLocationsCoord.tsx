@@ -10,6 +10,7 @@ import {
   moveDest,
   capNSDistanceKm,
 } from '../../utils/geo';
+import { getFrenchToLocalizedFullDirMap } from '../../utils/directions';
 
 type Props = {
   locations: LocationOption[];
@@ -275,7 +276,10 @@ export default function SidebarLocationsCoord({
 
     if (!Number.isFinite(km)) return { line1: '', city: '' };
     if (km <= 0) return { line1: '', city: `${nearest.city.label}` };
-    const dir = dir8FullFr(nearest.bearingFromCity);
+    const dirFr = dir8FullFr(nearest.bearingFromCity);
+    // Convert French direction to localized direction
+    const dirMap = getFrenchToLocalizedFullDirMap(t);
+    const dir = dirMap[dirFr] || dirFr;
     // Simplified approach: just use the distance and direction without complex preposition logic
     return {
       line1: tUi('coordinates.distanceFromCity', { km, dir }),
