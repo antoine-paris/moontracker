@@ -4,15 +4,17 @@ import HelpTab from './tabs/HelpTab';
 import SimulationsTab from './tabs/SimulationsTab';
 import FlatEarthTab from './tabs/FlatEarthTab';
 import BugReportTab from './tabs/BugReportTab';
+import ContactTab from './tabs/ContactTab';
 
-type TabId = 'moontracker' | 'help' | 'simulations' | 'flatearth' | 'bug';
+type TabId = 'moontracker' | 'help' | 'simulations' | 'flatearth' | 'bug' | 'contact';
 
 const TABS: { id: TabId; label: string }[] = [
   { id: 'moontracker', label: 'MoonTracker' },
   { id: 'help',        label: 'Aide' },
   { id: 'simulations', label: 'Simulations' },
-  { id: 'flatearth',   label: 'Flat‑earth' },
+  { id: 'flatearth',   label: 'Terre plate ?' },
   { id: 'bug',         label: 'Déclarez un bug' },
+  { id: 'contact',    label: 'Contact' },
 ];
 
 export default function InfoTabs({ initialTab = 'moontracker' }: { initialTab?: string }) {
@@ -34,6 +36,7 @@ export default function InfoTabs({ initialTab = 'moontracker' }: { initialTab?: 
       case 'simulations': return <SimulationsTab />;
       case 'flatearth':   return <FlatEarthTab />;
       case 'bug':         return <BugReportTab />;
+      case 'contact':     return <ContactTab />;
     }
   }, [active]);
 

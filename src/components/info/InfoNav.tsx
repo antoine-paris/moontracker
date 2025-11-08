@@ -4,8 +4,9 @@ const tabs = [
   { to: '/info', label: 'MoonTracker', end: true },
   { to: '/info/aide', label: 'Aide' },
   { to: '/info/simulations', label: 'Simulations' },
-  { to: '/info/flat-earth', label: 'Flat‑earth' },
+  { to: '/info/flat-earth', label: 'Terre plate ?' },
   { to: '/info/bug', label: 'Déclarer un bug' },
+  { to: '/info/contact', label: 'Contact' },
 ];
 
 export default function InfoNav() {

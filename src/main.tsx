@@ -9,6 +9,7 @@ import HelpTab from './components/info/tabs/HelpTab'
 import SimulationsTab from './components/info/tabs/SimulationsTab'
 import FlatEarthTab from './components/info/tabs/FlatEarthTab'
 import BugReportTab from './components/info/tabs/BugReportTab'
+import ContactTab from './components/info/tabs/ContactTab'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -22,6 +23,7 @@ createRoot(document.getElementById('root')!).render(
           <Route path="simulations" element={<SimulationsTab />} />
           <Route path="flat-earth" element={<FlatEarthTab />} />
           <Route path="bug" element={<BugReportTab />} />
+          <Route path="contact" element={<ContactTab />} />
         </Route>
       </Routes>
     </BrowserRouter>
