@@ -2,7 +2,7 @@ import React, { lazy, Suspense, useEffect, useState } from 'react';
 const FlatEarthSimulator = lazy(() => import('./FlatEarthSimulator/FlatEarthSimulator'));
 
 // Simple ErrorBoundary pour intercepter un échec de montage du Canvas/lazy
-class ErrorBoundary extends React.Component<{ onRetry?: () => void }, { hasError: boolean }> {
+class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: any) {
     super(props);
     this.state = { hasError: false };
@@ -68,7 +68,7 @@ export default function FlatEarthTab() {
         </div>
         <figure style={{ marginLeft: '0', marginRight: '5rem', flex: '0 0 320px', maxWidth: '420px' }}>
           <img
-            src="/img/capture/fe.png"
+            src="/img/flatearth/fe.png"
             alt="Image classique d'une terre plate"
             loading="lazy"
             style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #333' }}
@@ -206,7 +206,7 @@ export default function FlatEarthTab() {
         </div>
         <figure style={{ marginTop : 0, marginRight: '5em', flex: '0 0 320px', maxWidth: '420px' }}>
           <img
-            src="/img/capture/fe-sun-to-north.png"
+            src="/img/flatearth/fe-sun-to-north.png"
             alt="Trajectoire attendue du Soleil vers le nord sur un modèle de Terre plate"
             loading="lazy"
             style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #333' }}
@@ -257,7 +257,7 @@ export default function FlatEarthTab() {
       </p>
         <figure style={{ marginTop : 0, marginBottom : 0, marginRight: '5em', marginLeft: '5em' }}>
           <img
-            src="/img/capture/fe-noon-at-congo.png"
+            src="/img/flatearth/fe-noon-at-congo.png"
             alt="Sur une terre plate en Mars, le soleil se leve à New York avant de se lever à l'Est du brésil. Dans la vraie vie c'est le contraire."
             loading="lazy"
             style={{ width: '100%', height: 'auto', borderRadius: '8px', border: '1px solid #333' }}
@@ -351,7 +351,7 @@ export default function FlatEarthTab() {
           `}</style>
           <figure className="m-0">
             <img
-              src="/img/capture/fe-moon-paris.png"
+              src="/img/flatearth/fe-moon-paris.png"
               alt="Simulation de la Lune vue de Paris sur une terre plate"
               className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
@@ -362,7 +362,7 @@ export default function FlatEarthTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/fe-moon-dakar.png"
+              src="/img/flatearth/fe-moon-dakar.png"
               alt="Simulation de la Lune vue de Dakar sur une terre plate"
               className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
@@ -373,7 +373,7 @@ export default function FlatEarthTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/fe-moon-mexico.png"
+              src="/img/flatearth/fe-moon-mexico.png"
               alt="Simulation de la Lune vue de Mexico sur une terre plate"
               className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
@@ -384,7 +384,7 @@ export default function FlatEarthTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/fe-moon-rio.png"
+              src="/img/flatearth/fe-moon-rio.png"
               alt="Simulation de la Lune vue de Rio de Janeiro sur une terre plate"
               className="crop570x597 w-auto h-auto rounded-md border border-black/10 shadow-sm"
 
@@ -412,7 +412,7 @@ export default function FlatEarthTab() {
             playsInline
             className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
           >
-            <source src="/img/capture/fe-stars-1.webm" type="video/webm" />
+            <source src="/img/flatearth/fe-stars-1.webm" type="video/webm" />
             Votre navigateur ne supporte pas la lecture de vidéos WebM.
           </video>
           <figcaption className="text-sm text-gray-500 mt-1">
@@ -428,7 +428,7 @@ export default function FlatEarthTab() {
             playsInline
             className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
           >
-            <source src="/img/capture/fe-stars-2.webm" type="video/webm" />
+            <source src="/img/flatearth/fe-stars-2.webm" type="video/webm" />
             Votre navigateur ne supporte pas la lecture de vidéos WebM.
           </video>
           <figcaption className="text-sm text-gray-500 mt-1">

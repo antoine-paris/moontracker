@@ -1,6 +1,6 @@
 import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber'; // + useThree
-import { OrbitControls, Text, Line, useTexture, Billboard, Html } from '@react-three/drei';
+import { OrbitControls, Line, useTexture, Html } from '@react-three/drei';
 import * as THREE from 'three';
 
 const EARTH_CIRCUMFERENCE_KM = 40075; // diamètre du disque = circonférence terrestre
@@ -43,26 +43,6 @@ const CITIES: City[] = [
   { id: 'buenosaires',  label: 'Buenos Aires',   lat:-34.6037, lon: -58.3816 },
 ];
 
-// Projection azimutale équidistante centrée sur le pôle Nord
-// Réglages pour aligner la projection sur la texture du planisphère
-const MAP_LON_OFFSET_DEG = 0;      // rotation de la texture (déplace le méridien de référence)
-const MAP_LON_CLOCKWISE = false;   // true si la texture inverse l’est/ouest
-
-
-// Projection azimutale équidistante centrée sur le pôle Nord
-function latLonToXZ(latDeg: number, lonDeg: number, diskRadius: number) {
-  // r: 0 au pôle Nord, 0.5*R à l’équateur, R au pôle Sud
-  const colat = 90 - latDeg;                 // [0..180]
-  const r = (colat / 180) * diskRadius;
-
-  // 0° en haut (+Z), 90E à droite (+X). Option d’inversion/décalage via constantes.
-  const lon = (MAP_LON_CLOCKWISE ? -lonDeg : lonDeg) + MAP_LON_OFFSET_DEG;
-  const theta = THREE.MathUtils.degToRad(lon);
-
-  const x = r * Math.sin(theta);
-  const z = r * Math.cos(theta);
-  return [x, z] as const;
-}
 
 function CityMarkers({
   cities,
@@ -242,7 +222,8 @@ function EarthDisk({ radius }: { radius: number }) {
     if ('colorSpace' in texture) {
       (texture as any).colorSpace = THREE.SRGBColorSpace;
     } else {
-      (texture as any).encoding = THREE.sRGBEncoding;
+      // For older Three.js versions, use the numeric value for sRGB encoding
+      (texture as any).encoding = 3001; // THREE.sRGBEncoding constant value
     }
     texture.anisotropy = 8;
     texture.wrapS = THREE.ClampToEdgeWrapping;
@@ -284,7 +265,7 @@ function EarthDisk({ radius }: { radius: number }) {
 }
 
 // Composant pour le dôme céleste
-function CelestialDome({ radius, height, visible, currentHour, daySpeed }: { radius: number; height: number; visible: boolean; currentHour: number; daySpeed: number }) {
+function CelestialDome({ radius, visible, currentHour, daySpeed }: { radius: number; height: number; visible: boolean; currentHour: number; daySpeed: number }) {
   const starsRef = useRef<THREE.Points>(null);
   const starsDaysRef = useRef(currentHour / 24);
 
@@ -336,12 +317,12 @@ function CelestialDome({ radius, height, visible, currentHour, daySpeed }: { rad
     return tex;
   }, []);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (!starsRef.current) return;
 
     // Integrate elapsed days when playing (no modulo so ratio accumulates across days)
     if (daySpeed > 0) {
-      starsDaysRef.current += ((daySpeed / 6) * delta) / 24;
+      starsDaysRef.current += ((daySpeed / 6) * (delta || 0)) / 24;
     } else {
       starsDaysRef.current = currentHour / 24;
     }
@@ -413,9 +394,9 @@ function Sun({
     if (daySpeed <= 0) sunDaysRef.current = hour / 24;
   }, [hour, daySpeed]);
 
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (daySpeed > 0) {
-      sunDaysRef.current += ((daySpeed / 6) * delta) / 24;
+      sunDaysRef.current += ((daySpeed / 6) * (delta || 0)) / 24;
     } else {
       sunDaysRef.current = hour / 24;
     }
@@ -483,65 +464,7 @@ function Sun({
   );
 }
 
-// Composant visuel du cône de lumière du Soleil
-function SunLightCone({
-  distance,
-  height,
-  hour,
-  daySpeed,
-  angleDeg,
-}: {
-  distance: number;
-  height: number;
-  hour: number;
-  daySpeed: number;
-  angleDeg: number;
-}) {
-  const coneRef = useRef<THREE.Mesh>(null);
-  const sunDaysRef = useRef(hour / 24);
-  useEffect(() => {
-    if (daySpeed <= 0) sunDaysRef.current = hour / 24;
-  }, [hour, daySpeed]);
 
-
-  // Géométrie unitaire (radius=1, height=1) que l’on met à l’échelle
-  const geometry = useMemo(() => new THREE.ConeGeometry(1, 1, 48, 1, true), []);
-
-  useFrame((_, delta) => {
-    if (!coneRef.current) return;
-
-    if (daySpeed > 0) {
-      sunDaysRef.current += ((daySpeed / 6) * delta) / 24;
-    } else {
-      sunDaysRef.current = hour / 24;
-    }
-
-    // Same direction as Sun (counterclockwise)
-    const angle = (sunDaysRef.current) * Math.PI * 2 - Math.PI / 2;
-    const x = Math.cos(angle) * distance;
-    const z = Math.sin(angle) * distance;
-    const y = height;
-
-    const halfAngleRad = THREE.MathUtils.degToRad(angleDeg);
-    const baseRadius = Math.max(0, Math.tan(halfAngleRad) * height);
-
-    coneRef.current.scale.set(baseRadius, height, baseRadius);
-    coneRef.current.position.set(x, y - height / 2, z);
-  });
-
-  return (
-    <mesh ref={coneRef} castShadow={false} receiveShadow={false} geometry={geometry}>
-      <meshBasicMaterial
-        color="rgba(166, 213, 246, 1)"
-        transparent
-        opacity={0.82}
-        depthWrite={false}
-        side={THREE.DoubleSide}
-        blending={THREE.AdditiveBlending}
-      />
-    </mesh>
-  );
-}
 
 function AttachedSunCone({
   height,
@@ -616,9 +539,9 @@ function Moon({ size, distance, height, hour, daySpeed }: {
     if (daySpeed <= 0) moonDaysRef.current = hour / 24;
   }, [hour, daySpeed]);
   
-  useFrame((state, delta) => {
+  useFrame((_, delta) => {
     if (daySpeed > 0) {
-      moonDaysRef.current += ((daySpeed / 6) * delta) / 24;
+      moonDaysRef.current += ((daySpeed / 6) * (delta || 0)) / 24;
     } else {
       moonDaysRef.current = hour / 24;
     }
@@ -698,10 +621,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
   const kmPerUnit = EARTH_CIRCUMFERENCE_KM / (2 * params.diskRadius);
   const fmtKm = (u: number) => `${Math.round(u * kmPerUnit)} km`;
 
-  // Estimation diamètre éclairé (approx 2*h*tan(angle))
-  const approxSpotDiameterKm =
-    Math.round((2 * params.sunHeight * Math.tan(THREE.MathUtils.degToRad(params.sunSpotAngleDeg))) * kmPerUnit);
-
+  
   // Etat du bouton Lecture/Pause
   const isPlaying = params.daySpeed > 0;
 
@@ -1058,7 +978,7 @@ function CameraFovUpdater({ fov }: { fov: number }) {
 }
 
 // Driver de la rose des vents: calcule la rotation et l'applique sur un élément DOM
-function CompassRoseYawDriver({ rotRef }: { rotRef: React.RefObject<HTMLDivElement> }) {
+function CompassRoseYawDriver({ rotRef }: { rotRef: React.RefObject<HTMLDivElement | null> }) {
   const { camera } = useThree();
 
   useFrame(() => {
@@ -1083,119 +1003,7 @@ function CompassRoseYawDriver({ rotRef }: { rotRef: React.RefObject<HTMLDivEleme
   return null;
 }
 
-// --- Rose des vents (overlay bas-droite) ---
-// bottomPx: distance au bord bas de l'écran (px)
-function CompassRoseOverlay({ bottomPx = 12 }: { bottomPx?: number }) {
-  const { camera } = useThree();
-  const rotRef = useRef<HTMLDivElement>(null);
 
-  useFrame(() => {
-    const cam = camera as THREE.PerspectiveCamera;
-
-    // Yaw caméra (direction regardée) projeté sur XZ
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
-    forward.y = 0;
-    if (forward.lengthSq() < 1e-8) return;
-    const yawCam = Math.atan2(forward.x, forward.z);
-
-    // "Nord" = direction radiale vers le centre du disque (origine)
-    const cp = cam.position.clone(); cp.y = 0;
-    let yawNorth = 0; // fallback si trop proche du centre
-    if (cp.lengthSq() > 1e-8) {
-      // vecteur vers l'origine depuis la caméra => (-x, 0, -z)
-      yawNorth = Math.atan2(-cp.x, -cp.z);
-    }
-
-    // On veut que la pointe fixe (triangle en haut) indique le Nord.
-    // Donc on tourne le disque des lettres de -(yawCam - yawNorth).
-    const rot = -(yawCam - yawNorth);
-    if (rotRef.current) {
-      rotRef.current.style.transform = `rotate(${rot}rad)`;
-    }
-  });
-
-  return (
-    <Html fullscreen transform={false} pointerEvents="none">
-      <div
-        style={{
-          position: 'absolute',
-          right: 12,
-          bottom: bottomPx,
-          width: 84,
-          height: 84,
-          color: '#e5e7eb',
-          fontFamily: 'system-ui, sans-serif',
-          userSelect: 'none',
-          zIndex: 9999,
-        }}
-      >
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: '50%',
-            background: 'rgba(13,16,24,0.55)',
-            border: '1px solid #2b3545',
-            boxShadow: '0 0 8px rgba(0,0,0,0.45) inset',
-          }}
-        />
-        {/* disque rotatif (N/E/S/O) */}
-        <div ref={rotRef} style={{ position: 'absolute', inset: 0 }}>
-          <span style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12, fontWeight: 700, color: '#fca5a5' }}>N</span>
-          <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>E</span>
-          <span style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }}>S</span>
-          <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>O</span>
-          {/* flèche fixe (haut d'écran) */}
-          <div
-            style={{
-              position: 'absolute',
-              left: '50%',
-              top: 10,
-              transform: 'translateX(-50%)',
-              width: 0,
-              height: 0,
-              borderLeft: '6px solid transparent',
-              borderRight: '6px solid transparent',
-              borderBottom: '8px solid #9ca3af',
-              opacity: 0.9,
-            }}
-          />
-          {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
-            <div
-              key={deg}
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '50%',
-                width: 2,
-                height: deg % 90 === 0 ? 10 : 6,
-                background: '#4b5563',
-                transformOrigin: 'center calc(42px)',
-                transform: `translate(-50%, -42px) rotate(${deg}deg)`,
-                borderRadius: 1,
-                opacity: deg % 90 === 0 ? 0.9 : 0.6,
-              }}
-            />
-          ))}
-        </div>
-        <div
-          style={{
-            position: 'absolute',
-            left: '50%',
-            top: '50%',
-            width: 6,
-            height: 6,
-            background: '#94a3b8',
-            borderRadius: '50%',
-            transform: 'translate(-50%, -50%)',
-            boxShadow: '0 0 4px rgba(255,255,255,0.4)',
-          }}
-        />
-      </div>
-    </Html>
-  );
-}
-// --- Fin rose des vents ---
 
 // Composant principal
 export default function FlatEarthSimulator() {

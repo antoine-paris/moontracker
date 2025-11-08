@@ -170,7 +170,6 @@ function Model({
   penumbraOuterRel = 4.0,
   redGlowStrength = 0.8,
   camForwardWorld,
-  onMounted,
   eclipseOffsetRel = 0,
   eclipseAxisPADeg,
   eclipseActive = true,
@@ -878,8 +877,6 @@ export default function Moon3D({
   //   f = (1 + cos(gamma)) / 2, gamma = arccos(2f - 1)
   //   azimuth in image plane = bright limb angle (0=N, 90°=E).
   // Otherwise fall back to alt/az-based mapping (mul(R, vSun)).
-  const PHASE_SNAP_DEG = 6;     // zone morte angulaire ~6°
-  const FRACTION_SNAP = 0.01;   // zone morte sur fraction éclairée 5%
   const lastStableLightCamY = React.useRef<number | undefined>(undefined);
   const lightCam = useMemo((): Vec3 => {
     const fNum = toFiniteNumber(illumFraction);
@@ -896,9 +893,7 @@ export default function Moon3D({
       const c = Math.max(-1, Math.min(1, 2 * f - 1));
       const s = Math.sqrt(Math.max(0, 1 - c * c));
 
-      const sSnap = Math.sin((PHASE_SNAP_DEG * Math.PI) / 180);
-      const inDeadZone = f <= FRACTION_SNAP || f >= 1 - FRACTION_SNAP || s <= sSnap;
-
+      
       if (hasPa) {
         const qPar = Number.isFinite(limbAngleDeg) ? (limbAngleDeg as number) : 0;
         const norm360 = (d: number) => ((d % 360) + 360) % 360;
