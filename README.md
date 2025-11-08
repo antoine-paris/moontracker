@@ -1,8 +1,8 @@
 ![Preview](preview.jpg)
 ![Preview 2](preview2.jpg)
 
-# SpaceView.me
-
+# SpaceView.me - 
+ 
 Interactive web app to visualize the sky: Moon and Sun phases/orientations, stars, and planets in real time from any location. Built with React, TypeScript, Vite, Tailwind, astronomy-engine, and three.js.
 
 - Precise topocentric positions and apparent sizes
