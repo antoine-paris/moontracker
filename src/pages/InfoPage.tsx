@@ -91,10 +91,10 @@ export default function InfoPage() {
           </div>
           <div>
             <Link
-              to="/"
+              to="/?start=true"
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
             >
-              ← Retour à l’application
+              ← Aller sur l’application
             </Link>
           </div>
         </div>

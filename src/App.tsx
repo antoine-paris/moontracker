@@ -440,8 +440,17 @@ export default function App() {
   // const [showLocations, setShowLocations] = useState(true); // - remove
   // Toggle UI tool/info panels (top and bottom)
   const [showPanels, setShowPanels] = useState(false);
-  // NEW: Info modal visibility
-  const [showInfo, setShowInfo] = useState(false);
+  // NEW: Info modal visibility (set immediately based on URL state)
+  const [showInfo, setShowInfo] = useState(() => {
+    // Check URL parameters immediately at startup
+    if (typeof window === 'undefined') return false;
+    const search = window.location.search ?? '';
+    const hasQuery = !!search && 
+                    search !== '?' && 
+                    new URLSearchParams(search).toString().length > 0;
+    // Show info modal if there are NO URL parameters (user starts fresh)
+    return !hasQuery;
+  });
 
   // City label derived from location label (format "Pays — Ville")
   const cityName = useMemo(() => {
@@ -1030,6 +1039,7 @@ export default function App() {
 
     // Mark as initialized even if no query, so startup defaults stay untouched
     urlInitedRef.current = true;
+    
     if (!hasQuery) return;
 
     const q = new URLSearchParams(search);
