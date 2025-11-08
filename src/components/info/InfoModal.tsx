@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import InfoTabs from './InfoTabs';
 import InfoLogo from './InfoLogo';
+import LanguageSwitcher from '../LanguageSwitcher';
 
 type Props = {
   open: boolean;
@@ -51,23 +52,26 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
                 <span className="text-xs text-gray-600">{t('ui:general.information')} et {t('ui:general.help')}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={onClose}
-                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
-                aria-label={t('navigation.back')}
-                title={t('navigation.back')}
-              >
-                {t('navigation.back')}
-              </button>
-              <button
-                onClick={onClose}
-                className="rounded px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                aria-label={t('navigation.close')}
-                title={t('navigation.close')}
-              >
-                ✕
-              </button>
+            <div className="flex items-center gap-3">
+              <LanguageSwitcher size="sm" showLabels={true} variant="light" />
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={onClose}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
+                  aria-label={t('navigation.back')}
+                  title={t('navigation.back')}
+                >
+                  {t('navigation.back')}
+                </button>
+                <button
+                  onClick={onClose}
+                  className="rounded px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                  aria-label={t('navigation.close')}
+                  title={t('navigation.close')}
+                >
+                  ✕
+                </button>
+              </div>
             </div>
           </div>
         </div>

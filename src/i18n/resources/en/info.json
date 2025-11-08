@@ -8,8 +8,9 @@
     "spaceview": "SpaceView",
     "help": "Help",
     "simulations": "Simulations",
-    "flatearth": "Flat Earth",
-    "bug": "Bug Report"
+    "flatearth": "Flat Earth ?",
+    "bug": "Bug Report",
+    "contact": "Contact"
   },
   "metadata": {
     "keywords": "astronomy, simulation, moon, sun, eclipse, observation",

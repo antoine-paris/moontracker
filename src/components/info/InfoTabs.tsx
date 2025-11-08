@@ -1,23 +1,25 @@
 import { useEffect, useMemo, useState } from 'react';
-import SpaceViewTab from './tabs/SpaceViewTab';
-import HelpTab from './tabs/HelpTab';
-import SimulationsTab from './tabs/SimulationsTab';
-import FlatEarthTab from './tabs/FlatEarthTab';
-import BugReportTab from './tabs/BugReportTab';
-import ContactTab from './tabs/ContactTab';
+import { useTranslation } from 'react-i18next';
+import SpaceViewTab from './tabs/SpaceViewTab/index';
+import HelpTab from './tabs/HelpTab/index';
+import SimulationsTab from './tabs/SimulationsTab/index';
+import FlatEarthTab from './tabs/FlatEarthTab/index';
+import BugReportTab from './tabs/BugReportTab/index';
+import ContactTab from './tabs/ContactTab/index';
 
 type TabId = 'spaceview' | 'help' | 'simulations' | 'flatearth' | 'bug' | 'contact';
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'spaceview', label: 'SpaceView' },
-  { id: 'help',        label: 'Aide' },
-  { id: 'simulations', label: 'Simulations' },
-  { id: 'flatearth',   label: 'Terre plate ?' },
-  { id: 'bug',         label: 'Déclarez un bug' },
-  { id: 'contact',    label: 'Contact' },
+const TABS: { id: TabId; key: string }[] = [
+  { id: 'spaceview', key: 'spaceview' },
+  { id: 'help', key: 'help' },
+  { id: 'simulations', key: 'simulations' },
+  { id: 'flatearth', key: 'flatearth' },
+  { id: 'bug', key: 'bug' },
+  { id: 'contact', key: 'contact' },
 ];
 
 export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: string }) {
+  const { t } = useTranslation('info');
   const validInit = (['spaceview','help','simulations','flatearth','bug'].includes(initialTab) ? initialTab : 'spaceview') as TabId;
   const [active, setActive] = useState<TabId>(validInit);
 
@@ -44,20 +46,20 @@ export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: st
     <div className="w-full h-full flex flex-col">
       {/* Light tablist (aligned with InfoNav style) */}
       <div role="tablist" aria-label="Informations" className="flex gap-2 p-2 border-b border-gray-200 overflow-x-auto">
-        {TABS.map(t => (
+        {TABS.map(tab => (
           <button
-            key={t.id}
+            key={tab.id}
             role="tab"
-            aria-selected={active === t.id}
-            onClick={() => setActive(t.id)}
+            aria-selected={active === tab.id}
+            onClick={() => setActive(tab.id)}
             className={[
               'px-3 py-1.5 rounded-md text-sm border transition-colors',
-              active === t.id
+              active === tab.id
                 ? 'border-gray-400 bg-gray-100 text-gray-900'
                 : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
             ].join(' ')}
           >
-            {t.label}
+            {t(`tabs.${tab.key}`)}
           </button>
         ))}
       </div>

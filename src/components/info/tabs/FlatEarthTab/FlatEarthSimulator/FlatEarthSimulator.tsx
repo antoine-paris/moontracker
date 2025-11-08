@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Canvas, useFrame, useThree } from '@react-three/fiber'; // + useThree
 import { OrbitControls, Line, useTexture, Html } from '@react-three/drei';
 import * as THREE from 'three';
-import InfoLogo from '../../InfoLogo';
+import InfoLogo from '../../../InfoLogo';
 
 const EARTH_CIRCUMFERENCE_KM = 40075; // diamètre du disque = circonférence terrestre
 const CITY_VIEW_BOTTOM_MARGIN = 50;   // marge utilisée quand on centre la caméra en bas de l'écran

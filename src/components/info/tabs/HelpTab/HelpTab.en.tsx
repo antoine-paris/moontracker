@@ -254,27 +254,27 @@ function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | '
 export default function HelpTab() {
   return (
     <article itemScope itemType="https://schema.org/SoftwareApplication" className="prose-info">
-      <h1>Guide d’utilisation SpaceView.me — Simulateur d’astrophotographie (et du ciel depuis chez vous)</h1>
-      <p>Pour des exemples prêts à photographier, cliquez sur <strong>Simulations</strong> ci‑dessus.</p>
+      <h1>User Guide — Astrophotography Simulator (and sky from your location)</h1>
+      <p>For ready-to-photograph examples, click on <strong>Simulations</strong> above.</p>
       <p>
-        SpaceView.me est un simulateur de ciel et de prise de vue astro. Il simule le Soleil, la Lune, les planètes, l’horizon et le ciel étoilé en 3D. 
-        Ce guide détaille chaque fonctionnalité telle que visible dans l’interface. Idéal pour préparer une <strong>éclipse</strong>, un <strong>lever/coucher</strong>,
-        un <strong>alignement planétaire</strong> ou un <strong>shoot d’astro‑photo</strong>.
+        SpaceView.me is a sky and astrophotography shooting simulator. It simulates the Sun, Moon, planets, horizon and starry sky in 3D. 
+        This guide details each functionality as visible in the interface. Ideal for preparing an <strong>eclipse</strong>, a <strong>sunrise/sunset</strong>,
+        a <strong>planetary alignment</strong> or an <strong>astro-photo shoot</strong>.
       </p>
 
-      <h2>Écran principal</h2>
+      <h2>Main Screen</h2>
       <figure className="mx-[5rem] my-4">
-        <img src="/img/capture/spaceview-application-capture-1.png" alt="Vue d’ensemble de l’écran principal" className="rounded-md border border-black/10 shadow-sm" />
-        <figcaption className="text-sm text-gray-500 mt-1">Écran principal de SpaceView.</figcaption>
+        <img src="/img/capture/spaceview-application-capture-1.png" alt="Overview of the main screen" className="rounded-md border border-black/10 shadow-sm" />
+        <figcaption className="text-sm text-gray-500 mt-1">SpaceView main screen.</figcaption>
       </figure>
       
-      <h3><I id="panels" /> <I id="fullscreen" />Afficher/Masquer l’interface</h3>
-      <p>Permet d’afficher ou de cacher tous les panneaux (réglages, télémétrie). Pratique pour une capture propre du rendu.</p>
+      <h3><I id="panels" /> <I id="fullscreen" />Show/Hide Interface</h3>
+      <p>Allows you to show or hide all panels (settings, telemetry). Useful for a clean capture of the rendering.</p>
 
-      <h3><I id="play" />Lecture <I id="pause" />Pause</h3>
-      <p>Contrôle global de l’animation temporelle (lecture continue ou pause). Fonctionne quel que soit le mode (continu ou time‑lapse).</p>
+      <h3><I id="play" />Play <I id="pause" />Pause</h3>
+      <p>Global control of time animation (continuous playback or pause). Works regardless of mode (continuous or time-lapse).</p>
 
-      <h3><I id="rec" />Démarrer un enregistrement et <I id="stop" />télécharger la vidéo (.webm)</h3>
+      <h3><I id="rec" />Start recording and <I id="stop" />download video (.webm)</h3>
       <figure className="mx-[5rem] my-4">
         <video
           controls
@@ -283,169 +283,167 @@ export default function HelpTab() {
           className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
         >
           <source src="/img/capture/spaceview-video-sample-1.webm" type="video/webm" />
-          Votre navigateur ne supporte pas la lecture de vidéos WebM.
+          Your browser does not support WebM video playback.
         </video>
         <figcaption className="text-sm text-gray-500 mt-1">
-          Exemple de vidéo enregistrée (.webm).
+          Example of recorded video (.webm).
         </figcaption>
       </figure>
       <p>
-        Enregistre une vidéo WEBM de la scène (zone de rendu uniquement, sans l’interface). Cliquez <I id="rec" />pour
-        démarrer, puis <I id="stop" />pour arrêter : le fichier se télécharge automatiquement.
+        Records a WEBM video of the scene (rendering area only, without interface). Click <I id="rec" />to
+        start, then <I id="stop" />to stop: the file downloads automatically.
       </p>
       <ul className="list-disc pl-6">
-        <li><I id='play' size='small'/>Animation classique : Crée une vidéo en 24 images par seconde dont le rythme dépend de la vitesse choisie au slider (en minutes par secondes).</li>
-        <li><I id='timelapse' size='small'/>Timelapse activé : 1 image par pas, cadence 
-        de lecture constante. Le nombre d'image par seconde de la vidéo dépendra du paramètre "Toutes les [] ms". Pour une vidéo fluide, descendez ce paramètre en dessous de 50 millisecondes. </li>
-        <li><I id='longpose' size='small'/>Pose longue active : chaque image attend l’empilement pour éviter des « trous ».</li>
-        <li>L’enregistrement lance la lecture de la scène automatiquement; l’arrêt termine la vidéo. Vous pouvez mettre l'enregistrement en pause <I id='pause' size='small'/>et
-        changer les paramètres de l'application en cours d'enregistrement afin de changer de scène en cours de vidéo.</li>
-        <li>Le bandeau « Enregistrement en cours » n’est pas inclus dans la vidéo.</li>
+        <li><I id='play' size='small'/>Classic animation: Creates a 24 frames per second video whose pace depends on the speed chosen with the slider (in minutes per second).</li>
+        <li><I id='timelapse' size='small'/>Timelapse activated: 1 image per step, constant 
+        playback rate. The number of frames per second in the video will depend on the "Every [] ms" parameter. For smooth video, lower this parameter below 50 milliseconds.</li>
+        <li><I id='longpose' size='small'/>Long exposure active: each frame waits for stacking to avoid "gaps".</li>
+        <li>Recording starts scene playback automatically; stopping ends the video. You can pause recording <I id='pause' size='small'/>and
+        change application parameters during recording to change scenes mid-video.</li>
+        <li>The "Recording in progress" banner is not included in the video.</li>
       </ul>
       <p>
-        Le processus d'enregistrement est beaucoup plus lent qu'une animation <I id='play' size='small'/>lue à l'écran car l'application va attendre que chaque image soit parfaitement rendue pour l'ajouter à la vidéo. Le temps de génération d'une vidéo va donc dépendre de la puissance disponible sur votre matériel
+        The recording process is much slower than a <I id='play' size='small'/>animation played on screen because the application will wait for each frame to be perfectly rendered before adding it to the video. The video generation time will therefore depend on the available power of your hardware.
       </p>
       <p>
-        La qualité de la vidéo dépend de la résolution de votre écran/navigateur.
+        Video quality depends on your screen/browser resolution.
       </p>
-      <p> Cette fonctionalité a été testée sur Chrome. Elle pourrait ne pas fonctionner sur Safari.</p>
+      <p>This functionality has been tested on Chrome. It might not work on Safari.</p>
       
-      <h3><I id="share" />Copier l’URL de partage</h3>
-      <p>Copie un lien qui encode tous les paramètres actuels de l’application : lieu, date/heure, projection, FOV, visibilité, etc. Toute personne ouvrant ce lien retrouve exactement la même scène que celle que vous voyez.</p>
-      <p>Idéal pour partager une configuration précise, comme une éclipse, un transit ou un alignement planétaire.</p>
-      <p>Pour utiliser cette fonctionnalité, cliquez sur l’icône de partage et collez le lien (Ctrl+V) dans votre application de messagerie ou de partage préférée.</p>
-      <p>Le statut d’affichage de l’interface ( <I id="panels" size='small'/> <I id="fullscreen" size="small" />) et d’animation ( <I id="play" size="small" /> <I id="pause" size="small"/>) est également enregistré dans le lien.</p>
+      <h3><I id="share" />Copy Share URL</h3>
+      <p>Copies a link that encodes all current application parameters: location, date/time, projection, FOV, visibility, etc. Anyone opening this link will see exactly the same scene as you.</p>
+      <p>Ideal for sharing a precise configuration, such as an eclipse, transit, or planetary alignment.</p>
+      <p>To use this feature, click the share icon and paste the link (Ctrl+V) in your preferred messaging or sharing application.</p>
+      <p>The interface display status (<I id="panels" size='small'/> <I id="fullscreen" size="small" />) and animation (<I id="play" size="small" /> <I id="pause" size="small"/>) are also saved in the link.</p>
 
-      <h3><I id="capture" />Capture d’image</h3>
-      <p>Enregistre une image du rendu à l’écran et la copie dans le presse‑papier. Masquez l’interface ( <I id="fullscreen" size="small" />) pour l’activer.</p>
-      <p>Utile pour partager un projet d’astrophotographie, un transit ou un lever/coucher précis.</p>
-      {/* Galerie 2 colonnes */}
+      <h3><I id="capture" />Image Capture</h3>
+      <p>Saves a screen rendering image and copies it to clipboard. Hide the interface (<I id="fullscreen" size="small" />) to activate it.</p>
+      <p>Useful for sharing an astrophotography project, transit, or precise sunrise/sunset.</p>
+      {/* 2-column gallery */}
       <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-export-1.png"
-            alt="Fonction de capture et d’exportation de la scène"
+            alt="Scene capture and export function"
             className="w-full h-auto rounded-md border border-black/10 shadow-sm"
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            Vue depuis Paris de l’éclipse solaire de 2026 avec Mercure et Jupiter.
+            View from Paris of the 2026 solar eclipse with Mercury and Jupiter.
           </figcaption>
         </figure>
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-export-2.png"
-            alt="Fonction de capture et d’exportation de la scène"
+            alt="Scene capture and export function"
             className="w-full h-auto rounded-md border border-black/10 shadow-sm"
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            Vue depuis Paris de l’éclipse solaire de 2026 — visibilité du Soleil, de la Lune, de Mercure et de Jupiter exagérée.
+            View from Paris of the 2026 solar eclipse — exaggerated visibility of Sun, Moon, Mercury and Jupiter.
           </figcaption>
         </figure>
       </div>
       
 
-      <h2 ><I id="panels" />Suivi d’objet spatial, angle de vue, champ de vision</h2>
+      <h2 ><I id="panels" />Spatial Object Tracking, Viewing Angle, Field of View</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         <div className="md:col-span-2">
           <p>
-            L’application peut se caler sur un point cardinal ou
-            automatiquement suivre un objet spatial (Soleil, Lune, planète). Elle permet aussi de choisir un appareil photo et un objectif, ou de choisir un angle de prise de vue personnalisé.
+            The application can lock onto a cardinal point or
+            automatically follow a spatial object (Sun, Moon, planet). It also allows choosing a camera and lens, or selecting a custom shooting angle.
           </p>
         </div>
         <div className="m-0 md:col-span-1 md:mr-[5em]">
           <figure className="mt-0">
             <img
               src="/img/capture/spaceview-application-follow-1.png"
-              alt="Fonction de choix de la scène principale"
+              alt="Main scene selection function"
               className="w-full h-auto rounded-md border border-black/10 shadow-sm"
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Fonction de choix de la scène principale.
+              Main scene selection function.
             </figcaption>
           </figure>
         </div>
       </div>
-      <h3><I id="sun" />Suivre le Soleil, <I id="moon" />la Lune, une planète, ou un point cardinal</h3>
+      <h3><I id="sun" />Follow the Sun, <I id="moon" />Moon, a planet, or cardinal point</h3>
         <p>
-          Dans « Suivi », vous pouvez choisir vers quel point fixer votre scène.</p>
+          In "Tracking", you can choose which point to focus your scene on.</p>
           <ul className="list-disc pl-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-            <li><I id="sun" />La caméra va suivre le Soleil. Dans une animation, 
-            la caméra va donc faire le tour de l’horizon en 24 h, et si le Soleil est couché, 
-            la caméra va continuer à le suivre sous les pieds de l’observateur.</li>
-            <li><I id="moon" />La caméra va suivre la Lune. Dans une animation, la caméra va donc se déplacer dans le ciel ou pointer sous les pieds de l’observateur si la Lune est couchée.</li>
-            <li><I id="mercure" />La caméra va suivre Mercure.</li>
-            <li><I id="venus" />La caméra va suivre Vénus.</li>
-            <li><I id="mars" />La caméra va suivre Mars.</li>
-            <li><I id="jupiter" />La caméra va suivre Jupiter.</li>
-            <li><I id="saturne" />La caméra va suivre Saturne.</li>
-            <li><I id="uranus" />La caméra va suivre Uranus.</li>
-            <li><I id="neptune" />La caméra va suivre Neptune.</li>
-            <li><I id="N" />La caméra va rester fixée au nord, centrée sur l’horizon.</li>
-            <li><I id="S" />La caméra va rester fixée au sud, centrée sur l’horizon.</li>
-            <li><I id="E" />La caméra va rester fixée à l’est, centrée sur l’horizon.</li>
-            <li><I id="O" />La caméra va rester fixée à l’ouest, centrée sur l’horizon.</li>
+            <li><I id="sun" />Camera will follow the Sun. In animation, 
+            the camera will therefore go around the horizon in 24 hours, and if the Sun is set, 
+            the camera will continue to follow it below the observer's feet.</li>
+            <li><I id="moon" />Camera will follow the Moon. In animation, the camera will move across the sky or point below the observer's feet if the Moon is set.</li>
+            <li><I id="mercure" />Camera will follow Mercury.</li>
+            <li><I id="venus" />Camera will follow Venus.</li>
+            <li><I id="mars" />Camera will follow Mars.</li>
+            <li><I id="jupiter" />Camera will follow Jupiter.</li>
+            <li><I id="saturne" />Camera will follow Saturn.</li>
+            <li><I id="uranus" />Camera will follow Uranus.</li>
+            <li><I id="neptune" />Camera will follow Neptune.</li>
+            <li><I id="N" />Camera will stay fixed to the north, centered on horizon.</li>
+            <li><I id="S" />Camera will stay fixed to the south, centered on horizon.</li>
+            <li><I id="E" />Camera will stay fixed to the east, centered on horizon.</li>
+            <li><I id="O" />Camera will stay fixed to the west, centered on horizon.</li>
           </ul>
-        <h3>Aligner l'écran sur <I id="horizon" />l'horizon terrestre ou sur <I id="ecliptic" />l'écliptique</h3>
+        <h3>Align screen to <I id="horizon" />terrestrial horizon or <I id="ecliptic" />ecliptic</h3>
         <p>
-          Deux repères d’orientation sont proposés pour faire pivoter le cadre sans changer le point suivi:
+          Two orientation references are offered to rotate the frame without changing the tracked point:
           <br/>
-          <I id="horizon" size="small" /> Horizon terrestre — l’horizon reste parfaitement droit; les altitudes (°) se lisent directement et la scène conserve l’orientation « photo » classique.
+          <I id="horizon" size="small" /> Terrestrial horizon — horizon stays perfectly straight; altitudes (°) can be read directly and scene maintains classic "photo" orientation.
           <br/>
-          <I id="ecliptic" size="small" /> Écliptique — le plan de l’écliptique est rendu horizontal; le trajet apparent du Soleil, de la Lune et des planètes devient une ligne droite, utile pour comparer les conjonctions et longitudes écliptiques.
+          <I id="ecliptic" size="small" /> Ecliptic — ecliptic plane is rendered horizontal; apparent path of Sun, Moon and planets becomes a straight line, useful for comparing conjunctions and ecliptic longitudes.
           <br/>
-          Astuce: l’alignement ne modifie pas le suivi (objet/point cardinal) mais uniquement la rotation du cadre. Utiliser les flèches pour recadrer, puis <I id="center" size="small" />pour recentrer.
+          Tip: alignment doesn't modify tracking (object/cardinal point) but only frame rotation. Use arrows to reframe, then <I id="center" size="small" />to recenter.
         </p>
-        <h3><I id="arrow-up" /><I id="arrow-left" /> <I id="center" /><I id="arrow-right" /><I id="arrow-down" />Déplacer le cadre et le suivi avec le pavé directionnel</h3>
+        <h3><I id="arrow-up" /><I id="arrow-left" /> <I id="center" /><I id="arrow-right" /><I id="arrow-down" />Move frame and tracking with directional pad</h3>
         <p>
-          Les flèches du pavé directionnel à droite de l’écran permettent de se décentrer autour du point suivi. 
-          Le bouton <I id="center" size='small' /> recentre sur l’objet ou le point cardinal que vous avez choisi.
-          Les déplacements verticaux ( <I id="arrow-up" size='small' /><I id="arrow-down" size='small' />) sont limités vers le haut du ciel (altitude 90°) et vers le bas au niveau du sol (altitude −90°).
+          The directional pad arrows on the right side of the screen allow you to offset around the tracked point. 
+          The <I id="center" size='small' /> button recenters on the object or cardinal point you chose.
+          Vertical movements (<I id="arrow-up" size='small' /><I id="arrow-down" size='small' />) are limited upward to the zenith (90° altitude) and downward to ground level (-90° altitude).
         </p>
         
-      <h3>Champ de vision</h3>
+      <h3>Field of View</h3>
       <p>
-        Choisissez un boîtier ou module (bridge/smartphone) <I id="device" size='small' /> et un zoom/objectif <I id="zoom-device" size='small' />. 
-        Un cadre photo se dessine alors d’après le capteur et la focale choisis.
+        Choose a camera body or module (bridge/smartphone) <I id="device" size='small' /> and a zoom/lens <I id="zoom-device" size='small' />. 
+        A photo frame is then drawn based on the chosen sensor and focal length.
         <br/>
-        À l’aide du slider « f », vous pouvez créer un champ de vision personnalisé en choisissant une focale théorique de 1 mm à 4000 mm (équivalent 24/36). 
-        La largeur et la hauteur (en degrés) du champ de vision s’affichent à droite du slider.
+        Using the "f" slider, you can create a custom field of view by choosing a theoretical focal length from 1mm to 4000mm (35mm equivalent). 
+        The width and height (in degrees) of the field of view are displayed to the right of the slider.
       </p>
 
-      <h3><I id="projection" />Projections à l’écran</h3>
-      <p>Quand le champ de vision est très large (à partir de 90° affichés sur un écran, et encore 
-        plus avec un effet fisheye à presque 180°), il devient impossible de respecter à la fois 
-        les proportions des objets affichés, les angles et les positions. Il y aura forcément un, voire deux de ces éléments qui seront déformés.</p>
-      <p>Il faut alors choisir une projection adaptée à ce que nous voulons montrer. L’application propose les projections suivantes :</p>
+      <h3><I id="projection" />Screen Projections</h3>
+      <p>When the field of view is very wide (from 90° displayed on screen, and even more with a fisheye effect at nearly 180°), it becomes impossible to respect both the proportions of displayed objects, angles, and positions. There will necessarily be one or even two of these elements that will be distorted.</p>
+      <p>You must then choose a projection adapted to what we want to show. The application offers the following projections:</p>
       <ul>
         <li>
-          <I id="recti-panini" />Recti‑Panini — conserve des lignes droites autour du centre et limite l’étirement aux bords. Rend une perspective naturelle jusqu’en très grand‑angle (≈140–170° selon réglages). Déforme échelles/formes en périphérie et courbe légèrement les droites loin du centre. Idéale en urbain/architecture et paysages ultra‑larges.
-          {/* Galerie 2 colonnes */}
+          <I id="recti-panini" />Recti-Panini — preserves straight lines around center and limits edge stretching. Renders natural perspective up to very wide-angle (≈140–170° depending on settings). Deforms scales/shapes at periphery and slightly curves straight lines far from center. Ideal for urban/architecture and ultra-wide landscapes.
+          {/* 2-column gallery */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-rectipanini-173.jpg"
-                alt="Projection Recti-Panini à 173° de champ de vision"
+                alt="Recti-Panini projection at 173° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection Recti‑Panini à 173° de champ de vision
+                Recti-Panini projection at 173° field of view
               </figcaption>
             </figure>
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-rectipanini-114.jpg"
-                alt="Projection Recti-Panini à 114° de champ de vision"
+                alt="Recti-Panini projection at 114° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection Recti‑Panini à 114° de champ de vision
+                Recti-Panini projection at 114° field of view
               </figcaption>
             </figure>
           </div>
         </li>
         <li>
-          <I id="rectilinear" />Rectilinéaire — projection « objectif à trou d’épingle ». Toutes les droites restent droites; rendu conforme aux photos classiques. Forte dilatation des tailles près de 90° (étirement en bord de champ), peu adaptée à plus de 120° de FOV. Bon choix en focale normale/télé.
-          {/* Galerie 2 colonnes */}
+          <I id="rectilinear" />Rectilinear — "pinhole lens" projection. All straight lines remain straight; rendering conforms to classic photos. Strong size dilation near 90° (edge stretching), poorly adapted to more than 120° FOV. Good choice for normal/telephoto focal lengths.
+          {/* 2-column gallery */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               
@@ -453,174 +451,174 @@ export default function HelpTab() {
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-rectiperspective-114.jpg"
-                alt="Projection Recti-Perspective à 114° de champ de vision"
+                alt="Recti-Perspective projection at 114° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection Recti‑Perspective à 114° de champ de vision
+                Recti-Perspective projection at 114° field of view
               </figcaption>
             </figure>
           </div>
         </li>
         <li>
-          <I id="stereo-centered" />Stéréographique centré — projection conforme (préserve les angles, donc les directions locales). Les droites deviennent des arcs; distances et surfaces s’amplifient vers le bord. Très lisible pour la pédagogie du ciel (orientations, rotations), « planètes » et grands dômes.
-          {/* Galerie 2 colonnes */}
+          <I id="stereo-centered" />Stereographic centered — conformal projection (preserves angles, thus local directions). Straight lines become arcs; distances and surfaces amplify toward edge. Very readable for sky pedagogy (orientations, rotations), "planets" and large domes.
+          {/* 2-column gallery */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-stereocentre-173.jpg"
-                alt="Projection stéréographique centrée à 173° de champ de vision"
+                alt="Centered stereographic projection at 173° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection stéréographique centrée à 173° de champ de vision
+                Centered stereographic projection at 173° field of view
               </figcaption>
             </figure>
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-stereocentre-114.jpg"
-                alt="Projection stéréographique centrée à 114° de champ de vision"
+                alt="Centered stereographic projection at 114° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection stéréographique centrée à 114° de champ de vision
+                Centered stereographic projection at 114° field of view
               </figcaption>
             </figure>
           </div>
         </li>
         <li>
-          <I id="ortho" />Orthographique — hémisphère vu « depuis l’espace ». Préserve bien les formes près du centre; compresse les distances vers le bord. Ni conforme ni équivalente en aire. Très lisible pour une vue all‑sky simple et des cartes hémisphériques.
-          {/* Galerie 2 colonnes */}
+          <I id="ortho" />Orthographic — hemisphere seen "from space". Preserves shapes well near center; compresses distances toward edge. Neither conformal nor equal-area. Very readable for simple all-sky view and hemispheric maps.
+          {/* 2-column gallery */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-ortho-173.jpg"
-                alt="Projection orthographique à 173° de champ de vision"
+                alt="Orthographic projection at 173° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection orthographique à 173° de champ de vision
+                Orthographic projection at 173° field of view
               </figcaption>
             </figure>
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-ortho-114.jpg"
-                alt="Projection orthographique à 114° de champ de vision"
+                alt="Orthographic projection at 114° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection orthographique à 114° de champ de vision
+                Orthographic projection at 114° field of view
               </figcaption>
             </figure>
           </div>
         </li>
-        <li><I id="cylindrical" />Cylindrique — panoramas : azimut linéaire, horizon droit, méridiens verticaux. Conserve les directions horizontales; étire fortement près du zénith/nadir. 
-          {/* Galerie 2 colonnes */}
+        <li><I id="cylindrical" />Cylindrical — panoramas: linear azimuth, straight horizon, vertical meridians. Preserves horizontal directions; strongly stretches near zenith/nadir. 
+          {/* 2-column gallery */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-cylindrique-173.jpg"
-                alt="Projection cylindrique à 173° de champ de vision"
+                alt="Cylindrical projection at 173° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection cylindrique à 173° de champ de vision
+                Cylindrical projection at 173° field of view
               </figcaption>
             </figure>
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-cylindrique-114.jpg"
-                alt="Projection cylindrique à 114° de champ de vision"
+                alt="Cylindrical projection at 114° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection cylindrique à 114° de champ de vision
+                Cylindrical projection at 114° field of view
               </figcaption>
             </figure>
           </div>
         </li>
         <li>
-          <I id="cylindrical-horizon" />Cylindrique (horizon) — variante recentrée sur l’horizon pour bandes panoramiques; minimise la courbure de l’horizon mais écrase le haut/bas du ciel.
-          {/* Galerie 2 colonnes */}
+          <I id="cylindrical-horizon" />Cylindrical (horizon) — variant recentered on horizon for panoramic strips; minimizes horizon curvature but flattens top/bottom of sky.
+          {/* 2-column gallery */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-cylindriquehorizon-173.jpg"
-                alt="Projection cylindrique (horizon) à 173° de champ de vision"
+                alt="Cylindrical (horizon) projection at 173° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection cylindrique (horizon) à 173° de champ de vision
+                Cylindrical (horizon) projection at 173° field of view
               </figcaption>
             </figure>
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-projection-cylindriquehorizon-114.jpg"
-                alt="Projection cylindrique (horizon) à 114° de champ de vision"
+                alt="Cylindrical (horizon) projection at 114° field of view"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Projection cylindrique (horizon) à 114° de champ de vision
+                Cylindrical (horizon) projection at 114° field of view
               </figcaption>
             </figure>
           </div>
         </li>
       </ul>
-      <p>Quand vous changez de largeur de champ de vision (FOV), l’app choisit automatiquement une projection « idéale » compatible avec votre FOV.</p>
-      <p>Attention : nous avons fait le choix de ne jamais déformer la forme des planètes, du Soleil et de la Lune (comme le ferait un logiciel sur une photo fisheye, par exemple). Ces astres seront donc toujours rendus parfaitement circulaires.</p>
-      <p>La projection ne modifiera que les angles et les positions de ces objets à l’écran.</p>
+      <p>When you change field of view width (FOV), the app automatically chooses an "ideal" projection compatible with your FOV.</p>
+      <p>Warning: we chose never to distort the shape of planets, Sun and Moon (as software would do on a fisheye photo, for example). These celestial bodies will therefore always be rendered perfectly circular.</p>
+      <p>Projection will only modify the angles and positions of these objects on screen.</p>
 
-      <h3><I id="device" />Cadre photo</h3>
+      <h3><I id="device" />Photo Frame</h3>
       <p>
-        Quand vous choisissez un appareil photo particulier, la zone de rendu est entourée par un cadre (en gris) proportionnel au capteur de l’appareil choisi.
-        Des pointillés indiquent le format 16:9.</p>
+        When you choose a particular camera, the rendering area is surrounded by a frame (in gray) proportional to the chosen camera's sensor.
+        Dotted lines indicate 16:9 format.</p>
       <figure style={{ marginLeft:'5em', marginRight:'5em' }}  className="m-0">
         <img
           src="/img/capture/spaceview-application-capture-cadre-iphone.jpg"
-          alt="Photo de la Lune avec un iPhone 15 Pro. Le cadre gris est aux dimensions du capteur de l’iPhone."
+          alt="Moon photo with iPhone 15 Pro. Gray frame matches iPhone sensor dimensions."
           className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
         />
         <figcaption className="text-sm text-gray-500 mt-1">
-          Photo de la Lune avec un iPhone 15 Pro. Le cadre gris est aux dimensions du capteur de l’iPhone.
+          Moon photo with iPhone 15 Pro. Gray frame matches iPhone sensor dimensions.
         </figcaption>
       </figure>
         
       
       
-      <h2>Barre latérale « Lieux » — se déplacer sur la Terre</h2>
-      <p>Choisissez un lieu d’observation sur Terre (latitude, longitude) pour voir le ciel et l’horizon depuis cet endroit. Plusieurs outils facilitent la recherche, la navigation et le positionnement précis.
+      <h2>Side Bar "Locations" — Moving on Earth</h2>
+      <p>Choose an observation location on Earth (latitude, longitude) to see the sky and horizon from that place. Several tools facilitate search, navigation and precise positioning.
        
       </p>
 
-      <h3><I id="globe" />Globe terrestre</h3>
+      <h3><I id="globe" />Earth Globe</h3>
       
       <div style={{ marginLeft:'5em', marginRight:'5em' }}  className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-capture-globe.jpg"
-            alt="Indicateur du lieu et de la direction d’observation"
+            alt="Location and observation direction indicator"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            Indicateur du lieu et de la direction d’observation
+            Location and observation direction indicator
           </figcaption>
         </figure>
         <p>
-          Avec ce globe, vous pouvez vous déplacer d’est en ouest, ce qui mettra à jour la liste des villes dans l’onglet « Villes ». 
+          With this globe, you can move east to west, which will update the city list in the "Cities" tab. 
           <br/>
-          Sur le globe, la position de l’observateur est indiquée par un marqueur et une flèche indique la direction de la prise de vue.
+          On the globe, the observer's position is indicated by a marker and an arrow shows the viewing direction.
           <br/>
-          Quand la flèche est rouge, elle indique que l’observateur regarde sous l’horizon (altitude négative).
+          When the arrow is red, it indicates the observer is looking below the horizon (negative altitude).
         </p>
       </div>
       
 
-      <h3><I id="location" />Onglet Villes, favoris et navigation</h3>
+      <h3><I id="location" />Cities Tab, Favorites and Navigation</h3>
       <p>
-        L’application dispose d’une base de données des villes de plus de 100 000 habitants. Tapez quelques lettres dans le champ <I id="search" size='small' />« Recherche » pour trouver l’une de ces villes.
+        The application has a database of cities with more than 100,000 inhabitants. Type a few letters in the <I id="search" size='small' />"Search" field to find one of these cities.
         <br/>
         <br/>
-        Dans l’onglet « Villes », elles sont présentées du nord <I id="N" size='small' /> au sud <I id="S" size='small' /> (à 1° de latitude), permettant de se déplacer d’une ville à l’autre sur la même latitude en un seul clic.
+        In the "Cities" tab, they are presented from north <I id="N" size='small' /> to south <I id="S" size='small' /> (within 1° latitude), allowing movement from one city to another on the same latitude with a single click.
         <br/>
       </p>
       
@@ -628,114 +626,114 @@ export default function HelpTab() {
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-capture-cities.jpg"
-            alt="Se déplacer sur la Terre avec l’onglet Villes"
+            alt="Moving on Earth with Cities tab"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            Se déplacer sur la Terre avec l’onglet Villes
+            Moving on Earth with Cities tab
           </figcaption>
         </figure>
       <div> {/* inner text block (cities) */}
       <p>    
         <br/>
-        Les deux boutons est  <I id="E" size='small' /> et ouest  <I id="O" size='small' /> permettent
-        de naviguer dans la liste des villes en restant sur la même longitude (à 1° près).
+        The two east  <I id="E" size='small' /> and west  <I id="O" size='small' /> buttons allow
+        navigation in the city list while staying on the same longitude (within 1°).
         <br/>
         <br/>
-        Cette organisation permet de mettre en évidence la sphéricité de la planète puisqu’en se déplaçant d’est en ouest ou du nord au sud, la scène rendue va pivoter.
+        This organization helps highlight the planet's sphericity since moving east to west or north to south will rotate the rendered scene.
         <br/>
       </p>
-      {/* Galerie 2 colonnes */}
+      {/* 2-column gallery */}
       <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-moon-paris.jpg"
-            alt="Simulation de la Lune vue de Paris"
+            alt="Moon simulation as seen from Paris"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            La Lune vue de Paris
+            Moon as seen from Paris
           </figcaption>
         </figure>
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-moon-cotonou.jpg"
-            alt="Simulation de la Lune vue de Cotonou"
+            alt="Moon simulation as seen from Cotonou"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            La Lune vue de Cotonou (au sud de Paris)
+            Moon as seen from Cotonou (south of Paris)
           </figcaption>
         </figure>
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-moon-somalia.jpg"
-            alt="Simulation de la Lune vue de Somalie"
+            alt="Moon simulation as seen from Somalia"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            La Lune vue de Somalie (à l’est de Cotonou)
+            Moon as seen from Somalia (east of Cotonou)
           </figcaption>
         </figure>
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-moon-madagascar.jpg"
-            alt="Simulation de la Lune vue de Madagascar"
+            alt="Moon simulation as seen from Madagascar"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            La Lune vue de Madagascar (au sud de la Somalie)
+            Moon as seen from Madagascar (south of Somalia)
           </figcaption>
         </figure>
       </div>
       <p>
-        Ces quatre photos (simulées par l’application) montrent la Lune vue de Paris, Cotonou, Somalie et Madagascar au même instant. L’effet de rotation n’est possible que sur une Terre sphérique.
+        These four photos (simulated by the application) show the Moon as seen from Paris, Cotonou, Somalia and Madagascar at the same moment. The rotation effect is only possible on a spherical Earth.
       </p>
       <p>
-        Ce déplacement <I id="O" size='small' /><I id="N" size='small' /><I id="S" size='small' /><I id="E" size='small' /> est 
-        aussi possible en utilisant les touches du pavé numérique de votre clavier.
+        This movement <I id="O" size='small' /><I id="N" size='small' /><I id="S" size='small' /><I id="E" size='small' /> is 
+        also possible using your keyboard's numeric keypad keys.
         <br/>
         <br/>
-        Avec le bouton « + » (situé à côté de chaque ville), vous pouvez créer une liste de villes préférées pour faciliter la navigation entre ces villes.
+        With the "+" button (next to each city), you can create a list of favorite cities to facilitate navigation between these cities.
       </p>
       </div> {/* CLOSE inner text block */}
     </div> {/* CLOSE grid (cities) */}
-      <h3><I id="location" />Onglet Coordonnées (lat/lon) et déplacements par pas de 100 km</h3>
+      <h3><I id="location" />Coordinates Tab (lat/lon) and 100km Step Movements</h3>
       <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-capture-coord.jpg"
-            alt="Se déplacer sur la Terre avec l’onglet Coordonnées"
+            alt="Moving on Earth with Coordinates tab"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
           />
           <figcaption className="text-sm text-gray-500 mt-1">
-            Se déplacer sur la Terre avec l’onglet Coordonnées
+            Moving on Earth with Coordinates tab
           </figcaption>
         </figure>
         <div>
-          Dans cet onglet, vous pouvez saisir directement la latitude et la longitude de l’observateur.
+          In this tab, you can directly enter the observer's latitude and longitude.
           <br/><br/>
-          Les boutons <I id="O" size='small' /><I id="N" size='small' /><I id="S" size='small' /><I id="E" size='small' /> permettent de se déplacer par pas de 100 km dans chaque direction.
+          The <I id="O" size='small' /><I id="N" size='small' /><I id="S" size='small' /><I id="E" size='small' /> buttons allow movement in 100km steps in each direction.
           <br/><br/>
-          Il est aussi possible de se déplacer rapidement en utilisant les touches du pavé numérique de votre clavier.
+          You can also move quickly using your keyboard's numeric keypad keys.
           <br/>
         </div>
       </div>
-      <h2 ><I id="panels" />Date, heure et animation</h2>
+      <h2 ><I id="panels" />Date, Time and Animation</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
         <div className="md:col-span-2">
           <p>
-            Dans la barre d’outils <I id="panels" size='small' />, vous pouvez choisir la date et l’heure d’observation
-            du ciel, et paramétrer son rythme de mise à jour afin de créer une animation.
+            In the toolbar <I id="panels" size='small' />, you can choose the date and time of sky
+            observation, and configure its update rate to create an animation.
             <br/>
             <br/>
-            L’heure de référence de l’animation est l’heure UTC, ce qui permet d’éviter les sauts lors des passages en heure d’été/hiver.
+            The animation reference time is UTC time, which avoids jumps during daylight/standard time transitions.
             <br/><br/>
-            En revanche, le champ « Date & Heure » que vous pouvez configurer est exprimé en heure locale de votre navigateur, et ce quel que soit le lieu d’observation que vous avez choisi dans la barre de navigation.
+            However, the "Date & Time" field you can configure is expressed in your browser's local time, regardless of the observation location you chose in the navigation bar.
             
           </p>
         </div>
@@ -743,92 +741,92 @@ export default function HelpTab() {
           <figure className="mt-0">
             <img
               src="/img/capture/spaceview-application-capture-date.jpg"
-              alt="Choix de l’heure et de la date d’observation. Paramétrage de l’animation"
+              alt="Choosing observation time and date. Animation setup"
               className="w-full h-auto rounded-md border border-black/10 shadow-sm"
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Choix de l’heure et de la date d’observation. Paramétrage de l’animation
+              Choosing observation time and date. Animation setup
             </figcaption>
           </figure>
         </div>
       </div>
       <p>
-        À titre d’information, l’heure UTC et l’heure locale de la ville d’observation choisie sont indiquées sous le champ « Date & Heure ».
+        For information, UTC time and local time of the chosen observation city are displayed under the "Date & Time" field.
         <br/>
         <br/>
-        Par ailleurs, si vous changez de ville d’observation dans la barre de navigation, 
-        l’heure UTC ne changera pas. De même, le champ « Date & Heure » restera inchangé (local 
-        à votre navigateur).
+        Furthermore, if you change observation city in the navigation bar, 
+        UTC time will not change. Similarly, the "Date & Time" field will remain unchanged (local 
+        to your browser).
         <br/>
         <br/>
-        Les boutons <I id="previous" size='small' /><I id="timelapse" size='small' /><I id="next" size='small'/> permettent de reculer, d’avancer ou de revenir à l’heure actuelle.
+        The <I id="previous" size='small' /><I id="timelapse" size='small' /><I id="next" size='small'/> buttons allow going back, forward, or returning to current time.
       </p>
 
-      <h3><I id="play" />Animer la scène</h3>
+      <h3><I id="play" />Animate the Scene</h3>
       <p>
-        L’application anime la scène en faisant évoluer l’heure UTC de référence.
+        The application animates the scene by evolving the reference UTC time.
         <br/>
         <br/>
-        Activez l’animation ou mettez‑la en pause avec les boutons <I id="play" size='small'/> et <I id="pause" size='small'/>.
+        Activate animation or pause it with <I id="play" size='small'/> and <I id="pause" size='small'/> buttons.
         <br/>
         <br/>
-        Le slider de cette zone permet d’accélérer ou de ralentir l’animation (vers l’avenir ou vers le passé).
+        The slider in this area allows speeding up or slowing down animation (toward future or past).
         <br/>
         <br/>
-        De même, les boutons <I id="moins" size='small' /><I id="plus" size='small'/> permettent
-        d’accélérer ou de ralentir finement (de 1 minute simulée par seconde à l’écran), ou de revenir en temps réel <I id="timelapse" size='small' />.
+        Similarly, <I id="moins" size='small' /><I id="plus" size='small'/> buttons allow
+        fine acceleration or deceleration (from 1 simulated minute per second on screen), or return to real time <I id="timelapse" size='small' />.
         <br/>
         <br/>
-        Ce mode d’animation (en minutes par seconde) va essayer de s’adapter à la capacité de votre navigateur en créant le plus d’images possible. Il est à différencier de la fonction « timelapse » qui, elle, va effectuer des sauts de temps discrets (minute, heure, jour, jour sidéral, etc.).
+        This animation mode (in minutes per second) will try to adapt to your browser's capacity by creating as many frames as possible. It differs from the "timelapse" function which performs discrete time jumps (minute, hour, day, sidereal day, etc.).
       </p>
       <h3><I id="timelapse2" />Timelapse</h3>
       <p>
-        Le mode « Timelapse » permet de créer des animations en accélérant le temps de manière significative. Contrairement à l’animation standard qui simule le passage du temps en temps réel, le timelapse effectue des sauts de temps discrets, permettant de visualiser des événements sur de longues périodes en quelques secondes.
+        "Timelapse" mode allows creating animations by significantly accelerating time. Unlike standard animation that simulates time passage in real time, timelapse performs discrete time jumps, allowing visualization of events over long periods in seconds.
         <br/>
         <br/>
-        Vous pouvez choisir différents intervalles de temps pour les sauts. Cela permet de capturer des phénomènes astronomiques qui se déroulent sur des échelles de temps plus longues.
+        You can choose different time intervals for jumps. This allows capturing astronomical phenomena that occur over longer time scales.
       </p>
       <ul>
         <li>Minute</li>
-        <li>Heure</li>
-        <li>Jour</li>
-        <li>Jour sidéral : 23 h 56 min 4 s, permet le retour du lieu d’observation sous les mêmes étoiles que le jour précédent</li>
-        <li>Mois : un douzième d’année</li>
-        <li>Jour lunaire : 29,53 jours, temps entre deux phases identiques de la Lune. Permet une observation intéressante de la libration de la Lune (bien visible depuis les pôles).</li>
-        <li>Cycle lunaire sidéral : 27,32 jours, temps entre deux passages de la Lune devant les mêmes étoiles.</li>
+        <li>Hour</li>
+        <li>Day</li>
+        <li>Sidereal day: 23h 56min 4s, allows return of observation location under same stars as previous day</li>
+        <li>Month: one twelfth of a year</li>
+        <li>Lunar day: 29.53 days, time between two identical Moon phases. Allows interesting observation of Moon libration (well visible from poles).</li>
+        <li>Sidereal lunar cycle: 27.32 days, time between two Moon passages in front of same stars.</li>
       </ul>
       <p>
-        Le timelapse est particulièrement utile pour observer des événements tels que les phases de la Lune, les transits planétaires ou les mouvements des étoiles sur plusieurs nuits. 
+        Timelapse is particularly useful for observing events such as Moon phases, planetary transits, or star movements over several nights. 
       </p>
 
-      <h3><I id="longpose" />Pose longue (empilement)</h3>
+      <h3><I id="longpose" />Long Exposure (Stacking)</h3>
       <div>
         <p>
-          Superpose plusieurs trames pour simuler une pose longue (traînées, lueurs). Ajustez le nombre d’images conservées, et videz à la demande.
-          En mode time‑lapse, la progression attend la consolidation de la pose longue pour éviter des manques.
+          Superimposes multiple frames to simulate long exposure (trails, glows). Adjust the number of retained images, and clear on demand.
+          In time-lapse mode, progression waits for long exposure consolidation to avoid gaps.
         </p>
-        {/* Galerie 4 colonnes */}
+        {/* 4-column gallery */}
         <div style={{marginLeft: '5em', marginRight: '5em'}} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-sun-noon-followup.jpg"
-              alt="Une image du Soleil à midi superposée tout au long de l’année montre la progression des saisons"
+              alt="One Sun image at noon superimposed throughout the year shows seasonal progression"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Une image du Soleil à midi superposée tout au long de l’année montre la progression des saisons.
+              One Sun image at noon superimposed throughout the year shows seasonal progression.
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-sun-venus-dance.jpg"
-              alt="Simulation de la danse de Vénus et de Mercure autour du Soleil"
+              alt="Simulation of Venus and Mercury dance around the Sun"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Même paramètres, atmosphère cachée, durant plusieurs décennies : la danse de Vénus et de Mercure.
+              Same parameters, atmosphere hidden, over several decades: Venus and Mercury dance.
             </figcaption>
           </figure>
         </div>
@@ -836,132 +834,132 @@ export default function HelpTab() {
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-venus-transit.png"
-              alt="Transit de Vénus vu de Tokyo en 2012"
+              alt="Venus transit as seen from Tokyo in 2012"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Transit de Vénus vu de Tokyo en 2012.
+              Venus transit as seen from Tokyo in 2012.
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-sun-vens-polaris.jpg"
-              alt="Le Soleil, Polaris, Vénus et Mercure en pose longue"
+              alt="Sun, Polaris, Venus and Mercury in long exposure"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Le Soleil, Polaris, Vénus et Mercure en pose longue. Cette prise de vue est évidemment très complexe à réaliser avec le Soleil dans le champ de vision.
+              Sun, Polaris, Venus and Mercury in long exposure. This shot is obviously very complex to achieve with the Sun in the field of view.
             </figcaption>
           </figure>
         </div>
       </div>
-      <h2><I id="panels" /> Objets spatiaux visibles dans la scène et assistance visuelle</h2>
+      <h2><I id="panels" /> Spatial Objects Visible in Scene and Visual Assistance</h2>
 
       <div>{/* wrap visibility option lists */}
       <ul className="list-disc pl-6  gap-x-8 gap-y-2">
-        <li><I id="enlarge" />Agrandit les objets par rapport à la taille qu’ils devraient avoir avec le niveau de zoom choisi.
+        <li><I id="enlarge" />Enlarges objects compared to the size they should have with the chosen zoom level.
           <br/>
-          Cette fonction est mise en place pour simuler un zoom logiciel, mais peut donner l’impression que les objets se chevaucheront sur une prise de vue (ce qui ne sera pas le cas).
+          This function is implemented to simulate software zoom, but may give the impression that objects will overlap in a shot (which won't be the case).
           <br/>
-          Elle peut aider à animer une présentation et à la rendre plus immersive (même si elle est moins réaliste).
+          It can help animate a presentation and make it more immersive (even if less realistic).
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-not-enlarge.jpg"
-                alt="Simulation à taille réelle"
+                alt="Real-size simulation"
                 className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Simulation à taille réelle sans agrandissement : le Soleil et la Lune sont minuscules à 173° de FOV.
+                Real-size simulation without enlargement: Sun and Moon are tiny at 173° FOV.
               </figcaption>
             </figure>
             <figure className="m-0">
               <img
                 src="/img/capture/spaceview-application-enlarge.jpg"
-                alt="Simulation avec agrandissement"
+                alt="Simulation with enlargement"
                 className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
               />
               <figcaption className="text-sm text-gray-500 mt-1">
-                Simulation avec agrandissement : le Soleil, la Lune et les planètes sont rendus à la même taille.
+                Simulation with enlargement: Sun, Moon and planets are rendered at the same size.
               </figcaption>
             </figure>
         </li>
-        <li><I id="horizon" />Ajoute une ligne d’horizon, avec des indicateurs cardinaux et de position des objets spatiaux affichés.
-        <br/>Des lignes pointillées « haut » et « bas » sont aussi ajoutées pour indiquer les altitudes 90° et −90°.</li>
-        <li><I id="earth" />Affiche ou cache le sol opaque (la Terre). Le désactiver permet de suivre le trajet des objets spatiaux même quand ils sont cachés à un observateur (sous l’horizon).</li>
-        <li><I id="atmo" />Affiche ou cache un effet d’atmosphère. L’activer rend les étoiles et les planètes difficiles à voir (comme dans la réalité).</li>
-        <li><I id="refraction" />Réfraction atmosphérique : modifie la position des étoiles et des planètes proches de l’horizon. La désactiver permet de fluidifier les animations qui traversent l’horizon.</li>
-        <li><I id="phase" />Phase de la Lune et des planètes : affiche les phases selon la position relative du Soleil, de la Terre et de la Lune/planète. Quand cette option est désactivée, la Lune est éclairée tout au long de sa phase et les éclipses de lune sont désactivées.</li>
-        <li><I id="earthshine" />Clair de Terre / Ombre de terre : rétréclairage bleuté du limbe ombré de la Lune par la lumière qui se réfléchit sur la Terre. Active ou désactive l'ombre de la Terre et donc les éclipses de Lune (Lune rouge).</li>
+        <li><I id="horizon" />Adds a horizon line, with cardinal and spatial object position indicators.
+        <br/>Dotted "up" and "down" lines are also added to indicate 90° and -90° altitudes.</li>
+        <li><I id="earth" />Shows or hides opaque ground (Earth). Disabling allows following spatial object paths even when hidden from observer (below horizon).</li>
+        <li><I id="atmo" />Shows or hides atmospheric effect. Enabling makes stars and planets difficult to see (as in reality).</li>
+        <li><I id="refraction" />Atmospheric refraction: modifies position of stars and planets near horizon. Disabling allows smoothing animations crossing horizon.</li>
+        <li><I id="phase" />Moon and planet phases: shows phases according to relative position of Sun, Earth and Moon/planet. When disabled, Moon is lit throughout its phase and lunar eclipses are disabled.</li>
+        <li><I id="earthshine" />Earthshine / Earth shadow: bluish backlighting of Moon's shadowed limb by light reflecting off Earth. Enables or disables Earth shadow and thus lunar eclipses (red Moon).</li>
       </ul>
       <ul className="list-disc pl-6 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-        <li><I id="sun" />Affiche ou cache le Soleil</li>
-        <li><I id="moon" />Affiche ou cache la Lune</li>
-        <li><I id="mercure" />Affiche ou cache Mercure.</li>
-        <li><I id="venus" />Affiche ou cache Vénus.</li>
-        <li><I id="mars" />Affiche ou cache Mars.</li>
-        <li><I id="jupiter" />Affiche ou cache Jupiter.</li>
-        <li><I id="saturne" />Affiche ou cache Saturne.</li>
-        <li><I id="uranus" />Affiche ou cache Uranus.</li>
-        <li><I id="neptune" />Affiche ou cache Neptune.</li>
+        <li><I id="sun" />Show or hide Sun</li>
+        <li><I id="moon" />Show or hide Moon</li>
+        <li><I id="mercure" />Show or hide Mercury.</li>
+        <li><I id="venus" />Show or hide Venus.</li>
+        <li><I id="mars" />Show or hide Mars.</li>
+        <li><I id="jupiter" />Show or hide Jupiter.</li>
+        <li><I id="saturne" />Show or hide Saturn.</li>
+        <li><I id="uranus" />Show or hide Uranus.</li>
+        <li><I id="neptune" />Show or hide Neptune.</li>
       </ul>
       <ul className="list-disc pl-6  gap-x-8 gap-y-2">
-        <li><I id="grid" />Affiche ou cache la grille de référence. Elle trace un trait tous les 15°.</li>
-        <li><I id="markers" />Affiche ou cache les marqueurs (réticule sur les objets spatiaux).</li>
-        <li><I id="ecliptic" />Affiche ou cache le plan de l’écliptique.
+        <li><I id="grid" />Show or hide reference grid. It draws a line every 15°.</li>
+        <li><I id="markers" />Show or hide markers (crosshairs on spatial objects).</li>
+        <li><I id="ecliptic" />Show or hide ecliptic plane.
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-ecliptic.jpg"
-              alt="Méridien standard, Équateur et cardinaux des planètes"
+              alt="Standard meridian, Equator and planetary cardinals"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Méridien standard, Équateur et cardinaux des planètes
+              Standard meridian, Equator and planetary cardinals
             </figcaption>
           </figure>
         </li>
-        <li><I id="moonCard" />Affiche ou cache les cardinaux locaux sur la Lune et les planètes.
+        <li><I id="moonCard" />Show or hide local cardinals on Moon and planets.
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-cards.jpg"
-              alt="Méridien standard, Équateur et cardinaux des planètes"
+              alt="Standard meridian, Equator and planetary cardinals"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Méridien standard, Équateur et cardinaux des planètes
+              Standard meridian, Equator and planetary cardinals
             </figcaption>
           </figure>
         </li>
       </ul>
       </div>
-      <h3>Télémétrie d’observation</h3>
+      <h3>Observation Telemetry</h3>
       <div>
-        <p>En bas de la scène : des informations télémétriques sur la Lune et le Soleil.</p>
+        <p>At bottom of scene: telemetry information on Moon and Sun.</p>
         <figure style={{marginLeft: '5em', marginRight: '5em'}}  className="m-0">
             <img
               src="/img/capture/spaceview-application-moon3d.jpg"
-              alt="Lune rendue en 3D avec effet de libration, orientation et phase"
+              alt="Moon rendered in 3D with libration effect, orientation and phase"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Lune rendue en 3D avec effet de libration, orientation et phase
+              Moon rendered in 3D with libration effect, orientation and phase
             </figcaption>
           </figure>
           <figure style={{marginLeft: '5em', marginRight: '5em'}} className="m-0">
             <img
               src="/img/capture/spaceview-application-telemetry.jpg"
-              alt="Télémétrie de l’application"
+              alt="Application telemetry"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Télémétrie de l’application
+              Application telemetry
             </figcaption>
           </figure>
       </div>

@@ -8,8 +8,9 @@
     "spaceview": "SpaceView",
     "help": "Aide",
     "simulations": "Simulations",
-    "flatearth": "Terre plate",
-    "bug": "Rapport d'erreur"
+    "flatearth": "Terre plate ?",
+    "bug": "Rapport d'erreur",
+    "contact": "Contact"
   },
   "metadata": {
     "keywords": "astronomie, simulation, lune, soleil, éclipse, observation",

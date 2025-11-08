@@ -1,4 +1,3 @@
-
 type Example = {
   label: string;
   desc?: string;
@@ -184,57 +183,54 @@ export default function SimulationsTab() {
   ];
 
   return (
-    <article>
+    <article className="mx-20">
       <h1 className="text-xl font-bold">Quelques simulations et exemples</h1>
       <p>
         Ouvrez chaque lien pour comparer aux observations réelles. Les paramètres (lieu, date/heure UTC,
-        cible suivie, projection, FOV) sont encodés dans l’URL.
+        cible suivie, projection, FOV) sont encodés dans l'URL.
       </p>
 
       {examples.map((ex) => (
-        <div key={ex.label}>
-          <h2 className="text-lg font-semibold">{ex.label}</h2>
+        <div key={ex.label} className="mb-8">
+          <h2 className="text-lg font-semibold mb-4">{ex.label}</h2>
           
-          <table style={{ marginLeft:'5em', marginRight:'5em' }} className="w-full border-collapse" aria-label="Simulations — Exemples partageables">
-            <tbody>
-              <tr key={ex.label} className="align-top border-b last:border-0">
-                <td className="pr-4 w-120 py-0 align-top">
-                  {ex.img && (
-                    <img
-                      src={ex.img}
-                      alt={ex.label}
-                      className="w-120 h-auto object-cover rounded block p-0 !my-0"
-                    />
-                  )}
-                  {ex.webm && (
-                    <video
-                      controls
-                      preload="metadata"
-                      playsInline
-                      className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm  p-0 !my-0"
-                    >
-                      <source src={ex.webm} type="video/webm" />
-                      Votre navigateur ne supporte pas la lecture de vidéos WebM.
-                    </video>
-                  )}
-        
-                </td>
-                <td className="py-0 align-top">
-                  {renderDesc(ex.desc)}<br/>
-                  
-                  <a
-                    href={ex.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="underline"
-                  >
-                    Ouvrir la simulation
-                  </a>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-          
+          <div style={{ marginLeft:'5em', marginRight:'5em' }} 
+            className="flex flex-col md:flex-row gap-4 ">
+            <div className="flex-shrink-0 md:w-80">
+              {ex.img && (
+                <img
+                  src={ex.img}
+                  alt={ex.label}
+                  className="w-full h-auto object-cover rounded block"
+                  style={{ margin:0 }}
+                />
+              )}
+              {ex.webm && (
+                <video
+                  controls
+                  preload="metadata"
+                  playsInline
+                  className="w-full h-auto rounded-md border border-black/10 shadow-sm"
+                >
+                  <source src={ex.webm} type="video/webm" />
+                  Votre navigateur ne supporte pas la lecture de vidéos WebM.
+                </video>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="mb-4">
+                {renderDesc(ex.desc)}
+              </div>
+              <a
+                href={ex.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                Ouvrir la simulation
+              </a>
+            </div>
+          </div>
         </div>
       ))}
 

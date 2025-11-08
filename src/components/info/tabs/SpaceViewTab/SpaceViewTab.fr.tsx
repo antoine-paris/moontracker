@@ -1,6 +1,6 @@
-import InfoLogo from '../InfoLogo';
+import InfoLogo from '../../InfoLogo';
 
-export default function SpaceViewTab() {
+export default function SpaceViewTabFr() {
   const ldSoftware = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
@@ -16,7 +16,7 @@ export default function SpaceViewTab() {
       priceCurrency: 'EUR',
     },
     description:
-      'SpaceView est un simulateur astronomique 3D en temps réel et un planificateur d’astrophotographie : Soleil, Lune, planètes, phases, libration, projections grand-angle (Recti‑Panini, Stéréographique, Orthographique, Rectilinéaire, Cylindrique), timelapse, pose longue, cadre photo et export.',
+      'SpaceView est un simulateur astronomique 3D en temps réel et un planificateur d\'astrophotographie : Soleil, Lune, planètes, phases, libration, projections grand-angle (Recti‑Panini, Stéréographique, Orthographique, Rectilinéaire, Cylindrique), timelapse, pose longue, cadre photo et export.',
     keywords:
       'simulateur ciel, simulateur astronomique, astrophotographie, éclipse, phases de la Lune, timelapse, recti-panini, projection stéréographique, horizon, FOV, champ de vision, cadre photo, enregistrement vidéo webm, capture PNG',
     featureList: [
@@ -25,8 +25,8 @@ export default function SpaceViewTab() {
       'Rendu 3D de la Lune et des planètes (selon taille apparente): phases fidèles, libration, clair de Terre, orientations du terminateur',
       'Timelapse multi-échelles: minute, heure, jour, jour sidéral, mois, cycles lunaires',
       'Pose longue en temps réel (empilement): traînées et visualisations de trajectoires',
-      'Option d’agrandissement pédagogique des objets pour les très grands FOV',
-      'Simulation d’optique: capteurs, focales équiv. 24×36, FOV H/V, cadre photo 3:2/16:9',
+      'Option d\'agrandissement pédagogique des objets pour les très grands FOV',
+      'Simulation d\'optique: capteurs, focales équiv. 24×36, FOV H/V, cadre photo 3:2/16:9',
       'Réfraction atmosphérique, grille alt/az, écliptique, marqueurs et cardinaux locaux',
       'Partage par URL (état complet), export PNG, enregistrement vidéo .webm',
     ],
@@ -69,7 +69,7 @@ export default function SpaceViewTab() {
         acceptedAnswer: {
           '@type': 'Answer',
           text:
-            "Oui. Réfraction atmosphérique optionnelle proche de l’horizon, phases fidèles, libration et clair de Terre.",
+            "Oui. Réfraction atmosphérique optionnelle proche de l'horizon, phases fidèles, libration et clair de Terre.",
         },
       },
     ],
@@ -87,7 +87,7 @@ export default function SpaceViewTab() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ldFaq) }}
       />
 
-      <h1 itemProp="name">SpaceView.me — Simulateur astronomique 3D et planificateur d'astrophotographie</h1>
+      <h1 itemProp="name">SpaceView.me — Simulateur d'astro-photographie <br/>(pour les débutants)</h1>
       
       <div className="flex justify-center my-8">
         <InfoLogo size={120} />
@@ -113,10 +113,10 @@ export default function SpaceViewTab() {
       <ul>
         <li>
           Projections grand‑angle orientées photo (Recti‑Panini, Stéréographique, Orthographique, Rectilinéaire, Cylindrique)
-          pour conserver une lecture naturelle jusqu’aux très grands FOV.
+          pour conserver une lecture naturelle jusqu'aux très grands FOV.
         </li>
         <li>
-          Suivi intelligent d’objets et alignement de cadre (Horizon/Écliptique) pour comparer facilement altitudes et
+          Suivi intelligent d'objets et alignement de cadre (Horizon/Écliptique) pour comparer facilement altitudes et
           conjonctions.
         </li>
         <li>
@@ -127,17 +127,17 @@ export default function SpaceViewTab() {
           sur des jours, mois ou années.
         </li>
         <li>
-          Simulation d’optique complète: capteurs, focale équivalente 24×36, FOV H/V, cadre photo 3:2 et repères 16:9.
+          Simulation d'optique complète: capteurs, focale équivalente 24×36, FOV H/V, cadre photo 3:2 et repères 16:9.
         </li>
         <li>
-          Physique du ciel configurable: réfraction proche de l’horizon, grille alt/az, écliptique, marqueurs et cardinaux locaux.
+          Physique du ciel configurable: réfraction proche de l'horizon, grille alt/az, écliptique, marqueurs et cardinaux locaux.
         </li>
         <li>
           Partage instantané par URL (état complet), capture PNG/copier, enregistrement vidéo .webm pour diffuser vos scènes.
         </li>
       </ul>
 
-      <h2>Cas d’usage</h2>
+      <h2>Cas d'usage</h2>
       <ul>
         <li>Préparer une éclipse ou un alignement planétaire depuis un lieu précis.</li>
         <li>Comparer plusieurs focales et projections pour une composition grand‑angle crédible.</li>
@@ -149,11 +149,11 @@ export default function SpaceViewTab() {
       <figure className="m-0" style={{ marginLeft: '5em', marginRight: '5em' }}>
         <img
           src="/img/capture/spaceview-application-export-1.png"
-          alt="Fonction de capture et d’exportation de la scène"
+          alt="Fonction de capture et d'exportation de la scène"
           className="w-full h-auto rounded-md border border-black/10 shadow-sm"
         />
         <figcaption className="text-sm text-gray-500 mt-1">
-          Vue depuis Paris de l’éclipse solaire de 2026 avec Mercure et Jupiter.
+          Vue depuis Paris de l'éclipse solaire de 2026 avec Mercure et Jupiter.
         </figcaption>
       </figure>
     

@@ -1,6 +1,5 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import LanguageSwitcher from '../LanguageSwitcher';
 
 
 type Props = {
@@ -41,7 +40,9 @@ export default function TopRightBar({
       if (navigator.clipboard?.writeText) await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {}
+    } catch {
+      // Silently handle clipboard errors
+    }
   };
 
   return (
@@ -153,6 +154,7 @@ export default function TopRightBar({
             setCaptured(true);
             setTimeout(() => setCaptured(false), 1500);
           } catch {
+            // Silently handle capture errors
           } finally {
             setIsCapturing(false);
           }
@@ -187,11 +189,6 @@ export default function TopRightBar({
           <circle cx="12" cy="7.5" r="1.2" fill="currentColor" />
         </svg>
       </button>
-
-      {/* Language Switcher */}
-      <div className="pt-2 border-t border-white/10">
-        <LanguageSwitcher size="sm" />
-      </div>
     </div>
   );
 }

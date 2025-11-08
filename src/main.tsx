@@ -5,12 +5,12 @@ import './i18n' // Initialize i18n
 import App from './App.tsx'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import InfoPage from './pages/InfoPage'
-import SpaceViewTab from './components/info/tabs/SpaceViewTab'
-import HelpTab from './components/info/tabs/HelpTab'
-import SimulationsTab from './components/info/tabs/SimulationsTab'
-import FlatEarthTab from './components/info/tabs/FlatEarthTab'
-import BugReportTab from './components/info/tabs/BugReportTab'
-import ContactTab from './components/info/tabs/ContactTab'
+import SpaceViewTab from './components/info/tabs/SpaceViewTab/index'
+import HelpTab from './components/info/tabs/HelpTab/index'
+import SimulationsTab from './components/info/tabs/SimulationsTab/index'
+import FlatEarthTab from './components/info/tabs/FlatEarthTab/index'
+import BugReportTab from './components/info/tabs/BugReportTab/index'
+import ContactTab from './components/info/tabs/ContactTab/index'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -24,7 +24,6 @@ createRoot(document.getElementById('root')!).render(
         {/* Info layout (light theme, crawlable subpages) */}
         <Route path="/info" element={<InfoPage />}>
           <Route index element={<SpaceViewTab />} />
-          <Route path="aide" element={<HelpTab />} />
           <Route path="help" element={<HelpTab />} />
           <Route path="simulations" element={<SimulationsTab />} />
           <Route path="flat-earth" element={<FlatEarthTab />} />
@@ -44,7 +43,7 @@ createRoot(document.getElementById('root')!).render(
         
         <Route path="/fr/info" element={<InfoPage />}>
           <Route index element={<SpaceViewTab />} />
-          <Route path="aide" element={<HelpTab />} />
+          <Route path="help" element={<HelpTab />} />
           <Route path="simulations" element={<SimulationsTab />} />
           <Route path="flat-earth" element={<FlatEarthTab />} />
           <Route path="bug" element={<BugReportTab />} />

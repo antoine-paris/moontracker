@@ -4,12 +4,14 @@ interface LanguageSwitcherProps {
   className?: string;
   size?: 'sm' | 'md' | 'lg';
   showLabels?: boolean;
+  variant?: 'dark' | 'light';
 }
 
 export default function LanguageSwitcher({ 
   className = '', 
   size = 'sm',
-  showLabels = false 
+  showLabels = false,
+  variant = 'dark'
 }: LanguageSwitcherProps) {
   const { i18n } = useTranslation();
 
@@ -43,13 +45,13 @@ export default function LanguageSwitcher({
     ${sizeClasses[size]}
   `;
 
-  const activeClass = `
-    bg-indigo-600 text-white border-indigo-600 shadow-sm
-  `;
+  const activeClass = variant === 'dark' 
+    ? `bg-indigo-600 text-white border-indigo-600 shadow-sm`
+    : `bg-indigo-600 text-white border-indigo-600 shadow-sm`;
 
-  const inactiveClass = `
-    bg-white/10 text-white/80 border-white/20 hover:bg-white/20 hover:border-white/30
-  `;
+  const inactiveClass = variant === 'dark'
+    ? `bg-white/10 text-white/80 border-white/20 hover:bg-white/20 hover:border-white/30`
+    : `bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100 hover:border-gray-300`;
 
   return (
     <div className={`flex gap-1 ${className}`}>

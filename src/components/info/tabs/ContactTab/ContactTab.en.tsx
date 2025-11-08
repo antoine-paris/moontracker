@@ -1,4 +1,4 @@
-export default function ContactTab() {
+export default function ContactTabEn() {
   const platforms = [
     { name: 'X (Twitter)', slug: 'x', url: 'https://twitter.com/spaceview' },
     { name: 'Facebook', slug: 'facebook', url: 'https://facebook.com/spaceview' },
@@ -15,6 +15,8 @@ export default function ContactTab() {
     listStyle: 'none',
     padding: 0,
     margin: '16px 0',
+    marginLeft:'5em', 
+    marginRight:'5em' 
   };
 
   const tileStyle: React.CSSProperties = {
@@ -32,14 +34,14 @@ export default function ContactTab() {
   return (
     <article>
       <h1>Contact</h1>
-      <p>Retrouvez SpaceView sur les principaux réseaux sociaux et plateformes de partage.</p>
+      <p>Find SpaceView.me on the following social networks and sharing platforms. You can leave us messages there !</p>
       <ul style={gridStyle}>
         {platforms.map(p => (
           <li key={p.slug}>
             <a href={p.url} target="_blank" rel="noopener noreferrer" style={tileStyle} aria-label={p.name}>
               <img
                 src={`https://cdn.simpleicons.org/${p.slug}`}
-                alt={`Logo ${p.name}`}
+                alt={`${p.name} logo`}
                 width={24}
                 height={24}
                 loading="lazy"
@@ -53,4 +55,3 @@ export default function ContactTab() {
     </article>
   );
 }
-
