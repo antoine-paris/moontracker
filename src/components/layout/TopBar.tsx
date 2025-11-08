@@ -1,11 +1,11 @@
-import React, { useMemo } from "react";
+﻿import React, { useMemo } from "react";
 import { useTranslation } from 'react-i18next';
 import type { FollowMode } from "../../types";
 import type { Device, ZoomModule } from "../../optics/types";
 import { clamp } from "../../utils/math";
 import { FOV_DEG_MIN, FOV_DEG_MAX } from "../../optics/fov";
 // planets registry for UI toggles
-import { PLANET_REGISTRY, PLANETS } from "../../render/PlanetRegistry";
+import { getPlanetRegistry, PLANETS } from "../../render/PlanetRegistry";
 // NEW: projection helpers
 import { getValidProjectionModes, pickIdealProjection } from "../../render/projection";
 import type { ProjectionMode } from "../../render/projection";
@@ -166,6 +166,9 @@ export default function TopBar({
   onLongPoseClear,
 }: Props) {
   const { t } = useTranslation('ui');
+  
+  // Dynamic planet registry that updates with language changes
+  const PLANET_REGISTRY = getPlanetRegistry();
   
   // Browser local time and UTC time
   const currentDate = useMemo(() => new Date(currentUtcMs), [currentUtcMs]);
@@ -364,7 +367,7 @@ export default function TopBar({
       const label = PLANET_REGISTRY?.[id as keyof typeof PLANET_REGISTRY]?.label ?? p?.label ?? id;
       return { id, label };
     });
-  }, []);
+  }, [PLANET_REGISTRY]);
   
 
   // Projections valides pour le FOV courant
@@ -793,7 +796,7 @@ export default function TopBar({
       <div className="mx-2 sm:mx-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {/* SUIVI */}
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
-          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">SUIVI</div>
+          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:followModes.title')}</div>
           <div className="flex flex-wrap gap-2">
             {([
               'SOLEIL','LUNE',
@@ -854,7 +857,7 @@ export default function TopBar({
             />
           </div>
           <div className="mt-3">
-            <div className="text-xs uppercase tracking-wider text-white/60">Champ de vision</div>
+            <div className="text-xs uppercase tracking-wider text-white/60">{t('optics.fieldOfView')}</div>
             {/* Sélection Appareil + Objectif */}
             <div className="mt-1 flex flex-wrap sm:flex-nowrap items-center gap-2 gap-y-2">
               <svg className="w-6 h-6 shrink-0 align-middle text-white/60" viewBox="0 0 24 24" aria-hidden="true">
@@ -881,7 +884,7 @@ export default function TopBar({
                   }
                 }}
                 className="flex-1 basis-0 min-w-0 h-8 leading-none bg-black/60 border border-white/15 rounded-lg px-2 text-sm"
-                title="Sélectionner l’appareil"
+                title={t('device.select')}
               >
                 {devices.map(d => <option key={d.id} value={d.id}>{d.label}</option>)}
               </select>
@@ -900,7 +903,7 @@ export default function TopBar({
               {deviceId === CUSTOM_DEVICE_ID ? (
                 <div
                   className="flex-1 basis-0 min-w-0 h-8 inline-flex items-center bg-black/60 border border-white/15 rounded-lg px-2 text-sm text-white/80 overflow-hidden text-ellipsis whitespace-nowrap"
-                  title={`${Math.round(currentFocalMm)} mm (équivalent 24x36)`}
+                  title={t('device.calculatedFocal', { focal: Math.round(currentFocalMm) })}
                 >
                   {`${Math.round(currentFocalMm)} mm (eq. 24x36)`}
                 </div>
@@ -909,7 +912,7 @@ export default function TopBar({
                   value={zoomId}
                   onChange={(e) => setZoomId(e.target.value)}
                   className="flex-1 basis-0 min-w-0 h-8 leading-none bg-black/60 border border-white/15 rounded-lg px-2 text-sm"
-                  title="Sélectionner l’objectif/zoom"
+                  title={t('device.selectLens')}
                 >
                   {zoomOptions.map(z => <option key={z.id} value={z.id}>{z.label}</option>)}
                 </select>
@@ -928,17 +931,17 @@ export default function TopBar({
                   value={focalMmToSlider(currentFocalMm)}
                   onChange={(e) => setFovFromFocal(sliderToFocalMm(Number(e.target.value)))}
                   className="w-full"
-                  title={`Focale: ${Math.round(currentFocalMm)} mm (équivalent 24x36)`}
+                  title={t('device.calculatedFocal', { focal: Math.round(currentFocalMm) })}
                 />
                 <div className="mt-0.5 text-[10px] text-white/70 text-center w-full"
-                  title="Focale calculée depuis le champ de vision horizontal"
+                  title={t('device.calculatedFocal')}
                 >
                   {`${Math.round(currentFocalMm)} mm (eq. 24x36)`}
                 </div>
               </div>
               <div className="flex flex-col items-end flex-shrink-0 gap-0.5">
                 <div className="text-[12px] text-white/70"
-                  title="Champ de vision (horizontal ↔ et vertical ↕)"
+                  title={t('optics.fieldOfView')}
                 >
                   {`${"\u2194"} ${(fovXDeg >= 1 ? fovXDeg.toFixed(1) : fovXDeg.toFixed(2))}°`}&nbsp;&nbsp;
                   {`${"\u2195"} ${(fovYDeg >= 1 ? fovYDeg.toFixed(1) : fovYDeg.toFixed(2))}°`}
@@ -948,14 +951,14 @@ export default function TopBar({
 
             {/* Projection selector */}
             <div className="mt-3">
-                <div className="text-xs uppercase tracking-wider text-white/60">Projection</div>
+                <div className="text-xs uppercase tracking-wider text-white/60">{t('ui:projection.title')}</div>
                 <div className="mt-1 flex flex-wrap gap-2">
-                  {[ {id: 'recti-panini' as const, label: 'Recti-Panini' },
-                    { id: 'rectilinear' as const, label: 'Recti-Perspective' },
-                    { id: 'stereo-centered' as const, label: t('projection.stereocentered') },
-                    { id: 'ortho' as const, label: 'Orthographique' },
-                    { id: 'cylindrical' as const, label: 'Cylindrique' },
-                    { id: 'cylindrical-horizon' as const, label: 'Cylindrique (Horizon)' },
+                  {[ {id: 'recti-panini' as const, label: t('ui:projection.rectiPanini') },
+                    { id: 'rectilinear' as const, label: t('ui:projection.rectiPerspective') },
+                    { id: 'stereo-centered' as const, label: t('ui:projection.stereocentered') },
+                    { id: 'ortho' as const, label: t('ui:projection.orthographic') },
+                    { id: 'cylindrical' as const, label: t('ui:projection.cylindrical') },
+                    { id: 'cylindrical-horizon' as const, label: t('ui:projection.cylindricalHorizon') },
                   ].map(opt => {
                     const isAllowed = validProjectionModes.includes(opt.id);
                     const isActive = projectionMode === opt.id;
@@ -994,7 +997,7 @@ export default function TopBar({
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
           <div className="grid grid-cols-1 gap-3">
             <div>
-              <label className="text-xs uppercase tracking-wider text-white/60">Date & heure</label>
+              <label className="text-xs uppercase tracking-wider text-white/60">{t('time.dateTime')}</label>
               <div className="mt-1">
                 <div className="flex items-center gap-2">
                   <input
@@ -1030,8 +1033,8 @@ export default function TopBar({
                       }
                     }}
                     className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
-                     title="Saisir la date et l’heure locale à votre navigateur"
-                  />
+                     title={t('time.enterLocalDateTime')}
+                     />
                   {/* -1 heure */}
                   <button
                     onClick={() => {
@@ -1039,7 +1042,7 @@ export default function TopBar({
                       setIsEditing(false);
                     }}
                     className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title="Aller à -1 heure"
+                    title={t('time.goBackOneHour')}
                   >
                     &#x21B6;
                   </button>
@@ -1051,7 +1054,7 @@ export default function TopBar({
                       setIsEditing(false);
                     }}
                     className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title="Régler l'heure actuelle"
+                    title={t('time.setCurrentTime')}
                   >
                     {/*Maintenant*/}
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
@@ -1066,20 +1069,20 @@ export default function TopBar({
                       setIsEditing(false);
                     }}
                     className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title="Aller à +1 heure"
+                    title={t('time.goForwardOneHour')}
                   >
                     &#x21B7;
                   </button>
                 </div>
                 <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3">
-                  <div title={timeZone}>{`${cityHM} in ${cityName} (${utcHM} UTC)`}</div>
+                  <div title={timeZone}>{t('ui:time.cityTimeFormat', { cityTime: cityHM, cityName, utcTime: utcHM })}</div>
                 </div>
               </div>
               <div className="mt-2 mb-1 flex items-baseline justify-start gap-2">
-                <span className="text-xs uppercase tracking-wider text-white/50">Animation :  </span>
+                <span className="text-xs uppercase tracking-wider text-white/50">{t('ui:animation.title')}  </span>
                 <span
                   className="text-xs uppercase text-left text-white/50 tabular-nums normal-case whitespace-nowrap"
-                  title="Vitesse de l’animation (minutes par seconde)"
+                  title={t('time.animationSpeed')}
                 >
                   {timeLapseEnabled
                     ? timeLapsePerFrameLabel
@@ -1094,8 +1097,8 @@ export default function TopBar({
                 <button
                   onClick={() => setIsAnimating(!isAnimating)}
                   className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
-                  title={isAnimating ? "Mettre l’animation en pause" : "Lancer l’animation"}
-                  aria-label={isAnimating ? "Pause" : "Lecture"}
+                  title={isAnimating ? t('time.pauseAnimation') : t('time.startAnimation')}
+                  aria-label={isAnimating ? t('controls.pause') : t('controls.play')}
                 >
                   <span className="inline-flex items-center gap-2">
                     {isAnimating ? (
@@ -1127,7 +1130,7 @@ export default function TopBar({
                       setTimeLapseEnabled(false);
                     }}
                     className="w-full"
-                    title={`Vitesse de l'animation : gauche = rembobiner, droite = avancer`}
+                    title={t('time.animationSpeed')}
                   />
                   {/* Center tick for 0 */}
                   <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -1139,7 +1142,7 @@ export default function TopBar({
                 <div className="flex items-center gap-2 shrink-0">
                   {/* -1 min/s */}
                   <button
-                    title={`-1 min/s`}
+                    title={t('time.stepBackward')}
                     onClick={() => {
                       setSpeedMinPerSec(clamp(speedMinPerSec - 1, -360, 360));
                       onLongPoseClear(); 
@@ -1167,7 +1170,7 @@ export default function TopBar({
                   </button>
                   {/* +1 min/s */}
                   <button
-                    title="+1 min/s"
+                    title={t('time.stepForward')}
                     onClick={() => {
                       setSpeedMinPerSec(clamp(speedMinPerSec + 1, -360, 360));
                       onLongPoseClear(); 
@@ -1190,7 +1193,7 @@ export default function TopBar({
                   <IconToggleButton
                     active={timeLapseEnabled}
                     onClick={() => { setTimeLapseEnabled(!timeLapseEnabled); onLongPoseClear(); }}
-                    title={`Activer le mode time-lapse Depuis ${tlStartLabel}`}
+                    title={t('animation.enableTimeLapse', { startLabel: tlStartLabel })}
                     icon="timelapse"
                   >
                     <span>Time-lapse</span>
@@ -1212,27 +1215,27 @@ export default function TopBar({
                       if (e.key === 'Escape') { setTlStepValueStr(String(Math.max(1, Math.round(timeLapseStepValue || 1)))); (e.target as HTMLInputElement).blur(); }
                       onLongPoseClear();
                     }}
-                    title="Valeur entière du saut par image"
+                    title={t('animation.stepValueInteger')}
                   />
                   <select
                     className="flex-1 min-w-0 bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
                     value={timeLapseStepUnit}
                     onChange={(e) => { setTimeLapseStepUnit(e.target.value as any); onLongPoseClear(); }}
-                    title="Unité du saut (UTC) appliqué entre images"
+                    title={t('animation.stepUnitUTC')}
                   >
-                    <option value="minute">minute</option>
-                    <option value="hour">heure</option>
-                    <option value="day">jour</option>
-                    <option value="sidereal-day">jour sidéral</option>
-                    <option value="month">mois</option>
-                    <option value="synodic-fraction">jour lunaire</option>
-                    <option value="lunar-fraction">cycle lunaire sidéral</option>
+                    <option value="minute">{t('ui:time.minute')}</option>
+                    <option value="hour">{t('ui:time.hour')}</option>
+                    <option value="day">{t('ui:time.jours')}</option>
+                    <option value="sidereal-day">{t('ui:time.sidereal.day')}</option>
+                    <option value="month">{t('ui:time.mois')}</option>
+                    <option value="synodic-fraction">{t('ui:time.lunar.day')}</option>
+                    <option value="lunar-fraction">{t('ui:time.lunar.cycle')}</option>
                   </select>
                   <button
                     type="button"
                     className="px-3 py-1 rounded-lg border border-white/15 text-white/80 cursor-pointer hover:border-white/30 text-sm"
                     onClick={onTimeLapsePrevFrame}
-                    title="Image précédente (↶)"
+                    title={t('animation.previousFrame')}
                   >
                     ↶
                   </button>
@@ -1240,7 +1243,7 @@ export default function TopBar({
                     type="button"
                     className="px-3 py-1 rounded-lg border border-white/15 text-white/80 cursor-pointer hover:border-white/30 text-sm"
                     onClick={onTimeLapseNextFrame}
-                    title="Image suivante (↷)"
+                    title={t('animation.nextFrame')}
                   >
                     ↷
                   </button>
@@ -1265,7 +1268,7 @@ export default function TopBar({
                       if (e.key === 'Enter') { commitTlPeriod(); (e.target as HTMLInputElement).blur(); }
                       if (e.key === 'Escape') { setTlPeriodStr(String(timeLapsePeriodMs)); (e.target as HTMLInputElement).blur(); }
                     }}
-                    title="Période entre images (en millisecondes, 1 à 1000)"
+                    title={t('animation.periodBetweenFrames')}
                   />
                   <span className="text-sm text-white/80">ms pendant</span>
                   <input
@@ -1283,9 +1286,9 @@ export default function TopBar({
                       if (e.key === 'Enter') { commitTlLoop(); (e.target as HTMLInputElement).blur(); }
                       if (e.key === 'Escape') { setTlLoopAfterStr(String(timeLapseLoopAfter)); (e.target as HTMLInputElement).blur(); }
                     }}
-                    title="Nombre d’images avant retour au début (0 = pas de boucle)"
+                    title={t('animation.numberOfFrames')}
                   />
-                  <span className="text-sm text-white/80">images</span>
+                  <span className="text-sm text-white/80">{t('animation.images')}</span>
                 </div>
               </div>
               {/* --- /Time-lapse --- */}
@@ -1298,17 +1301,17 @@ export default function TopBar({
                   <IconToggleButton
                     active={longPoseEnabled}
                     onClick={() => setLongPoseEnabled(!longPoseEnabled)}
-                    title="Activer le mode pose longue"
+                    title={t('animation.enableLongExposure')}
                     icon="longpose"
                   >
-                    <span>Pose longue</span>
+                    <span>{t('ui:animation.longExposure')}</span>
                   </IconToggleButton>
 
                   {/* reset persistence button */}
                   <IconToggleButton
                     active={false}
                     onClick={onLongPoseClear}
-                    title="Vider la persistance (⟲)"
+                    title={t('animation.clearPersistence')}
                     icon="clear"
                   />
                   
@@ -1320,48 +1323,48 @@ export default function TopBar({
 
         {/* Groupe: Visibilité */}
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
-          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">Visibilité</div>
+          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:visibility.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Enlarge objects */}
             <IconToggleButton
               active={enlargeObjects}
               onClick={() => setEnlargeObjects(!enlargeObjects)}
-              title="Augmenter la taille apparente des objets pour une meilleure visibilité"
+              title={t('visibility.increaseSize')}
               icon="enlarge"
             />
             {/* Horizons toggle */}
             <IconToggleButton
               active={showHorizon}
               onClick={() => setShowHorizon(!showHorizon)}
-              title="Afficher la ligne d’horizon et les marqueurs d’horizon"
+              title={t('visibility.showHorizon')}
               icon="horizon"
             />
             {/* Earth toggle */}
             <IconToggleButton
               active={showEarth}
               onClick={() => setShowEarth(!showEarth)}
-              title="Afficher le sol (Terre)"
+              title={t('visibility.showGround')}
               icon="earth"
             />
             {/* Atmosphere toggle */}
             <IconToggleButton
               active={showAtmosphere}
               onClick={() => setShowAtmosphere(!showAtmosphere)}
-              title="Afficher l’effet d’atmosphère"
+              title={t('visibility.showAtmosphere')}
               icon="atmo"
             />
              {/* NEW: Refraction toggle */}
             <IconToggleButton
               active={showRefraction}
               onClick={() => setShowRefraction(!showRefraction)}
-              title="Appliquer la réfraction atmosphérique"
+              title={t('visibility.applyRefraction')}
               icon="refraction"
             />
             {/* Moon phase */}
             <IconToggleButton
               active={showPhase}
               onClick={() => setShowPhase(!showPhase)}
-              title="Afficher la phase de la Lune et des planètes"
+              title={t('ui:phase.showPhase')}
               icon="phase"
             />
             {/* Earthshine */}
@@ -1375,25 +1378,25 @@ export default function TopBar({
           </div>
 
           {/* Groupe: Espace */}
-          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">Espace</div>
+          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:space.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Sun toggle */}
             <IconToggleButton
               active={showSun}
               onClick={() => setShowSun(!showSun)}
-              title="Afficher le Soleil"
+              title={t('ui:space.showSun')}
               icon="sun"
             >
-              <span>Soleil</span>
+              <span>{t('ui:space.sun')}</span>
             </IconToggleButton>
             {/* Moon toggle */}
             <IconToggleButton
               active={showMoon}
               onClick={() => setShowMoon(!showMoon)}
-              title="Afficher la Lune"
+              title={t('ui:space.showMoon')}
               icon="moon"
             >
-              <span>Lune</span>
+              <span>{t('ui:space.moon')}</span>
             </IconToggleButton>
             {/* Planètes */}
             {uiPlanets.map(({ id, label }) => {
@@ -1406,16 +1409,25 @@ export default function TopBar({
                     const next = !active;
                     setShowPlanets(prev => ({ ...prev, [id]: next }));
                   }}
-                  title={`Afficher ${label}`}
+                  title={t('ui:space.showPlanet', { planet: 
+                    id === 'Mercury' ? t('ui:space.mercury')
+                    : id === 'Venus' ? t('ui:space.venus')
+                    : id === 'Mars' ? t('ui:space.mars')
+                    : id === 'Jupiter' ? t('ui:space.jupiter')
+                    : id === 'Saturn' ? t('ui:space.saturn')
+                    : id === 'Uranus' ? t('ui:space.uranus')
+                    : id === 'Neptune' ? t('ui:space.neptune')
+                    : label
+                  })}
                   
                 >
-                  { id === 'Mercury' ? <span>&#9791; Mercure</span>
-                  : id === 'Venus' ? <span>&#9792; Vénus</span>
-                  : id === 'Mars' ? <span>&#9794; Mars</span>
-                  : id === 'Jupiter' ? <span>&#9795; Jupiter</span>
-                  : id === 'Saturn' ? <span>&#9796; Saturne</span>
-                  : id === 'Uranus' ? <span>&#9797; Uranus</span>
-                  : id === 'Neptune' ? <span>&#9798; Neptune</span>
+                  { id === 'Mercury' ? <span>&#9791; {t('ui:space.mercury')}</span>
+                  : id === 'Venus' ? <span>&#9792; {t('ui:space.venus')}</span>
+                  : id === 'Mars' ? <span>&#9794; {t('ui:space.mars')}</span>
+                  : id === 'Jupiter' ? <span>&#9795; {t('ui:space.jupiter')}</span>
+                  : id === 'Saturn' ? <span>&#9796; {t('ui:space.saturn')}</span>
+                  : id === 'Uranus' ? <span>&#9797; {t('ui:space.uranus')}</span>
+                  : id === 'Neptune' ? <span>&#9798; {t('ui:space.neptune')}</span>
                   : id }
                 </IconToggleButton>
               );
@@ -1424,56 +1436,56 @@ export default function TopBar({
             <IconToggleButton
               active={showStars}
               onClick={() => setShowStars(!showStars)}
-              title="Afficher le fond d’étoiles"
+              title={t('ui:space.showStars')}
               icon="stars"
             >
-              <span>Etoiles</span>
+              <span>{t('ui:space.stars')}</span>
             </IconToggleButton>
           </div>
 
           {/* Groupe: Assistance */}
-          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">Assistance</div>
+          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:assistance.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Grid toggle */}
             <IconToggleButton
               active={showGrid}
               onClick={() => setShowGrid(!showGrid)}
-              title="Afficher la grille de référence"
+              title={t('ui:assistance.showGrid')}
               icon="grid"
             />
             {/* Markers toggle */}
             <IconToggleButton
               active={showMarkers}
               onClick={() => setShowMarkers(!showMarkers)}
-              title="Afficher les marqueurs (repères)"
+              title={t('ui:assistance.showMarkers')}
               icon="markers"
             />
             {/* Sun cardinal helper */}
             <IconToggleButton
               active={showSunCard}
               onClick={() => setShowSunCard(!showSunCard)}
-              title="Afficher les points cardinaux sur le Soleil"
+              title={t('ui:assistance.showSunCardinals')}
               icon="sunCard"
             />
             {/* Ecliptique */}
             <IconToggleButton
               active={showEcliptique}
               onClick={() => setShowEcliptique(!showEcliptique)}
-              title="Afficher l’écliptique"
+              title={t('ui:assistance.showEcliptic')}
               icon="ecliptic"
             />
             {/* Local cardinal helper */}
             <IconToggleButton
               active={showMoonCard}
               onClick={() => setShowMoonCard(!showMoonCard)}
-              title="Afficher les points cardinaux de la Lune et des planètes"
+              title={t('ui:assistance.showMoonCardinals')}
               icon="moonCard"
             />
             {/* Debug helper */}
             <IconToggleButton
               active={debugMask}
               onClick={() => setDebugMask(!debugMask)}
-              title="Activer les éléments de débogage visuel"
+              title={t('ui:assistance.enableDebug')}
               icon="debug"
             />
           </div>

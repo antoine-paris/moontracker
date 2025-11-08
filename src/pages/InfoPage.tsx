@@ -7,6 +7,7 @@ import InfoLogo from '../components/info/InfoLogo';
 
 export default function InfoPage() {
   const { t } = useTranslation('info');
+  const { t: tUi } = useTranslation('ui');
   const { pathname } = useLocation();
   
   // Handle language detection from URL

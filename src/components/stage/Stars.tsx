@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from 'react-i18next';
 import { lstDeg } from "../../astro/time";
 import { projectToScreen } from "../../render/projection";
 import { Z } from "../../render/constants";
@@ -300,6 +301,8 @@ export default function Stars({
   eclipticUpAzDeg,
   eclipticUpAltDeg,
 }: Props) {
+  const { t: tUi } = useTranslation('ui');
+  
   const stars = useStarsCatalog();
   const debugStars = useDebugStarsCatalog();
   const date = React.useMemo(() => new Date(utcMs), [utcMs]);
@@ -643,7 +646,7 @@ export default function Stars({
               fontSize="11"
               style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
             >
-              Croix du Sud
+              {tUi('celestialBodies.southernCross')}
             </text>
           </svg>
         </div>

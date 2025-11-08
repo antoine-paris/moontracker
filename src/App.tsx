@@ -39,7 +39,7 @@ import BottomTelemetry from "./components/layout/BottomTelemetry";
 // Import du logo (Vite)
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
 import DirectionalKeypad from "./components/stage/DirectionalKeypad";
-import { PLANETS, PLANET_REGISTRY } from "./render/PlanetRegistry";
+import { PLANETS, getPlanetRegistry } from "./render/PlanetRegistry";
 import { getPlanetsEphemerides } from "./astro/planets";
 import { type PlanetId } from "./astro/planets";
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
@@ -62,6 +62,7 @@ import {
  // --- Main Component ----------------------------------------------------------
 export default function App() {
   const { t } = useTranslation('common');
+  const { t: tUi } = useTranslation('ui');
   
   // Handle language detection from URL
   useLanguageFromPath();
@@ -113,7 +114,7 @@ export default function App() {
     } catch {}
 
     // Planets
-    Object.values(PLANET_REGISTRY).forEach((entry: any) => {
+    Object.values(getPlanetRegistry()).forEach((entry: any) => {
       const u = entry?.modelUrl;
       if (!u) return;
       let resolved = u;
@@ -1556,7 +1557,7 @@ const handleFramePresented = React.useCallback(() => {
                   cameraLabel={deviceId === CUSTOM_DEVICE_ID
                     ? (zoomOptions[0]?.label ?? '') 
                     : `${device.label} — ${zoom?.label ?? ''}`}
-                  overlayInfoString={`${overlayPlaceString}, ${cityLocalTimeString} heure locale (${utcTime})`}
+                  overlayInfoString={tUi('time.overlayFormat', { place: overlayPlaceString, localTime: cityLocalTimeString, utcTime })}
                   longPoseEnabled={longPoseEnabled}
                   onLongPoseAccumulated={handleLongPoseAccumulated}
                   longPoseClearSeq={longPoseClearSeq}

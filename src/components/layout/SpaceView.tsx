@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect, useCallback, forwardRef } from "react";
+import { useTranslation } from 'react-i18next';
 
 // Astro core
 import { getPlanetsEphemerides, type PlanetId } from "../../astro/planets";
@@ -11,7 +12,7 @@ import type { ProjectionMode } from "../../render/projection";
 
 // Render constants & registry
 import { Z } from "../../render/constants";
-import { PLANET_REGISTRY } from "../../render/PlanetRegistry";
+import { getPlanetRegistry } from "../../render/PlanetRegistry";
 // NEW: imports to format HUD values
 import { formatDeg } from "../../utils/format";
 import { compass16 } from "../../utils/compass";
@@ -117,6 +118,11 @@ export interface SpaceViewProps {
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
+  const { t: tUi } = useTranslation('ui');
+  
+  // Dynamic planet registry that updates with language changes
+  const PLANET_REGISTRY = getPlanetRegistry();
+  
   const {
     date, utcMs, latDeg, lngDeg,
     viewport, refAzDeg, refAltDeg, fovXDeg, fovYDeg, projectionMode,
@@ -327,7 +333,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         lockHorizon,
         eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
       );
-      if (p.visibleX) out.push({ x: p.x, az, label: "Soleil", color: "#f59e0b" });
+      if (p.visibleX) out.push({ x: p.x, az, label: tUi('celestialBodies.sun'), color: "#f59e0b" });
     }
     if (showMoon) {
       const az = astro.moon.az;
@@ -335,7 +341,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         lockHorizon,
         eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
       );
-      if (p.visibleX) out.push({ x: p.x, az, label: "Lune", color: "#93c5fd" });
+      if (p.visibleX) out.push({ x: p.x, az, label: tUi('celestialBodies.moon'), color: "#93c5fd" });
     }
     {
       const az = polarisAltAz.azDeg;
@@ -351,7 +357,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         lockHorizon,
         eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
       );
-      if (p.visibleX) out.push({ x: p.x, az, label: "Croix du Sud", color: CRUX_COLOR });
+      if (p.visibleX && showStars) out.push({ x: p.x, az, label: tUi('celestialBodies.southernCross'), color: CRUX_COLOR });
     }
     for (const pl of planetsEphemArr) {
       const id = (pl as any).id as string;
@@ -370,7 +376,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     showSun, showMoon, astro.sun.az, astro.moon.az,
     polarisAltAz.azDeg, cruxAltAz.azDeg, planetsEphemArr, showPlanets,
     refAzDeg, refAltDeg, viewport, fovXDeg, fovYDeg, projectionMode, lockHorizon,
-      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg
+      eclipticNorthAltAz.azDeg, eclipticNorthAltAz.altDeg, tUi, PLANET_REGISTRY
   ]);
 
   // Planet markers for Markers overlay
@@ -387,7 +393,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           size: { w: S, h: S },
         };
       });
-  }, [planetsRender]);
+  }, [planetsRender, PLANET_REGISTRY]);
 
   useEffect(() => {
     if (!longPoseEnabled) return;
@@ -1159,7 +1165,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             className="absolute left-1/2 bottom-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
-            {`Azimut : ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg)}`}
+            {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg)}`}
           </div>
 
           {/* Bas droite: Lune ou sous l'horizon (marge demi-diamètre) */}
@@ -1168,8 +1174,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             style={{ zIndex: Z.ui }}
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
-              ? "Lune sous l'horizon"
-              : `Lune Alt. ${formatDeg(astro.moon.alt, 0)} Az ${formatDeg(astro.moon.az, 1)} (${compass16(astro.moon.az)})`}
+              ? tUi('hud.moonBelowHorizon')
+              : `${tUi('celestialBodies.moon')} Alt. ${formatDeg(astro.moon.alt, 0)} Az ${formatDeg(astro.moon.az, 1)} (${compass16(astro.moon.az)})`}
           </div>
 
           {/* Bas gauche: Soleil ou sous l'horizon (marge demi-diamètre) */}
@@ -1178,8 +1184,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             style={{ zIndex: Z.ui }}
           >
             {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
-              ? "Soleil sous l'horizon"
-              : `Soleil Alt. ${formatDeg(astro.sun.alt, 0)} Az ${formatDeg(astro.sun.az, 1)} (${compass16(astro.sun.az)})`}
+              ? tUi('hud.sunBelowHorizon')
+              : `${tUi('celestialBodies.sun')} Alt. ${formatDeg(astro.sun.alt, 0)} Az ${formatDeg(astro.sun.az, 1)} (${compass16(astro.sun.az)})`}
           </div>
 
           {/* Haut gauche: Appareil et zoom */}
@@ -1188,9 +1194,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             style={{ zIndex: Z.ui }}
           >
             <div className="flex flex-col leading-tight">
-              <div>Simulation {domainFromBrowser}</div>
+              <div>{tUi('hud.simulation')} {domainFromBrowser}</div>
               {cameraLabel ? <div>{cameraLabel}</div> : null}
-              {enlargeObjects ? <div>(Taille des objets exagérée artificiellement)</div> : null}
+              {enlargeObjects ? <div>({tUi('hud.objectSizeExaggerated')})</div> : null}
             </div>
           </div>
 
@@ -1199,7 +1205,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
             style={{ zIndex: Z.ui }}
           >
-             Altitude : <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
+             {tUi('hud.altitude')} <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
           </div>
         </>
       )}

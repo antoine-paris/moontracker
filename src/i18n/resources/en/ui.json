@@ -24,20 +24,27 @@
     "calculatedFocal": "Focal length calculated from horizontal field of view"
   },
   "projection": {
+    "title": "Projection",
+    "rectiPanini": "Recti-Panini",
+    "rectiPerspective": "Recti-Perspective",
     "rectilinear": "Rectilinear + Panini",
     "stereographic": "Stereographic centered",
     "orthographic": "Orthographic",
-    "stereocentered": "Stereo-Centered"
+    "stereocentered": "Stereo-Centered",
+    "cylindrical": "Cylindrical",
+    "cylindricalHorizon": "Cylindrical (Horizon)"
   },
   "alignment": {
     "horizon": "Terrestrial horizon aligned to screen",
     "ecliptic": "Ecliptic aligned to screen"
   },
   "phase": {
+    "showPhase": "Show Moon and planet phases",
     "enableEarthshine": "Enable shadow and earthshine",
     "enablePhaseFirst": "Enable \"Moon Phase\" to allow earthshine"
   },
   "followModes": {
+    "title": "TRACKING",
     "sun": "Sun",
     "moon": "Moon",
     "north": "North",
@@ -75,6 +82,9 @@
   },
   "time": {
     "animation": "Animation",
+    "animationLabel": "Animation:",
+    "cityTimeFormat": "{{cityTime}} in {{cityName}} ({{utcTime}} UTC)",
+    "overlayFormat": "{{place}}, {{localTime}} local time ({{utcTime}})",
     "speed": "Speed",
     "hour": "Hour",
     "date": "Date",
@@ -107,7 +117,63 @@
     "days": "days",
     "month": "month",
     "months": "months",
-    "perFrame": "per frame"
+    "perFrame": "per frame",
+    "dateTime": "Date & time",
+    "pauseAnimation": "Pause animation",
+    "startAnimation": "Start animation",
+    "animationSpeed": "Animation speed: left = rewind, right = forward",
+    "stepBackward": "-1 min/s",
+    "stepForward": "+1 min/s",
+    "enterLocalDateTime": "Enter local date and time for your browser"
+  },
+  "animation": {
+    "title": "Animation:",
+    "animationSpeedMinPerSecond": "Animation speed (minutes per second)",
+    "stepValueInteger": "Integer value of step per frame",
+    "stepUnitUTC": "Unit of step (UTC) applied between frames",
+    "previousFrame": "Previous frame (↶)",
+    "nextFrame": "Next frame (↷)",
+    "periodBetweenFrames": "Period between frames (in milliseconds, 1 to 1000)",
+    "numberOfFrames": "Number of frames before returning to start (0 = no loop)",
+    "enableLongExposure": "Enable long exposure mode",
+    "longExposure": "Long exposure",
+    "enableTimeLapse": "Enable time-lapse mode Since {{startLabel}}",
+    "clearPersistence": "Clear persistence (⟲)",
+    "images": "images"
+  },
+  "visibility": {
+    "title": "Visibility",
+    "increaseSize": "Increase apparent size of objects for better visibility",
+    "showHorizon": "Show horizon line and horizon markers",
+    "showGround": "Show ground (Earth)",
+    "showAtmosphere": "Show atmosphere effect",
+    "applyRefraction": "Apply atmospheric refraction"
+  },
+  "space": {
+    "title": "Space",
+    "showSun": "Show the Sun",
+    "sun": "Sun",
+    "showMoon": "Show the Moon",
+    "moon": "Moon", 
+    "showPlanet": "Show {{planet}}",
+    "mercury": "Mercury",
+    "venus": "Venus",
+    "mars": "Mars", 
+    "jupiter": "Jupiter",
+    "saturn": "Saturn",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "showStars": "Show star background",
+    "stars": "Stars"
+  },
+  "assistance": {
+    "title": "Assistance",
+    "showGrid": "Show reference grid",
+    "showMarkers": "Show markers (landmarks)",
+    "showSunCardinals": "Show cardinal points on the Sun",
+    "showEcliptic": "Show ecliptic",
+    "showMoonCardinals": "Show cardinal points of the Moon and planets",
+    "enableDebug": "Enable visual debugging elements"
   },
   "general": {
     "help": "Help",
@@ -116,5 +182,27 @@
     "open": "Open",
     "calculate": "Calculate",
     "nearestCity": "Nearest city with 100,000+ inhabitants"
+  },
+  "hud": {
+    "azimuth": "Azimuth:",
+    "altitude": "Altitude:",
+    "moonBelowHorizon": "Moon below horizon",
+    "sunBelowHorizon": "Sun below horizon",
+    "simulation": "Simulation",
+    "objectSizeExaggerated": "Object size artificially exaggerated"
+  },
+  "celestialBodies": {
+    "sun": "Sun",
+    "moon": "Moon",
+    "mercury": "Mercury",
+    "venus": "Venus",
+    "earth": "Earth",
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturn",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "pluto": "Pluto",
+    "southernCross": "Southern Cross"
   }
 }

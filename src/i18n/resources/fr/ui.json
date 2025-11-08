@@ -24,20 +24,27 @@
     "calculatedFocal": "Focale calculée depuis le champ de vision horizontal"
   },
   "projection": {
+    "title": "Projection",
+    "rectiPanini": "Recti-Panini",
+    "rectiPerspective": "Recti-Perspective", 
     "rectilinear": "Rectilinéaire + Panini",
     "stereographic": "Stéréographique centré",
     "orthographic": "Orthographique",
-    "stereocentered": "Stéréo-Centré"
+    "stereocentered": "Stéréo-Centré",
+    "cylindrical": "Cylindrique",
+    "cylindricalHorizon": "Cylindrique (Horizon)"
   },
   "alignment": {
     "horizon": "Horizon terrestre aligné à l'écran",
     "ecliptic": "Ecliptique aligné à l'écran"
   },
   "phase": {
+    "showPhase": "Afficher la phase de la Lune et des planètes",
     "enableEarthshine": "Activer l'ombre et le clair de Terre",
     "enablePhaseFirst": "Activez « Phase de la Lune » pour autoriser le clair de Terre"
   },
   "followModes": {
+    "title": "SUIVI",
     "sun": "Soleil",
     "moon": "Lune",
     "north": "Nord",
@@ -75,6 +82,9 @@
   },
   "time": {
     "animation": "Animation",
+    "animationLabel": "Animation :",
+    "cityTimeFormat": "{{cityTime}} à {{cityName}} ({{utcTime}} UTC)",
+    "overlayFormat": "{{place}}, {{localTime}} heure locale ({{utcTime}})",
     "speed": "Vitesse",
     "hour": "Heure",
     "date": "Date",
@@ -106,7 +116,63 @@
     "heures": "heures",
     "jours": "jours",
     "mois": "mois",
-    "perFrame": "par image"
+    "perFrame": "par image",
+    "dateTime": "Date & heure",
+    "pauseAnimation": "Mettre l'animation en pause",
+    "startAnimation": "Lancer l'animation",
+    "animationSpeed": "Vitesse de l'animation : gauche = rembobiner, droite = avancer",
+    "stepBackward": "-1 min/s",
+    "stepForward": "+1 min/s",
+    "enterLocalDateTime": "Saisir la date et l'heure locale à votre navigateur"
+  },
+  "animation": {
+    "title": "Animation :",
+    "animationSpeedMinPerSecond": "Vitesse de l'animation (minutes par seconde)",
+    "stepValueInteger": "Valeur entière du saut par image",
+    "stepUnitUTC": "Unité du saut (UTC) appliqué entre images",
+    "previousFrame": "Image précédente (↶)",
+    "nextFrame": "Image suivante (↷)",
+    "periodBetweenFrames": "Période entre images (en millisecondes, 1 à 1000)",
+    "numberOfFrames": "Nombre d'images avant retour au début (0 = pas de boucle)",
+    "enableLongExposure": "Activer le mode pose longue",
+    "longExposure": "Pose longue",
+    "enableTimeLapse": "Activer le mode time-lapse Depuis {{startLabel}}",
+    "clearPersistence": "Vider la persistance (⟲)",
+    "images": "images"
+  },
+  "visibility": {
+    "title": "Visibilité",
+    "increaseSize": "Augmenter la taille apparente des objets pour une meilleure visibilité",
+    "showHorizon": "Afficher la ligne d'horizon et les marqueurs d'horizon",
+    "showGround": "Afficher le sol (Terre)",
+    "showAtmosphere": "Afficher l'effet d'atmosphère",
+    "applyRefraction": "Appliquer la réfraction atmosphérique"
+  },
+  "space": {
+    "title": "Espace",
+    "showSun": "Afficher le Soleil",
+    "sun": "Soleil",
+    "showMoon": "Afficher la Lune", 
+    "moon": "Lune",
+    "showPlanet": "Afficher {{planet}}",
+    "mercury": "Mercure",
+    "venus": "Vénus", 
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturne",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "showStars": "Afficher le fond d'étoiles",
+    "stars": "Etoiles"
+  },
+  "assistance": {
+    "title": "Assistance",
+    "showGrid": "Afficher la grille de référence",
+    "showMarkers": "Afficher les marqueurs (repères)",
+    "showSunCardinals": "Afficher les points cardinaux sur le Soleil",
+    "showEcliptic": "Afficher l'écliptique",
+    "showMoonCardinals": "Afficher les points cardinaux de la Lune et des planètes",
+    "enableDebug": "Activer les éléments de débogage visuel"
   },
   "general": {
     "help": "Aide",
@@ -115,5 +181,27 @@
     "open": "Ouvrir",
     "calculate": "Calculer",
     "nearestCity": "Ville de + de 100 000 habitants la plus proche"
+  },
+  "hud": {
+    "azimuth": "Azimut :",
+    "altitude": "Altitude :",
+    "moonBelowHorizon": "Lune sous l'horizon",
+    "sunBelowHorizon": "Soleil sous l'horizon",
+    "simulation": "Simulation",
+    "objectSizeExaggerated": "Taille des objets exagérée artificiellement"
+  },
+  "celestialBodies": {
+    "sun": "Soleil",
+    "moon": "Lune",
+    "mercury": "Mercure",
+    "venus": "Vénus",
+    "earth": "Terre",
+    "mars": "Mars",
+    "jupiter": "Jupiter",
+    "saturn": "Saturne",
+    "uranus": "Uranus",
+    "neptune": "Neptune",
+    "pluto": "Pluton",
+    "southernCross": "Croix du Sud"
   }
 }

@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from 'react-i18next';
 
 export type HorizonMarker = { x: number; label: string; color: string };
 
@@ -31,6 +32,8 @@ type Props = {
 };
 
 export default function Markers(props: Props) {
+  const { t: tUi } = useTranslation('ui');
+  
   const {
     showMarkers,
     showStars,
@@ -87,7 +90,7 @@ export default function Markers(props: Props) {
               pointerEvents: "none",
             }}
           >
-            <span className="text-xs" style={{ color: sunColor, opacity: 0.95 }}>Soleil</span>
+            <span className="text-xs" style={{ color: sunColor, opacity: 0.95 }}>{tUi('celestialBodies.sun')}</span>
           </div>
         </>
       )}
@@ -130,7 +133,7 @@ export default function Markers(props: Props) {
               pointerEvents: "none",
             }}
           >
-            <span className="text-xs" style={{ color: moonColor, opacity: 0.95 }}>Lune</span>
+            <span className="text-xs" style={{ color: moonColor, opacity: 0.95 }}>{tUi('celestialBodies.moon')}</span>
           </div>
         </>
       )}
