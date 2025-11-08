@@ -9,37 +9,37 @@ export default function InfoPage() {
   const seo = useMemo(() => {
     if (pathname === '/info' || pathname === '/info/') {
       return {
-        title: 'MoonTracker — Informations, Aide, Simulations',
-        desc: 'Aide MoonTracker, exemples de simulations, liens et guide de déclaration de bug. Visualisez Lune, Soleil, étoiles et planètes.',
+        title: 'SpaceView.me — Informations, Aide, Simulations',
+        desc: 'Aide SpaceView, exemples de simulations, liens et guide de déclaration de bug. Visualisez Lune, Soleil, étoiles et planètes.',
       };
     }
     if (pathname.startsWith('/info/aide')) {
       return {
-        title: 'MoonTracker — Aide et documentation',
-        desc: 'Découvrez les options, projections, optiques et contrôles pour utiliser MoonTracker efficacement.',
+        title: 'SpaceView.me — Aide et documentation',
+        desc: 'Découvrez les options, projections, optiques et contrôles pour utiliser SpaceView.me efficacement.',
       };
     }
     if (pathname.startsWith('/info/simulations')) {
       return {
-        title: 'MoonTracker — Simulations partageables',
+        title: 'SpaceView.me — Simulations partageables',
         desc: 'Ouvrez des configurations prêtes à l’emploi: éclipses, transits, oppositions, saisons, hémisphères.',
       };
     }
     if (pathname.startsWith('/info/flat-earth')) {
       return {
-        title: 'MoonTracker — Observations et vérifications',
+        title: 'SpaceView.me — Observations et vérifications',
         desc: 'Vérifications reproductibles: terminateur lunaire, hauteur du Soleil, parallaxe, ciel austral.',
       };
     }
     if (pathname.startsWith('/info/bug')) {
       return {
-        title: 'MoonTracker — Déclarer un bug',
+        title: 'SpaceView.me — Déclarer un bug',
         desc: 'Signalez un problème avec URL partageable, captures, contexte (navigateur, OS, appareil).',
       };
     }
     return {
-      title: 'MoonTracker — Informations',
-      desc: 'Informations, aide et simulations pour MoonTracker.',
+      title: 'SpaceView.me — Informations',
+      desc: 'Informations, aide et simulations pour SpaceView.me.',
     };
   }, [pathname]);
 
@@ -63,11 +63,11 @@ export default function InfoPage() {
     script.text = JSON.stringify({
       '@context': 'https://schema.org',
       '@type': 'SoftwareApplication',
-      name: 'MoonTracker',
+      name: 'SpaceView.me',
       applicationCategory: 'EducationalApplication',
       operatingSystem: 'Web',
       url: window.location.origin,
-      description: 'Application web pour visualiser la Lune, le Soleil, les étoiles et les planètes en temps réel.',
+      description: 'Application web pour simuler la Lune, le Soleil, les étoiles et les planètes depuis n\'importe où.',
       license: 'https://opensource.org/license/mit/',
     });
 
@@ -85,7 +85,7 @@ export default function InfoPage() {
           <div className="flex items-center gap-3">
             <InfoLogo />
             <div className="flex flex-col leading-tight">
-              <span className="text-base font-semibold">MoonTracker</span>
+              <span className="text-base font-semibold">SpaceView.me</span>
               <span className="text-xs text-gray-600">Informations et Aide</span>
             </div>
           </div>
@@ -113,7 +113,7 @@ export default function InfoPage() {
 
       <footer className="border-t border-gray-200 text-sm text-gray-600">
         <div className="max-w-6xl mx-auto px-3 py-4">
-          © {new Date().getFullYear()} MoonTracker — MIT
+          © {new Date().getFullYear()} SpaceView — MIT
         </div>
       </footer>
     </div>

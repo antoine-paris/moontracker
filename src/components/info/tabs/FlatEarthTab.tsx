@@ -186,7 +186,7 @@ export default function FlatEarthTab() {
         </div>
       
 
-      <p>Si vous utilisez ce simulateur et que vous le comparez avec ce que vous pouvez observer dans la réalité (ou ce que vous donne le simulateur en « Terre sphérique » de MoonTracker), vous verrez qu'il y a beaucoup de choses qu'on n'arrive pas à expliquer sur une Terre plate.</p>
+      <p>Si vous utilisez ce simulateur et que vous le comparez avec ce que vous pouvez observer dans la réalité (ou ce que vous donne le simulateur en « Terre sphérique » de SpaceView), vous verrez qu'il y a beaucoup de choses qu'on n'arrive pas à expliquer sur une Terre plate.</p>
 
       <h3>Le coucher de soleil</h3>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', margin: '16px 0', flexWrap: 'wrap' }}>
@@ -275,7 +275,7 @@ export default function FlatEarthTab() {
       <p>Sur une Terre plate, on ne devrait pas voir la même image
        de la Lune selon le lieu où on l'observe (puisque les « Platistes » la théorisent à 5000 km 
        d'altitude — et que la Terre plate fait 40 000 km d'un bout à l'autre), alors que
-        sur le simulateur MoonTracker (et dans la vraie vie) on voit toujours la même face et
+        sur le simulateur SpaceView (et dans la vraie vie) on voit toujours la même face et
        phase de la Lune, et ce, peu importe où on se place (puisque pour les « sphéristes », la Lune est à presque 400 000 km).
        <br/>Sur une Terre sphérique, on voit aussi un effet supplémentaire : la Lune est bien la même, mais on la voit se « tourner » (jusqu'à avoir « la tête en bas »)<br/>
        </p>
@@ -284,7 +284,7 @@ export default function FlatEarthTab() {
         style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-moon-paris.jpg"
+              src="/img/capture/spaceview-application-moon-paris.jpg"
               alt="Simulation de la Lune vue de Paris"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -295,7 +295,7 @@ export default function FlatEarthTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-moon-cotonou.jpg"
+              src="/img/capture/spaceview-application-moon-cotonou.jpg"
               alt="Simulation de la Lune vue de Cotonou"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -306,7 +306,7 @@ export default function FlatEarthTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-moon-somalia.jpg"
+              src="/img/capture/spaceview-application-moon-somalia.jpg"
               alt="Simulation de la Lune vue de Somalie"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -317,7 +317,7 @@ export default function FlatEarthTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-moon-madagascar.jpg"
+              src="/img/capture/spaceview-application-moon-madagascar.jpg"
               alt="Simulation de la Lune vue de Madagascar"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -401,7 +401,7 @@ export default function FlatEarthTab() {
       (autour desquels les étoiles tournent) et le fait que les ciels de l’hémisphère nord et sud soient différents.
       Pourtant, les observateurs en Australie voient des étoiles invisibles depuis l'Europe !
       <br />De plus, quand on fait un time-lapse des étoiles sur une Terre plate, on devrait les voir tourner autour du « nord » et ce, peu importe d'où on les observe, alors que sur une Terre sphérique, on voit tourner les étoiles dans le sens des aiguilles d'une montre au pôle sud, et dans le sens inverse au pôle nord.<br/>
-      Dans ces vidéos faites sur MoonTracker, on voit d'ailleurs que, quand on est sur l'équateur et qu'on regarde au nord, elles tournent dans le sens inverse de quand on regarde au sud.</p>
+      Dans ces vidéos faites sur SpaceView, on voit d'ailleurs que, quand on est sur l'équateur et qu'on regarde au nord, elles tournent dans le sens inverse de quand on regarde au sud.</p>
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginLeft: '5em', marginRight: '5em', flexWrap: 'wrap' }}>
         <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
           <video
@@ -442,7 +442,7 @@ export default function FlatEarthTab() {
       Donc il faut forcément que la Lune soit plus proche de nous que ne l'est le soleil. 
       C'est possible dans le simulateur de Terre plate ci-dessus, mais c'est compliqué de trouver comment placer la Lune et le soleil pour obtenir les éclipses telles qu'on les observe depuis différents lieux. 
       <br/>Si on essaye avec la prochaine éclipse (qui sera visible le 12 août 2026 entre l'Europe et l'Afrique du Nord) : 
-      Les captures suivantes (faites avec MoonTracker) nous prédisent comment l'éclipse sera à exactement 20h32 (heure de Paris), depuis différents endroits :
+      Les captures suivantes (faites avec SpaceView) nous prédisent comment l'éclipse sera à exactement 20h32 (heure de Paris), depuis différents endroits :
       <br/>
       </p>
       <div 
@@ -450,46 +450,46 @@ export default function FlatEarthTab() {
         style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-oslo.jpg"
-              alt="Oslo, Norvège, le 12 août 2026 à 20h32 (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-oslo.jpg"
+              alt="Oslo, Norvège, le 12 août 2026 à 20h32 (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Oslo, Norvège, le 12 août 2026 à 20h32 (simulation Moontracker)
+              Oslo, Norvège, le 12 août 2026 à 20h32 (simulation SpaceView)
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-london.jpg"
-              alt="London, UK, le 12 août 2026 à 19h32 (heure locale) (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-london.jpg"
+              alt="London, UK, le 12 août 2026 à 19h32 (heure locale) (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              London, UK, le 12 août 2026 à 19h32 (heure locale) (simulation Moontracker)
+              London, UK, le 12 août 2026 à 19h32 (heure locale) (simulation SpaceView)
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-berlin.jpg"
-              alt="Berlin, Allemagne, le 12 août 2026 à 20h32 (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-berlin.jpg"
+              alt="Berlin, Allemagne, le 12 août 2026 à 20h32 (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Berlin, Allemagne, le 12 août 2026 à 20h32 (simulation Moontracker)
+              Berlin, Allemagne, le 12 août 2026 à 20h32 (simulation SpaceView)
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-paris.jpg"
-              alt="Paris, France, le 12 août 2026 à 20h32 (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-paris.jpg"
+              alt="Paris, France, le 12 août 2026 à 20h32 (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Paris, France, le 12 août 2026 à 20h32 (simulation Moontracker)
+              Paris, France, le 12 août 2026 à 20h32 (simulation SpaceView)
               
             </figcaption>
           </figure>
@@ -499,46 +499,46 @@ export default function FlatEarthTab() {
         style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-madrid.jpg"
-              alt="Madrid, Espagne, le 12 août 2026 à 20h32 (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-madrid.jpg"
+              alt="Madrid, Espagne, le 12 août 2026 à 20h32 (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Madrid, Espagne, le 12 août 2026 à 20h32 (simulation Moontracker)
+              Madrid, Espagne, le 12 août 2026 à 20h32 (simulation SpaceView)
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-Rabat.jpg"
-              alt="Rabat, Maroc, le 12 août 2026 à 19h32 (heure locale) (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-Rabat.jpg"
+              alt="Rabat, Maroc, le 12 août 2026 à 19h32 (heure locale) (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Rabat, Maroc, le 12 août 2026 à 19h32 (heure locale) (simulation Moontracker)
+              Rabat, Maroc, le 12 août 2026 à 19h32 (heure locale) (simulation SpaceView)
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-alger.jpg"
-              alt="Alger, Algérie, le 12 août 2026 à 19h32 (heure locale) (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-alger.jpg"
+              alt="Alger, Algérie, le 12 août 2026 à 19h32 (heure locale) (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Alger, Algérie, le 12 août 2026 à 19h32 (heure locale) (simulation Moontracker)
+              Alger, Algérie, le 12 août 2026 à 19h32 (heure locale) (simulation SpaceView)
             </figcaption>
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-eclipse-2026-dakar.jpg"
-              alt="Dakar, Sénégal, le 12 août 2026 à 18h32 (heure locale) (simulation Moontracker)"
+              src="/img/capture/spaceview-eclipse-2026-dakar.jpg"
+              alt="Dakar, Sénégal, le 12 août 2026 à 18h32 (heure locale) (simulation SpaceView)"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
             />
             <figcaption className="text-sm text-gray-500 mt-1">
-              Dakar, Sénégal, le 12 août 2026 à 18h32 (heure locale) (simulation Moontracker)
+              Dakar, Sénégal, le 12 août 2026 à 18h32 (heure locale) (simulation SpaceView)
               
             </figcaption>
           </figure>
@@ -551,7 +551,7 @@ export default function FlatEarthTab() {
         rel="noopener noreferrer"
         className="underline"
       >
-        Comparez avec la simulation MoonTracker (Terre sphérique)
+        Comparez avec la simulation SpaceView (Terre sphérique)
       </a>
       <br/>Jusqu'ici personne n'a trouvé de configuration de terre plate qui puisse expliquer toutes ces images en même temps.
       </p>

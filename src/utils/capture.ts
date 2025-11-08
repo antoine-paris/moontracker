@@ -166,10 +166,10 @@ function makeExifTiff(meta?: PngMeta): Uint8Array | null {
 
     const whenMs = Number.isFinite(meta?.whenMs) ? (meta!.whenMs as number) : Date.now();
     const dt = fmtExifDateTime(whenMs);
-    const makeStr = 'MoonTracker';
+    const makeStr = 'SpaceView';
     const modelStr = asciiSafe(`Simulation ${meta?.deviceLabel || 'Simulation'}`);
     const urlStr = meta?.exportUrl ? asciiSafe(meta.exportUrl) : '';
-    const software = asciiSafe(`MoonTracker — ${(meta?.siteUrl || (typeof window !== 'undefined' ? window.location.origin : ''))}`);
+    const software = asciiSafe(`SpaceView — ${(meta?.siteUrl || (typeof window !== 'undefined' ? window.location.origin : ''))}`);
 
     const userCommentObj = {
       site: meta?.siteUrl,
@@ -428,11 +428,11 @@ function addMetadataToPngDataUrl(dataUrl: string, meta?: PngMeta): string {
     if (!isPng(u8)) return dataUrl;
 
     const creationIso = meta.whenMs ? new Date(meta.whenMs).toISOString() : new Date().toISOString();
-    const software = `MoonTracker — ${meta.siteUrl || (typeof window !== 'undefined' ? window.location.origin : '')}`;
+    const software = `SpaceView — ${meta.siteUrl || (typeof window !== 'undefined' ? window.location.origin : '')}`;
 
     // JSON payload with all details (UTF‑8, iTXt)
     const metaJson = JSON.stringify({
-      app: 'MoonTracker',
+      app: 'SpaceView',
       site: meta.siteUrl || (typeof window !== 'undefined' ? window.location.origin : undefined),
       city: meta.city,
       coords: (Number.isFinite(meta.lat) && Number.isFinite(meta.lng)) ? { lat: meta.lat, lng: meta.lng } : undefined,
@@ -458,7 +458,7 @@ function addMetadataToPngDataUrl(dataUrl: string, meta?: PngMeta): string {
     chunks.push(makeTEXt('Creation Time', creationIso));
     // NEW: add Source URL as tEXt for broad tooling visibility
     if (meta.exportUrl) chunks.push(makeTEXt('Source', meta.exportUrl));
-    chunks.push(makeITXt('MoonTracker-Info', metaJson));
+    chunks.push(makeITXt('SpaceView-Info', metaJson));
 
     const withMeta = insertChunksAfterIHDR(u8, chunks);
     return uint8ToDataUrl(withMeta);

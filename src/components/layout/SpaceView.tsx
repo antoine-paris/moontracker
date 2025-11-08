@@ -174,9 +174,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   }, [overlayInfoString]);
 
   const domainFromBrowser = useMemo(() => {
-    if (typeof window === 'undefined' || !window?.location) return 'MoonTracker';
+    if (typeof window === 'undefined' || !window?.location) return 'SpaceView';
     const hn = window.location.hostname || '';
-    return hn.replace(/^www\./, '') || 'MoonTracker';
+    return hn.replace(/^www\./, '') || 'SpaceView';
   }, []);
 
   // Sun/Moon model (astro, projections, sizes, rotations, phase/mask)

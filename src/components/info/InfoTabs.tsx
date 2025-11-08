@@ -1,15 +1,15 @@
 import { useEffect, useMemo, useState } from 'react';
-import MoonTrackerTab from './tabs/MoonTrackerTab';
+import SpaceViewTab from './tabs/SpaceViewTab';
 import HelpTab from './tabs/HelpTab';
 import SimulationsTab from './tabs/SimulationsTab';
 import FlatEarthTab from './tabs/FlatEarthTab';
 import BugReportTab from './tabs/BugReportTab';
 import ContactTab from './tabs/ContactTab';
 
-type TabId = 'moontracker' | 'help' | 'simulations' | 'flatearth' | 'bug' | 'contact';
+type TabId = 'spaceview' | 'help' | 'simulations' | 'flatearth' | 'bug' | 'contact';
 
 const TABS: { id: TabId; label: string }[] = [
-  { id: 'moontracker', label: 'MoonTracker' },
+  { id: 'spaceview', label: 'SpaceView' },
   { id: 'help',        label: 'Aide' },
   { id: 'simulations', label: 'Simulations' },
   { id: 'flatearth',   label: 'Terre plate ?' },
@@ -17,8 +17,8 @@ const TABS: { id: TabId; label: string }[] = [
   { id: 'contact',    label: 'Contact' },
 ];
 
-export default function InfoTabs({ initialTab = 'moontracker' }: { initialTab?: string }) {
-  const validInit = (['moontracker','help','simulations','flatearth','bug'].includes(initialTab) ? initialTab : 'moontracker') as TabId;
+export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: string }) {
+  const validInit = (['spaceview','help','simulations','flatearth','bug'].includes(initialTab) ? initialTab : 'spaceview') as TabId;
   const [active, setActive] = useState<TabId>(validInit);
 
   useEffect(() => {
@@ -31,7 +31,7 @@ export default function InfoTabs({ initialTab = 'moontracker' }: { initialTab?: 
 
   const renderActive = useMemo(() => {
     switch (active) {
-      case 'moontracker': return <MoonTrackerTab />;
+      case 'spaceview': return <SpaceViewTab />;
       case 'help':        return <HelpTab />;
       case 'simulations': return <SimulationsTab />;
       case 'flatearth':   return <FlatEarthTab />;

@@ -1,7 +1,7 @@
 {
-  "short_name": "MoonTracker",
-  "name": "Moon Tracker",
-  "description": "Track the moon's position and phase.",
+  "short_name": "SpaceView",
+  "name": "SpaceView.me",
+  "description": "Create a skyview from anywhere anytime.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",

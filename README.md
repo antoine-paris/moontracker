@@ -1,7 +1,7 @@
 ![Preview](preview.jpg)
 ![Preview 2](preview2.jpg)
 
-# MoonTracker
+# SpaceView.me
 
 Interactive web app to visualize the sky: Moon and Sun phases/orientations, stars, and planets in real time from any location. Built with React, TypeScript, Vite, Tailwind, astronomy-engine, and three.js.
 
@@ -16,7 +16,7 @@ Interactive web app to visualize the sky: Moon and Sun phases/orientations, star
 
 ## Overview
 
-MoonTracker computes Sun/Moon/planet positions, accounts for apparent sizes and orientations (bright limb and sprite rotations), and renders a sky stage with several projections. Time is driven by a single UTC timestamp to avoid DST pitfalls; the UI shows local time for the selected location.
+SpaceView.me computes Sun/Moon/planet positions, accounts for apparent sizes and orientations (bright limb and sprite rotations), and renders a sky stage with several projections. Time is driven by a single UTC timestamp to avoid DST pitfalls; the UI shows local time for the selected location.
 
 ## Features
 

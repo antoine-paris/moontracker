@@ -939,7 +939,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
         Réinitialiser
       </button>
       <small>
-      Avec cette application, simulez votre hypothèse de terre plate et comparez au simulateur MoonTracker (qui est basé sur une terre sphérique).
+      Avec cette application, simulez votre hypothèse de terre plate et comparez au simulateur SpaceView (qui est basé sur une terre sphérique).
       Dans cette version, la lune fait un "tour" en 29 jours.
 
       <br/><strong style={{ color: 'white' }}>Si vous pensez que nous devons rajouter un paramètre réglable pour tester votre hypothèse, contactez nous sur les réseaux sociaux.</strong>

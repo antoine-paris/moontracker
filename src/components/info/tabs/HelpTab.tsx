@@ -254,18 +254,18 @@ function I({ id, title, size }: { id: IconId; title?: string; size?: 'small' | '
 export default function HelpTab() {
   return (
     <article itemScope itemType="https://schema.org/SoftwareApplication" className="prose-info">
-      <h1>Guide d’utilisation MoonTracker — Simulateur d’astrophotographie (et du ciel depuis chez vous)</h1>
+      <h1>Guide d’utilisation SpaceView.me — Simulateur d’astrophotographie (et du ciel depuis chez vous)</h1>
       <p>Pour des exemples prêts à photographier, cliquez sur <strong>Simulations</strong> ci‑dessus.</p>
       <p>
-        MoonTracker est un simulateur de ciel et de prise de vue astro. Il simule le Soleil, la Lune, les planètes, l’horizon et le ciel étoilé en 3D. 
+        SpaceView.me est un simulateur de ciel et de prise de vue astro. Il simule le Soleil, la Lune, les planètes, l’horizon et le ciel étoilé en 3D. 
         Ce guide détaille chaque fonctionnalité telle que visible dans l’interface. Idéal pour préparer une <strong>éclipse</strong>, un <strong>lever/coucher</strong>,
         un <strong>alignement planétaire</strong> ou un <strong>shoot d’astro‑photo</strong>.
       </p>
 
       <h2>Écran principal</h2>
       <figure className="mx-[5rem] my-4">
-        <img src="/img/capture/moontracker-application-capture-1.png" alt="Vue d’ensemble de l’écran principal" className="rounded-md border border-black/10 shadow-sm" />
-        <figcaption className="text-sm text-gray-500 mt-1">Écran principal de Moontracker.</figcaption>
+        <img src="/img/capture/spaceview-application-capture-1.png" alt="Vue d’ensemble de l’écran principal" className="rounded-md border border-black/10 shadow-sm" />
+        <figcaption className="text-sm text-gray-500 mt-1">Écran principal de SpaceView.</figcaption>
       </figure>
       
       <h3><I id="panels" /> <I id="fullscreen" />Afficher/Masquer l’interface</h3>
@@ -282,7 +282,7 @@ export default function HelpTab() {
           playsInline
           className="w-auto max-w-full h-auto rounded-md border border-black/10 shadow-sm"
         >
-          <source src="/img/capture/moontracker-video-sample-1.webm" type="video/webm" />
+          <source src="/img/capture/spaceview-video-sample-1.webm" type="video/webm" />
           Votre navigateur ne supporte pas la lecture de vidéos WebM.
         </video>
         <figcaption className="text-sm text-gray-500 mt-1">
@@ -323,7 +323,7 @@ export default function HelpTab() {
       <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-export-1.png"
+            src="/img/capture/spaceview-application-export-1.png"
             alt="Fonction de capture et d’exportation de la scène"
             className="w-full h-auto rounded-md border border-black/10 shadow-sm"
           />
@@ -333,7 +333,7 @@ export default function HelpTab() {
         </figure>
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-export-2.png"
+            src="/img/capture/spaceview-application-export-2.png"
             alt="Fonction de capture et d’exportation de la scène"
             className="w-full h-auto rounded-md border border-black/10 shadow-sm"
           />
@@ -355,7 +355,7 @@ export default function HelpTab() {
         <div className="m-0 md:col-span-1 md:mr-[5em]">
           <figure className="mt-0">
             <img
-              src="/img/capture/moontracker-application-follow-1.png"
+              src="/img/capture/spaceview-application-follow-1.png"
               alt="Fonction de choix de la scène principale"
               className="w-full h-auto rounded-md border border-black/10 shadow-sm"
             />
@@ -423,7 +423,7 @@ export default function HelpTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-rectipanini-173.jpg"
+                src="/img/capture/spaceview-application-projection-rectipanini-173.jpg"
                 alt="Projection Recti-Panini à 173° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -433,7 +433,7 @@ export default function HelpTab() {
             </figure>
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-rectipanini-114.jpg"
+                src="/img/capture/spaceview-application-projection-rectipanini-114.jpg"
                 alt="Projection Recti-Panini à 114° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -452,7 +452,7 @@ export default function HelpTab() {
             </figure>
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-rectiperspective-114.jpg"
+                src="/img/capture/spaceview-application-projection-rectiperspective-114.jpg"
                 alt="Projection Recti-Perspective à 114° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -468,7 +468,7 @@ export default function HelpTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-stereocentre-173.jpg"
+                src="/img/capture/spaceview-application-projection-stereocentre-173.jpg"
                 alt="Projection stéréographique centrée à 173° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -478,7 +478,7 @@ export default function HelpTab() {
             </figure>
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-stereocentre-114.jpg"
+                src="/img/capture/spaceview-application-projection-stereocentre-114.jpg"
                 alt="Projection stéréographique centrée à 114° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -494,7 +494,7 @@ export default function HelpTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-ortho-173.jpg"
+                src="/img/capture/spaceview-application-projection-ortho-173.jpg"
                 alt="Projection orthographique à 173° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -504,7 +504,7 @@ export default function HelpTab() {
             </figure>
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-ortho-114.jpg"
+                src="/img/capture/spaceview-application-projection-ortho-114.jpg"
                 alt="Projection orthographique à 114° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -519,7 +519,7 @@ export default function HelpTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-cylindrique-173.jpg"
+                src="/img/capture/spaceview-application-projection-cylindrique-173.jpg"
                 alt="Projection cylindrique à 173° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -529,7 +529,7 @@ export default function HelpTab() {
             </figure>
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-cylindrique-114.jpg"
+                src="/img/capture/spaceview-application-projection-cylindrique-114.jpg"
                 alt="Projection cylindrique à 114° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -545,7 +545,7 @@ export default function HelpTab() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-cylindriquehorizon-173.jpg"
+                src="/img/capture/spaceview-application-projection-cylindriquehorizon-173.jpg"
                 alt="Projection cylindrique (horizon) à 173° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -555,7 +555,7 @@ export default function HelpTab() {
             </figure>
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-projection-cylindriquehorizon-114.jpg"
+                src="/img/capture/spaceview-application-projection-cylindriquehorizon-114.jpg"
                 alt="Projection cylindrique (horizon) à 114° de champ de vision"
                 className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
               />
@@ -576,7 +576,7 @@ export default function HelpTab() {
         Des pointillés indiquent le format 16:9.</p>
       <figure style={{ marginLeft:'5em', marginRight:'5em' }}  className="m-0">
         <img
-          src="/img/capture/moontracker-application-capture-cadre-iphone.jpg"
+          src="/img/capture/spaceview-application-capture-cadre-iphone.jpg"
           alt="Photo de la Lune avec un iPhone 15 Pro. Le cadre gris est aux dimensions du capteur de l’iPhone."
           className="w-full max-w-2/3 h-auto rounded-md border border-black/10 shadow-sm"
         />
@@ -597,7 +597,7 @@ export default function HelpTab() {
       <div style={{ marginLeft:'5em', marginRight:'5em' }}  className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-capture-globe.jpg"
+            src="/img/capture/spaceview-application-capture-globe.jpg"
             alt="Indicateur du lieu et de la direction d’observation"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
           />
@@ -627,7 +627,7 @@ export default function HelpTab() {
       <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-capture-cities.jpg"
+            src="/img/capture/spaceview-application-capture-cities.jpg"
             alt="Se déplacer sur la Terre avec l’onglet Villes"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
           />
@@ -649,7 +649,7 @@ export default function HelpTab() {
       <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-moon-paris.jpg"
+            src="/img/capture/spaceview-application-moon-paris.jpg"
             alt="Simulation de la Lune vue de Paris"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -660,7 +660,7 @@ export default function HelpTab() {
         </figure>
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-moon-cotonou.jpg"
+            src="/img/capture/spaceview-application-moon-cotonou.jpg"
             alt="Simulation de la Lune vue de Cotonou"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -671,7 +671,7 @@ export default function HelpTab() {
         </figure>
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-moon-somalia.jpg"
+            src="/img/capture/spaceview-application-moon-somalia.jpg"
             alt="Simulation de la Lune vue de Somalie"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -682,7 +682,7 @@ export default function HelpTab() {
         </figure>
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-moon-madagascar.jpg"
+            src="/img/capture/spaceview-application-moon-madagascar.jpg"
             alt="Simulation de la Lune vue de Madagascar"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -708,7 +708,7 @@ export default function HelpTab() {
       <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
-            src="/img/capture/moontracker-application-capture-coord.jpg"
+            src="/img/capture/spaceview-application-capture-coord.jpg"
             alt="Se déplacer sur la Terre avec l’onglet Coordonnées"
             className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"
           />
@@ -742,7 +742,7 @@ export default function HelpTab() {
         <div className="m-0 md:col-span-1 md:mr-[5em]">
           <figure className="mt-0">
             <img
-              src="/img/capture/moontracker-application-capture-date.jpg"
+              src="/img/capture/spaceview-application-capture-date.jpg"
               alt="Choix de l’heure et de la date d’observation. Paramétrage de l’animation"
               className="w-full h-auto rounded-md border border-black/10 shadow-sm"
             />
@@ -811,7 +811,7 @@ export default function HelpTab() {
         <div style={{marginLeft: '5em', marginRight: '5em'}} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-sun-noon-followup.jpg"
+              src="/img/capture/spaceview-application-sun-noon-followup.jpg"
               alt="Une image du Soleil à midi superposée tout au long de l’année montre la progression des saisons"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -822,7 +822,7 @@ export default function HelpTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-sun-venus-dance.jpg"
+              src="/img/capture/spaceview-application-sun-venus-dance.jpg"
               alt="Simulation de la danse de Vénus et de Mercure autour du Soleil"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -835,7 +835,7 @@ export default function HelpTab() {
         <div style={{marginLeft: '5em', marginRight: '5em'}} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-venus-transit.png"
+              src="/img/capture/spaceview-application-venus-transit.png"
               alt="Transit de Vénus vu de Tokyo en 2012"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -846,7 +846,7 @@ export default function HelpTab() {
           </figure>
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-sun-vens-polaris.jpg"
+              src="/img/capture/spaceview-application-sun-vens-polaris.jpg"
               alt="Le Soleil, Polaris, Vénus et Mercure en pose longue"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -868,7 +868,7 @@ export default function HelpTab() {
           Elle peut aider à animer une présentation et à la rendre plus immersive (même si elle est moins réaliste).
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-not-enlarge.jpg"
+                src="/img/capture/spaceview-application-not-enlarge.jpg"
                 alt="Simulation à taille réelle"
                 className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -879,7 +879,7 @@ export default function HelpTab() {
             </figure>
             <figure className="m-0">
               <img
-                src="/img/capture/moontracker-application-enlarge.jpg"
+                src="/img/capture/spaceview-application-enlarge.jpg"
                 alt="Simulation avec agrandissement"
                 className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -914,7 +914,7 @@ export default function HelpTab() {
         <li><I id="ecliptic" />Affiche ou cache le plan de l’écliptique.
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-ecliptic.jpg"
+              src="/img/capture/spaceview-application-ecliptic.jpg"
               alt="Méridien standard, Équateur et cardinaux des planètes"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -927,7 +927,7 @@ export default function HelpTab() {
         <li><I id="moonCard" />Affiche ou cache les cardinaux locaux sur la Lune et les planètes.
           <figure className="m-0">
             <img
-              src="/img/capture/moontracker-application-cards.jpg"
+              src="/img/capture/spaceview-application-cards.jpg"
               alt="Méridien standard, Équateur et cardinaux des planètes"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -944,7 +944,7 @@ export default function HelpTab() {
         <p>En bas de la scène : des informations télémétriques sur la Lune et le Soleil.</p>
         <figure style={{marginLeft: '5em', marginRight: '5em'}}  className="m-0">
             <img
-              src="/img/capture/moontracker-application-moon3d.jpg"
+              src="/img/capture/spaceview-application-moon3d.jpg"
               alt="Lune rendue en 3D avec effet de libration, orientation et phase"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 
@@ -955,7 +955,7 @@ export default function HelpTab() {
           </figure>
           <figure style={{marginLeft: '5em', marginRight: '5em'}} className="m-0">
             <img
-              src="/img/capture/moontracker-application-telemetry.jpg"
+              src="/img/capture/spaceview-application-telemetry.jpg"
               alt="Télémétrie de l’application"
               className="w-auto max-w-auto h-auto rounded-md border border-black/10 shadow-sm"  
 

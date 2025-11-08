@@ -1,8 +1,8 @@
 export default function ContactTab() {
   const platforms = [
-    { name: 'X (Twitter)', slug: 'x', url: 'https://twitter.com/moontracker' },
-    { name: 'Facebook', slug: 'facebook', url: 'https://facebook.com/moontracker' },
-    { name: 'GitHub', slug: 'github', url: 'https://github.com/antoine-paris/moontracker' },
+    { name: 'X (Twitter)', slug: 'x', url: 'https://twitter.com/spaceview' },
+    { name: 'Facebook', slug: 'facebook', url: 'https://facebook.com/spaceview' },
+    { name: 'GitHub', slug: 'github', url: 'https://github.com/antoine-paris/spaceview' },
     { name: 'Instagram', slug: 'instagram', url: 'https://instagram.com' },
     { name: 'YouTube', slug: 'youtube', url: 'https://youtube.com' },
     { name: 'TikTok', slug: 'tiktok', url: 'https://tiktok.com' },
@@ -32,7 +32,7 @@ export default function ContactTab() {
   return (
     <article>
       <h1>Contact</h1>
-      <p>Retrouvez Moontracker sur les principaux réseaux sociaux et plateformes de partage.</p>
+      <p>Retrouvez SpaceView sur les principaux réseaux sociaux et plateformes de partage.</p>
       <ul style={gridStyle}>
         {platforms.map(p => (
           <li key={p.slug}>

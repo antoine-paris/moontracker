@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 
 const tabs = [
-  { to: '/info', label: 'MoonTracker', end: true },
+  { to: '/info', label: 'SpaceView', end: true },
   { to: '/info/aide', label: 'Aide' },
   { to: '/info/simulations', label: 'Simulations' },
   { to: '/info/flat-earth', label: 'Terre plate ?' },

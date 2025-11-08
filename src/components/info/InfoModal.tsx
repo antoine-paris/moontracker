@@ -5,11 +5,11 @@ import InfoLogo from './InfoLogo';
 
 type Props = {
   open: boolean;
-  initialTab?: string; // 'moontracker' | 'help' | 'simulations' | 'flatearth' | 'bug'
+  initialTab?: string; // 'spaceview' | 'help' | 'simulations' | 'flatearth' | 'bug'
   onClose: () => void;
 };
 
-export default function InfoModal({ open, initialTab = 'moontracker', onClose }: Props) {
+export default function InfoModal({ open, initialTab = 'spaceview', onClose }: Props) {
   const overlayRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -33,7 +33,7 @@ export default function InfoModal({ open, initialTab = 'moontracker', onClose }:
       ref={overlayRef}
       role="dialog"
       aria-modal="true"
-      aria-label="Informations MoonTracker"
+      aria-label="Informations SpaceView.me"
       className="fixed inset-0 z-[2000] bg-black/70 flex items-center justify-center p-4"
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
@@ -45,7 +45,7 @@ export default function InfoModal({ open, initialTab = 'moontracker', onClose }:
             <div className="flex items-center gap-3">
               <InfoLogo />
               <div className="flex flex-col leading-tight">
-                <span className="text-base font-semibold">MoonTracker</span>
+                <span className="text-base font-semibold">SpaceView.me</span>
                 <span className="text-xs text-gray-600">Informations et Aide</span>
               </div>
             </div>

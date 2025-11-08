@@ -539,12 +539,12 @@ export default function SidebarLocations({
         <img
           ref={logoRef}
           src={appLogo}
-          alt="MoonTracker"
+          alt="SpaceView.me"
           width={48}
           height={48}
           style={styles.logo}
         />
-        <span style={styles.brandText}>MoonTracker</span>
+        <span style={styles.brandText}>SpaceView.me</span>
         <button
           ref={toggleRef}
           type="button"

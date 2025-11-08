@@ -278,8 +278,8 @@ function useExternalDebug(debugProp?: boolean) {
       const ce = e as CustomEvent;
       setExtDebug(!!ce.detail);
     };
-    window.addEventListener("moontracker:debug", handler as EventListener);
-    return () => window.removeEventListener("moontracker:debug", handler as EventListener);
+    window.addEventListener("spaceview:debug", handler as EventListener);
+    return () => window.removeEventListener("spaceview:debug", handler as EventListener);
   }, []);
 
   return !!(debugProp || extDebug);

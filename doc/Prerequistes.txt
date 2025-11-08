@@ -9,8 +9,8 @@ VS Code installé
 
 Dans VS Code → Terminal intégré :
 
-npm create vite@latest moontracker -- --template react-ts
-cd moontracker
+npm create vite@latest spaceview -- --template react-ts
+cd spaceview
 npm install
 
 2) Installer les dépendances

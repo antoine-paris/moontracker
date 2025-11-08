@@ -1,12 +1,12 @@
-export default function MoonTrackerTab() {
+export default function SpaceViewTab() {
   const ldSoftware = {
     '@context': 'https://schema.org',
     '@type': 'SoftwareApplication',
-    name: 'MoonTracker',
+    name: 'SpaceView',
     applicationCategory: 'EducationalApplication',
     applicationSubCategory: 'Astronomy simulator, Astrophotography planner',
     operatingSystem: 'Web',
-    url: 'https://github.com/antoine-paris/moontracker',
+    url: 'https://github.com/antoine-paris/spaceview',
     license: 'https://opensource.org/licenses/MIT',
     offers: {
       '@type': 'Offer',
@@ -14,7 +14,7 @@ export default function MoonTrackerTab() {
       priceCurrency: 'EUR',
     },
     description:
-      'MoonTracker est un simulateur astronomique 3D en temps réel et un planificateur d’astrophotographie : Soleil, Lune, planètes, phases, libration, projections grand-angle (Recti‑Panini, Stéréographique, Orthographique, Rectilinéaire, Cylindrique), timelapse, pose longue, cadre photo et export.',
+      'SpaceView est un simulateur astronomique 3D en temps réel et un planificateur d’astrophotographie : Soleil, Lune, planètes, phases, libration, projections grand-angle (Recti‑Panini, Stéréographique, Orthographique, Rectilinéaire, Cylindrique), timelapse, pose longue, cadre photo et export.',
     keywords:
       'simulateur ciel, simulateur astronomique, astrophotographie, éclipse, phases de la Lune, timelapse, recti-panini, projection stéréographique, horizon, FOV, champ de vision, cadre photo, enregistrement vidéo webm, capture PNG',
     featureList: [
@@ -36,7 +36,7 @@ export default function MoonTrackerTab() {
     mainEntity: [
       {
         '@type': 'Question',
-        name: 'MoonTracker est-il gratuit ?',
+        name: 'SpaceView est-il gratuit ?',
         acceptedAnswer: {
           '@type': 'Answer',
           text:
@@ -85,7 +85,7 @@ export default function MoonTrackerTab() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ldFaq) }}
       />
 
-      <h1 itemProp="name">MoonTracker — Simulateur astronomique 3D et planificateur d’astrophotographie</h1>
+      <h1 itemProp="name">SpaceView.me — Simulateur astronomique 3D et planificateur d’astrophotographie</h1>
       <p itemProp="description">
         Visualisez le ciel en temps réel (Soleil, Lune, planètes, étoiles) avec phases, tailles apparentes, libration,
         projections grand‑angle et outils photo. Planifiez une éclipse, un lever/coucher, un transit ou une session
@@ -95,7 +95,7 @@ export default function MoonTrackerTab() {
         Gratuit • Open‑source • Sans inscription • Fonctionne dans le navigateur (desktop/mobile modernes)
       </p>
 
-      <h2>Pourquoi MoonTracker ?</h2>
+      <h2>Pourquoi SpaceView ?</h2>
       <ul>
         <li>Comprendre et expliquer visuellement les phénomènes (phases, écliptique, hauteurs, libration).</li>
         <li>Préparer des prises de vue crédibles: FOV, capteurs, focales, cadre 3:2/16:9, projections adaptées.</li>
@@ -141,7 +141,7 @@ export default function MoonTrackerTab() {
       
       <figure className="m-0" style={{ marginLeft: '5em', marginRight: '5em' }}>
         <img
-          src="/img/capture/moontracker-application-export-1.png"
+          src="/img/capture/spaceview-application-export-1.png"
           alt="Fonction de capture et d’exportation de la scène"
           className="w-full h-auto rounded-md border border-black/10 shadow-sm"
         />
@@ -154,7 +154,7 @@ export default function MoonTrackerTab() {
       <h2>FAQ</h2>
       <div style={{ marginLeft:'5em', marginRight:'5em' }}>
         <details >
-          <summary>MoonTracker est‑il gratuit ?</summary>
+          <summary>SpaceView est‑il gratuit ?</summary>
           <p>Oui, open‑source sous licence MIT, utilisable gratuitement dans un navigateur moderne.</p>
         </details>
         <details>
@@ -172,7 +172,7 @@ export default function MoonTrackerTab() {
       </div>
       <h2>Open‑source et crédits</h2>
       <p>
-        Code source: <a href="https://github.com/antoine-paris/moontracker" target="_blank" rel="noopener noreferrer" itemProp="url">GitHub</a> —
+        Code source: <a href="https://github.com/antoine-paris/spaceview" target="_blank" rel="noopener noreferrer" itemProp="url">GitHub</a> —
         licence <span itemProp="license">MIT</span>. Stack: React, TypeScript, Vite, Tailwind, three.js, @react-three/fiber,
         astronomy-engine, Natural Earth, etc.
       </p>
