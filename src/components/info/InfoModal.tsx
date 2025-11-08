@@ -49,7 +49,7 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
               <InfoLogo showBackground={false} size={64} />
               <div className="flex flex-col leading-tight">
                 <span className="text-base font-semibold">SpaceView.me</span>
-                <span className="text-xs text-gray-600">{t('ui:general.information')} et {t('ui:general.help')}</span>
+                <span className="text-xs text-gray-600">{t('ui:general.information')} {t('ui:general.and')} {t('ui:general.help')}</span>
               </div>
             </div>
             <div className="flex items-center gap-3">

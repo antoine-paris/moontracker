@@ -191,7 +191,8 @@
     "close": "Fermer",
     "open": "Ouvrir",
     "calculate": "Calculer",
-    "nearestCity": "Ville de + de 100 000 habitants la plus proche"
+    "nearestCity": "Ville de + de 100 000 habitants la plus proche",
+    "and": "et"
   },
   "sidebar": {
     "locationsSidebarLabel": "Barre latérale des lieux",

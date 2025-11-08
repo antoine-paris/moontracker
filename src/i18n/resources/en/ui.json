@@ -192,7 +192,8 @@
     "close": "Close",
     "open": "Open",
     "calculate": "Calculate",
-    "nearestCity": "Nearest city with 100,000+ inhabitants"
+    "nearestCity": "Nearest city with 100,000+ inhabitants",
+    "and": "and"
   },
   "sidebar": {
     "locationsSidebarLabel": "Locations sidebar",
