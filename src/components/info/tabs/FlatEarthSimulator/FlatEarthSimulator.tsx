@@ -1,4 +1,5 @@
 import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Canvas, useFrame, useThree } from '@react-three/fiber'; // + useThree
 import { OrbitControls, Line, useTexture, Html } from '@react-three/drei';
 import * as THREE from 'three';
@@ -618,6 +619,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
   isExpanded: boolean;
   onToggleExpand: () => void;
 }) {
+  const { t } = useTranslation('flatEarthSimulator');
   // conversion: 1 unité scène = (circumference / (2*radius)) km
   const kmPerUnit = EARTH_CIRCUMFERENCE_KM / (2 * params.diskRadius);
   const fmtKm = (u: number) => `${Math.round(u * kmPerUnit)} km`;
@@ -646,7 +648,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 8 }}>
           <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-            Champ de vision (FOV) : {params.cameraFov.toFixed(0)}°
+            {t('controls.fov')} : {params.cameraFov.toFixed(0)}°
             <input
               type="range"
               min={50}
@@ -660,8 +662,8 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
 
           <button
             onClick={onToggleExpand}
-            title={isExpanded ? 'Retour' : 'Agrandir'}
-            aria-label={isExpanded ? 'Retour' : 'Agrandir'}
+            title={isExpanded ? t('controls.back') : t('controls.expand')}
+            aria-label={isExpanded ? t('controls.back') : t('controls.expand')}
             style={{
               padding: '6px 10px',
               background: '#1f2937',
@@ -674,7 +676,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
               whiteSpace: 'nowrap',
             }}
           >
-            {isExpanded ? 'Retour' : 'Agrandir'}
+            {isExpanded ? t('controls.back') : t('controls.expand')}
           </button>
         </div>
       </div>
@@ -682,7 +684,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
       <div style={{ marginBottom: '16px' }}>
         <div style={{ display: 'flex', gap: 12 }}>
           <label style={{ display: 'block', fontSize: '12px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-            Animation (24h)
+            {t('controls.animation')}
             <input
               type="range"
               min="0"
@@ -697,8 +699,8 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
           {/* Bouton Play/Pause remplaçant le slider de vitesse */}
           <div style={{ display: 'flex', alignItems: 'flex-end' }}>
             <button
-              aria-label={isPlaying ? 'Mettre en pause' : 'Lecture'}
-              title={isPlaying ? 'Pause' : 'Lecture'}
+              aria-label={isPlaying ? t('controls.pause') : t('controls.play')}
+              title={isPlaying ? t('controls.pause') : t('controls.play')}
               aria-pressed={isPlaying}
               onClick={() =>
                 setParams({
@@ -743,15 +745,15 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
             checked={params.showTrajectories}
             onChange={(e) => setParams({ ...params, showTrajectories: e.target.checked })}
           />
-          {' '}Afficher les Trajectories
+          {' '}{t('controls.showTrajectories')}
         </label>
 
       
       {/* Sliders Soleil sur une seule ligne */}
-      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px', color:'white' }}>Soleil</h4>
+      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px', color:'white' }}>{t('sun.title')}</h4>
       <div style={{ display: 'flex', gap: 12 }}>
         <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-           Hauteur: {fmtKm(params.sunHeight)}
+           {t('sun.height')}: {fmtKm(params.sunHeight)}
           <input
             type="range"
             min="2"
@@ -764,7 +766,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
         </label>
 
         <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-          Taille: {fmtKm(params.sunSize*2)}
+          {t('sun.size')}: {fmtKm(params.sunSize*2)}
           <input
             type="range"
             min="0.05"
@@ -777,7 +779,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
         </label>
 
         <label style={{ display: 'block', fontSize: '10px', marginBottom: 0, flex: 1, minWidth: 0 }}>
-          Orbite: {fmtKm(params.sunDistance)}
+          {t('sun.orbit')}: {fmtKm(params.sunDistance)}
           <input
             type="range"
             min="5"
@@ -793,7 +795,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
       {/* Lumière du Soleil */}
       <div style={{ display: 'flex', gap: 12 }}>
         <label style={{ display: 'block', fontSize: '10px', flex: 1 }}>
-          Intensité
+          {t('sun.intensity')}
           <input
             type="range"
             min="200"
@@ -806,7 +808,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
         </label>
 
         <label style={{ display: 'block', fontSize: '10px', flex: 1 }}>
-          Largeur du faisceau
+          {t('sun.beamWidth')}
           <input
             type="range"
             min="2"
@@ -836,10 +838,10 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
 
 
       {/* Sliders Lune sur une seule ligne */}
-      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px', color:'white' }}>Lune</h4>
+      <h4 style={{ display: 'flex', gap: 12, fontSize: '14px', color:'white' }}>{t('moon.title')}</h4>
       <div style={{ display: 'flex', gap: 12, marginBottom: '16px' }}>
         <label style={{ display: 'block', fontSize: '10px', marginBottom: '8px' }}>
-          Hauteur: {fmtKm(params.moonHeight)}
+          {t('moon.height')}: {fmtKm(params.moonHeight)}
           <input
             type="range"
             min="5"
@@ -852,7 +854,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
         </label>
 
         <label style={{ display: 'block', fontSize: '10px', marginBottom: '8px' }}>
-          Taille: {fmtKm(params.moonSize*2)}
+          {t('moon.size')}: {fmtKm(params.moonSize*2)}
           <input
             type="range"
             min="0.05"
@@ -865,7 +867,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
         </label>
         
         <label style={{ display: 'block', fontSize: '10px', marginBottom: '8px' }}>
-          Orbite:{fmtKm(params.moonDistance)}
+          {t('moon.orbit')}: {fmtKm(params.moonDistance)}
           <input
             type="range"
             min="5"
@@ -880,14 +882,14 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
 
        {/* Etoiles: titre + checkbox sur une même ligne */}
        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, margin: '16px 0 8px' }}>
-         <h4 style={{ fontSize: '14px', color: 'white', margin: 0 }}>Etoiles</h4>
+         <h4 style={{ fontSize: '14px', color: 'white', margin: 0 }}>{t('stars.title')}</h4>
          <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '10px', margin: 0 }}>
            <input
              type="checkbox"
              checked={params.showDome}
              onChange={(e) => setParams({ ...params, showDome: e.target.checked })}
            />
-           Afficher le dôme
+           {t('stars.showDome')}
          </label>
        </div>
          
@@ -937,14 +939,14 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
           fontSize: '12px'
         }}
       >
-        Réinitialiser
+        {t('controls.reset')}
       </button>
       
       <small>
-      Avec cette application, simulez votre hypothèse de terre plate et comparez au simulateur <InfoLogo showBackground={false} size={16} /> SpaceView.me (qui est basé sur une terre sphérique).
-      Dans cette version, la lune fait un "tour" en 29 jours.
+      {t('description.main', { logoText: '' })} <InfoLogo showBackground={false} size={16} />
+      {' '}{t('description.moonCycle')}
 
-      <br/><strong style={{ color: 'white' }}>Si vous pensez que nous devons rajouter un paramètre réglable pour tester votre hypothèse, contactez nous sur les réseaux sociaux.</strong>
+      <br/><strong style={{ color: 'white' }}>{t('description.contactUs')}</strong>
       </small>
     </div>
   );
@@ -1009,6 +1011,7 @@ function CompassRoseYawDriver({ rotRef }: { rotRef: React.RefObject<HTMLDivEleme
 
 // Composant principal
 export default function FlatEarthSimulator() {
+  const { t } = useTranslation('flatEarthSimulator');
   const [params, setParams] = useState<FlatEarthParams>({
     diskRadius: 50,
     domeHeight: 50,
@@ -1214,7 +1217,7 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
                   textOverflow: 'ellipsis',
                 }}
               >
-                Toute la terre
+                {t('cities.wholeEarth')}
               </button>
               {sortedCities.map((c) => (
                 <button
@@ -1346,10 +1349,10 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
               }}
             />
             <div ref={compassRotRef} style={{ position: 'absolute', inset: 0 }}>
-              <span style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12, fontWeight: 700, color: '#fca5a5' }}>N</span>
-              <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>E</span>
-              <span style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }}>S</span>
-              <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>O</span>
+              <span style={{ position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12, fontWeight: 700, color: '#fca5a5' }}>{t('compass.north')}</span>
+              <span style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>{t('compass.east')}</span>
+              <span style={{ position: 'absolute', bottom: 4, left: '50%', transform: 'translateX(-50%)', fontSize: 12 }}>{t('compass.south')}</span>
+              <span style={{ position: 'absolute', left: 4, top: '50%', transform: 'translateY(-50%)', fontSize: 12 }}>{t('compass.west')}</span>
               {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
                 <div
                   key={deg}

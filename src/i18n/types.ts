@@ -154,6 +154,51 @@ declare module 'react-i18next' {
           description: string;
         };
       };
+      flatEarthSimulator: {
+        title: string;
+        controls: {
+          fov: string;
+          expand: string;
+          back: string;
+          animation: string;
+          play: string;
+          pause: string;
+          showTrajectories: string;
+          reset: string;
+        };
+        sun: {
+          title: string;
+          height: string;
+          size: string;
+          orbit: string;
+          intensity: string;
+          beamWidth: string;
+        };
+        moon: {
+          title: string;
+          height: string;
+          size: string;
+          orbit: string;
+        };
+        stars: {
+          title: string;
+          showDome: string;
+        };
+        cities: {
+          wholeEarth: string;
+        };
+        compass: {
+          north: string;
+          east: string;
+          south: string;
+          west: string;
+        };
+        description: {
+          main: string;
+          moonCycle: string;
+          contactUs: string;
+        };
+      };
     };
   }
 }

@@ -1,0 +1,45 @@
+{
+  "title": "Flat Earth Simulator",
+  "controls": {
+    "fov": "Field of View (FOV)",
+    "expand": "Expand",
+    "back": "Back",
+    "animation": "Animation (24h)",
+    "play": "Play",
+    "pause": "Pause",
+    "showTrajectories": "Show Trajectories",
+    "reset": "Reset"
+  },
+  "sun": {
+    "title": "Sun",
+    "height": "Height",
+    "size": "Size", 
+    "orbit": "Orbit",
+    "intensity": "Intensity",
+    "beamWidth": "Beam Width"
+  },
+  "moon": {
+    "title": "Moon",
+    "height": "Height",
+    "size": "Size",
+    "orbit": "Orbit"
+  },
+  "stars": {
+    "title": "Stars",
+    "showDome": "Show dome"
+  },
+  "cities": {
+    "wholeEarth": "Whole Earth"
+  },
+  "compass": {
+    "north": "N",
+    "east": "E", 
+    "south": "S",
+    "west": "W"
+  },
+  "description": {
+    "main": "With this application, simulate your flat earth hypothesis and compare to the {{logoText}} SpaceView.me simulator (which is based on a spherical earth).",
+    "moonCycle": "In this version, the moon makes one \"revolution\" in 29 days.",
+    "contactUs": "If you think we should add an adjustable parameter to test your hypothesis, contact us on social media."
+  }
+}

@@ -11,6 +11,8 @@ import uiFr from './resources/fr/ui.json';
 import uiEn from './resources/en/ui.json';
 import infoFr from './resources/fr/info.json';
 import infoEn from './resources/en/info.json';
+import flatEarthSimulatorFr from './resources/fr/flatEarthSimulator.json';
+import flatEarthSimulatorEn from './resources/en/flatEarthSimulator.json';
 
 const resources = {
   fr: {
@@ -18,12 +20,14 @@ const resources = {
     astro: astroFr,
     ui: uiFr,
     info: infoFr,
+    flatEarthSimulator: flatEarthSimulatorFr,
   },
   en: {
     common: commonEn,
     astro: astroEn,
     ui: uiEn,
     info: infoEn,
+    flatEarthSimulator: flatEarthSimulatorEn,
   },
 };
 
@@ -56,7 +60,7 @@ i18n
     defaultNS: 'common',
     
     // Namespace separation
-    ns: ['common', 'astro', 'ui', 'info'],
+    ns: ['common', 'astro', 'ui', 'info', 'flatEarthSimulator'],
     
     // Development settings
     debug: process.env.NODE_ENV === 'development',

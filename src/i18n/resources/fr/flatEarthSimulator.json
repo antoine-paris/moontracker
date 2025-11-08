@@ -1,0 +1,45 @@
+{
+  "title": "Simulateur de Terre Plate",
+  "controls": {
+    "fov": "Champ de vision (FOV)",
+    "expand": "Agrandir",
+    "back": "Retour",
+    "animation": "Animation (24h)",
+    "play": "Lecture",
+    "pause": "Pause",
+    "showTrajectories": "Afficher les Trajectoires",
+    "reset": "Réinitialiser"
+  },
+  "sun": {
+    "title": "Soleil",
+    "height": "Hauteur",
+    "size": "Taille",
+    "orbit": "Orbite",
+    "intensity": "Intensité",
+    "beamWidth": "Largeur du faisceau"
+  },
+  "moon": {
+    "title": "Lune",
+    "height": "Hauteur",
+    "size": "Taille",
+    "orbit": "Orbite"
+  },
+  "stars": {
+    "title": "Etoiles",
+    "showDome": "Afficher le dôme"
+  },
+  "cities": {
+    "wholeEarth": "Toute la terre"
+  },
+  "compass": {
+    "north": "N",
+    "east": "E",
+    "south": "S", 
+    "west": "O"
+  },
+  "description": {
+    "main": "Avec cette application, simulez votre hypothèse de terre plate et comparez au simulateur {{logoText}} SpaceView.me (qui est basé sur une terre sphérique).",
+    "moonCycle": "Dans cette version, la lune fait un \"tour\" en 29 jours.",
+    "contactUs": "Si vous pensez que nous devons rajouter un paramètre réglable pour tester votre hypothèse, contactez nous sur les réseaux sociaux."
+  }
+}
