@@ -43,7 +43,8 @@
     "kmFromNorthPole": "{{km}} km from North Pole",
     "kmFromSouthPole": "{{km}} km from South Pole",
     "coordinates": "Lat: {{lat}} Lng: {{lng}}",
-    "coordinatesWithDistance": "Lat: {{lat}} Lng: {{lng}} ({{km}} km {{direction}} from {{city}})",
+    "coordinatesWithDistance": "Lat: {{lat}} Lng: {{lng}} ({{km}} km {{direction}} of {{city}})",
+    "coordNearestCity": "Lat: {{lat}} Lng: {{lng}} ({{km}} km {{dir}} of {{nearestCityName}})",
     "localTime": "local time"
   }
 }

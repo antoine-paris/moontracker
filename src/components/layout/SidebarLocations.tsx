@@ -1,4 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import appLogo from '../../assets/applogos/android-chrome-192x192.png';
 // import earthModel from '../../assets/Earth_1_12756.glb'; // removed: GLB is not a TS module
 import type { LocationOption } from '../../data/locations';
@@ -351,6 +352,7 @@ export default function SidebarLocations({
   preselectedCityIds,
   setPreselectedCityIds,
 }: Props) {
+  const { t: tUi } = useTranslation('ui');
   const [collapsed, setCollapsed] = useState(false);
   const [selectedLng, setSelectedLng] = useState<number>(() => Math.round(normLng(selectedLocation.lng)));
   // refs for header measuring
@@ -534,7 +536,7 @@ export default function SidebarLocations({
   };
 
   return (
-    <aside style={styles.aside} aria-label="Barre latérale des lieux">
+    <aside style={styles.aside} aria-label={tUi('sidebar.locationsSidebarLabel')}>
       <div style={styles.header} ref={headerRef}>
         <img
           ref={logoRef}
@@ -548,8 +550,8 @@ export default function SidebarLocations({
         <button
           ref={toggleRef}
           type="button"
-          aria-label={collapsed ? 'Développer la barre latérale' : 'Réduire la barre latérale'}
-          title={collapsed ? 'Développer' : 'Réduire'}
+          aria-label={collapsed ? tUi('sidebar.expandSidebar') : tUi('sidebar.collapseSidebar')}
+          title={collapsed ? tUi('sidebar.expand') : tUi('sidebar.collapse')}
           onClick={() => setCollapsed(v => !v)}
           style={styles.toggle}
         >
@@ -590,7 +592,7 @@ export default function SidebarLocations({
           <div
             style={styles.tabList}
             role="tablist"
-            aria-label="Sélection du mode de lieux"
+            aria-label={tUi('sidebar.locationModeSelection')}
             aria-hidden={collapsed}              // <- accessibilité
           >
             <button
@@ -600,7 +602,7 @@ export default function SidebarLocations({
               onClick={() => setActiveTab('cities')}
               style={{ ...styles.tabBtn, ...(activeTab === 'cities' ? styles.tabBtnActive : {}) }}
             >
-              Villes
+              {tUi('sidebar.cities')}
             </button>
             <button
               type="button"
@@ -609,7 +611,7 @@ export default function SidebarLocations({
               onClick={() => setActiveTab('coords')}
               style={{ ...styles.tabBtn, ...(activeTab === 'coords' ? styles.tabBtnActive : {}) }}
             >
-              Coordonnées
+              {tUi('sidebar.coordinates')}
             </button>
           </div>
 

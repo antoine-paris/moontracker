@@ -16,6 +16,17 @@
     "linkCopied": "Lien copié !",
     "toolbar": "Barre d'outils"
   },
+  "directionalKeypad": {
+    "moveUp": "Monter de {{degrees}}°",
+    "moveDown": "Descendre de {{degrees}}°",
+    "moveLeft": "Gauche de {{degrees}}°",
+    "moveRight": "Droite de {{degrees}}°",
+    "recenter": "Recentrer",
+    "up": "Monter",
+    "down": "Descendre",
+    "left": "Gauche",
+    "right": "Droite"
+  },
   "device": {
     "custom": "Personnalisé",
     "theoreticalFocal": "Focale théorique {{focal}}mm eq 24/36",
@@ -84,7 +95,7 @@
     "animation": "Animation",
     "animationLabel": "Animation :",
     "cityTimeFormat": "{{cityTime}} à {{cityName}} ({{utcTime}} UTC)",
-    "overlayFormat": "{{place}}, {{localTime}} heure locale ({{utcTime}})",
+    "overlayFormat": "{{place}}, {{localTime}} ({{utcTime}})",
     "speed": "Vitesse",
     "hour": "Heure",
     "date": "Date",
@@ -181,6 +192,37 @@
     "open": "Ouvrir",
     "calculate": "Calculer",
     "nearestCity": "Ville de + de 100 000 habitants la plus proche"
+  },
+  "sidebar": {
+    "locationsSidebarLabel": "Barre latérale des lieux",
+    "expandSidebar": "Développer la barre latérale",
+    "collapseSidebar": "Réduire la barre latérale",
+    "expand": "Développer",
+    "collapse": "Réduire",
+    "locationModeSelection": "Sélection du mode de lieux",
+    "cities": "Villes",
+    "coordinates": "Coordonnées"
+  },
+  "locations": {
+    "northPole": "Pôle Nord",
+    "southPole": "Pôle Sud",
+    "searchCityPlaceholder": "Rechercher une ville...",
+    "addToPreselection": "Ajouter à la présélection",
+    "removeFromPreselection": "Retirer de la présélection",
+    "quickNavigation": "Navigation rapide NESW",
+    "goWest": "Aller à l'ouest: {{city}}",
+    "goEast": "Aller à l'est: {{city}}",
+    "noOtherCityAtLatitude": "Aucune autre ville à cette latitude"
+  },
+  "coordinates": {
+    "enterCoordinates": "Entrer des coordonnées",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "moveBy100km": "Déplacement de 100 km",
+    "nearPole": "Proche {{pole}}",
+    "kmFromPole": "{{km}} km du {{pole}}",
+    "distanceFromCity": "à {{km}}km {{dir}} de ",
+    "cityWithAsterisk": "{{city}} (*)"
   },
   "hud": {
     "azimuth": "Azimut :",

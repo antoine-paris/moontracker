@@ -31,6 +31,7 @@ export default function SidebarLocationsCoord({
   isActive,
 }: Props) {
   const { t } = useTranslation('common');
+  const { t: tUi } = useTranslation('ui');
   const [lat, setLat] = useState<number>(selectedLocation.lat);
   const [lng, setLng] = useState<number>(selectedLocation.lng);
 
@@ -254,18 +255,18 @@ export default function SidebarLocationsCoord({
         const km = Math.round(d);
         if (Number.isFinite(km)) 
           if (km==0)
-            return { line1: '', city: `Proche Pôle Nord` };
+            return { line1: '', city: t('location.nearNorthPole') };
           else
-            return { line1: '', city: `${km} km du Pôle Nord` };
+            return { line1: '', city: t('location.kmFromNorthPole', { km }) };
       }
       if (lat <= -60) {
         const d = haversineKm(lat, lng, -90, lng);
         const km = Math.round(d);
         if (Number.isFinite(km)) 
           if (km==0)
-            return { line1: '', city: `Proche Pôle Sud` };
+            return { line1: '', city: t('location.nearSouthPole') };
           else
-            return { line1: '', city: `${km} km du Pôle Sud` };
+            return { line1: '', city: t('location.kmFromSouthPole', { km }) };
       }
     }
 
@@ -275,12 +276,12 @@ export default function SidebarLocationsCoord({
     if (!Number.isFinite(km)) return { line1: '', city: '' };
     if (km <= 0) return { line1: '', city: `${nearest.city.label}` };
     const dir = dir8FullFr(nearest.bearingFromCity);
-    const prep = (dir === 'Est' || dir === 'Ouest') ? 'à l’' : 'au ';
+    // Simplified approach: just use the distance and direction without complex preposition logic
     return {
-      line1: `à ${km}km ${prep}${dir} de `,
-      city: `${nearest.city.label} (*)`,
+      line1: tUi('coordinates.distanceFromCity', { km, dir }),
+      city: tUi('coordinates.cityWithAsterisk', { city: nearest.city.label }),
     };
-  }, [nearest, lat, lng]);
+  }, [nearest, lat, lng, t, tUi]);
 
   const move100 = (bearing: number) => {
     const kmBase = 100;
@@ -293,13 +294,13 @@ export default function SidebarLocationsCoord({
   };
 
   return (
-    <div style={styles.wrap} aria-label="Entrer des coordonnées">
+    <div style={styles.wrap} aria-label={tUi('coordinates.enterCoordinates')}>
       {/* Inputs + NESO indicator at right */}
       <div style={styles.rowGroup}>
         <div style={styles.colInputs}>
           <div style={styles.row}>
             <label style={styles.label} htmlFor="coord-lat">
-              Latitude
+              {tUi('coordinates.latitude')}
             </label>
             <input
               id="coord-lat"
@@ -320,7 +321,7 @@ export default function SidebarLocationsCoord({
 
           <div style={styles.row}>
             <label style={styles.label} htmlFor="coord-lng">
-              Longitude
+              {tUi('coordinates.longitude')}
             </label>
             <input
               id="coord-lng"
@@ -358,7 +359,7 @@ export default function SidebarLocationsCoord({
       </div>
 
       {/* Move pad (100 km steps) */}
-      <div style={styles.padWrap} role="group" aria-label="Déplacement de 100 km">
+      <div style={styles.padWrap} role="group" aria-label={tUi('coordinates.moveBy100km')}>
         <div style={styles.padSpacer} />
         <button type="button" style={styles.padBtn} title={t('directions.toNorth')} onClick={() => move100(0)}>
           <span style={{ transform: 'rotate(270deg)', display: 'inline-block' }}>&#x27A4;</span>

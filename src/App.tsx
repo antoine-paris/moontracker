@@ -61,7 +61,7 @@ import {
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const { t: tUi } = useTranslation('ui');
   
   // Handle language detection from URL
@@ -469,23 +469,23 @@ export default function App() {
   // Build overlay location string:
   // - If current lat/lng match the canonical city coords → "City"
   // - Else → "Lat: X.XXX Lng: X.XXX (123 km SO de City)"
-  const overlayPlaceString = useMemo(() => {
+  const getOverlayPlaceString = () => {
     const EPS = 1e-9;
 
     // Poles special case: show distance to the pole
     if (location.lat >= 80) {
       const km = Math.round(haversineKm(location.lat, location.lng, 90, 0));
       if (km==0)
-        return 'Proche Pôle Nord';
+        return i18n.t('common:location.nearNorthPole');
       else
-        return `${km} km du Pôle Nord`;
+        return i18n.t('common:location.kmFromNorthPole', { km });
     }
     if (location.lat <= -60) {
       const km = Math.round(haversineKm(location.lat, location.lng, -90, 0));
       if (km==0)
-        return 'Proche Pôle Sud';
+        return i18n.t('common:location.nearSouthPole');
       else
-        return `${km} km du Pôle Sud`;
+        return i18n.t('common:location.kmFromSouthPole', { km });
     }
 
     const canonical = locations.find(l => l.id === location.id);
@@ -499,7 +499,7 @@ export default function App() {
     }
 
     if (!locations.length) {
-      return `Lat: ${location.lat.toFixed(3)} Lng: ${location.lng.toFixed(3)}`;
+      return i18n.t('common:location.coordinates', { lat: location.lat.toFixed(3), lng: location.lng.toFixed(3) });
     }
 
     let best = locations[0];
@@ -509,11 +509,50 @@ export default function App() {
       if (d < bestD) { bestD = d; best = c; }
     }
     const km = Math.round(bestD);
-    const dir = dir8AbbrevFr(bearingDeg(best.lat, best.lng, location.lat, location.lng));
+    const bearing = bearingDeg(best.lat, best.lng, location.lat, location.lng);
+    const dirFr = dir8AbbrevFr(bearing);
+    // Convert French direction to localized direction
+    const dirMap: Record<string, string> = {
+      'N': i18n.t('common:directions.northAbbrev'),
+      'NE': i18n.t('common:directions.northAbbrev') + i18n.t('common:directions.eastAbbrev'),
+      'E': i18n.t('common:directions.eastAbbrev'),
+      'SE': i18n.t('common:directions.southAbbrev') + i18n.t('common:directions.eastAbbrev'),
+      'S': i18n.t('common:directions.southAbbrev'),
+      'SO': i18n.t('common:directions.southAbbrev') + i18n.t('common:directions.westAbbrev'),
+      'O': i18n.t('common:directions.westAbbrev'),
+      'NO': i18n.t('common:directions.northAbbrev') + i18n.t('common:directions.westAbbrev'),
+    };
+    const dir = dirMap[dirFr] || dirFr;
     const nearestCityName = labelToCity(best.label);
 
-    return `Lat: ${location.lat.toFixed(3)} Lng: ${location.lng.toFixed(3)} (${km} km ${dir} de ${nearestCityName})`;
-  }, [location.id, location.lat, location.lng, locations, cityName]);
+    // Use manual interpolation to avoid i18next caching/fallback issues
+    const currentLang = i18n.language;
+    const template = i18n.getResource(currentLang, 'common', 'location.coordNearestCity');
+    
+    // Manual interpolation
+    let result: string;
+    if (template && typeof template === 'string') {
+      result = template
+        .replace('{{lat}}', location.lat.toFixed(3))
+        .replace('{{lng}}', location.lng.toFixed(3))
+        .replace('{{km}}', km.toString())
+        .replace('{{dir}}', dir)
+        .replace('{{nearestCityName}}', nearestCityName);
+    } else {
+      // Fallback to i18next if template not found
+      result = i18n.t('common:location.coordNearestCity', { 
+        lat: location.lat.toFixed(3), 
+        lng: location.lng.toFixed(3), 
+        km, 
+        dir, 
+        nearestCityName 
+      });
+    }
+    
+    return result;
+  };
+
+  const overlayPlaceString = getOverlayPlaceString();
 
 
 
@@ -756,11 +795,13 @@ export default function App() {
   const cityLocalTimeString = useMemo(() => {
     try {
       // Use user’s locale and preferences; only fix the time zone
-      return date.toLocaleString(undefined, { timeZone: location.timeZone });
+      const localTimeStr = date.toLocaleString(undefined, { timeZone: location.timeZone });
+      return `${localTimeStr} ${t('location.localTime')}`;
     } catch {
-      return new Intl.DateTimeFormat(undefined, { timeZone: location.timeZone }).format(date);
+      const localTimeStr = new Intl.DateTimeFormat(undefined, { timeZone: location.timeZone }).format(date);
+      return `${localTimeStr} ${t('location.localTime')}`;
     }
-  }, [date, location.timeZone]);
+  }, [date, location.timeZone, t]);
 
   
   // Reference azimuth & altitude (follow mode)

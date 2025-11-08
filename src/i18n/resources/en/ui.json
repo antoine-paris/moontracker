@@ -16,6 +16,17 @@
     "linkCopied": "Link copied!",
     "toolbar": "Toolbar"
   },
+  "directionalKeypad": {
+    "moveUp": "Move up {{degrees}}°",
+    "moveDown": "Move down {{degrees}}°",
+    "moveLeft": "Move left {{degrees}}°",
+    "moveRight": "Move right {{degrees}}°",
+    "recenter": "Recenter",
+    "up": "Up",
+    "down": "Down",
+    "left": "Left",
+    "right": "Right"
+  },
   "device": {
     "custom": "Custom",
     "theoreticalFocal": "Theoretical focal {{focal}}mm eq 24/36",
@@ -84,7 +95,7 @@
     "animation": "Animation",
     "animationLabel": "Animation:",
     "cityTimeFormat": "{{cityTime}} in {{cityName}} ({{utcTime}} UTC)",
-    "overlayFormat": "{{place}}, {{localTime}} local time ({{utcTime}})",
+    "overlayFormat": "{{place}}, {{localTime}} ({{utcTime}})",
     "speed": "Speed",
     "hour": "Hour",
     "date": "Date",
@@ -182,6 +193,37 @@
     "open": "Open",
     "calculate": "Calculate",
     "nearestCity": "Nearest city with 100,000+ inhabitants"
+  },
+  "sidebar": {
+    "locationsSidebarLabel": "Locations sidebar",
+    "expandSidebar": "Expand sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "expand": "Expand",
+    "collapse": "Collapse",
+    "locationModeSelection": "Location mode selection",
+    "cities": "Cities",
+    "coordinates": "Coordinates"
+  },
+  "locations": {
+    "northPole": "North Pole",
+    "southPole": "South Pole",
+    "searchCityPlaceholder": "Search for a city...",
+    "addToPreselection": "Add to preselection",
+    "removeFromPreselection": "Remove from preselection",
+    "quickNavigation": "NESW quick navigation",
+    "goWest": "Go west: {{city}}",
+    "goEast": "Go east: {{city}}",
+    "noOtherCityAtLatitude": "No other city at this latitude"
+  },
+  "coordinates": {
+    "enterCoordinates": "Enter coordinates",
+    "latitude": "Latitude",
+    "longitude": "Longitude",
+    "moveBy100km": "Move by 100 km",
+    "nearPole": "Near {{pole}}",
+    "kmFromPole": "{{km}} km from {{pole}}",
+    "distanceFromCity": "{{km}}km {{dir}} of ",
+    "cityWithAsterisk": "{{city}} (*)"
   },
   "hud": {
     "azimuth": "Azimuth:",

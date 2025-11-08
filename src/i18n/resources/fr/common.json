@@ -44,6 +44,7 @@
     "kmFromSouthPole": "{{km}} km du Pôle Sud",
     "coordinates": "Lat: {{lat}} Lng: {{lng}}",
     "coordinatesWithDistance": "Lat: {{lat}} Lng: {{lng}} ({{km}} km {{direction}} de {{city}})",
+    "coordNearestCity": "Lat: {{lat}} Lng: {{lng}} ({{km}} km {{dir}} de {{nearestCityName}})",
     "localTime": "heure locale"
   }
 }

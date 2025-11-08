@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LocationOption } from '../../data/locations';
 import { searchLocations } from '../../data/locations';
 
@@ -31,6 +32,7 @@ export default function SidebarLocationsCities({
   preselectedIds,
   setPreselectedIds,
 }: Props) {
+  const { t: tUi } = useTranslation('ui');
   const [search, setSearch] = useState('');
   const listRef = useRef<HTMLUListElement>(null);
   const preListRef = useRef<HTMLUListElement>(null);
@@ -198,19 +200,19 @@ export default function SidebarLocationsCities({
 
   const northPole: LocationOption = useMemo(() => ({
     id: `np@${selectedLng}`,
-    label: 'Pôle Nord',
+    label: tUi('locations.northPole'),
     lat: 89.999,
     lng: selectedLng,
     timeZone: 'Etc/UTC',
-  }), [selectedLng]);
+  }), [selectedLng, tUi]);
 
   const southPole: LocationOption = useMemo(() => ({
     id: `sp@${selectedLng}`,
-    label: 'Pôle Sud',
+    label: tUi('locations.southPole'),
     lat: -89.999,
     lng: selectedLng,
     timeZone: 'Etc/UTC',
-  }), [selectedLng]);
+  }), [selectedLng, tUi]);
 
   // Build allLocations with poles when not searching
   const allLocations = useMemo(() => {
@@ -417,7 +419,7 @@ export default function SidebarLocationsCities({
                   <span
                     role="button"
                     tabIndex={0}
-                    title="Retirer de la présélection"
+                    title={tUi('locations.removeFromPreselection')}
                     style={styles.miniIconBtn}
                     onClick={(e) => { e.stopPropagation(); removePreselected(loc.id); }}
                     onKeyDown={(e) => {
@@ -436,7 +438,7 @@ export default function SidebarLocationsCities({
       {/* Search */}
       <input
         type="text"
-        placeholder="Rechercher une ville..."
+        placeholder={tUi('locations.searchCityPlaceholder')}
         value={search}
         onChange={e => setSearch(e.target.value)}
         style={styles.search}
@@ -482,7 +484,7 @@ export default function SidebarLocationsCities({
               data-location-id={northPole.id}
               onFocus={(e) => e.currentTarget.blur()}
             >
-              <div>{'Pôle Nord'}</div>
+              <div>{northPole.label}</div>
               <div style={styles.sub}>{`${northPole.lat.toFixed(3)}°, ${selectedLng.toFixed(0)}°`}</div>
             </button>
           </li>
@@ -534,7 +536,7 @@ export default function SidebarLocationsCities({
                 <span
                   role="button"
                   tabIndex={0}
-                  title={preselectedSet.has(loc.id) ? 'Retirer de la présélection' : 'Ajouter à la présélection'}
+                  title={preselectedSet.has(loc.id) ? tUi('locations.removeFromPreselection') : tUi('locations.addToPreselection')}
                   style={styles.miniIconBtn}
                   onClick={(e) => {
                     e.stopPropagation();
@@ -586,7 +588,7 @@ export default function SidebarLocationsCities({
               data-location-id={southPole.id}
               onFocus={(e) => e.currentTarget.blur()}
             >
-              <div>{'Pôle Sud'}</div>
+              <div>{southPole.label}</div>
               <div style={styles.sub}>{`${southPole.lat.toFixed(3)}°, ${selectedLng.toFixed(0)}°`}</div>
             </button>
           </li>
@@ -594,7 +596,7 @@ export default function SidebarLocationsCities({
       </ul>
 
       {/* NESW quick navigation pad */}
-      <div style={styles.navPad} role="group" aria-label="Navigation rapide NESW">
+      <div style={styles.navPad} role="group" aria-label={tUi('locations.quickNavigation')}>
         <button
           type="button"
           style={{
@@ -603,7 +605,7 @@ export default function SidebarLocationsCities({
             cursor: westTarget.disabled ? 'default' : 'pointer',
           }}
           disabled={westTarget.disabled}
-          title={westTarget.loc ? `Aller à l’ouest: ${westTarget.loc.label}` : 'Aucune autre ville à cette latitude'}
+          title={westTarget.loc ? tUi('locations.goWest', { city: westTarget.loc.label }) : tUi('locations.noOtherCityAtLatitude')}
           onClick={() => westTarget.loc && moveToLocation(westTarget.loc)}
         >
           <span
@@ -622,7 +624,7 @@ export default function SidebarLocationsCities({
             cursor: eastTarget.disabled ? 'default' : 'pointer',
           }}
           disabled={eastTarget.disabled}
-          title={eastTarget.loc ? `Aller à l’est: ${eastTarget.loc.label}` : 'Aucune autre ville à cette latitude'}
+          title={eastTarget.loc ? tUi('locations.goEast', { city: eastTarget.loc.label }) : tUi('locations.noOtherCityAtLatitude')}
           onClick={() => eastTarget.loc && moveToLocation(eastTarget.loc)}
         >
           <span style={styles.navText}>{eastTarget.loc ? eastTarget.loc.label : '—'}</span>
