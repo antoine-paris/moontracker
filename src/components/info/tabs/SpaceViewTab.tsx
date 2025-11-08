@@ -1,3 +1,5 @@
+import InfoLogo from '../InfoLogo';
+
 export default function SpaceViewTab() {
   const ldSoftware = {
     '@context': 'https://schema.org',
@@ -85,11 +87,16 @@ export default function SpaceViewTab() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(ldFaq) }}
       />
 
-      <h1 itemProp="name">SpaceView.me — Simulateur astronomique 3D et planificateur d’astrophotographie</h1>
+      <h1 itemProp="name">SpaceView.me — Simulateur astronomique 3D et planificateur d'astrophotographie</h1>
+      
+      <div className="flex justify-center my-8">
+        <InfoLogo size={120} />
+      </div>
+      
       <p itemProp="description">
         Visualisez le ciel en temps réel (Soleil, Lune, planètes, étoiles) avec phases, tailles apparentes, libration,
         projections grand‑angle et outils photo. Planifiez une éclipse, un lever/coucher, un transit ou une session
-        d’astro‑photo avec précision, puis partagez et exportez vos scènes en image/vidéo.
+        d'astro‑photo avec précision, puis partagez et exportez vos scènes en image/vidéo.
       </p>
       <p>
         Gratuit • Open‑source • Sans inscription • Fonctionne dans le navigateur (desktop/mobile modernes)

@@ -1,0 +1,38 @@
+<svg width="399.99999999999994" height="399.99999999999994" xmlns="http://www.w3.org/2000/svg">
+ <defs>
+  <!-- Gradient for the celestial body -->
+  <!-- Shadow gradient -->
+  <radialGradient r="0.5" cy="0.5" cx="0.5" spreadMethod="pad" id="svg_19">
+   <stop offset="0" stop-opacity="0.99609" stop-color="#ffff56"/>
+   <stop offset="1" stop-opacity="0.99219" stop-color="#999999"/>
+  </radialGradient>
+ </defs>
+ <!-- Background rounded rectangle -->
+ <!-- Corner brackets -->
+ <!-- Top-left -->
+ <!-- Top-right -->
+ <!-- Bottom-left -->
+ <!-- Bottom-right -->
+ <!-- Main celestial body sphere -->
+ <!-- Shadow/terminator on the sphere -->
+ <!-- Crosshair/reticle -->
+ <!-- Horizontal lines -->
+ <!-- Vertical lines -->
+ <!-- Center square -->
+ <g>
+  <title>Layer 1</title>
+  <rect stroke="null" id="svg_1" fill="#0f1829" ry="30" rx="30" height="400" width="400.00002" y="0" x="-0.00001"/>
+  <circle stroke="null" id="svg_6" fill="#999999" r="158.80042" cy="200.06012" cx="199.93987"/>
+  <path stroke="null" id="svg_14" d="m200.06015,358.83639l0,0c87.69524,0 158.80038,-71.10639 158.80038,-158.84848c0,-87.73085 -71.10513,-158.84848 -158.80038,-158.84848l0,0c49.97756,37.49777 79.39473,96.35219 79.39473,158.84848s-29.41717,121.33947 -79.39473,158.84848z" fill="#444444"/>
+  <path stroke="#dc2626" id="svg_2" stroke-linecap="round" fill="none" stroke-width="10" d="m28.74982,62.99985l0,-34.25004l34.25004,0"/>
+  <path stroke="#dc2626" id="svg_3" stroke-linecap="round" fill="none" stroke-width="10" d="m337.00014,28.74982l34.25004,0l0,34.25004"/>
+  <path stroke="#dc2626" id="svg_4" stroke-linecap="round" fill="none" stroke-width="10" d="m62.99985,371.25018l-34.25004,0l0,-34.25004"/>
+  <path stroke="#dc2626" id="svg_5" stroke-linecap="round" fill="none" stroke-width="10" d="m371.25018,337.00014l0,34.25004l-34.25004,0"/>
+  <line stroke="#dc2626" id="svg_8" stroke-linecap="round" stroke-width="10" y2="199.94811" x2="165.74996" y1="199.94811" x1="131.49992"/>
+  <line stroke="#dc2626" id="svg_9" stroke-linecap="round" stroke-width="10" y2="199.94811" x2="268.50007" y1="199.94811" x1="234.25003"/>
+  <line stroke="#dc2626" id="svg_10" stroke-linecap="round" stroke-width="10" y2="165.74996" x2="200.05188" y1="131.49993" x1="200.05188"/>
+  <line stroke="#dc2626" id="svg_11" stroke-linecap="round" stroke-width="10" y2="268.50007" x2="200.05188" y1="234.25003" x1="200.05188"/>
+  <ellipse ry="30" rx="29.6875" id="svg_17" cy="200" cx="200" stroke-width="4" fill="url(#svg_19)"/>
+  <rect stroke="#dc2626" id="svg_12" ry="2" rx="2" fill="none" stroke-width="10" height="22.83336" width="22.83336" y="188.53144" x="188.6352"/>
+ </g>
+</svg>

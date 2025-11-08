@@ -83,7 +83,7 @@ export default function InfoPage() {
       <header className="sticky top-0 z-40 bg-white/90 backdrop-blur border-b border-gray-200">
         <div className="max-w-6xl mx-auto px-3 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <InfoLogo />
+            <InfoLogo showBackground={false} size={64} />
             <div className="flex flex-col leading-tight">
               <span className="text-base font-semibold">SpaceView.me</span>
               <span className="text-xs text-gray-600">Informations et Aide</span>

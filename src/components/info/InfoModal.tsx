@@ -43,7 +43,7 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
         <div className="border-b border-gray-200 bg-white">
           <div className="px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <InfoLogo />
+              <InfoLogo showBackground={false} size={64} />
               <div className="flex flex-col leading-tight">
                 <span className="text-base font-semibold">SpaceView.me</span>
                 <span className="text-xs text-gray-600">Informations et Aide</span>

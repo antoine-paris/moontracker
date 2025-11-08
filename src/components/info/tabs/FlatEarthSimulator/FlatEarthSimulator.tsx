@@ -2,6 +2,7 @@ import React, { useRef, useState, useMemo, useEffect, Suspense } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber'; // + useThree
 import { OrbitControls, Line, useTexture, Html } from '@react-three/drei';
 import * as THREE from 'three';
+import InfoLogo from '../../InfoLogo';
 
 const EARTH_CIRCUMFERENCE_KM = 40075; // diamètre du disque = circonférence terrestre
 const CITY_VIEW_BOTTOM_MARGIN = 50;   // marge utilisée quand on centre la caméra en bas de l'écran
@@ -938,8 +939,9 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
       >
         Réinitialiser
       </button>
+      
       <small>
-      Avec cette application, simulez votre hypothèse de terre plate et comparez au simulateur SpaceView (qui est basé sur une terre sphérique).
+      Avec cette application, simulez votre hypothèse de terre plate et comparez au simulateur <InfoLogo showBackground={false} size={16} /> SpaceView.me (qui est basé sur une terre sphérique).
       Dans cette version, la lune fait un "tour" en 29 jours.
 
       <br/><strong style={{ color: 'white' }}>Si vous pensez que nous devons rajouter un paramètre réglable pour tester votre hypothèse, contactez nous sur les réseaux sociaux.</strong>
