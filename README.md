@@ -12,7 +12,7 @@ Interactive web app to visualize the sky: Moon and Sun phases/orientations, star
 - 3D rendering for Moon and planets (with “readiness” gating)
 - Long‑pose/timelapse compositor
 - Photo frame and optics/FOV simulation
-- Shareable URL state and PNG export
+- Shareable URL state, PNG capture, and WebM video recording
 
 ## Overview
 
@@ -66,6 +66,7 @@ MoonTracker computes Sun/Moon/planet positions, accounts for apparent sizes and 
 - URL & export
   - Full state parsed/built into shareable URLs (location, time, view, toggles, device/FOV, planets, timelapse/long‑pose)
   - PNG capture of the current render stack
+  - WebM video recording of the render area
 
 ## Quick start
 
@@ -113,7 +114,7 @@ npm run preview
 - src/components/layout/TopBar.tsx
   - Follow modes, device/zoom/FOV controls (focal slider), projections, visibility toggles, timelapse, long‑pose
 - src/components/layout/TopRightBar.tsx
-  - Panels toggle, share link copy, PNG export
+  - Panels toggle, share link copy, PNG export, video recording
 - src/components/layout/SidebarLocations.tsx
   - Collapsible sidebar with 3D Earth viewer (drag longitude), tabs for cities/coordinates
 - src/components/layout/SidebarLocationsCities.tsx / SidebarLocationsCoord.tsx
@@ -137,27 +138,8 @@ npm run preview
 
 ## Acknowledgments
 
-- Natural Earth — public domain map data (coastlines, lakes, rivers). Original READMEs are included under src/assets/natural-earth for provenance.
 - Astronomy Engine — precise astronomical computations.
 - NASA textures/models where applicable for the Moon/planets.
-
-## License
-
-MIT License.
-- Long‑pose
-  - Enable long‑pose to accumulate trails; compositor excludes 3D canvases
-  - Clear trails from TopBar; burst composite after enabling stars
-- Locations
-  - Type to search; fuzzy/prefix matching on city/aliases
-  - In Coordinates tab: arrow keys move 100 km (N/E/S/W) with polar caps handling
-- Share & export
-  - Top‑right toolbar copies share URL and exports PNG
-
-## Acknowledgments
-
-- Natural Earth — public domain map data (coastlines, lakes, rivers). READMEs from Natural Earth are included in src/assets/natural-earth for provenance.
-- Astronomy Engine — ephemerides and astronomical computations.
-- NASA textures (where applicable to bundled models).
 
 ## License
 

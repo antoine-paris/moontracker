@@ -16,13 +16,14 @@ export default function MoonTrackerTab() {
     description:
       'MoonTracker est un simulateur astronomique 3D en temps réel et un planificateur d’astrophotographie : Soleil, Lune, planètes, phases, libration, projections grand-angle (Recti‑Panini, Stéréographique, Orthographique, Rectilinéaire, Cylindrique), timelapse, pose longue, cadre photo et export.',
     keywords:
-      'simulateur ciel, simulateur astronomique, astrophotographie, éclipse, phases de la Lune, timelapse, recti-panini, projection stéréographique, horizon, FOV, champ de vision, cadre photo',
+      'simulateur ciel, simulateur astronomique, astrophotographie, éclipse, phases de la Lune, timelapse, recti-panini, projection stéréographique, horizon, FOV, champ de vision, cadre photo, enregistrement vidéo webm, capture PNG',
     featureList: [
       'Projections grand-angle photo: Recti‑Panini, Stéréographique centré, Orthographique, Rectilinéaire, Cylindrique',
       'Suivi intelligent: Soleil, Lune, planètes ou points cardinaux; alignement horizon/écliptique',
-      'Rendu 3D de la Lune: phases fidèles, libration, clair de Terre, orientations du terminateur',
+      'Rendu 3D de la Lune et des planètes (selon taille apparente): phases fidèles, libration, clair de Terre, orientations du terminateur',
       'Timelapse multi-échelles: minute, heure, jour, jour sidéral, mois, cycles lunaires',
       'Pose longue en temps réel (empilement): traînées et visualisations de trajectoires',
+      'Option d’agrandissement pédagogique des objets pour les très grands FOV',
       'Simulation d’optique: capteurs, focales équiv. 24×36, FOV H/V, cadre photo 3:2/16:9',
       'Réfraction atmosphérique, grille alt/az, écliptique, marqueurs et cardinaux locaux',
       'Partage par URL (état complet), export PNG, enregistrement vidéo .webm',
@@ -88,7 +89,7 @@ export default function MoonTrackerTab() {
       <p itemProp="description">
         Visualisez le ciel en temps réel (Soleil, Lune, planètes, étoiles) avec phases, tailles apparentes, libration,
         projections grand‑angle et outils photo. Planifiez une éclipse, un lever/coucher, un transit ou une session
-        d’astro‑photo avec précision, puis partagez et exportez vos scènes.
+        d’astro‑photo avec précision, puis partagez et exportez vos scènes en image/vidéo.
       </p>
       <p>
         Gratuit • Open‑source • Sans inscription • Fonctionne dans le navigateur (desktop/mobile modernes)
@@ -134,6 +135,7 @@ export default function MoonTrackerTab() {
         <li>Préparer une éclipse ou un alignement planétaire depuis un lieu précis.</li>
         <li>Comparer plusieurs focales et projections pour une composition grand‑angle crédible.</li>
         <li>Montrer la danse de Vénus/Mercure, les saisons du Soleil ou la libration lunaire en timelapse.</li>
+        <li>Enregistrer un timelapse en .webm pour une présentation ou un partage pédagogique.</li>
       </ul>
 
       
