@@ -1,9 +1,10 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
+import { useLanguageFromPath } from '../../../../hooks/useLanguageFromPath';
 const FlatEarthSimulator = lazy(() => import('./FlatEarthSimulator/FlatEarthSimulator'));
 
 // Simple ErrorBoundary to catch Canvas/lazy mount failures
 class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: any) {
+  constructor(props: { onRetry?: () => void; children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -22,12 +23,32 @@ class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: Re
         </div>
       );
     }
-    return this.props.children as any;
+    return this.props.children;
   }
 }
 
 export default function FlatEarthTab() {
   const [reloadKey, setReloadKey] = useState(0);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const { currentLanguage } = useLanguageFromPath();
+
+  // Check for mobile portrait orientation
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isMobile = window.innerWidth <= 768; // Mobile breakpoint
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsMobilePortrait(isMobile && isPortrait);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   // Preload the module to avoid lazy loading "cold start"
   useEffect(() => {
@@ -166,23 +187,47 @@ export default function FlatEarthTab() {
             marginBottom: '20px',
             backgroundColor: '#0b1020', // stable dark background
           }}>
-          <ErrorBoundary onRetry={() => setReloadKey(k => k + 1)}>
-            <Suspense fallback={
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-                fontSize: '20px',
-                color: '#fff',
-                background: '#0b1020',
-              }}>
-                ⏳ Loading 3D simulator...
+          {isMobilePortrait ? (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '100%',
+              fontSize: '18px',
+              color: '#fff',
+              background: '#0b1020',
+              textAlign: 'center',
+              padding: '20px',
+              flexDirection: 'column',
+              gap: '16px'
+            }}>
+              <div style={{ fontSize: '48px' }}>📱↻</div>
+              <div>
+                {currentLanguage === 'fr' 
+                  ? 'Veuillez tourner votre appareil en mode paysage pour voir le simulateur'
+                  : 'Please turn your device to landscape mode to see the simulator'
+                }
               </div>
-            }>
-              <FlatEarthSimulator key={reloadKey} />
-            </Suspense>
-          </ErrorBoundary>
+            </div>
+          ) : (
+            <ErrorBoundary onRetry={() => setReloadKey(k => k + 1)}>
+              <Suspense fallback={
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  fontSize: '20px',
+                  color: '#fff',
+                  background: '#0b1020',
+                }}>
+                  ⏳ Loading 3D simulator...
+                </div>
+              }>
+                <FlatEarthSimulator key={reloadKey} />
+              </Suspense>
+            </ErrorBoundary>
+          )}
         </div>
       
 
@@ -403,7 +448,7 @@ export default function FlatEarthTab() {
       <br />Moreover, when we make a time-lapse of stars on a flat Earth, we should see them rotate around the "north" regardless of where we observe them, whereas on a spherical Earth, we see stars rotate clockwise at the south pole, and counterclockwise at the north pole.<br/>
       In these videos made on SpaceView, we can also see that when we're on the equator and look north, they rotate in the opposite direction from when we look south.</p>
       <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted
@@ -419,7 +464,7 @@ export default function FlatEarthTab() {
             Star timelapse viewed from Santiago de Surco in Peru, looking south.
           </figcaption>
         </figure>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted
@@ -580,7 +625,7 @@ export default function FlatEarthTab() {
         </figure>
       </div>
       <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted
@@ -596,7 +641,7 @@ export default function FlatEarthTab() {
             Beginning of lunar eclipse viewed from Australia. We see Earth's shadow advancing (real duration 38 minutes)
           </figcaption>
         </figure>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted

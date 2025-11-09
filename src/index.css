@@ -163,7 +163,7 @@
 }
 
   /* Mobile: annule les marges latérales sur petits écrans */
-@media (max-width: 640px) {
+@media (max-width: 1024px) {
   .prose-info :where(h1, h2, h3, p, ul, ol, figure) {
     margin-left: 0 !important;
     margin-right: 0 !important;
@@ -204,6 +204,41 @@
 
   /* Ensure figure elements don't constrain images on mobile (except contact icons) */
   .prose-info figure img:not([src*=".svg"]):not([src*="simpleicons.org"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Make FlatEarthTab star videos stack vertically and take full width on mobile */
+  .fe-star-video {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+    margin-bottom: 16px !important;
+  }
+
+  .fe-star-video video {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure all JPG and PNG images in FlatEarthTab take full width on mobile */
+  .prose-info img[src*=".jpg"],
+  .prose-info img[src*=".jpeg"],
+  .prose-info img[src*=".png"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Override any flex or width constraints on figure containers in FlatEarthTab */
+  .prose-info figure[style*="flex"],
+  .prose-info figure[style*="maxWidth"] {
+    flex: 1 1 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure grid containers don't constrain images on mobile */
+  .prose-info .grid figure,
+  .prose-info [class*="grid-cols"] figure {
     width: 100% !important;
     max-width: 100% !important;
   }

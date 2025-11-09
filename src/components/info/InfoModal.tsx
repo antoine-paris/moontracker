@@ -36,11 +36,11 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
       role="dialog"
       aria-modal="true"
       aria-label="Informations SpaceView.me"
-      className="fixed inset-0 z-[2000] bg-black/70 flex items-center justify-center p-0 md:p-4"
+      className="fixed inset-0 z-[2000] bg-black/70 flex items-center justify-center p-0 lg:p-4"
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       {/* Light themed info panel, same look-and-feel as /info */}
-      <div className="bg-white text-gray-900 w-full h-full md:rounded-lg md:border md:border-gray-200 md:shadow-2xl md:w-[90vw] md:h-[90vh] flex flex-col font-sans">
+      <div className="bg-white text-gray-900 w-full h-full lg:rounded-lg lg:border lg:border-gray-200 lg:shadow-2xl lg:w-[90vw] lg:h-[90vh] flex flex-col font-sans">
         {/* Cartouche standard (logo + site + CTA) */}
         <div className="border-b border-gray-200 bg-white">
           <div className="px-3 py-2 flex items-center justify-between">

@@ -1,9 +1,10 @@
 import React, { lazy, Suspense, useEffect, useState } from 'react';
+import { useLanguageFromPath } from '../../../../hooks/useLanguageFromPath';
 const FlatEarthSimulator = lazy(() => import('./FlatEarthSimulator/FlatEarthSimulator'));
 
 // Simple ErrorBoundary pour intercepter un échec de montage du Canvas/lazy
 class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: React.ReactNode }, { hasError: boolean }> {
-  constructor(props: any) {
+  constructor(props: { onRetry?: () => void; children: React.ReactNode }) {
     super(props);
     this.state = { hasError: false };
   }
@@ -22,14 +23,34 @@ class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: Re
         </div>
       );
     }
-    return this.props.children as any;
+    return this.props.children;
   }
 }
 
 export default function FlatEarthTab() {
   const [reloadKey, setReloadKey] = useState(0);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const { currentLanguage } = useLanguageFromPath();
 
-  // Précharger le module pour éviter le "cold start" du lazy
+  // Check for mobile portrait orientation
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isMobile = window.innerWidth <= 768; // Mobile breakpoint
+      const isPortrait = window.innerHeight > window.innerWidth;
+      setIsMobilePortrait(isMobile && isPortrait);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+    
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
+
+  // Précharger le module pour éviter la "cold start" du lazy loading
   useEffect(() => {
     import('./FlatEarthSimulator/FlatEarthSimulator').catch(() => {});
   }, []);
@@ -166,23 +187,47 @@ export default function FlatEarthTab() {
             marginBottom: '20px',
             backgroundColor: '#0b1020', // fond sombre stable
           }}>
-          <ErrorBoundary onRetry={() => setReloadKey(k => k + 1)}>
-            <Suspense fallback={
-              <div style={{
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                height: '100%',
-                fontSize: '20px',
-                color: '#fff',
-                background: '#0b1020',
-              }}>
-                ⏳ Chargement du simulateur 3D...
+          {isMobilePortrait ? (
+            <div style={{
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              height: '100%',
+              fontSize: '18px',
+              color: '#fff',
+              background: '#0b1020',
+              textAlign: 'center',
+              padding: '20px',
+              flexDirection: 'column',
+              gap: '16px'
+            }}>
+              <div style={{ fontSize: '48px' }}>📱↻</div>
+              <div>
+                {currentLanguage === 'fr' 
+                  ? 'Veuillez tourner votre appareil en mode paysage pour voir le simulateur'
+                  : 'Please turn your device to landscape mode to see the simulator'
+                }
               </div>
-            }>
-              <FlatEarthSimulator key={reloadKey} />
-            </Suspense>
-          </ErrorBoundary>
+            </div>
+          ) : (
+            <ErrorBoundary onRetry={() => setReloadKey(k => k + 1)}>
+              <Suspense fallback={
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '100%',
+                  fontSize: '20px',
+                  color: '#fff',
+                  background: '#0b1020',
+                }}>
+                  ⏳ Chargement du simulateur 3D...
+                </div>
+              }>
+                <FlatEarthSimulator key={reloadKey} />
+              </Suspense>
+            </ErrorBoundary>
+          )}
         </div>
       
 
@@ -403,7 +448,7 @@ export default function FlatEarthTab() {
       <br />De plus, quand on fait un time-lapse des étoiles sur une Terre plate, on devrait les voir tourner autour du « nord » et ce, peu importe d'où on les observe, alors que sur une Terre sphérique, on voit tourner les étoiles dans le sens des aiguilles d'une montre au pôle sud, et dans le sens inverse au pôle nord.<br/>
       Dans ces vidéos faites sur SpaceView, on voit d'ailleurs que, quand on est sur l'équateur et qu'on regarde au nord, elles tournent dans le sens inverse de quand on regarde au sud.</p>
       <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted
@@ -419,7 +464,7 @@ export default function FlatEarthTab() {
             Timelapse des étoiles vues depuis Santiago de Surco au Pérou, en regardant vers le sud.
           </figcaption>
         </figure>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted
@@ -580,7 +625,7 @@ export default function FlatEarthTab() {
         </figure>
       </div>
       <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted
@@ -596,7 +641,7 @@ export default function FlatEarthTab() {
             Début de l'éclipse lunaire vue depuis l'Australie. On voit l'ombre de la terre avancer (durée réelle 38 minutes)
           </figcaption>
         </figure>
-        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
+        <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }} className="fe-star-video">
           <video
             autoPlay
             muted
