@@ -263,7 +263,7 @@ export default function HelpTab() {
       </p>
 
       <h2>Main Screen</h2>
-      <figure className="mx-[5rem] my-4">
+      <figure className="info-content-margins my-4">
         <img src="/img/capture/spaceview-application-capture-1.png" alt="Overview of the main screen" className="rounded-md border border-black/10 shadow-sm" />
         <figcaption className="text-sm text-gray-500 mt-1">SpaceView main screen.</figcaption>
       </figure>
@@ -275,7 +275,7 @@ export default function HelpTab() {
       <p>Global control of time animation (continuous playback or pause). Works regardless of mode (continuous or time-lapse).</p>
 
       <h3><I id="rec" />Start recording and <I id="stop" />download video (.webm)</h3>
-      <figure className="mx-[5rem] my-4">
+      <figure className="info-content-margins my-4">
         <video
           controls
           preload="metadata"
@@ -320,7 +320,7 @@ export default function HelpTab() {
       <p>Saves a screen rendering image and copies it to clipboard. Hide the interface (<I id="fullscreen" size="small" />) to activate it.</p>
       <p>Useful for sharing an astrophotography project, transit, or precise sunrise/sunset.</p>
       {/* 2-column gallery */}
-      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="info-content-margins grid grid-cols-1 sm:grid-cols-2 gap-4">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-export-1.png"
@@ -352,7 +352,7 @@ export default function HelpTab() {
             automatically follow a spatial object (Sun, Moon, planet). It also allows choosing a camera and lens, or selecting a custom shooting angle.
           </p>
         </div>
-        <div className="m-0 md:col-span-1 md:mr-[5em]">
+        <div className="m-0 md:col-span-1 info-content-margins-right-md">
           <figure className="mt-0">
             <img
               src="/img/capture/spaceview-application-follow-1.png"
@@ -572,7 +572,7 @@ export default function HelpTab() {
       <p>
         When you choose a particular camera, the rendering area is surrounded by a frame (in gray) proportional to the chosen camera's sensor.
         Dotted lines indicate 16:9 format.</p>
-      <figure style={{ marginLeft:'5em', marginRight:'5em' }}  className="m-0">
+      <figure className="info-content-margins m-0">
         <img
           src="/img/capture/spaceview-application-capture-cadre-iphone.jpg"
           alt="Moon photo with iPhone 15 Pro. Gray frame matches iPhone sensor dimensions."
@@ -592,7 +592,7 @@ export default function HelpTab() {
 
       <h3><I id="globe" />Earth Globe</h3>
       
-      <div style={{ marginLeft:'5em', marginRight:'5em' }}  className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+      <div className="info-content-margins grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-capture-globe.jpg"
@@ -622,7 +622,7 @@ export default function HelpTab() {
         <br/>
       </p>
       
-      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+      <div className="info-content-margins grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-capture-cities.jpg"
@@ -644,7 +644,7 @@ export default function HelpTab() {
         <br/>
       </p>
       {/* 2-column gallery */}
-      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <div className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-moon-paris.jpg"
@@ -703,7 +703,7 @@ export default function HelpTab() {
       </div> {/* CLOSE inner text block */}
     </div> {/* CLOSE grid (cities) */}
       <h3><I id="location" />Coordinates Tab (lat/lon) and 100km Step Movements</h3>
-      <div style={{ marginLeft:'5em', marginRight:'5em' }} className="grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
+      <div className="info-content-margins grid grid-cols-1 md:grid-cols-[1fr_2fr] gap-4 items-center">
         <figure className="m-0">
           <img
             src="/img/capture/spaceview-application-capture-coord.jpg"
@@ -737,7 +737,7 @@ export default function HelpTab() {
             
           </p>
         </div>
-        <div className="m-0 md:col-span-1 md:mr-[5em]">
+        <div className="m-0 md:col-span-1 info-content-margins-right-md">
           <figure className="mt-0">
             <img
               src="/img/capture/spaceview-application-capture-date.jpg"
@@ -806,7 +806,7 @@ export default function HelpTab() {
           In time-lapse mode, progression waits for long exposure consolidation to avoid gaps.
         </p>
         {/* 4-column gallery */}
-        <div style={{marginLeft: '5em', marginRight: '5em'}} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="info-content-margins grid grid-cols-1 sm:grid-cols-2 gap-4">
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-sun-noon-followup.jpg"
@@ -830,7 +830,7 @@ export default function HelpTab() {
             </figcaption>
           </figure>
         </div>
-        <div style={{marginLeft: '5em', marginRight: '5em'}} className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="info-content-margins grid grid-cols-1 sm:grid-cols-2 gap-4">
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-venus-transit.png"
@@ -940,7 +940,7 @@ export default function HelpTab() {
       <h3>Observation Telemetry</h3>
       <div>
         <p>At bottom of scene: telemetry information on Moon and Sun.</p>
-        <figure style={{marginLeft: '5em', marginRight: '5em'}}  className="m-0">
+        <figure className="info-content-margins m-0">
             <img
               src="/img/capture/spaceview-application-moon3d.jpg"
               alt="Moon rendered in 3D with libration effect, orientation and phase"
@@ -951,7 +951,7 @@ export default function HelpTab() {
               Moon rendered in 3D with libration effect, orientation and phase
             </figcaption>
           </figure>
-          <figure style={{marginLeft: '5em', marginRight: '5em'}} className="m-0">
+          <figure className="info-content-margins m-0">
             <img
               src="/img/capture/spaceview-application-telemetry.jpg"
               alt="Application telemetry"

@@ -14,9 +14,7 @@ export default function ContactTabEn() {
     gap: 16,
     listStyle: 'none',
     padding: 0,
-    margin: '16px 0',
-    marginLeft:'5em', 
-    marginRight:'5em' 
+    margin: '16px 0'
   };
 
   const tileStyle: React.CSSProperties = {
@@ -35,7 +33,7 @@ export default function ContactTabEn() {
     <article>
       <h1>Contact</h1>
       <p>Find SpaceView.me on the following social networks and sharing platforms. You can leave us messages there !</p>
-      <ul style={gridStyle}>
+      <ul style={gridStyle} className="info-content-margins">
         {platforms.map(p => (
           <li key={p.slug}>
             <a href={p.url} target="_blank" rel="noopener noreferrer" style={tileStyle} aria-label={p.name}>

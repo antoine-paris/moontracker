@@ -204,7 +204,7 @@ export default function FlatEarthTab() {
             Or les observations montrent une taille quasi constante (~0,53°), ce qui contredit ce scénario.
           </p>
         </div>
-        <figure style={{ marginTop : 0, marginRight: '5em', flex: '0 0 320px', maxWidth: '420px' }}>
+        <figure className="info-content-margins-right" style={{ marginTop : 0, flex: '0 0 320px', maxWidth: '420px' }}>
           <img
             src="/img/flatearth/fe-sun-to-north.png"
             alt="Trajectoire attendue du Soleil vers le nord sur un modèle de Terre plate"
@@ -238,7 +238,7 @@ export default function FlatEarthTab() {
           </a>
           </p>          
         </div>
-        <figure style={{ marginTop : 0, marginBottom : 0, marginRight: '5em', flex: '0 0 320px', maxWidth: '420px' }}>
+        <figure className="info-content-margins-right" style={{ marginTop : 0, marginBottom : 0, flex: '0 0 320px', maxWidth: '420px' }}>
           <img
             src="/img/capture/capture-earth-noon-at-congo.png"
             alt="Sur une terre sphérique la moitié de la planète est éclairée, et l'autre moitié ne l'est pas"
@@ -255,7 +255,7 @@ export default function FlatEarthTab() {
         Eh bien, avec le simulateur de Terre plate, on a beaucoup de mal à trouver une configuration où ça fonctionne (en fait, on n'y est pas arrivé).
         <br/>On peut voir que si le soleil est à la verticale de Kisangani (en bleu), il va éclairer New York (en rouge) bien avant d'éclairer Porto Velho (en vert).
       </p>
-        <figure style={{ marginTop : 0, marginBottom : 0, marginRight: '5em', marginLeft: '5em' }}>
+        <figure className="info-content-margins" style={{ marginTop : 0, marginBottom : 0 }}>
           <img
             src="/img/flatearth/fe-noon-at-congo.png"
             alt="Sur une terre plate en Mars, le soleil se leve à New York avant de se lever à l'Est du brésil. Dans la vraie vie c'est le contraire."
@@ -280,8 +280,8 @@ export default function FlatEarthTab() {
        <br/>Sur une Terre sphérique, on voit aussi un effet supplémentaire : la Lune est bien la même, mais on la voit se « tourner » (jusqu'à avoir « la tête en bas »)<br/>
        </p>
        <div 
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
-        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+        className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0 }}>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-moon-paris.jpg"
@@ -330,8 +330,8 @@ export default function FlatEarthTab() {
         </div>
         <p>Sur le simulateur de Terre plate, la Lune est vue sous un angle différent si on l'observe depuis un endroit différet.</p>
         <div 
-          style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">
+          className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+          style={{ marginTop : 0 }}>
           <style>{`
             .crop570x597 {
               width: 100%;
@@ -402,7 +402,7 @@ export default function FlatEarthTab() {
       Pourtant, les observateurs en Australie voient des étoiles invisibles depuis l'Europe !
       <br />De plus, quand on fait un time-lapse des étoiles sur une Terre plate, on devrait les voir tourner autour du « nord » et ce, peu importe d'où on les observe, alors que sur une Terre sphérique, on voit tourner les étoiles dans le sens des aiguilles d'une montre au pôle sud, et dans le sens inverse au pôle nord.<br/>
       Dans ces vidéos faites sur SpaceView, on voit d'ailleurs que, quand on est sur l'équateur et qu'on regarde au nord, elles tournent dans le sens inverse de quand on regarde au sud.</p>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginLeft: '5em', marginRight: '5em', flexWrap: 'wrap' }}>
+      <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
           <video
             autoPlay
@@ -446,8 +446,8 @@ export default function FlatEarthTab() {
       <br/>
       </p>
       <div 
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
-        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+        className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0 }}>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-eclipse-2026-oslo.jpg"
@@ -495,8 +495,8 @@ export default function FlatEarthTab() {
           </figure>
         </div>
       <div 
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
-        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+        className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0 }}>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-eclipse-2026-madrid.jpg"
@@ -579,7 +579,7 @@ export default function FlatEarthTab() {
           </figcaption>
         </figure>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginLeft: '5em', marginRight: '5em', flexWrap: 'wrap' }}>
+      <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
           <video
             autoPlay

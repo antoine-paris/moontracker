@@ -38,8 +38,14 @@ export default function InfoNav() {
   });
 
   return (
-    <nav role="tablist" aria-label="Informations" className="flex justify-between items-center gap-2 p-2 border-b border-gray-200">
-      <div className="flex gap-2 overflow-x-auto">
+    <nav role="tablist" aria-label="Informations" className="p-2 border-b border-gray-200">
+      {/* Language switcher on its own line */}
+      <div className="flex justify-end mb-2">
+        <LanguageSwitcher size="sm" showLabels={true} variant="light" />
+      </div>
+      
+      {/* Navigation links with flex wrap */}
+      <div className="flex gap-2 flex-wrap">
         {tabs.map(tab => (
           <NavLink
             key={tab.to}
@@ -58,9 +64,6 @@ export default function InfoNav() {
             {t(`tabs.${tab.key}`)}
           </NavLink>
         ))}
-      </div>
-      <div className="flex-shrink-0 ml-4">
-        <LanguageSwitcher size="sm" showLabels={true} variant="light" />
       </div>
     </nav>
   );

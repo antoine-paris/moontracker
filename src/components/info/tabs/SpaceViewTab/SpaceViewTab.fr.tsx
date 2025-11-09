@@ -146,10 +146,10 @@ export default function SpaceViewTabFr() {
       </ul>
 
       
-      <figure className="m-0" style={{ marginLeft: '5em', marginRight: '5em' }}>
+      <figure className="m-0 info-content-margins">
         <img
           src="/img/capture/spaceview-application-export-1.png"
-          alt="Fonction de capture et d'exportation de la scène"
+          alt="Fonction de capture et d'export de scène"
           className="w-full h-auto rounded-md border border-black/10 shadow-sm"
         />
         <figcaption className="text-sm text-gray-500 mt-1">
@@ -159,7 +159,7 @@ export default function SpaceViewTabFr() {
     
       
       <h2>FAQ</h2>
-      <div style={{ marginLeft:'5em', marginRight:'5em' }}>
+      <div className="info-content-margins">
         <details >
           <summary>SpaceView est‑il gratuit ?</summary>
           <p>Oui, open‑source sous licence MIT, utilisable gratuitement dans un navigateur moderne.</p>

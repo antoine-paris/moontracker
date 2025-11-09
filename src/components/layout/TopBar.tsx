@@ -172,7 +172,7 @@ export default function TopBar({
   onLongPoseClear,
 
   isMobileScreen,
-  isLandscapeMode,
+  //isLandscapeMode,
   
   // NEW: Close panels callback for mobile
   onClosePanels,

@@ -183,7 +183,7 @@ export default function SimulationsTab() {
   ];
 
   return (
-    <article className="mx-20">
+    <article>
       <h1 className="text-xl font-bold">Quelques simulations et exemples</h1>
       <p>
         Ouvrez chaque lien pour comparer aux observations réelles. Les paramètres (lieu, date/heure UTC,
@@ -194,8 +194,7 @@ export default function SimulationsTab() {
         <div key={ex.label} className="mb-8">
           <h2 className="text-lg font-semibold mb-4">{ex.label}</h2>
           
-          <div style={{ marginLeft:'5em', marginRight:'5em' }} 
-            className="flex flex-col md:flex-row gap-4 ">
+          <div className="info-content-margins flex flex-col md:flex-row gap-4">
             <div className="flex-shrink-0 md:w-80">
               {ex.img && (
                 <img

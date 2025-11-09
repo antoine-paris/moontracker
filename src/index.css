@@ -136,6 +136,32 @@
 
 }
 
+/* Responsive content margin utilities for info tabs */
+.info-content-margins {
+  margin-left: 5rem;
+  margin-right: 5rem;
+}
+
+.info-content-margins-horizontal {
+  margin-left: 5rem;
+  margin-right: 5rem;
+}
+
+.info-content-margins-left {
+  margin-left: 5rem;
+}
+
+.info-content-margins-right {
+  margin-right: 5rem;
+}
+
+/* Responsive right margin for medium screens and up */
+@media (min-width: 768px) {
+  .info-content-margins-right-md {
+    margin-right: 5rem;
+  }
+}
+
   /* Mobile: annule les marges latérales sur petits écrans */
 @media (max-width: 640px) {
   .prose-info :where(h1, h2, h3, p, ul, ol, figure) {
@@ -145,6 +171,41 @@
   /* Conserve une indentation douce pour les listes */
   .prose-info :where(ul, ol) {
     padding-left: 1rem;
+  }
+  
+  /* Reset info content margins on mobile */
+  .info-content-margins,
+  .info-content-margins-horizontal,
+  .info-content-margins-left,
+  .info-content-margins-right,
+  .info-content-margins-right-md {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Ensure images take full width on mobile (PNG, JPEG, etc - not SVGs or contact icons) */
+  .prose-info img:not([src*=".svg"]):not([src*="simpleicons.org"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* For SimulationsTab specifically - make image containers full width on mobile */
+  .info-content-margins .flex-shrink-0 {
+    width: 100% !important;
+  }
+
+  /* Override specific width constraints on mobile for images with constrained classes (except contact icons) */
+  .prose-info img[class*="max-w-"]:not([src*="simpleicons.org"]),
+  .prose-info img[class*="w-auto"]:not([src*="simpleicons.org"]) {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Ensure figure elements don't constrain images on mobile (except contact icons) */
+  .prose-info figure img:not([src*=".svg"]):not([src*="simpleicons.org"]) {
+    width: 100% !important;
+    max-width: 100% !important;
   }
 }
 

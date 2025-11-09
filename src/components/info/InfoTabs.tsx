@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import LanguageSwitcher from '../LanguageSwitcher';
 import SpaceViewTab from './tabs/SpaceViewTab/index';
 import HelpTab from './tabs/HelpTab/index';
 import SimulationsTab from './tabs/SimulationsTab/index';
@@ -44,8 +45,13 @@ export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: st
 
   return (
     <div className="w-full h-full flex flex-col">
+      {/* Language switcher above tabs */}
+      <div className="flex justify-end p-2 pb-0">
+        <LanguageSwitcher size="sm" showLabels={true} variant="light" />
+      </div>
+      
       {/* Light tablist (aligned with InfoNav style) */}
-      <div role="tablist" aria-label="Informations" className="flex gap-2 p-2 border-b border-gray-200 overflow-x-auto">
+      <div role="tablist" aria-label="Informations" className="flex gap-2 p-2 border-b border-gray-200 flex-wrap">
         {TABS.map(tab => (
           <button
             key={tab.id}
@@ -53,7 +59,7 @@ export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: st
             aria-selected={active === tab.id}
             onClick={() => setActive(tab.id)}
             className={[
-              'px-3 py-1.5 rounded-md text-sm border transition-colors',
+              'px-3 py-1.5 rounded-md text-sm border transition-colors whitespace-nowrap',
               active === tab.id
                 ? 'border-gray-400 bg-gray-100 text-gray-900'
                 : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'

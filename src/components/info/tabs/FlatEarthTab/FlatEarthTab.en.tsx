@@ -204,7 +204,7 @@ export default function FlatEarthTab() {
             Yet observations show a nearly constant size (~0.53°), which contradicts this scenario.
           </p>
         </div>
-        <figure style={{ marginTop : 0, marginRight: '5em', flex: '0 0 320px', maxWidth: '420px' }}>
+        <figure className="info-content-margins-right" style={{ marginTop : 0, flex: '0 0 320px', maxWidth: '420px' }}>
           <img
             src="/img/flatearth/fe-sun-to-north.png"
             alt="Expected Sun trajectory toward the north on a flat Earth model"
@@ -238,7 +238,7 @@ export default function FlatEarthTab() {
           </a>
           </p>          
         </div>
-        <figure style={{ marginTop : 0, marginBottom : 0, marginRight: '5em', flex: '0 0 320px', maxWidth: '420px' }}>
+        <figure className="info-content-margins-right" style={{ marginTop : 0, marginBottom : 0, flex: '0 0 320px', maxWidth: '420px' }}>
           <img
             src="/img/capture/capture-earth-noon-at-congo.png"
             alt="On a spherical earth half the planet is illuminated, and the other half is not"
@@ -255,7 +255,7 @@ export default function FlatEarthTab() {
         Well, with the flat Earth simulator, we have a lot of trouble finding a configuration where this works (in fact, we didn't manage it).
         <br/>We can see that if the sun is directly above Kisangani (in blue), it will illuminate New York (in red) well before illuminating Porto Velho (in green).
       </p>
-        <figure style={{ marginTop : 0, marginBottom : 0, marginRight: '5em', marginLeft: '5em' }}>
+        <figure className="info-content-margins" style={{ marginTop : 0, marginBottom : 0 }}>
           <img
             src="/img/flatearth/fe-noon-at-congo.png"
             alt="On a flat earth in March, the sun rises in New York before rising in eastern Brazil. In real life it's the opposite."
@@ -280,8 +280,8 @@ export default function FlatEarthTab() {
        <br/>On a spherical Earth, we also see an additional effect: the Moon is indeed the same, but we see it "turn" (until it's "upside down")<br/>
        </p>
        <div 
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
-        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+        className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0 }}>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-application-moon-paris.jpg"
@@ -330,8 +330,8 @@ export default function FlatEarthTab() {
         </div>
         <p>On the flat Earth simulator, the Moon is seen from a different angle if we observe it from a different place.</p>
         <div 
-          style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}
-          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4">
+          className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+          style={{ marginTop : 0 }}>
           <style>{`
             .crop570x597 {
               width: 100%;
@@ -402,7 +402,7 @@ export default function FlatEarthTab() {
       Yet observers in Australia see stars invisible from Europe!
       <br />Moreover, when we make a time-lapse of stars on a flat Earth, we should see them rotate around the "north" regardless of where we observe them, whereas on a spherical Earth, we see stars rotate clockwise at the south pole, and counterclockwise at the north pole.<br/>
       In these videos made on SpaceView, we can also see that when we're on the equator and look north, they rotate in the opposite direction from when we look south.</p>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginLeft: '5em', marginRight: '5em', flexWrap: 'wrap' }}>
+      <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
           <video
             autoPlay
@@ -446,8 +446,8 @@ export default function FlatEarthTab() {
       <br/>
       </p>
       <div 
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
-        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+        className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0 }}>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-eclipse-2026-oslo.jpg"
@@ -495,8 +495,8 @@ export default function FlatEarthTab() {
           </figure>
         </div>
       <div 
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
-        style={{ marginTop : 0, marginRight: '5em',  marginLeft: '5em'}}>
+        className="info-content-margins grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 md:grid-cols-4 gap-4"
+        style={{ marginTop : 0 }}>
           <figure className="m-0">
             <img
               src="/img/capture/spaceview-eclipse-2026-madrid.jpg"
@@ -579,7 +579,7 @@ export default function FlatEarthTab() {
           </figcaption>
         </figure>
       </div>
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', marginLeft: '5em', marginRight: '5em', flexWrap: 'wrap' }}>
+      <div className="info-content-margins" style={{ display: 'flex', alignItems: 'flex-start', gap: '16px', flexWrap: 'wrap' }}>
         <figure style={{ margin: 0, flex: '1 1 320px', maxWidth: '40%' }}>
           <video
             autoPlay

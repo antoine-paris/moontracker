@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import InfoTabs from './InfoTabs';
 import InfoLogo from './InfoLogo';
-import LanguageSwitcher from '../LanguageSwitcher';
 
 type Props = {
   open: boolean;
@@ -37,11 +36,11 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
       role="dialog"
       aria-modal="true"
       aria-label="Informations SpaceView.me"
-      className="fixed inset-0 z-[2000] bg-black/70 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[2000] bg-black/70 flex items-center justify-center p-0 md:p-4"
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       {/* Light themed info panel, same look-and-feel as /info */}
-      <div className="bg-white text-gray-900 rounded-lg border border-gray-200 shadow-2xl w-[90vw] h-[90vh] flex flex-col font-sans">
+      <div className="bg-white text-gray-900 w-full h-full md:rounded-lg md:border md:border-gray-200 md:shadow-2xl md:w-[90vw] md:h-[90vh] flex flex-col font-sans">
         {/* Cartouche standard (logo + site + CTA) */}
         <div className="border-b border-gray-200 bg-white">
           <div className="px-3 py-2 flex items-center justify-between">
@@ -52,26 +51,15 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
                 <span className="text-xs text-gray-600">{t('ui:general.information')} {t('ui:general.and')} {t('ui:general.help')}</span>
               </div>
             </div>
-            <div className="flex items-center gap-3">
-              <LanguageSwitcher size="sm" showLabels={true} variant="light" />
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={onClose}
-                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
-                  aria-label={t('navigation.back')}
-                  title={t('navigation.back')}
-                >
-                  {t('navigation.back')}
-                </button>
-                <button
-                  onClick={onClose}
-                  className="rounded px-2 py-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100"
-                  aria-label={t('navigation.close')}
-                  title={t('navigation.close')}
-                >
-                  ✕
-                </button>
-              </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={onClose}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
+                aria-label={t('navigation.back')}
+                title={t('navigation.back')}
+              >
+                {t('navigation.back')}
+              </button>
             </div>
           </div>
         </div>
