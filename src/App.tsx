@@ -1159,7 +1159,16 @@ export default function App() {
       setShowRefraction,
       setLockHorizon,
     });
-  }, [locationsLoading, locations]);
+
+    // Force showPanels to false on mobile screens regardless of URL params
+    if (isMobileScreen) {
+      setShowPanels(false);
+    }
+  }, [locationsLoading, locations, isMobileScreen]);
+  // Note: Other dependencies (allPlanetIds, devices, etc.) are intentionally omitted
+  // as this effect should only run once for initial URL parsing after locations load
+
+ 
 
   // keep URL updated (shareable links)
 

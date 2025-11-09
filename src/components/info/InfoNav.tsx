@@ -1,25 +1,41 @@
 import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
-import { getPathWithLanguage } from '../../hooks/useLanguageFromPath';
 
+// Use relative paths within the /info route context
 const baseTabs = [
-  { path: '/info', key: 'spaceview', end: true },
-  { path: '/info/help', key: 'help' },
-  { path: '/info/simulations', key: 'simulations' },
-  { path: '/info/flat-earth', key: 'flatearth' },
-  { path: '/info/bug', key: 'bug' },
-  { path: '/info/contact', key: 'contact' },
+  { path: '', key: 'spaceview', end: true },
+  { path: 'help', key: 'help' },
+  { path: 'simulations', key: 'simulations' },
+  { path: 'flat-earth', key: 'flatearth' },
+  { path: 'bug', key: 'bug' },
+  { path: 'contact', key: 'contact' },
 ];
 
 export default function InfoNav() {
   const { t, i18n } = useTranslation('info');
   
-  // Generate language-aware URLs
-  const tabs = baseTabs.map(tab => ({
-    ...tab,
-    to: getPathWithLanguage(tab.path, i18n.language)
-  }));
+  // Determine the current base path for info routes based on the current i18n language
+  // This ensures the navigation updates when language changes
+  const currentLanguage = i18n.language;
+  let infoBasePath = '/info';
+  
+  if (currentLanguage === 'en') {
+    infoBasePath = '/en/info';
+  } else if (currentLanguage === 'fr') {
+    infoBasePath = '/info'; // French is default, no prefix
+  } else {
+    infoBasePath = '/info'; // Default fallback
+  }
+  
+  // Generate URLs based on the current context
+  const tabs = baseTabs.map(tab => {
+    const targetPath = tab.path === '' ? infoBasePath : `${infoBasePath}/${tab.path}`;
+    return {
+      ...tab,
+      to: targetPath
+    };
+  });
 
   return (
     <nav role="tablist" aria-label="Informations" className="flex justify-between items-center gap-2 p-2 border-b border-gray-200">

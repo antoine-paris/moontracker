@@ -53,12 +53,29 @@ export function getPathWithoutLanguage(pathname: string): string {
  * Get path with language prefix
  */
 export function getPathWithLanguage(pathname: string, language: string): string {
-  const cleanPath = getPathWithoutLanguage(pathname);
+  // Ensure we always work with absolute paths
+  const absolutePath = pathname.startsWith('/') ? pathname : `/${pathname}`;
+  const cleanPath = getPathWithoutLanguage(absolutePath);
+  
+  // More comprehensive safeguard: prevent any path segment duplication
+  // This handles cases like /info/info/help -> /info/help
+  let safePath = cleanPath;
+  const segments = cleanPath.split('/').filter(Boolean);
+  
+  // Remove consecutive duplicate segments
+  const deduplicatedSegments = [];
+  for (let i = 0; i < segments.length; i++) {
+    if (i === 0 || segments[i] !== segments[i - 1]) {
+      deduplicatedSegments.push(segments[i]);
+    }
+  }
+  
+  safePath = deduplicatedSegments.length > 0 ? `/${deduplicatedSegments.join('/')}` : '/';
   
   if (language === 'fr') {
     // French is default, no prefix needed
-    return cleanPath;
+    return safePath;
   }
   
-  return `/${language}${cleanPath === '/' ? '' : cleanPath}`;
+  return `/${language}${safePath === '/' ? '' : safePath}`;
 }
