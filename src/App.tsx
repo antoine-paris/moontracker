@@ -3,8 +3,6 @@ import { useTranslation } from 'react-i18next';
 import { useLanguageFromPath } from './hooks/useLanguageFromPath';
 
 // Mobile hooks et composants
-import { useDeviceDetection } from './hooks/useDeviceDetection';
-import { useOrientation } from './hooks/useOrientation';
 import MobileLayout from './components/mobile/MobileLayout';
 import MobileSidebarModal from './components/mobile/MobileSidebarModal';
 import MobileTelemetryModal from './components/mobile/MobileTelemetryModal';
@@ -76,21 +74,18 @@ export default function App() {
   // Handle language detection from URL
   useLanguageFromPath();
   
-  // Mobile detection hooks (avant toute utilisation)
-  const deviceInfo = useDeviceDetection();
-  const orientationInfo = useOrientation();
   
   // Nouvelle logique de détection mobile/desktop (W >= 1280 = desktop, sinon mobile)
   const screenWidth = window.innerWidth;
   const screenHeight = window.innerHeight;
-  const isDesktopScreen = screenWidth >= 1280;
+  //const isDesktopScreen = screenWidth >= 1280;
   const isMobileScreen = screenWidth < 1280;
   const isLandscapeMode = screenWidth > screenHeight;
   
   // États pour les modals mobiles
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showMobileTelemetry, setShowMobileTelemetry] = useState(false);
-  const [showMobileTopBar, setShowMobileTopBar] = useState(false);
+  const [showMobileTopBar] = useState(false);
   
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
@@ -1449,7 +1444,6 @@ const handleFramePresented = React.useCallback(() => {
             showTelemetry={showMobileTelemetry}
             onToggleTelemetry={() => setShowMobileTelemetry(v => !v)}
             showTopBar={showMobileTopBar}
-            onToggleTopBar={() => setShowMobileTopBar(v => !v)}
           />
 
           {/* Recording status (UI-only, not included in video since we capture renderStackRef) */}

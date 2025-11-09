@@ -22,7 +22,6 @@ type Props = {
   showTelemetry?: boolean;
   onToggleTelemetry?: () => void;
   showTopBar?: boolean;
-  onToggleTopBar?: () => void;
 };
 
 export default function TopRightBar({
@@ -45,7 +44,6 @@ export default function TopRightBar({
   showTelemetry = false,
   onToggleTelemetry,
   showTopBar = false,
-  onToggleTopBar,
 }: Props) {
   const { t } = useTranslation('ui');
   const [copied, setCopied] = React.useState(false);

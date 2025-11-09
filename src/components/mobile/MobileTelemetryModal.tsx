@@ -31,7 +31,6 @@ export default function MobileTelemetryModal({
   phaseFraction,
   brightLimbAngleDeg,
   sunDeclinationDeg,
-  earthshine,
   eclipse,
   eclipticTiltDeg,
   overlayInfoString,

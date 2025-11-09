@@ -26,9 +26,6 @@ export default function MobileSidebarModal({
   locations,
   selectedLocation,
   onSelectLocation,
-  utcMs,
-  activeAzDeg,
-  activeAltDeg,
   preselectedCityIds,
   setPreselectedCityIds,
 }: MobileSidebarModalProps) {
@@ -39,7 +36,7 @@ export default function MobileSidebarModal({
   // Logique claire : W >= 1280 = desktop, sinon mobile avec détection orientation
   const screenWidth = window.innerWidth;
   const screenHeight = window.innerHeight;
-  const isDesktop = screenWidth >= 1280;
+  //const isDesktop = screenWidth >= 1280;
   const isMobile = screenWidth < 1280;
   const isLandscapeMode = screenWidth > screenHeight;
 
