@@ -86,7 +86,7 @@ export default function TopRightBar({
     settings: (
       <button
         key="settings"
-        onClick={isMobile ? onToggleTopBar : onTogglePanels}
+        onClick={onTogglePanels}
         className={getButtonClass(isMobile ? showTopBar : showPanels)}
         title={t('controls.settings')}
         aria-label={t('controls.settings')}

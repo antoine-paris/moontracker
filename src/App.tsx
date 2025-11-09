@@ -1467,10 +1467,10 @@ const handleFramePresented = React.useCallback(() => {
           <div
             className={`absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500 topbar ${isMobileScreen ? '' : ''}`}
             style={{
-              zIndex: Z.ui,
-              opacity: isMobileScreen ? 1 : (showPanels ? 1 : 0),
-              pointerEvents: isMobileScreen ? 'auto' : (showPanels ? 'auto' : 'none'),
-              paddingRight: isMobileScreen ? 0 : TOP_RIGHT_BAR_W + 8,
+              zIndex: Z.ui + (isMobileScreen ? 40 : 10),
+              opacity:  (showPanels ? 1 : 0),
+              pointerEvents:  (showPanels ? 'auto' : 'none'),
+              paddingRight: TOP_RIGHT_BAR_W + 8,
             }}
           >
             <TopBar
@@ -1567,6 +1567,8 @@ const handleFramePresented = React.useCallback(() => {
               onLongPoseClear={handleLongPoseClear}
               showRefraction={showRefraction}
               setShowRefraction={setShowRefraction}
+              isMobileScreen={isMobileScreen}
+              isLandscapeMode={isLandscapeMode}
           />
           </div>
 
@@ -1727,38 +1729,6 @@ const handleFramePresented = React.useCallback(() => {
             domainFromBrowser={typeof window !== 'undefined' ? window.location.hostname?.replace(/^www\./, '') || 'SpaceView' : 'SpaceView'}
           />
           
-          {/* Mobile TopBar Modal */}
-          {showMobileTopBar && (
-            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" style={{ zIndex: 70 }}>
-              <div className="absolute inset-4 bg-black/90 border border-white/20 rounded-2xl overflow-hidden">
-                {/* Modal header */}
-                <div className="flex items-center justify-between p-4 border-b border-white/10">
-                  <h2 className="text-lg font-medium text-white">Settings</h2>
-                  <button
-                    onClick={() => setShowMobileTopBar(false)}
-                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80"
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="18" y1="6" x2="6" y2="18"/>
-                      <line x1="6" y1="6" x2="18" y2="18"/>
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Scrollable content with TopBar - simplified for mobile */}
-                <div className="overflow-y-auto h-full pb-4">
-                  <div className="p-4 space-y-6 text-white">
-                    <div className="text-center">
-                      <p>Mobile TopBar Settings Modal</p>
-                      <p className="text-sm text-white/60 mt-2">
-                        This will contain all the TopBar controls optimized for mobile
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>

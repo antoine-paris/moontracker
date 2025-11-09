@@ -125,6 +125,9 @@ type Props = {
   setLongPoseRetainFrames: (n: number) => void;
 
   onLongPoseClear: () => void;
+
+  isMobileScreen: boolean;
+  isLandscapeMode: boolean;
 };
 
 export default function TopBar({
@@ -164,6 +167,9 @@ export default function TopBar({
   longPoseEnabled, setLongPoseEnabled,
   
   onLongPoseClear,
+
+  isMobileScreen,
+  isLandscapeMode,
 }: Props) {
   const { t } = useTranslation('ui');
   
