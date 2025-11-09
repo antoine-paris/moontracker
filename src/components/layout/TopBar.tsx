@@ -128,6 +128,9 @@ type Props = {
 
   isMobileScreen: boolean;
   isLandscapeMode: boolean;
+  
+  // NEW: Close panels callback for mobile
+  onClosePanels?: () => void;
 };
 
 export default function TopBar({
@@ -170,6 +173,9 @@ export default function TopBar({
 
   isMobileScreen,
   isLandscapeMode,
+  
+  // NEW: Close panels callback for mobile
+  onClosePanels,
 }: Props) {
   const { t } = useTranslation('ui');
   
@@ -795,11 +801,30 @@ export default function TopBar({
 
 
   return (
-    <>
-      <div className="mx-2 sm:mx-4">
-        {/* Branding supprimé: le logo et le nom sont affichés exclusivement dans la SidebarLocations */}
-      </div>
-      <div className="mx-2 sm:mx-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
+    <div className={isMobileScreen ? "fixed inset-0 bg-black/20 z-50 overflow-y-auto" : ""}>
+      {/* Mobile header with title and close button */}
+      {isMobileScreen && (
+        <div className="flex items-center justify-between p-4 border-b border-white/10 ">
+          <h1 className="text-xl font-semibold text-white">{t('ui:settings.title')}</h1>
+          <button
+            onClick={onClosePanels}
+            className="p-2 rounded-lg border border-white/15 text-white/80 hover:border-white/30 hover:text-white"
+            title={t('ui:settings.close')}
+            aria-label={t('ui:settings.close')}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      )}
+      
+      <div className={isMobileScreen ? "p-4 space-y-4 bg-black/40 min-h-screen" : "mx-2 sm:mx-4"}>
+        {/* Empty div for desktop spacing that was there before */}
+        {!isMobileScreen && <div className="mx-2 sm:mx-4"></div>}
+      
+      <div className={isMobileScreen ? "space-y-4" : "mx-2 sm:mx-4 grid grid-cols-1 gap-2 sm:grid-cols-3"}>
         {/* SUIVI */}
         <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:followModes.title')}</div>
@@ -1591,8 +1616,9 @@ export default function TopBar({
           )}
         </div>
       </div>
+      </div>
      
-    </>
+    </div>
   );
 }
 

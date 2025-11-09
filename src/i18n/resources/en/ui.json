@@ -186,6 +186,10 @@
     "showMoonCardinals": "Show cardinal points of the Moon and planets",
     "enableDebug": "Enable visual debugging elements"
   },
+  "settings": {
+    "title": "Settings", 
+    "close": "Close"
+  },
   "general": {
     "help": "Help",
     "information": "Information",

@@ -85,7 +85,6 @@ export default function App() {
   // États pour les modals mobiles
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showMobileTelemetry, setShowMobileTelemetry] = useState(false);
-  const [showMobileTopBar] = useState(false);
   
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
@@ -1426,25 +1425,27 @@ const handleFramePresented = React.useCallback(() => {
           )}
 
           {/* Top-right vertical toolbar (always above SpaceView & UI) */}
-          <TopRightBar
-            showPanels={showPanels}
-            onTogglePanels={() => setShowPanels(v => !v)}
-            zIndex={Z.ui + 30}
-            shareUrl={shareUrl}
-            isAnimating={isAnimating}
-            onToggleAnimating={() => setIsAnimating(v => !v)}
-            onCopyJpeg={handleCopyJpeg}
-            onOpenInfo={() => setShowInfo(true)} 
-            isRecordingVideo={isRecordingVideo}
-            onToggleRecording={handleToggleRecording}
-            isMobile={isMobileScreen}
-            isLandscape={isLandscapeMode}
-            showSidebar={showMobileSidebar}
-            onToggleSidebar={() => setShowMobileSidebar(v => !v)}
-            showTelemetry={showMobileTelemetry}
-            onToggleTelemetry={() => setShowMobileTelemetry(v => !v)}
-            showTopBar={showMobileTopBar}
-          />
+          {!(isMobileScreen && showPanels) && (
+            <TopRightBar
+              showPanels={showPanels}
+              onTogglePanels={() => setShowPanels(v => !v)}
+              zIndex={Z.ui + 30}
+              shareUrl={shareUrl}
+              isAnimating={isAnimating}
+              onToggleAnimating={() => setIsAnimating(v => !v)}
+              onCopyJpeg={handleCopyJpeg}
+              onOpenInfo={() => setShowInfo(true)} 
+              isRecordingVideo={isRecordingVideo}
+              onToggleRecording={handleToggleRecording}
+              isMobile={isMobileScreen}
+              isLandscape={isLandscapeMode}
+              showSidebar={showMobileSidebar}
+              onToggleSidebar={() => setShowMobileSidebar(v => !v)}
+              showTelemetry={showMobileTelemetry}
+              onToggleTelemetry={() => setShowMobileTelemetry(v => !v)}
+              
+            />
+          )}
 
           {/* Recording status (UI-only, not included in video since we capture renderStackRef) */}
           {isRecordingVideo && (
@@ -1459,12 +1460,12 @@ const handleFramePresented = React.useCallback(() => {
 
           {/* Top UI bar */}
           <div
-            className={`absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500 topbar ${isMobileScreen ? '' : ''}`}
+            className={`${isMobileScreen ? '' : 'absolute top-0 left-0 right-0 p-2 sm:p-3'} transition-opacity duration-500 topbar`}
             style={{
-              zIndex: Z.ui + (isMobileScreen ? 40 : 10),
+              zIndex: Z.ui + (isMobileScreen ? 50 : 10),
               opacity:  (showPanels ? 1 : 0),
               pointerEvents:  (showPanels ? 'auto' : 'none'),
-              paddingRight: TOP_RIGHT_BAR_W + 8,
+              paddingRight: isMobileScreen ? 0 : TOP_RIGHT_BAR_W + 8,
             }}
           >
             <TopBar
@@ -1540,7 +1541,6 @@ const handleFramePresented = React.useCallback(() => {
               setProjectionMode={setProjectionMode}
               showPlanets={showPlanets}
               setShowPlanets={setShowPlanets}
-
               timeLapseEnabled={timeLapseEnabled}
               setTimeLapseEnabled={setTimeLapseEnabled}
               timeLapsePeriodMs={timeLapsePeriodMs}
@@ -1563,6 +1563,7 @@ const handleFramePresented = React.useCallback(() => {
               setShowRefraction={setShowRefraction}
               isMobileScreen={isMobileScreen}
               isLandscapeMode={isLandscapeMode}
+              onClosePanels={() => setShowPanels(false)}
           />
           </div>
 
@@ -1669,17 +1670,19 @@ const handleFramePresented = React.useCallback(() => {
           )}
 
           {/* Directional keypad (adaptatif mobile/desktop) */}
-          <DirectionalKeypad
-            baseRefAlt={baseRefAlt}
-            stepAzDeg={stepAzDeg}
-            stepAltDeg={stepAltDeg}
-            setDeltaAzDeg={setDeltaAzDeg}
-            setDeltaAltDeg={setDeltaAltDeg}
-            zIndex={Z.ui + 20}
-            onLongPoseClear={handleLongPoseClear}
-            isMobile={isMobileScreen}
-            isLandscape={isLandscapeMode}
-          />
+          {!(isMobileScreen && showPanels) && (
+            <DirectionalKeypad
+              baseRefAlt={baseRefAlt}
+              stepAzDeg={stepAzDeg}
+              stepAltDeg={stepAltDeg}
+              setDeltaAzDeg={setDeltaAzDeg}
+              setDeltaAltDeg={setDeltaAltDeg}
+              zIndex={Z.ui + 20}
+              onLongPoseClear={handleLongPoseClear}
+              isMobile={isMobileScreen}
+              isLandscape={isLandscapeMode}
+            />
+          )}
         </main>
       </div>
 

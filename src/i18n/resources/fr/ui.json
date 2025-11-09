@@ -185,6 +185,10 @@
     "showMoonCardinals": "Afficher les points cardinaux de la Lune et des planètes",
     "enableDebug": "Activer les éléments de débogage visuel"
   },
+  "settings": {
+    "title": "Paramètres",
+    "close": "Fermer"
+  },
   "general": {
     "help": "Aide",
     "information": "Informations",
