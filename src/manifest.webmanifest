@@ -1,15 +1,37 @@
 {
   "short_name": "SpaceView",
-  "name": "SpaceView.me",
-  "description": "Create a skyview from anywhere anytime.",
+  "name": "SpaceView.me - Astronomical Simulator",
+  "description": "Real-time 3D sky simulator for astronomy and astrophotography planning. Observe Moon phases, Sun position, planets and stars from any location with precise calculations.",
+  "keywords": "astronomy, moon phases, planets, eclipse predictor, astrophotography, sky visualization, astronomical calculator",
+  "categories": ["education", "science", "photography", "utilities"],
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "any",
   "background_color": "#000000",
   "theme_color": "#ffffff",
+  "lang": "en",
+  "dir": "ltr",
   "icons": [
     { "src": "assets/applogos/favicon-16x16.png",       "sizes": "16x16",   "type": "image/png", "purpose": "any" },
     { "src": "assets/applogos/favicon-32x32.png",       "sizes": "32x32",   "type": "image/png", "purpose": "any" },
-    { "src": "assets/applogos/android-chrome-192x192.png","sizes": "192x192","type": "image/png", "purpose": "any" },
-    { "src": "assets/applogos/android-chrome-512x512.png","sizes": "512x512","type": "image/png", "purpose": "any" }
+    { "src": "assets/applogos/android-chrome-192x192.png","sizes": "192x192","type": "image/png", "purpose": "any maskable" },
+    { "src": "assets/applogos/android-chrome-512x512.png","sizes": "512x512","type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop-main.jpg",
+      "sizes": "1280x720",
+      "type": "image/jpeg",
+      "form_factor": "wide",
+      "label": "SpaceView main interface showing moon and planetary positions"
+    },
+    {
+      "src": "/screenshots/mobile-main.jpg", 
+      "sizes": "390x844",
+      "type": "image/jpeg",
+      "form_factor": "narrow",
+      "label": "SpaceView mobile interface"
+    }
   ]
 }

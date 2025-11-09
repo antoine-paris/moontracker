@@ -1,0 +1,33 @@
+User-agent: *
+Allow: /
+Allow: /en/
+Allow: /fr/
+Allow: /info/
+Allow: /en/info/
+Allow: /fr/info/
+Allow: /eclipse-predictor/
+Allow: /en/eclipse-predictor/
+Allow: /fr/eclipse-predictor/
+Allow: /moon-phase-calculator/
+Allow: /en/moon-phase-calculator/
+Allow: /fr/moon-phase-calculator/
+Allow: /astrophotography-planner/
+Allow: /en/astrophotography-planner/
+Allow: /fr/astrophotography-planner/
+
+# Block parameter-heavy URLs to avoid duplicate content
+Disallow: /*?*&*
+Disallow: /*?tl=*
+Disallow: /*?l=*
+Disallow: /*?t=*
+Disallow: /*?F=*
+
+# Allow specific useful parameters  
+Allow: /*?lang=*
+Allow: /*?start=*
+
+# Sitemap
+Sitemap: https://spaceview.me/sitemap.xml
+
+# Crawl delay (be respectful)
+Crawl-delay: 1

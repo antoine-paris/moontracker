@@ -33,8 +33,14 @@ export default function InfoPage() {
     }
     if (pathname.startsWith('/info/flat-earth')) {
       return {
-        title: 'SpaceView.me — Observations et vérifications',
-        desc: 'Vérifications reproductibles: terminateur lunaire, hauteur du Soleil, parallaxe, ciel austral.',
+        title: 'SpaceView.me — Flat Earth Simulator & Sky Verification',
+        desc: 'Compare flat earth vs spherical earth models with reproducible observations: lunar terminator, sun altitude, parallax, southern sky.',
+      };
+    }
+    if (pathname.startsWith('/info/contact')) {
+      return {
+        title: 'SpaceView.me — Contact & Social Media',
+        desc: 'Connect with SpaceView.me on social media platforms. Follow @SpaceViewMe for updates, support, and astronomical discussions.',
       };
     }
     if (pathname.startsWith('/info/bug')) {

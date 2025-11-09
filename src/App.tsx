@@ -74,6 +74,68 @@ export default function App() {
   // Handle language detection from URL
   useLanguageFromPath();
   
+  // Add structured data for SEO
+  useEffect(() => {
+    const jsonLd = {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "SpaceView.me",
+      "alternateName": "SpaceView",
+      "description": "Interactive 3D astronomical simulator and astrophotography planner for observing Moon phases, Sun position, planets and stars from any location with real-time calculations.",
+      "url": "https://spaceview.me",
+      "applicationCategory": "EducationalApplication",
+      "applicationSubCategory": "Astronomy simulator, Astrophotography planner",
+      "operatingSystem": "Web Browser",
+      "browserRequirements": "Requires JavaScript. Modern browser with WebGL support recommended.",
+      "softwareVersion": "1.0",
+      "inLanguage": ["en", "fr"],
+      "author": {
+        "@type": "Organization",
+        "name": "SpaceView",
+        "url": "https://spaceview.me"
+      },
+      "publisher": {
+        "@type": "Organization", 
+        "name": "SpaceView",
+        "url": "https://spaceview.me"
+      },
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "potentialAction": {
+        "@type": "UseAction",
+        "target": "https://spaceview.me"
+      },
+      "featureList": [
+        "Real-time Moon phase calculation",
+        "Sun position tracking", 
+        "Planetary position computation",
+        "Eclipse prediction",
+        "Astrophotography planning",
+        "Wide-angle sky projections",
+        "Libration visualization",
+        "Time-lapse animation",
+        "Location-based observations"
+      ],
+      "screenshot": "https://spaceview.me/og-image.jpg",
+      "image": "https://spaceview.me/og-image.jpg"
+    };
+
+    let script = document.getElementById('app-jsonld');
+    if (!script) {
+      script = document.createElement('script');
+      script.id = 'app-jsonld';
+      script.type = 'application/ld+json';
+      document.head.appendChild(script);
+    }
+    script.textContent = JSON.stringify(jsonLd);
+
+    return () => {
+      // Keep the script for navigation performance
+    };
+  }, []);
   
   // Nouvelle logique de détection mobile/desktop (W >= 1280 = desktop, sinon mobile)
   const screenWidth = window.innerWidth;

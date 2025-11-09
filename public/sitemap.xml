@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
+  
+  <!-- Main pages -->
+  <url>
+    <loc>https://spaceview.me/</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://spaceview.me/"/>
+  </url>
+  
+  <!-- English pages -->
+  <url>
+    <loc>https://spaceview.me/en</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- French pages -->
+  <url>
+    <loc>https://spaceview.me/fr</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- Info pages -->
+  <url>
+    <loc>https://spaceview.me/info</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/info"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/info"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/info</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/info</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <!-- Help pages -->
+  <url>
+    <loc>https://spaceview.me/info/help</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/info/help"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/info/help"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/info/help</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/info/help</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Simulations pages -->
+  <url>
+    <loc>https://spaceview.me/info/simulations</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/info/simulations"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/info/simulations"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/info/simulations</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/info/simulations</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  
+  <!-- Flat Earth pages -->
+  <url>
+    <loc>https://spaceview.me/info/flat-earth</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/info/flat-earth"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/info/flat-earth"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/info/flat-earth</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/info/flat-earth</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <!-- Contact pages -->
+  <url>
+    <loc>https://spaceview.me/info/contact</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/info/contact"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/info/contact"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/info/contact</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/info/contact</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <!-- Bug report pages -->
+  <url>
+    <loc>https://spaceview.me/info/bug</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/info/bug"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/info/bug"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/info/bug</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/info/bug</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  
+  <!-- Feature landing pages -->
+  <url>
+    <loc>https://spaceview.me/eclipse-predictor</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/eclipse-predictor"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/eclipse-predictor"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/eclipse-predictor</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/eclipse-predictor</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://spaceview.me/moon-phase-calculator</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/moon-phase-calculator"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/moon-phase-calculator"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/moon-phase-calculator</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/moon-phase-calculator</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+  <url>
+    <loc>https://spaceview.me/astrophotography-planner</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://spaceview.me/en/astrophotography-planner"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://spaceview.me/fr/astrophotography-planner"/>
+  </url>
+  <url>
+    <loc>https://spaceview.me/en/astrophotography-planner</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://spaceview.me/fr/astrophotography-planner</loc>
+    <lastmod>2025-01-01</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+</urlset>

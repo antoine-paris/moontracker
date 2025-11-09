@@ -1,11 +1,11 @@
 export default function ContactTabFr() {
   const platforms = [
-    { name: 'X (Twitter)', slug: 'x', url: 'https://twitter.com/spaceview' },
-    { name: 'Facebook', slug: 'facebook', url: 'https://facebook.com/spaceview' },
+    { name: 'X (Twitter)', slug: 'x', url: 'https://twitter.com/SpaceViewMe' },
+    { name: 'Facebook', slug: 'facebook', url: 'https://facebook.com/SpaceViewMe' },
     { name: 'GitHub', slug: 'github', url: 'https://github.com/antoine-paris/spaceview' },
-    { name: 'Instagram', slug: 'instagram', url: 'https://instagram.com' },
-    { name: 'YouTube', slug: 'youtube', url: 'https://youtube.com' },
-    { name: 'TikTok', slug: 'tiktok', url: 'https://tiktok.com' },
+    { name: 'Instagram', slug: 'instagram', url: 'https://instagram.com/SpaceViewMe' },
+    { name: 'YouTube', slug: 'youtube', url: 'https://youtube.com/@SpaceViewMe' },
+    { name: 'TikTok', slug: 'tiktok', url: 'https://tiktok.com/@SpaceViewMe' },
     ];
 
   const gridStyle: React.CSSProperties = {

@@ -11,6 +11,9 @@ import SimulationsTab from './components/info/tabs/SimulationsTab/index'
 import FlatEarthTab from './components/info/tabs/FlatEarthTab/index'
 import BugReportTab from './components/info/tabs/BugReportTab/index'
 import ContactTab from './components/info/tabs/ContactTab/index'
+import EclipsePredictorPage from './pages/EclipsePredictorPage'
+import MoonPhaseCalculatorPage from './pages/MoonPhaseCalculatorPage'
+import AstrPhotographyPlannerPage from './pages/AstrPhotographyPlannerPage'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
@@ -49,6 +52,19 @@ createRoot(document.getElementById('root')!).render(
           <Route path="bug" element={<BugReportTab />} />
           <Route path="contact" element={<ContactTab />} />
         </Route>
+
+        {/* Feature landing pages */}
+        <Route path="/eclipse-predictor" element={<EclipsePredictorPage />} />
+        <Route path="/en/eclipse-predictor" element={<EclipsePredictorPage />} />
+        <Route path="/fr/eclipse-predictor" element={<EclipsePredictorPage />} />
+        
+        <Route path="/moon-phase-calculator" element={<MoonPhaseCalculatorPage />} />
+        <Route path="/en/moon-phase-calculator" element={<MoonPhaseCalculatorPage />} />
+        <Route path="/fr/moon-phase-calculator" element={<MoonPhaseCalculatorPage />} />
+        
+        <Route path="/astrophotography-planner" element={<AstrPhotographyPlannerPage />} />
+        <Route path="/en/astrophotography-planner" element={<AstrPhotographyPlannerPage />} />
+        <Route path="/fr/astrophotography-planner" element={<AstrPhotographyPlannerPage />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
