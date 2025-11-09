@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
 import SpaceViewTab from './tabs/SpaceViewTab/index';
@@ -23,6 +23,7 @@ export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: st
   const { t } = useTranslation('info');
   const validInit = (['spaceview','help','simulations','flatearth','bug'].includes(initialTab) ? initialTab : 'spaceview') as TabId;
   const [active, setActive] = useState<TabId>(validInit);
+  const tabPanelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -30,6 +31,13 @@ export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: st
     if (!isInfoPage) return;
     const next = `#${active}`;
     if (window.location.hash !== next) history.replaceState(null, '', next);
+  }, [active]);
+
+  // Reset scroll position when switching tabs
+  useEffect(() => {
+    if (tabPanelRef.current) {
+      tabPanelRef.current.scrollTop = 0;
+    }
   }, [active]);
 
   const renderActive = useMemo(() => {
@@ -70,7 +78,7 @@ export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: st
         ))}
       </div>
       {/* Light prose with clear heading hierarchy */}
-      <div role="tabpanel" className="flex-1 overflow-y-auto p-4 prose prose-info max-w-none font-sans">
+      <div ref={tabPanelRef} role="tabpanel" className="flex-1 overflow-y-auto p-4 prose prose-info max-w-none font-sans">
         {renderActive}
       </div>
     </div>

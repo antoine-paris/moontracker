@@ -83,6 +83,11 @@ export default function InfoPage() {
     };
   }, [seo.title, seo.desc]);
 
+  // Reset scroll position when navigating between info pages
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900">
       {/* Cartouche standard */}
