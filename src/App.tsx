@@ -123,9 +123,9 @@ export default function App() {
       "image": "https://spaceview.me/og-image.jpg"
     };
 
-    let script = document.getElementById('app-jsonld');
+    let script = document.getElementById('app-jsonld') as HTMLScriptElement;
     if (!script) {
-      script = document.createElement('script');
+      script = document.createElement('script') as HTMLScriptElement;
       script.id = 'app-jsonld';
       script.type = 'application/ld+json';
       document.head.appendChild(script);
