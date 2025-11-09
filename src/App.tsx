@@ -1,6 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useTranslation } from 'react-i18next';
 import { useLanguageFromPath } from './hooks/useLanguageFromPath';
+
+// Mobile hooks et composants
+import { useDeviceDetection } from './hooks/useDeviceDetection';
+import { useOrientation } from './hooks/useOrientation';
+import MobileLayout from './components/mobile/MobileLayout';
+import MobileSidebarModal from './components/mobile/MobileSidebarModal';
+import MobileTelemetryModal from './components/mobile/MobileTelemetryModal';
+
 // Astronomy-Engine wrapper centralisé
 import { getMoonIllumination, getMoonLibration, moonHorizontalParallaxDeg, topocentricMoonDistanceKm, sunOnMoon, getSunAndMoonAltAzDeg, getSunOrientationAngles } from "./astro/aeInterop";
 import { getMoonOrientationAngles } from "./astro/aeInterop";
@@ -67,6 +75,22 @@ export default function App() {
   
   // Handle language detection from URL
   useLanguageFromPath();
+  
+  // Mobile detection hooks (avant toute utilisation)
+  const deviceInfo = useDeviceDetection();
+  const orientationInfo = useOrientation();
+  
+  // Nouvelle logique de détection mobile/desktop (W >= 1280 = desktop, sinon mobile)
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  const isDesktopScreen = screenWidth >= 1280;
+  const isMobileScreen = screenWidth < 1280;
+  const isLandscapeMode = screenWidth > screenHeight;
+  
+  // États pour les modals mobiles
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  const [showMobileTelemetry, setShowMobileTelemetry] = useState(false);
+  const [showMobileTopBar, setShowMobileTopBar] = useState(false);
   
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
@@ -751,10 +775,11 @@ export default function App() {
     return stageSize.w / stageSize.h;
   }, [device, stageSize]);
 
-  // Viewport centré au ratio de l'appareil avec marge noire minimale de 20 px
+  // Viewport centré au ratio de l'appareil avec marge adaptative (moins sur mobile)
   const viewport = useMemo(() => {
-    return computeViewport(showCameraFrame, stageSize, deviceAspect, 20);
-  }, [showCameraFrame, stageSize, deviceAspect]);
+    const minMargin = isMobileScreen ? 10 : 20; // Marge réduite sur mobile
+    return computeViewport(showCameraFrame, stageSize, deviceAspect, minMargin);
+  }, [showCameraFrame, stageSize, deviceAspect, isMobileScreen]);
 
 
   // Maintenir FOVY aligné au ratio du viewport quand ⚭ est actif (init + resize + modif FOVX)
@@ -1362,26 +1387,31 @@ const handleFramePresented = React.useCallback(() => {
 
 
   
+
+
   // --- JSX -------------------------------------------------------------------
   return (
-    <div className="w-full h-screen bg-black text-white overflow-hidden">
+    <MobileLayout showOrientationPrompt={isMobileScreen}>
+      <div className="w-full h-screen bg-black text-white overflow-hidden">
       <div className="flex h-full">
-        {/* Left column: locations */}
-        <aside className="shrink-0 relative" style={{ zIndex: Z.ui }}>
-          <SidebarLocations
-            locations={locations}
-            selectedLocation={location}
-            onSelectLocation={setLocation}
-            utcMs={whenMs}
-            // Include deltas in active pointing
-            activeAzDeg={refAz}
-            activeAltDeg={refAlt}
-            preselectedCityIds={preselectedCityIds}
-            setPreselectedCityIds={setPreselectedCityIds}
-          />
-        </aside>
+        {/* Left column: locations (caché sur mobile) */}
+        {!isMobileScreen && (
+          <aside className="shrink-0 relative" style={{ zIndex: Z.ui }}>
+            <SidebarLocations
+              locations={locations}
+              selectedLocation={location}
+              onSelectLocation={setLocation}
+              utcMs={whenMs}
+              // Include deltas in active pointing
+              activeAzDeg={refAz}
+              activeAltDeg={refAlt}
+              preselectedCityIds={preselectedCityIds}
+              setPreselectedCityIds={setPreselectedCityIds}
+            />
+          </aside>
+        )}
         {/* Main stage */}
-        <main className="relative flex-1">
+        <main className={`relative flex-1 ${isMobileScreen ? 'stage' : ''}`}>
           {(locationsLoading || glbLoading) && (
             <div className="absolute inset-0 flex flex-col gap-2 items-center justify-center text-white/70 text-sm pointer-events-none">
               {locationsLoading && location.id === 'loading' && <div>{t('loading.locations')}</div>}
@@ -1412,6 +1442,14 @@ const handleFramePresented = React.useCallback(() => {
             onOpenInfo={() => setShowInfo(true)} 
             isRecordingVideo={isRecordingVideo}
             onToggleRecording={handleToggleRecording}
+            isMobile={isMobileScreen}
+            isLandscape={isLandscapeMode}
+            showSidebar={showMobileSidebar}
+            onToggleSidebar={() => setShowMobileSidebar(v => !v)}
+            showTelemetry={showMobileTelemetry}
+            onToggleTelemetry={() => setShowMobileTelemetry(v => !v)}
+            showTopBar={showMobileTopBar}
+            onToggleTopBar={() => setShowMobileTopBar(v => !v)}
           />
 
           {/* Recording status (UI-only, not included in video since we capture renderStackRef) */}
@@ -1425,14 +1463,14 @@ const handleFramePresented = React.useCallback(() => {
           )}
 
 
-          {/* Top UI bar (add right padding so it doesn't sit under the toolbar) */}
+          {/* Top UI bar */}
           <div
-            className="absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
+            className={`absolute top-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500 topbar ${isMobileScreen ? '' : ''}`}
             style={{
               zIndex: Z.ui,
-              opacity: showPanels ? 1 : 0,
-              pointerEvents: showPanels ? 'auto' : 'none',
-              paddingRight: TOP_RIGHT_BAR_W + 8,
+              opacity: isMobileScreen ? 1 : (showPanels ? 1 : 0),
+              pointerEvents: isMobileScreen ? 'auto' : (showPanels ? 'auto' : 'none'),
+              paddingRight: isMobileScreen ? 0 : TOP_RIGHT_BAR_W + 8,
             }}
           >
             <TopBar
@@ -1599,6 +1637,8 @@ const handleFramePresented = React.useCallback(() => {
                   showRefraction={showRefraction}
                   presentKey={whenMs}
                   onFramePresented={handleFramePresented}
+                  isMobile={isMobileScreen}
+                  isLandscape={isLandscapeMode}
                 />
                 </div>
               </div>
@@ -1612,42 +1652,117 @@ const handleFramePresented = React.useCallback(() => {
             containerH={stageSize.h}
             zIndex={Z.ui - 1}
           />
-          {/* Bottom telemetry cards */}
-          <div
-            className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
-            style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
-          >
-            <BottomTelemetry
-              astro={astro}
-              rotationToHorizonDegMoon={rotationToHorizonDegMoon}
-              phaseFraction={phaseFraction}
-              brightLimbAngleDeg={brightLimbAngleDeg}
-              sunDeclinationDeg={sunDeclinationDeg}
-              earthshine={earthshine}
-              showMoon3D={true}
-              eclipse={eclipse}
-              eclipticTiltDeg={eclipticTiltDeg}
-            />
-          </div>
-
-          {/* Directional keypad (right side, vertically centered) */}
-          {(
-            <DirectionalKeypad
-              baseRefAlt={baseRefAlt}
-              stepAzDeg={stepAzDeg}
-              stepAltDeg={stepAltDeg}
-              setDeltaAzDeg={setDeltaAzDeg}
-              setDeltaAltDeg={setDeltaAltDeg}
-              zIndex={Z.ui + 20}
-              onLongPoseClear={handleLongPoseClear}  
-            />
+          {/* Bottom telemetry cards (masqué sur mobile) */}
+          {!isMobileScreen && (
+            <div
+              className="absolute bottom-0 left-0 right-0 p-2 sm:p-3 transition-opacity duration-500"
+              style={{ zIndex: Z.ui, opacity: showPanels ? 1 : 0, pointerEvents: showPanels ? 'auto' : 'none' }}
+            >
+              <BottomTelemetry
+                astro={astro}
+                rotationToHorizonDegMoon={rotationToHorizonDegMoon}
+                phaseFraction={phaseFraction}
+                brightLimbAngleDeg={brightLimbAngleDeg}
+                sunDeclinationDeg={sunDeclinationDeg}
+                earthshine={earthshine}
+                showMoon3D={true}
+                eclipse={eclipse}
+                eclipticTiltDeg={eclipticTiltDeg}
+              />
+            </div>
           )}
+
+          {/* Directional keypad (adaptatif mobile/desktop) */}
+          <DirectionalKeypad
+            baseRefAlt={baseRefAlt}
+            stepAzDeg={stepAzDeg}
+            stepAltDeg={stepAltDeg}
+            setDeltaAzDeg={setDeltaAzDeg}
+            setDeltaAltDeg={setDeltaAltDeg}
+            zIndex={Z.ui + 20}
+            onLongPoseClear={handleLongPoseClear}
+            isMobile={isMobileScreen}
+            isLandscape={isLandscapeMode}
+          />
         </main>
       </div>
 
       {/* Info modal (top layer) */}
       <InfoModal open={showInfo} onClose={() => setShowInfo(false)} />
+
+      {/* Mobile modals */}
+      {isMobileScreen && (
+        <>
+          <MobileSidebarModal
+            isOpen={showMobileSidebar}
+            onClose={() => setShowMobileSidebar(false)}
+            locations={locations}
+            selectedLocation={location}
+            onSelectLocation={setLocation}
+            utcMs={whenMs}
+            activeAzDeg={refAz}
+            activeAltDeg={refAlt}
+            preselectedCityIds={preselectedCityIds}
+            setPreselectedCityIds={setPreselectedCityIds}
+          />
+          
+          <MobileTelemetryModal
+            isOpen={showMobileTelemetry}
+            onClose={() => setShowMobileTelemetry(false)}
+            astro={astro}
+            rotationToHorizonDegMoon={rotationToHorizonDegMoon}
+            phaseFraction={phaseFraction}
+            brightLimbAngleDeg={brightLimbAngleDeg}
+            sunDeclinationDeg={sunDeclinationDeg}
+            earthshine={earthshine}
+            eclipse={eclipse}
+            eclipticTiltDeg={eclipticTiltDeg}
+            overlayInfoString={tUi('time.overlayFormat', { place: overlayPlaceString, localTime: cityLocalTimeString, utcTime })}
+            refAzDeg={refAz}
+            refAltDeg={refAlt}
+            cameraLabel={deviceId === CUSTOM_DEVICE_ID
+              ? (zoomOptions[0]?.label ?? '') 
+              : `${device.label} — ${zoom?.label ?? ''}`}
+            enlargeObjects={enlargeObjects}
+            domainFromBrowser={typeof window !== 'undefined' ? window.location.hostname?.replace(/^www\./, '') || 'SpaceView' : 'SpaceView'}
+          />
+          
+          {/* Mobile TopBar Modal */}
+          {showMobileTopBar && (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm" style={{ zIndex: 70 }}>
+              <div className="absolute inset-4 bg-black/90 border border-white/20 rounded-2xl overflow-hidden">
+                {/* Modal header */}
+                <div className="flex items-center justify-between p-4 border-b border-white/10">
+                  <h2 className="text-lg font-medium text-white">Settings</h2>
+                  <button
+                    onClick={() => setShowMobileTopBar(false)}
+                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white/80"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Scrollable content with TopBar - simplified for mobile */}
+                <div className="overflow-y-auto h-full pb-4">
+                  <div className="p-4 space-y-6 text-white">
+                    <div className="text-center">
+                      <p>Mobile TopBar Settings Modal</p>
+                      <p className="text-sm text-white/60 mt-2">
+                        This will contain all the TopBar controls optimized for mobile
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
+    </MobileLayout>
   );
 
 }

@@ -1,0 +1,398 @@
+/* Mobile adaptations for SidebarLocationsCities and SidebarLocationsCoord */
+.mobile-sidebar-content {
+  /* Override desktop sidebar styles for mobile */
+  background: transparent;
+  color: white;
+  padding: 1rem;
+}
+
+.mobile-sidebar-content .cities-list {
+  /* Améliorer l'espacement et la lisibilité sur mobile */
+  gap: 0.5rem;
+}
+
+.mobile-sidebar-content .cities-list li button {
+  /* Adapter les boutons pour mobile */
+  padding: 12px !important;
+  border-radius: 8px !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: all 0.2s ease !important;
+  font-size: 14px !important;
+  width: 100% !important;
+  text-align: left !important;
+}
+
+.mobile-sidebar-content .cities-list li button:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+.mobile-sidebar-content .cities-list li button[aria-pressed="true"] {
+  background: rgba(59, 130, 246, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.4) !important;
+  color: rgb(147, 197, 253) !important;
+}
+
+.mobile-sidebar-content input[type="text"] {
+  /* Améliorer les champs de saisie pour mobile */
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  padding: 12px !important;
+  border-radius: 6px !important;
+  font-size: 16px !important; /* Éviter le zoom sur iOS */
+  width: 100% !important;
+}
+
+.mobile-sidebar-content input[type="text"]:focus {
+  outline: none !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1) !important;
+}
+
+.mobile-sidebar-content input[type="text"]::placeholder {
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+.mobile-sidebar-content label {
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 14px !important;
+  margin-bottom: 6px !important;
+  display: block !important;
+}
+
+.mobile-sidebar-content select {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  padding: 12px !important;
+  border-radius: 6px !important;
+  font-size: 16px !important;
+  width: 100% !important;
+}
+
+.mobile-sidebar-content select option {
+  background: #1f2937 !important;
+  color: white !important;
+}
+
+/* Améliorer la lisibilité des sous-textes */
+.mobile-sidebar-content .cities-list span[style*="font-size: 11px"] {
+  font-size: 12px !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Adapter les boutons d'action */
+.mobile-sidebar-content button:not(.cities-list button) {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  color: white !important;
+  padding: 8px 12px !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.mobile-sidebar-content button:not(.cities-list button):hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+/* Améliorer l'espacement vertical */
+.mobile-sidebar-content > div {
+  margin-bottom: 1.5rem !important;
+}
+
+/* Adapter la largeur des éléments pour mobile */
+.mobile-sidebar-content * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Adaptations spécifiques pour l'onglet Coordonnées */
+.mobile-sidebar-content div[style*="gridTemplateColumns"] {
+  /* Agrandir les boutons directionnels pour mobile */
+  grid-template-columns: 44px 44px 44px !important;
+  grid-template-rows: 44px 44px 44px !important;
+  gap: 8px !important;
+  margin-top: 16px !important;
+}
+
+.mobile-sidebar-content div[style*="gridTemplateColumns"] button {
+  /* Boutons directionnels plus grands pour mobile */
+  width: 44px !important;
+  height: 44px !important;
+  font-size: 18px !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 2px solid rgba(255, 255, 255, 0.2) !important;
+  transition: all 0.2s ease !important;
+}
+
+.mobile-sidebar-content div[style*="gridTemplateColumns"] button:hover,
+.mobile-sidebar-content div[style*="gridTemplateColumns"] button:active {
+  background: rgba(255, 255, 255, 0.2) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  transform: scale(0.95) !important;
+}
+
+.mobile-sidebar-content div[style*="gridTemplateColumns"] > div {
+  /* Espaceurs des boutons directionnels */
+  width: 44px !important;
+  height: 44px !important;
+}
+
+/* Layout paysage pour l'onglet Coordonnées - Version JavaScript + CSS */
+.mobile-coordinates-layout-landscape {
+  /* Indicateur visuel de debug - bordure bleue pour les appareils mobiles en paysage */
+  border: 10px solid lime !important; /* Bordure plus visible pour debug */
+  height: 100% !important;
+  background: red !important; /* Background rouge pour être sûr que la classe s'applique */
+}
+
+.mobile-coordinates-layout-landscape::before {
+  content: "CSS PAYSAGE APPLIQUÉ !!!" !important;
+  position: fixed !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  background: lime !important;
+  color: black !important;
+  padding: 20px !important;
+  font-size: 24px !important;
+  font-weight: bold !important;
+  z-index: 9999 !important;
+  border: 5px solid red !important;
+}
+
+/* Indicateur de debug pour les cas non détectés */
+.mobile-coordinates-layout:not(.mobile-coordinates-layout-landscape)::before {
+  content: "DESKTOP (W≥1280) OU MOBILE PORTRAIT (W≤H)" !important;
+  position: absolute !important;
+  top: 5px !important;
+  left: 10px !important;
+  background: red !important;
+  color: white !important;
+  padding: 5px !important;
+  font-size: 12px !important;
+  z-index: 1000 !important;
+}
+
+.mobile-coordinates-layout-landscape .mobile-sidebar-content {
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 20px !important;
+  background: yellow !important; /* Background jaune très visible */
+}
+
+/* Approche ultra-agressive pour surcharger les styles inline */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: flex-start !important;
+  justify-content: center !important;
+  gap: 40px !important;
+  width: 100% !important;
+  height: 100% !important;
+  padding: 20px !important;
+  background: purple !important;
+  /* Forcer la priorité sur les styles inline */
+  flex-wrap: nowrap !important;
+  box-sizing: border-box !important;
+}
+
+/* Forcer TOUS les enfants directs avec des règles ultra-spécifiques */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div {
+  flex: 0 0 auto !important;
+  max-width: 45% !important;
+  min-width: 200px !important;
+  box-sizing: border-box !important;
+  /* Surcharger tous les styles inline possibles */
+  display: block !important;
+  position: relative !important;
+  float: none !important;
+  clear: none !important;
+}
+
+/* Premier div enfant : inputs (colonne droite) */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(1) {
+  order: 2 !important;
+  background: orange !important;
+  padding: 15px !important;
+  border: 5px solid black !important;
+}
+
+/* Deuxième div enfant : ville (temporairement masqué) */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(2) {
+  display: none !important;
+}
+
+/* Troisième div enfant : pavé directionnel (colonne gauche) */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(3) {
+  order: 1 !important;
+  background: green !important;
+  padding: 15px !important;
+  border: 5px solid white !important;
+}
+
+/* Premier élément : zone des inputs (latitude/longitude) - COLONNE DROITE */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(1) {
+  order: 2 !important; /* Colonne droite */
+  background: red !important; /* Background rouge très visible */
+  padding: 20px !important;
+  border: 5px solid black !important;
+}
+
+/* Deuxième élément : ville la plus proche - temporairement masquée pour debug */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(2) {
+  display: none !important; /* Masquée temporairement pour simplifier le debug */
+}
+
+/* Troisième élément : pavé directionnel - COLONNE GAUCHE */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(3) {
+  order: 1 !important; /* Colonne gauche */
+  background: blue !important; /* Background bleu très visible */
+  padding: 20px !important;
+  border: 5px solid white !important;
+  /* Garder la grille du pavé */
+  display: grid !important;
+  grid-template-columns: 44px 44px 44px !important;
+  grid-template-rows: 44px 44px 44px !important;
+  gap: 8px !important;
+  justify-content: center !important;
+  align-content: center !important;
+}
+
+/* Quatrième élément : note footer - repositionnée */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(4) {
+  position: absolute !important;
+  bottom: 20px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  text-align: center !important;
+  width: auto !important;
+  order: 3 !important;
+}
+
+/* Ajustements des boutons du pavé */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(3) button {
+  width: 44px !important;
+  height: 44px !important;
+  font-size: 18px !important;
+}
+
+/* Ajustements des espaceurs du pavé */
+.mobile-coordinates-layout-landscape .mobile-sidebar-content > div > div:nth-child(3) > div {
+  width: 44px !important;
+  height: 44px !important;
+}
+
+/* Fallback pour les anciens appareils avec petite hauteur */
+@media screen and (orientation: landscape) and (max-height: 500px) {
+  .mobile-coordinates-layout {
+    border: 4px solid lime !important; /* Bordure verte pour les anciens appareils */
+    height: 100% !important;
+  }
+  
+  .mobile-coordinates-layout::before {
+    content: "MOBILE ANCIEN DÉTECTÉ - PAYSAGE" !important;
+    position: absolute !important;
+    top: 5px !important;
+    left: 10px !important;
+    background: lime !important;
+    color: black !important;
+    padding: 5px !important;
+    font-size: 12px !important;
+    z-index: 1000 !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content {
+    height: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    padding: 20px !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content > div {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 50px !important;
+    width: 100% !important;
+    height: 100% !important;
+    margin-bottom: 0 !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content > div > div:nth-child(1) {
+    flex: 0 0 auto !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    align-items: center !important;
+    order: 1 !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content > div > div:nth-child(2) {
+    display: none !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content > div > div:nth-child(3) {
+    flex: 0 0 auto !important;
+    order: 2 !important;
+    margin: 0 !important;
+    display: grid !important;
+    justify-content: center !important;
+    align-content: center !important;
+    grid-template-columns: 44px 44px 44px !important;
+    grid-template-rows: 44px 44px 44px !important;
+    gap: 8px !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content > div > div:nth-child(4) {
+    position: absolute !important;
+    bottom: 20px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    text-align: center !important;
+    width: auto !important;
+    order: 3 !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content > div > div:nth-child(3) button {
+    width: 44px !important;
+    height: 44px !important;
+    font-size: 18px !important;
+  }
+  
+  .mobile-coordinates-layout .mobile-sidebar-content > div > div:nth-child(3) > div {
+    width: 44px !important;
+    height: 44px !important;
+  }
+}
+
+/* Adaptations supplémentaires pour les petits écrans en paysage */
+@media screen and (orientation: landscape) and (max-height: 500px) and (max-width: 800px) {
+  .mobile-coordinates-layout div[style*="gridTemplateColumns"] {
+    /* Boutons légèrement plus petits sur les petits écrans paysage */
+    grid-template-columns: 42px 42px 42px !important;
+    grid-template-rows: 42px 42px 42px !important;
+    gap: 6px !important;
+  }
+  
+  .mobile-coordinates-layout div[style*="gridTemplateColumns"] button {
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 17px !important;
+  }
+  
+  .mobile-coordinates-layout div[style*="gridTemplateColumns"] > div {
+    width: 42px !important;
+    height: 42px !important;
+  }
+}

@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import mobile adaptations */
+@import './styles/mobile.css';
+
 /* Full-height for h-screen */
 html, body, #root {
   height: 100%;
@@ -11,3 +14,33 @@ html, body, #root {
 .app-brand-logo { width: 96px; height: 96px; border-radius: 12px; }
 .app-brand-name { font-weight: 700; font-size: 1.125rem; white-space: nowrap; }
 body.sidebar-collapsed .app-brand-name { display: none; }
+
+/* Mobile-specific viewport handling */
+@supports (-webkit-touch-callout: none) {
+  /* iOS Safari specific fixes */
+  html, body, #root {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Ensure mobile layout takes full viewport */
+.mobile-layout.is-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.mobile-layout.is-mobile > .w-full.h-screen {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw !important;
+  height: 100vh !important;
+}

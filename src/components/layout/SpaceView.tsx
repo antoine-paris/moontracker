@@ -1,6 +1,8 @@
 import React, { useMemo, useState, useEffect, useCallback, forwardRef } from "react";
 import { useTranslation } from 'react-i18next';
 
+
+
 // Astro core
 import { getPlanetsEphemerides, type PlanetId } from "../../astro/planets";
 import { altAzFromRaDec } from "../../astro/stars";
@@ -115,11 +117,28 @@ export interface SpaceViewProps {
   showRefraction?: boolean;
   presentKey?: number;
   onFramePresented?: () => void;
+
+  // Mobile/Landscape props pour contrôler l'affichage HUD
+  isMobile?: boolean;
+  isLandscape?: boolean;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
   const { t: tUi } = useTranslation('ui');
   const { t } = useTranslation('common');
+  
+  // Debug: Logique de détection d'interface
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  const isDesktopScreen = screenWidth >= 1280;
+  const isMobileScreen = screenWidth < 1280;
+  const isLandscapeMode = screenWidth > screenHeight;
+  
+  const debugMessage = isDesktopScreen 
+    ? `DESKTOP (${screenWidth}×${screenHeight})` 
+    : isMobileScreen && isLandscapeMode 
+      ? `MOBILE PAYSAGE (${screenWidth}×${screenHeight})` 
+      : `MOBILE PORTRAIT (${screenWidth}×${screenHeight})`;
   
   // Dynamic planet registry that updates with language changes
   const PLANET_REGISTRY = getPlanetRegistry();
@@ -147,6 +166,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     showRefraction = true,
     presentKey,
     onFramePresented,
+    // Mobile/Landscape props
+    isMobile = false,
+    isLandscape = false,
   } = props;
 
   React.useEffect(() => {
@@ -1149,8 +1171,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       )}
 
       {/* Additional overlays when App panels are hidden (HUD) */}
-      {showHud && (
+      {showHud && !isMobile && (
         <>
+          {/* HUD DESKTOP COMPLET */}
           {/* Top right: location/time */}
           <div
             className="absolute right-2 top-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
@@ -1210,6 +1233,82 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           </div>
         </>
       )}
+
+      {/* HUD MOBILE PAYSAGE ALLÉGÉ */}
+      {showHud && isMobile && isLandscape && (
+        <>
+          {/* Haut droite: Lieu + Heure locale */}
+          <div
+            className="absolute right-2 top-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
+            style={{ zIndex: Z.ui }}
+          >
+            <div className="flex flex-col leading-tight items-end text-right">
+              <div>{overlaySplit.place}</div>
+              {overlaySplit.date ? <div>{overlaySplit.date}</div> : null}
+            </div>
+          </div>
+
+          {/* Haut gauche: Simulation domaine */}
+          <div
+            className="absolute top-2 left-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
+            style={{ zIndex: Z.ui }}
+          >
+            {tUi('hud.simulation')} {domainFromBrowser}
+          </div>
+
+          {/* Gauche centré: Altitude observateur */}
+          <div
+            className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
+            style={{ zIndex: Z.ui }}
+          >
+             {tUi('hud.altitude')} <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
+          </div>
+
+          {/* Bas centré: Azimut observateur + Direction */}
+          <div
+            className="absolute left-1/2 bottom-2 -translate-x-1/2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
+            style={{ zIndex: Z.ui }}
+          >
+            {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg, t)}`}
+          </div>
+
+          {/* Bas gauche: Soleil (Alt + Direction) */}
+          <div
+            className="absolute left-2 bottom-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
+            style={{ zIndex: Z.ui }}
+          >
+            {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
+              ? tUi('hud.sunBelowHorizon')
+              : `${tUi('celestialBodies.sun')} Alt. ${formatDeg(astro.sun.alt, 0)} (${compass16(astro.sun.az, t)})`}
+          </div>
+
+          {/* Bas droite: Lune (Alt + Direction) */}
+          <div
+            className="absolute right-2 bottom-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
+            style={{ zIndex: Z.ui }}
+          >
+            {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
+              ? tUi('hud.moonBelowHorizon')
+              : `${tUi('celestialBodies.moon')} Alt. ${formatDeg(astro.moon.alt, 0)} (${compass16(astro.moon.az, t)})`}
+          </div>
+        </>
+      )}
+
+      {/* Message de test de détection - Centre de l'écran */}
+      <div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-lg font-bold text-white bg-black/70 px-4 py-2 rounded-lg border-2"
+        style={{ 
+          zIndex: Z.ui + 10,
+          borderColor: isDesktopScreen ? '#ef4444' : isLandscapeMode ? '#3b82f6' : '#22c55e'
+        }}
+      >
+        <div className="text-center">
+          <div>{debugMessage}</div>
+          <div className="text-sm mt-1 opacity-80">
+            {isDesktopScreen ? 'Interface Desktop' : isMobileScreen && isLandscapeMode ? 'Interface Mobile Paysage' : 'Interface Mobile Portrait'}
+          </div>
+        </div>
+      </div>
     </div>
   );
 });

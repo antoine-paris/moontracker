@@ -246,5 +246,23 @@
     "neptune": "Neptune",
     "pluto": "Pluton",
     "southernCross": "Croix du Sud"
+  },
+  "orientation": {
+    "landscapeRecommended": "Orientation paysage recommandée",
+    "rotateDeviceMessage": "Pour une meilleure expérience de visualisation astronomique, veuillez tourner votre appareil en mode paysage.",
+    "continueAnyway": "Continuer en portrait",
+    "dismissHint": "Ce message disparaîtra en mode paysage"
+  },
+  "mobile": {
+    "showControls": "Afficher les contrôles",
+    "hideControls": "Masquer les contrôles",
+    "compactMode": "Mode compact",
+    "fullMode": "Mode complet",
+    "toggleSidebar": "Localisation",
+    "toggleTelemetry": "Télémétrie",
+    "telemetry": "Télémétrie",
+    "enableLandscapeMode": "Activer le mode paysage (plein écran)",
+    "orientationNotSupported": "Verrouillage d'orientation non supporté",
+    "exitFullscreen": "Sortir du plein écran"
   }
 }
