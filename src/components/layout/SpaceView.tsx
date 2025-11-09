@@ -127,19 +127,6 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   const { t: tUi } = useTranslation('ui');
   const { t } = useTranslation('common');
   
-  // Debug: Logique de détection d'interface
-  const screenWidth = window.innerWidth;
-  const screenHeight = window.innerHeight;
-  const isDesktopScreen = screenWidth >= 1280;
-  const isMobileScreen = screenWidth < 1280;
-  const isLandscapeMode = screenWidth > screenHeight;
-  
-  const debugMessage = isDesktopScreen 
-    ? `DESKTOP (${screenWidth}×${screenHeight})` 
-    : isMobileScreen && isLandscapeMode 
-      ? `MOBILE PAYSAGE (${screenWidth}×${screenHeight})` 
-      : `MOBILE PORTRAIT (${screenWidth}×${screenHeight})`;
-  
   // Dynamic planet registry that updates with language changes
   const PLANET_REGISTRY = getPlanetRegistry();
   
@@ -1294,21 +1281,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         </>
       )}
 
-      {/* Message de test de détection - Centre de l'écran */}
-      <div
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-lg font-bold text-white bg-black/70 px-4 py-2 rounded-lg border-2"
-        style={{ 
-          zIndex: Z.ui + 10,
-          borderColor: isDesktopScreen ? '#ef4444' : isLandscapeMode ? '#3b82f6' : '#22c55e'
-        }}
-      >
-        <div className="text-center">
-          <div>{debugMessage}</div>
-          <div className="text-sm mt-1 opacity-80">
-            {isDesktopScreen ? 'Interface Desktop' : isMobileScreen && isLandscapeMode ? 'Interface Mobile Paysage' : 'Interface Mobile Portrait'}
-          </div>
-        </div>
-      </div>
+
     </div>
   );
 });
