@@ -921,12 +921,18 @@ export default function App() {
     // Adjust azimuth sensitivity based on altitude at mouse position
     let azSensitivity = 1.0;
     
-    if (projectionMode === 'equirectangular') {
-      // In equirectangular, azimuth lines converge at poles
-      // Sensitivity decreases with cos(altitude)
+    // In spherical projections (non-cylindrical), near the poles the projection stretches
+    // horizontally, so pixels represent more degrees of azimuth
+    // Sensitivity should increase as 1/cos(altitude) near ±90°
+    if (projectionMode !== 'cylindrical' && projectionMode !== 'cylindrical-horizon') {
       const altRad = (mouseAlt * Math.PI) / 180;
-      azSensitivity = Math.max(0.1, Math.abs(Math.cos(altRad)));
+      const cosAlt = Math.abs(Math.cos(altRad));
+      // Avoid division by zero at exactly ±90°, clamp cos to minimum 0.1
+      azSensitivity = 1.0 / Math.max(0.1, cosAlt);
+      // Cap maximum sensitivity at 10x to avoid extreme values
+      azSensitivity = Math.min(10, azSensitivity);
     }
+    // In cylindrical projections, azimuth is linear: no sensitivity adjustment needed
     
     // Determine azimuth direction: invert when looking "over the pole"
     // Above 90° (past zenith) or below -90° (past nadir), the view is "upside down"
@@ -953,14 +959,20 @@ export default function App() {
     
     setDeltaAzDeg(wrappedAz);
     setDeltaAltDeg(clampedDeltaAlt);
-  }, [viewport.w, viewport.h, fovXDeg, fovYDeg, baseRefAlt, refAlt, projectionMode]);
+    
+    // Clear long pose accumulation during drag (like DirectionalKeypad does on each click)
+    handleLongPoseClear();
+  }, [viewport.w, viewport.h, fovXDeg, fovYDeg, baseRefAlt, refAlt, projectionMode, handleLongPoseClear]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
     if (dragStartRef.current) {
       dragStartRef.current = null;
       (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      
+      // Clear long pose accumulation when releasing the drag
+      handleLongPoseClear();
     }
-  }, []);
+  }, [handleLongPoseClear]);
     
   const moonOrientation = useMemo(
     () => getMoonOrientationAngles(date, location.lat, location.lng),
