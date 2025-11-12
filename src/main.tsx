@@ -3,7 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import './i18n' // Initialize i18n
 import App from './App.tsx'
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import InfoPage from './pages/InfoPage'
 import SpaceViewTab from './components/info/tabs/SpaceViewTab/index'
 import HelpTab from './components/info/tabs/HelpTab/index'
@@ -65,6 +65,9 @@ createRoot(document.getElementById('root')!).render(
         <Route path="/astrophotography-planner" element={<AstroPhotographyPlannerPageWrapper />} />
         <Route path="/en/astrophotography-planner" element={<AstroPhotographyPlannerPageWrapper />} />
         <Route path="/fr/astrophotography-planner" element={<AstroPhotographyPlannerPageWrapper />} />
+        
+        {/* Catch-all route: redirect all unknown routes to home */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>
