@@ -885,6 +885,82 @@ export default function App() {
   const refAz = useMemo(() => norm360(baseRefAz + deltaAzDeg), [baseRefAz, deltaAzDeg]);
   const refAlt = useMemo(() => clamp(baseRefAlt + deltaAltDeg, -89.9, 89.9), [baseRefAlt, deltaAltDeg]);
 
+  // Drag to adjust deltaAz/deltaAlt
+  const dragStartRef = useRef<{ x: number; y: number; startAz: number; startAlt: number } | null>(null);
+  
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only start drag with primary button (left click or touch)
+    if (e.button !== 0) return;
+    
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      startAz: deltaAzDeg,
+      startAlt: deltaAltDeg,
+    };
+    
+    // Capture pointer to receive events even if cursor leaves element
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [deltaAzDeg, deltaAltDeg]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current) return;
+    
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    
+    // Calculate altitude at current mouse position
+    // Get relative Y position in viewport (0 = top, 1 = bottom)
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const relY = (e.clientY - rect.top) / rect.height;
+    
+    // In equirectangular projection, altitude varies linearly with Y
+    // Top of screen = refAlt + fovYDeg/2, bottom = refAlt - fovYDeg/2
+    const mouseAlt = refAlt + (0.5 - relY) * fovYDeg;
+    
+    // Adjust azimuth sensitivity based on altitude at mouse position
+    let azSensitivity = 1.0;
+    
+    if (projectionMode === 'equirectangular') {
+      // In equirectangular, azimuth lines converge at poles
+      // Sensitivity decreases with cos(altitude)
+      const altRad = (mouseAlt * Math.PI) / 180;
+      azSensitivity = Math.max(0.1, Math.abs(Math.cos(altRad)));
+    }
+    
+    // Determine azimuth direction: invert when looking "over the pole"
+    // Above 90° (past zenith) or below -90° (past nadir), the view is "upside down"
+    let azDirection = -1; // normal: drag right -> view right
+    if (mouseAlt > 90 || mouseAlt < -90) {
+      azDirection = 1; // inverted when looking over the pole
+    }
+    
+    // Convert pixel movement to degrees based on FOV
+    // Movement sensitivity: 1 screen width = 1 FOV
+    const azChange = azDirection * (dx / viewport.w) * fovXDeg * azSensitivity;
+    const altChange = (dy / viewport.h) * fovYDeg;
+    
+    const newAzDeg = dragStartRef.current.startAz + azChange;
+    const newAltDeg = dragStartRef.current.startAlt + altChange;
+    
+    // Wrap azimuth to [-180, 180]
+    const wrappedAz = ((newAzDeg + 180) % 360 + 360) % 360 - 180;
+    
+    // Clamp altitude relative to baseRefAlt to stay within valid range
+    const targetAlt = baseRefAlt + newAltDeg;
+    const clampedTargetAlt = clamp(targetAlt, -89.9, 89.9);
+    const clampedDeltaAlt = clampedTargetAlt - baseRefAlt;
+    
+    setDeltaAzDeg(wrappedAz);
+    setDeltaAltDeg(clampedDeltaAlt);
+  }, [viewport.w, viewport.h, fovXDeg, fovYDeg, baseRefAlt, refAlt, projectionMode]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragStartRef.current) {
+      dragStartRef.current = null;
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    }
+  }, []);
     
   const moonOrientation = useMemo(
     () => getMoonOrientationAngles(date, location.lat, location.lng),
@@ -1652,7 +1728,13 @@ const handleFramePresented = React.useCallback(() => {
                   width: viewport.w,
                   height: viewport.h,
                   overflow: 'hidden',
+                  cursor: dragStartRef.current ? 'grabbing' : 'grab',
+                  touchAction: 'none', // Prevent default touch behaviors like scrolling
                 }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
               >
                 <div ref={renderStackRef} className="relative w-full h-full">
                 <SpaceView
