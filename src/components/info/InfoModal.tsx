@@ -40,9 +40,9 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
       onMouseDown={(e) => { if (e.target === overlayRef.current) onClose(); }}
     >
       {/* Light themed info panel, same look-and-feel as /info */}
-      <div className="bg-white text-gray-900 w-full h-full lg:rounded-lg lg:border lg:border-gray-200 lg:shadow-2xl lg:w-[90vw] lg:h-[90vh] flex flex-col font-sans">
-        {/* Cartouche standard (logo + site + CTA) */}
-        <div className="border-b border-gray-200 bg-white">
+      <div className="bg-white text-gray-900 w-full h-full lg:rounded-lg lg:border lg:border-gray-200 lg:shadow-2xl lg:w-[90vw] lg:h-[90vh] flex flex-row lg:flex-col font-sans">
+        {/* Desktop header (logo + site + CTA) - hidden on mobile */}
+        <div className="hidden lg:block border-b border-gray-200 bg-white">
           <div className="px-3 py-2 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <InfoLogo showBackground={false} size={64} />
@@ -65,8 +65,8 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
         </div>
 
         {/* Tabs + content (light style) */}
-        <div className="flex-1 min-h-0">
-          <InfoTabs initialTab={initialTab} />
+        <div className="flex-1 min-h-0 flex flex-row lg:flex-col">
+          <InfoTabs initialTab={initialTab} onClose={onClose} />
         </div>
       </div>
     </div>
