@@ -1,4 +1,3 @@
-import { useState, useEffect } from 'react';
 import { useOrientation } from '../../hooks/useOrientation';
 import { useDeviceDetection } from '../../hooks/useDeviceDetection';
 import OrientationPrompt from './OrientationPrompt';
@@ -14,31 +13,12 @@ export default function MobileLayout({
 }: MobileLayoutProps) {
   const orientation = useOrientation();
   const device = useDeviceDetection();
-  const [orientationPromptDismissed, setOrientationPromptDismissed] = useState(false);
 
-  // Auto-dismiss orientation prompt après 10 secondes
-  useEffect(() => {
-    if (showOrientationPrompt && device.isMobile && orientation.isPortrait) {
-      const timer = setTimeout(() => {
-        setOrientationPromptDismissed(true);
-      }, 10000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [showOrientationPrompt, device.isMobile, orientation.isPortrait]);
-
-  // Reset dismissal when orientation changes to landscape
-  useEffect(() => {
-    if (orientation.isLandscape) {
-      setOrientationPromptDismissed(false);
-    }
-  }, [orientation.isLandscape]);
-
-  const shouldShowOrientationPrompt = 
+  // Sur mobile en portrait: bloquer l'application, plus de possibilité de dismiss
+  const shouldBlockApp = 
     showOrientationPrompt &&
     device.isMobile && 
-    orientation.isPortrait && 
-    !orientationPromptDismissed;
+    orientation.isPortrait;
 
   return (
     <div 
@@ -46,14 +26,16 @@ export default function MobileLayout({
       data-orientation={orientation.orientation}
       data-device-type={device.isMobile ? 'mobile' : device.isTablet ? 'tablet' : 'desktop'}
     >
-      {children}
-      
-      <OrientationPrompt 
-        show={shouldShowOrientationPrompt}
-        onDismiss={() => setOrientationPromptDismissed(true)}
-      />
-      
-
+      {/* En mode portrait sur mobile: afficher UNIQUEMENT le prompt, bloquer l'app */}
+      {shouldBlockApp ? (
+        <OrientationPrompt 
+          show={true}
+        />
+      ) : (
+        <>
+          {children}
+        </>
+      )}
     </div>
   );
 }

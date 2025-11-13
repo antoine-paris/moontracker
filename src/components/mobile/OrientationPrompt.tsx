@@ -2,10 +2,9 @@ import { useTranslation } from 'react-i18next';
 
 interface OrientationPromptProps {
   show: boolean;
-  onDismiss?: () => void;
 }
 
-export default function OrientationPrompt({ show, onDismiss }: OrientationPromptProps) {
+export default function OrientationPrompt({ show }: OrientationPromptProps) {
   const { t } = useTranslation('ui');
 
   if (!show) return null;
@@ -25,25 +24,18 @@ export default function OrientationPrompt({ show, onDismiss }: OrientationPrompt
         </div>
         
         <h3 className="text-lg font-semibold text-gray-900 mb-2">
-          {t('orientation.landscapeRecommended', 'Orientation paysage recommandée')}
+          {t('orientation.landscapeRequired', 'Veuillez tourner votre appareil en mode paysage pour voir l\'application')}
         </h3>
         
         <p className="text-gray-600 mb-4 text-sm">
           {t('orientation.rotateDeviceMessage', 
-            'Pour une meilleure expérience de visualisation astronomique, veuillez tourner votre appareil en mode paysage.'
+            'Pour utiliser SpaceView, l\'orientation paysage est requise. Tournez votre appareil pour commencer.'
           )}
         </p>
         
         <div className="flex flex-col gap-2">
-          <button
-            onClick={onDismiss}
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
-          >
-            {t('orientation.continueAnyway', 'Continuer en portrait')}
-          </button>
-          
-          <p className="text-xs text-gray-500">
-            {t('orientation.dismissHint', 'Ce message disparaîtra en mode paysage')}
+          <p className="text-sm text-blue-600 font-medium">
+            {t('orientation.waitingForLandscape', 'En attente du mode paysage...')}
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useTranslation } from 'react-i18next';
 import { useLanguageFromPath } from './hooks/useLanguageFromPath';
 
@@ -149,6 +149,12 @@ export default function App() {
   //const isDesktopScreen = screenWidth >= 1280;
   const isMobileScreen = screenWidth < 1280;
   const isLandscapeMode = screenWidth > screenHeight;
+  const isPortraitMode = !isLandscapeMode && isMobileScreen;
+  
+  // Track if URL has been fully parsed and applied (prevents premature projection recalc)
+  const urlRestoredRef = useRef<boolean>(false);
+  // Track timestamp of last orientation transition (to ignore projection recalc for a delay)
+  const lastOrientationChangeRef = useRef<number>(0);
   
   // États pour les modals mobiles
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -657,6 +663,50 @@ export default function App() {
   const lastTsRef = useRef<number | null>(null);
   const whenMsRef = useRef<number>(whenMs);
   const runningRef = useRef<boolean>(false);
+  
+  // Store animation state before portrait mode pause
+  const animationStateBeforePortraitRef = useRef<boolean | null>(null);
+  const wasInPortraitRef = useRef<boolean>(isPortraitMode);
+  
+  // IMPORTANT: useLayoutEffect s'exécute de manière synchrone AVANT les autres useEffect
+  // Cela garantit que le timestamp est enregistré avant le useEffect de projection dans TopBar
+  useLayoutEffect(() => {
+    if (!isMobileScreen) return;
+    
+    const wasInPortrait = wasInPortraitRef.current;
+    const isNowInPortrait = isPortraitMode;
+    
+    // Transition: landscape → portrait
+    if (!wasInPortrait && isNowInPortrait) {
+      // Save current animation state and pause
+      animationStateBeforePortraitRef.current = isAnimating;
+      if (isAnimating) {
+        setIsAnimating(false);
+      }
+    }
+    
+    // Transition: portrait → landscape
+    if (wasInPortrait && !isNowInPortrait) {
+      // Enregistrer le timestamp IMMÉDIATEMENT et de manière synchrone
+      lastOrientationChangeRef.current = Date.now();
+      
+      // Now in landscape: mark URL as restored (allows projection recalc)
+      // BUT only AFTER a small delay to let the viewport stabilize
+      setTimeout(() => {
+        urlRestoredRef.current = true;
+      }, 100);
+      
+      // Restore previous animation state
+      if (animationStateBeforePortraitRef.current === true) {
+        setIsAnimating(true);
+      }
+      // Reset after restoration
+      animationStateBeforePortraitRef.current = null;
+    }
+    
+    // Update tracking ref
+    wasInPortraitRef.current = isNowInPortrait;
+  }, [isPortraitMode, isMobileScreen, isAnimating]);
 
   // --- Time-lapse state (UNCOMMENTED) ---
   const [timeLapseEnabled, setTimeLapseEnabled] = useState<boolean>(false);
@@ -1468,7 +1518,13 @@ export default function App() {
     if (isMobileScreen) {
       setShowPanels(false);
     }
-  }, [locationsLoading, locations, isMobileScreen]);
+    
+    // Mark URL as fully restored ONLY if in landscape (or not mobile)
+    // If in portrait, wait for landscape transition before allowing projection recalc
+    if (!isMobileScreen || !isPortraitMode) {
+      urlRestoredRef.current = true;
+    }
+  }, [locationsLoading, locations, isMobileScreen, isPortraitMode]);
   // Note: Other dependencies (allPlanetIds, devices, etc.) are intentionally omitted
   // as this effect should only run once for initial URL parsing after locations load
 
@@ -1876,6 +1932,9 @@ const handleFramePresented = React.useCallback(() => {
               setShowRefraction={setShowRefraction}
               isMobileScreen={isMobileScreen}
               isLandscapeMode={isLandscapeMode}
+              isPortraitMode={isPortraitMode}
+              urlRestoredRef={urlRestoredRef}
+              lastOrientationChangeRef={lastOrientationChangeRef}
               onClosePanels={() => setShowPanels(false)}
           />
           </div>
