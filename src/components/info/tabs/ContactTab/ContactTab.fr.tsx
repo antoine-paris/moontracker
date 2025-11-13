@@ -1,6 +1,6 @@
 export default function ContactTabFr() {
   const platforms = [
-    { name: 'X (Twitter)', slug: 'x', url: 'https://twitter.com/SpaceViewMe' },
+    { name: 'X (Twitter)', slug: 'x', url: 'https://x.com/SpaceViewMe' },
     { name: 'Facebook', slug: 'facebook', url: 'https://facebook.com/SpaceViewMe' },
     { name: 'GitHub', slug: 'github', url: 'https://github.com/antoine-paris/spaceview' },
     { name: 'Instagram', slug: 'instagram', url: 'https://instagram.com/SpaceViewMe' },
