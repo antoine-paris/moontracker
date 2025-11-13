@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
+import InfoLogo from './InfoLogo';
 import SpaceViewTab from './tabs/SpaceViewTab/index';
 import HelpTab from './tabs/HelpTab/index';
 import SimulationsTab from './tabs/SimulationsTab/index';
@@ -19,8 +20,14 @@ const TABS: { id: TabId; key: string }[] = [
   { id: 'contact', key: 'contact' },
 ];
 
-export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: string }) {
+interface InfoTabsProps {
+  initialTab?: string;
+  onClose?: () => void;
+}
+
+export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabsProps) {
   const { t } = useTranslation('info');
+  const { t: tCommon } = useTranslation('common');
   const validInit = (['spaceview','help','simulations','flatearth','bug'].includes(initialTab) ? initialTab : 'spaceview') as TabId;
   const [active, setActive] = useState<TabId>(validInit);
   const tabPanelRef = useRef<HTMLDivElement>(null);
@@ -52,35 +59,90 @@ export default function InfoTabs({ initialTab = 'spaceview' }: { initialTab?: st
   }, [active]);
 
   return (
-    <div className="w-full h-full flex flex-col">
-      {/* Language switcher above tabs */}
-      <div className="flex justify-end p-2 pb-0">
-        <LanguageSwitcher size="sm" showLabels={true} variant="light" />
+    <>
+      {/* Mobile: Left sidebar with logo, language switcher, and menu items */}
+      <div className="lg:hidden w-32 h-full border-r border-gray-200 flex flex-col bg-white">
+        {/* Logo section */}
+        <div className="flex flex-col items-center gap-2 p-3 border-b border-gray-200">
+          <InfoLogo showBackground={false} size={48} />
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="w-full px-2 py-1 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 shadow-sm"
+              aria-label={tCommon('navigation.back')}
+              title={tCommon('navigation.back')}
+            >
+              {tCommon('navigation.back')}
+            </button>
+          )}
+        </div>
+
+        {/* Language switcher */}
+        <div className="flex justify-center p-2 border-b border-gray-200">
+          <LanguageSwitcher size="sm" showLabels={false} variant="light" />
+        </div>
+
+        {/* Scrollable menu items */}
+        <div role="tablist" aria-label="Informations" className="flex-1 overflow-y-auto flex flex-col gap-1 p-2">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              role="tab"
+              aria-selected={active === tab.id}
+              onClick={() => setActive(tab.id)}
+              className={[
+                'px-2 py-2 rounded-md text-xs border transition-colors text-center leading-tight',
+                active === tab.id
+                  ? 'border-gray-400 bg-gray-100 text-gray-900 font-semibold'
+                  : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+              ].join(' ')}
+            >
+              {t(`tabs.${tab.key}`)}
+            </button>
+          ))}
+        </div>
       </div>
-      
-      {/* Light tablist (aligned with InfoNav style) */}
-      <div role="tablist" aria-label="Informations" className="flex gap-2 p-2 border-b border-gray-200 flex-wrap">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            role="tab"
-            aria-selected={active === tab.id}
-            onClick={() => setActive(tab.id)}
-            className={[
-              'px-3 py-1.5 rounded-md text-sm border transition-colors whitespace-nowrap',
-              active === tab.id
-                ? 'border-gray-400 bg-gray-100 text-gray-900'
-                : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
-            ].join(' ')}
-          >
-            {t(`tabs.${tab.key}`)}
-          </button>
-        ))}
+
+      {/* Desktop: Original horizontal layout */}
+      <div className="hidden lg:flex w-full h-full flex-col">
+        {/* Tabs and language switcher on the same line */}
+        <div className="flex items-center justify-between p-2 border-b border-gray-200 gap-4">
+          {/* Light tablist (aligned with InfoNav style) */}
+          <div role="tablist" aria-label="Informations" className="flex gap-2 flex-wrap">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                role="tab"
+                aria-selected={active === tab.id}
+                onClick={() => setActive(tab.id)}
+                className={[
+                  'px-3 py-1.5 rounded-md text-sm border transition-colors whitespace-nowrap',
+                  active === tab.id
+                    ? 'border-gray-400 bg-gray-100 text-gray-900'
+                    : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
+                ].join(' ')}
+              >
+                {t(`tabs.${tab.key}`)}
+              </button>
+            ))}
+          </div>
+          
+          {/* Language switcher on the right */}
+          <div className="flex-shrink-0">
+            <LanguageSwitcher size="sm" showLabels={true} variant="light" />
+          </div>
+        </div>
+
+        {/* Desktop content panel */}
+        <div ref={tabPanelRef} role="tabpanel" className="flex-1 overflow-y-auto p-4 prose prose-info max-w-none font-sans">
+          {renderActive}
+        </div>
       </div>
-      {/* Light prose with clear heading hierarchy */}
-      <div ref={tabPanelRef} role="tabpanel" className="flex-1 overflow-y-auto p-4 prose prose-info max-w-none font-sans">
+
+      {/* Mobile content panel */}
+      <div className="lg:hidden flex-1 overflow-y-auto p-4 prose prose-info max-w-none font-sans">
         {renderActive}
       </div>
-    </div>
+    </>
   );
 }

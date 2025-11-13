@@ -4,10 +4,12 @@ import { useTranslation } from 'react-i18next';
 import { useLanguageFromPath } from '../hooks/useLanguageFromPath';
 import InfoNav from '../components/info/InfoNav';
 import InfoLogo from '../components/info/InfoLogo';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 export default function InfoPage() {
   const { t } = useTranslation('info');
   const { pathname } = useLocation();
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
   
   // Handle language detection from URL
   useLanguageFromPath();
@@ -106,7 +108,28 @@ export default function InfoPage() {
                 <span className="text-xs text-gray-600">{t('site.subtitle')}</span>
             </div>
           </div>
-          <div>
+          <div className="flex items-center gap-2">
+            {isInstallable && (
+              <button
+                onClick={installApp}
+                className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 shadow-sm"
+                aria-label={t('common:navigation.installApp')}
+                title={t('common:navigation.installApp')}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                {t('common:navigation.installApp')}
+              </button>
+            )}
+            {isInstalled && (
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-green-700">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                {t('common:navigation.appInstalled')}
+              </span>
+            )}
             <Link
               to="/?start=true"
               className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"

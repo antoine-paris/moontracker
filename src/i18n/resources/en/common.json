@@ -1,10 +1,12 @@
 {
   "navigation": {
-    "back": "← Back to application",
+    "back": "← Use the application",
     "close": "Close",
     "expand": "Expand",
     "return": "Return",
-    "goToApp": "Go to application"
+    "goToApp": "Go to application",
+    "installApp": "Install app",
+    "appInstalled": "App installed"
   },
   "time": {
     "now": "Now",

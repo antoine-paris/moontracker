@@ -592,12 +592,20 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     };
 
     // Sun (sprite/dot only)
-    if (showSun && sunScreen.visibleX && sunScreen.visibleY && !enlargeObjects) {
+    const sunHalfW = bodySizes.sun.w / 2;
+    const sunHalfH = bodySizes.sun.h / 2;
+    const sunVisibleX = sunScreen.x + sunHalfW >= viewport.x && sunScreen.x - sunHalfW <= viewport.x + viewport.w;
+    const sunVisibleY = sunScreen.y + sunHalfH >= viewport.y && sunScreen.y - sunHalfH <= viewport.y + viewport.h;
+    if (showSun && sunVisibleX && sunVisibleY && !enlargeObjects) {
       drawDisk(sunScreen.x, sunScreen.y, bodySizes.sun.w, bodySizes.sun.h, '#f59e0b', SUN_TRAIL_GAIN, SUN_DECAY_GAIN);
     }
 
     // Moon (sprite/dot only)
-    if (showMoon && !enlargeObjects && moonScreen.visibleX && moonScreen.visibleY) {
+    const moonHalfW = bodySizes.moon.w / 2;
+    const moonHalfH = bodySizes.moon.h / 2;
+    const moonVisibleX = moonScreen.x + moonHalfW >= viewport.x && moonScreen.x - moonHalfW <= viewport.x + viewport.w;
+    const moonVisibleY = moonScreen.y + moonHalfH >= viewport.y && moonScreen.y - moonHalfH <= viewport.y + viewport.h;
+    if (showMoon && !enlargeObjects && moonVisibleX && moonVisibleY) {
       drawDiskWithStroke(
         moonScreen.x, moonScreen.y,
         bodySizes.moon.w, bodySizes.moon.h,
@@ -628,8 +636,8 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
   }, [
     viewport.x, viewport.y, viewport.w, viewport.h,
     showSun, showMoon,
-    sunScreen.x, sunScreen.y, sunScreen.visibleX, sunScreen.visibleY, bodySizes.sun.w, bodySizes.sun.h,
-    moonScreen.x, moonScreen.y, moonScreen.visibleX, moonScreen.visibleY, bodySizes.moon.w, bodySizes.moon.h,
+    sunScreen, bodySizes.sun.w, bodySizes.sun.h,
+    moonScreen, bodySizes.moon.w, bodySizes.moon.h,
     planetsRender, enlargeObjects, phaseFraction,
   ]);
 
@@ -922,25 +930,36 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       )}
 
       {/* Sun */}
-      {showSun && (
+      {showSun && (() => {
+        const halfW = bodySizes.sun.w / 2;
+        const halfH = bodySizes.sun.h / 2;
+        const visibleX = sunScreen.x + halfW >= viewport.x && sunScreen.x - halfW <= viewport.x + viewport.w;
+        const visibleY = sunScreen.y + halfH >= viewport.y && sunScreen.y - halfH <= viewport.y + viewport.h;
+        return (
         <div className="absolute inset-0" 
           style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}
         >
           <SunSprite
             x={sunScreen.x}
             y={sunScreen.y}
-            visibleX={sunScreen.visibleX}
-            visibleY={sunScreen.visibleY}
+            visibleX={visibleX}
+            visibleY={visibleY}
             rotationDeg={rotationDegSunScreen}
             showCard={showSunCard}
             wPx={bodySizes.sun.w}
             hPx={bodySizes.sun.h}
           />
         </div>
-      )}
+        );
+      })()}
 
       {/* Moon dot */}
-      {showMoon && !glbLoading && moonRenderModeEffective === 'dot' && moonScreen.visibleX && moonScreen.visibleY && (
+      {showMoon && !glbLoading && moonRenderModeEffective === 'dot' && (() => {
+        const halfW = bodySizes.moon.w / 2;
+        const halfH = bodySizes.moon.h / 2;
+        const visibleX = moonScreen.x + halfW >= viewport.x && moonScreen.x - halfW <= viewport.x + viewport.w;
+        const visibleY = moonScreen.y + halfH >= viewport.y && moonScreen.y - halfH <= viewport.y + viewport.h;
+        return visibleX && visibleY && (
         <div
           className="absolute"
           style={{
@@ -954,14 +973,20 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             pointerEvents: 'none',
           }}
         />
-      )}
+        );
+      })()}
 
       {/* Moon sprite */}
-      {showMoon && !glbLoading  && (
+      {showMoon && !glbLoading && moonRenderModeEffective === 'sprite' && (() => {
+        const halfW = bodySizes.moon.w / 2;
+        const halfH = bodySizes.moon.h / 2;
+        const visibleX = moonScreen.x + halfW >= viewport.x && moonScreen.x - halfW <= viewport.x + viewport.w;
+        const visibleY = moonScreen.y + halfH >= viewport.y && moonScreen.y - halfH <= viewport.y + viewport.h;
+        return (
         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
           <MoonSprite
             x={moonScreen.x} y={moonScreen.y}
-            visibleX={moonScreen.visibleX} visibleY={moonScreen.visibleY}
+            visibleX={visibleX} visibleY={visibleY}
             rotationDeg={rotationDegMoonScreen}
             showPhase={showPhase}
             earthshine={earthshine}
@@ -974,10 +999,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
             hPx={bodySizes.moon.h}
           />
         </div>
-      )}
+        );
+      })()}
 
       {/* Moon 3D */}
-      {showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
+      {showMoon && !glbLoading && moonRenderModeEffective === '3d' && (
          <div className="absolute inset-0" 
           data-longpose-exclude="1" // exclure du long pose
           style={{ zIndex: Z.horizon - 1 }} data-3d-layer="1"

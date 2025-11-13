@@ -15,6 +15,8 @@ type Props = {
 
 export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showCard, wPx, hPx }: Props) {
   const { t } = useTranslation('common');
+  
+  // Ne pas rendre si hors champ pour éviter un affichage en (0,0)
   if (!visibleX || !visibleY) return null;
 
   // Force un carré pour conserver un cercle à l'écran

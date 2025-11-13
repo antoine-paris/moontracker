@@ -128,6 +128,9 @@ type Props = {
 
   isMobileScreen: boolean;
   isLandscapeMode: boolean;
+  isPortraitMode: boolean;
+  urlRestoredRef: React.MutableRefObject<boolean>;
+  lastOrientationChangeRef: React.MutableRefObject<number>;
   
   // NEW: Close panels callback for mobile
   onClosePanels?: () => void;
@@ -172,7 +175,9 @@ export default function TopBar({
   onLongPoseClear,
 
   isMobileScreen,
-  //isLandscapeMode,
+  isPortraitMode,
+  urlRestoredRef,
+  lastOrientationChangeRef,
   
   // NEW: Close panels callback for mobile
   onClosePanels,
@@ -391,6 +396,15 @@ export default function TopBar({
   // Auto-switch sur la projection idéale à chaque changement de W/H affichable
   // et changement de focale (donc FOV) — sans écraser un mode valide provenant de l’URL.
   React.useEffect(() => {
+    // Sur mobile, ne recalcule la projection idéale que si:
+    // 1. On est en mode paysage
+    // 2. L'URL a été complètement restaurée (évite d'écraser la projection de l'URL)
+    // 3. Au moins 600ms se sont écoulées depuis le dernier changement d'orientation
+    const timeSinceOrientationChange = Date.now() - lastOrientationChangeRef.current;
+    if (isMobileScreen && (isPortraitMode || !urlRestoredRef.current || timeSinceOrientationChange < 600)) {
+      return; // Ne pas recalculer
+    }
+    
     const next = pickIdealProjection(
       fovXDeg,
       fovYDeg,
@@ -403,7 +417,7 @@ export default function TopBar({
       setProjectionMode(next);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fovXDeg, fovYDeg, viewport.w, viewport.h]);
+  }, [fovXDeg, fovYDeg, viewport.w, viewport.h, isPortraitMode, isMobileScreen]);
 
 
 

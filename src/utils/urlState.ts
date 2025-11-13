@@ -233,6 +233,7 @@ export type UrlInitArgs = {
   setTimeLapseStepUnit: (u: typeof TL_UNITS[number]) => void;
   setTimeLapseLoopAfter: (n: number) => void;
   timeLapseStartMsRef: React.MutableRefObject<number>;
+  tlInitializedRef: React.MutableRefObject<boolean>;
 
   //  Long pose setters
   setLongPoseEnabled: (b: boolean) => void;
@@ -257,7 +258,7 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     allPlanetIds, setShowPlanets,
     setIsAnimating, setSpeedMinPerSec,
     setDeltaAzDeg, setDeltaAltDeg,
-    setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef,
+    setTimeLapseEnabled, setTimeLapsePeriodMs, setTimeLapseStepValue, setTimeLapseStepUnit, setTimeLapseLoopAfter, timeLapseStartMsRef, tlInitializedRef,
     setLongPoseEnabled, setLongPoseRetainFrames,
     setPreselectedCityIds, 
   } = args;
@@ -278,11 +279,27 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
     return q.get(key);
   };
 
+  // Check if timelapse parameter exists - if so, parse and restore it FIRST
+  // This prevents useEffect from overwriting tlStartWhenMsRef when setWhenMs is called
+  const tlParam = q.get('tl');
+  if (tlParam) {
+    // Pre-parse timelapse to get the start time
+    const parts = tlParam.split('.');
+    if (parts.length >= 2) {
+      const tPart = parts[1]; // Second part is the timestamp
+      const t0ms = timeFromB36(tPart);
+      if (Number.isFinite(t0ms)) { // Accept any valid timestamp for astronomical simulations
+        timeLapseStartMsRef.current = t0ms;
+        tlInitializedRef.current = true;
+      }
+    }
+  }
+
   // Time: base36 unix seconds
   const t = safeGet('t');
   if (t) {
     const ms = timeFromB36(t);
-    if (Number.isFinite(ms) && ms > 0 && ms < Date.now() + 365 * 24 * 60 * 60 * 1000) { // reasonable time bounds
+    if (Number.isFinite(ms)) { // Accept any valid timestamp for astronomical simulations
       whenMsRef.current = ms;
       setWhenMs(ms);
     }
@@ -562,6 +579,18 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         const unitIdx = (h >> 1) & 0x7;
         const unit = TL_UNITS[unitIdx] ?? TL_UNITS[0];
 
+        // Restore timelapse start time first (BEFORE enabling)
+        if (Number.isFinite(t0ms)) { // Accept any valid timestamp for astronomical simulations
+          timeLapseStartMsRef.current = t0ms;
+          tlInitializedRef.current = true; // Mark as initialized from URL
+          // If no explicit 't' param was set and timelapse is enabled, use start time as current time
+          if (!t && enabled) {
+            whenMsRef.current = t0ms;
+            setWhenMs(t0ms);
+          }
+        }
+        
+        // Then enable timelapse (after start time is set)
         setTimeLapseEnabled(enabled);
         
         // Validate and clamp values to reasonable bounds
@@ -574,9 +603,6 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         setTimeLapseStepUnit(unit);
         if (Number.isFinite(l) && l >= 0 && l <= 10000) {
           setTimeLapseLoopAfter(Math.max(0, Math.min(10000, l)));
-        }
-        if (Number.isFinite(t0ms) && t0ms > 0 && t0ms < Date.now() + 365 * 24 * 60 * 60 * 1000) {
-          timeLapseStartMsRef.current = t0ms;
         }
       }
     } else if (parts.length >= 5) {
@@ -592,6 +618,18 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         const unitIdx = (h >> 1) & 0x7;
         const unit = TL_UNITS[unitIdx] ?? TL_UNITS[0];
 
+        // Restore timelapse start time first (BEFORE enabling)
+        if (Number.isFinite(t0ms)) { // Accept any valid timestamp for astronomical simulations
+          timeLapseStartMsRef.current = t0ms;
+          tlInitializedRef.current = true; // Mark as initialized from URL
+          // If no explicit 't' param was set and timelapse is enabled, use start time as current time
+          if (!t && enabled) {
+            whenMsRef.current = t0ms;
+            setWhenMs(t0ms);
+          }
+        }
+        
+        // Then enable timelapse (after start time is set)
         setTimeLapseEnabled(enabled);
         if (Number.isFinite(p) && p >= 1 && p <= 10000) {
           setTimeLapsePeriodMs(Math.max(1, Math.min(10000, p)));
@@ -602,9 +640,6 @@ export function parseUrlIntoState(q: URLSearchParams, args: UrlInitArgs) {
         setTimeLapseStepUnit(unit);
         if (Number.isFinite(l) && l >= 0 && l <= 10000) {
           setTimeLapseLoopAfter(Math.max(0, Math.min(10000, l)));
-        }
-        if (Number.isFinite(t0ms) && t0ms > 0 && t0ms < Date.now() + 365 * 24 * 60 * 60 * 1000) {
-          timeLapseStartMsRef.current = t0ms;
         }
       }
     }

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useTranslation } from 'react-i18next';
 import { useLanguageFromPath } from './hooks/useLanguageFromPath';
 
@@ -65,6 +65,12 @@ import {
   startDomCfrRecorder,
   type DomCfrRecorderHandle
 } from "./utils/record";
+
+// Focal length limits for pinch-to-zoom (same as TopBar slider)
+const FOCAL_MIN_MM = 1;
+const FOCAL_MAX_MM = 4100;
+const FF_WIDTH_MM = 36;  // Full-frame sensor width (24x36 format)
+const FF_HEIGHT_MM = 24;
 
  // --- Main Component ----------------------------------------------------------
 export default function App() {
@@ -143,6 +149,12 @@ export default function App() {
   //const isDesktopScreen = screenWidth >= 1280;
   const isMobileScreen = screenWidth < 1280;
   const isLandscapeMode = screenWidth > screenHeight;
+  const isPortraitMode = !isLandscapeMode && isMobileScreen;
+  
+  // Track if URL has been fully parsed and applied (prevents premature projection recalc)
+  const urlRestoredRef = useRef<boolean>(false);
+  // Track timestamp of last orientation transition (to ignore projection recalc for a delay)
+  const lastOrientationChangeRef = useRef<number>(0);
   
   // États pour les modals mobiles
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
@@ -651,6 +663,50 @@ export default function App() {
   const lastTsRef = useRef<number | null>(null);
   const whenMsRef = useRef<number>(whenMs);
   const runningRef = useRef<boolean>(false);
+  
+  // Store animation state before portrait mode pause
+  const animationStateBeforePortraitRef = useRef<boolean | null>(null);
+  const wasInPortraitRef = useRef<boolean>(isPortraitMode);
+  
+  // IMPORTANT: useLayoutEffect s'exécute de manière synchrone AVANT les autres useEffect
+  // Cela garantit que le timestamp est enregistré avant le useEffect de projection dans TopBar
+  useLayoutEffect(() => {
+    if (!isMobileScreen) return;
+    
+    const wasInPortrait = wasInPortraitRef.current;
+    const isNowInPortrait = isPortraitMode;
+    
+    // Transition: landscape → portrait
+    if (!wasInPortrait && isNowInPortrait) {
+      // Save current animation state and pause
+      animationStateBeforePortraitRef.current = isAnimating;
+      if (isAnimating) {
+        setIsAnimating(false);
+      }
+    }
+    
+    // Transition: portrait → landscape
+    if (wasInPortrait && !isNowInPortrait) {
+      // Enregistrer le timestamp IMMÉDIATEMENT et de manière synchrone
+      lastOrientationChangeRef.current = Date.now();
+      
+      // Now in landscape: mark URL as restored (allows projection recalc)
+      // BUT only AFTER a small delay to let the viewport stabilize
+      setTimeout(() => {
+        urlRestoredRef.current = true;
+      }, 100);
+      
+      // Restore previous animation state
+      if (animationStateBeforePortraitRef.current === true) {
+        setIsAnimating(true);
+      }
+      // Reset after restoration
+      animationStateBeforePortraitRef.current = null;
+    }
+    
+    // Update tracking ref
+    wasInPortraitRef.current = isNowInPortrait;
+  }, [isPortraitMode, isMobileScreen, isAnimating]);
 
   // --- Time-lapse state (UNCOMMENTED) ---
   const [timeLapseEnabled, setTimeLapseEnabled] = useState<boolean>(false);
@@ -659,6 +715,9 @@ export default function App() {
   const [timeLapseStepUnit, setTimeLapseStepUnit] =
     useState<'minute' | 'hour' | 'day' | 'sidereal-day' | 'month' | 'lunar-fraction' | 'synodic-fraction'>('hour');
   const [timeLapseLoopAfter, setTimeLapseLoopAfter] = useState<number>(0); // 0 => no loop
+
+  // Pinch render trigger for smooth zoom
+  const [pinchRenderTrigger, setPinchRenderTrigger] = useState<number>(0);
 
   // --- Long pose state ---
   const [longPoseEnabled, setLongPoseEnabled] = useState<boolean>(false);
@@ -722,15 +781,22 @@ export default function App() {
   const tlAccumRef = useRef<number>(0);
   const tlStartWhenMsRef = useRef<number>(whenMs);
   const tlFramesRef = useRef<number>(0);
+  const tlInitializedRef = useRef<boolean>(false); // Track if TL was initialized (e.g., from URL)
 
   // Reset TL counters when enabled (set start ONCE when enabling)
   useEffect(() => {
     if (timeLapseEnabled) {
       tlAccumRef.current = 0;
-      tlStartWhenMsRef.current = whenMs; // capture current time as TL start
+      // Only set tlStartWhenMsRef if not already initialized (e.g., from URL)
+      if (!tlInitializedRef.current) {
+        tlStartWhenMsRef.current = whenMs; // capture current time as TL start
+      }
+      tlInitializedRef.current = true;
       tlFramesRef.current = 0;
+    } else {
+      tlInitializedRef.current = false; // Reset flag when disabled
     }
-  }, [timeLapseEnabled]); // CHANGED: removed whenMs from deps
+  }, [timeLapseEnabled, whenMs]); // Added whenMs back to deps for proper initialization
 
   // Reset counters when loop size or step parameters change
   useEffect(() => {
@@ -885,6 +951,231 @@ export default function App() {
   const refAz = useMemo(() => norm360(baseRefAz + deltaAzDeg), [baseRefAz, deltaAzDeg]);
   const refAlt = useMemo(() => clamp(baseRefAlt + deltaAltDeg, -89.9, 89.9), [baseRefAlt, deltaAltDeg]);
 
+  // Drag to adjust deltaAz/deltaAlt
+  const dragStartRef = useRef<{ x: number; y: number; startAz: number; startAlt: number } | null>(null);
+  const activeTouchCountRef = useRef<number>(0);
+  
+  const handlePointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Only start drag with primary button (left click or touch)
+    if (e.button !== 0) return;
+    
+    // Don't start drag if we're in a pinch gesture or if multiple touches are active
+    if (pinchStateRef.current || activeTouchCountRef.current >= 2) return;
+    
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      startAz: deltaAzDeg,
+      startAlt: deltaAltDeg,
+    };
+    
+    // Capture pointer to receive events even if cursor leaves element
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [deltaAzDeg, deltaAltDeg]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    // Don't drag if we're in a pinch gesture
+    if (pinchStateRef.current) return;
+    if (!dragStartRef.current) return;
+    
+    const dx = e.clientX - dragStartRef.current.x;
+    const dy = e.clientY - dragStartRef.current.y;
+    
+    // Calculate altitude at current mouse position
+    // Get relative Y position in viewport (0 = top, 1 = bottom)
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const relY = (e.clientY - rect.top) / rect.height;
+    
+    // In equirectangular projection, altitude varies linearly with Y
+    // Top of screen = refAlt + fovYDeg/2, bottom = refAlt - fovYDeg/2
+    const mouseAlt = refAlt + (0.5 - relY) * fovYDeg;
+    
+    // Adjust azimuth sensitivity based on altitude at mouse position
+    let azSensitivity = 1.0;
+    
+    // In spherical projections (non-cylindrical), near the poles the projection stretches
+    // horizontally, so pixels represent more degrees of azimuth
+    // Sensitivity should increase as 1/cos(altitude) near ±90°
+    if (projectionMode !== 'cylindrical' && projectionMode !== 'cylindrical-horizon') {
+      const altRad = (mouseAlt * Math.PI) / 180;
+      const cosAlt = Math.abs(Math.cos(altRad));
+      // Avoid division by zero at exactly ±90°, clamp cos to minimum 0.1
+      azSensitivity = 1.0 / Math.max(0.1, cosAlt);
+      // Cap maximum sensitivity at 10x to avoid extreme values
+      azSensitivity = Math.min(10, azSensitivity);
+    }
+    // In cylindrical projections, azimuth is linear: no sensitivity adjustment needed
+    
+    // Determine azimuth direction: invert when looking "over the pole"
+    // Above 90° (past zenith) or below -90° (past nadir), the view is "upside down"
+    let azDirection = -1; // normal: drag right -> view right
+    if (mouseAlt > 90 || mouseAlt < -90) {
+      azDirection = 1; // inverted when looking over the pole
+    }
+    
+    // Convert pixel movement to degrees based on FOV
+    // Movement sensitivity: 1 screen width = 1 FOV
+    const azChange = azDirection * (dx / viewport.w) * fovXDeg * azSensitivity;
+    const altChange = (dy / viewport.h) * fovYDeg;
+    
+    const newAzDeg = dragStartRef.current.startAz + azChange;
+    const newAltDeg = dragStartRef.current.startAlt + altChange;
+    
+    // Wrap azimuth to [-180, 180]
+    const wrappedAz = ((newAzDeg + 180) % 360 + 360) % 360 - 180;
+    
+    // Clamp altitude relative to baseRefAlt to stay within valid range
+    const targetAlt = baseRefAlt + newAltDeg;
+    const clampedTargetAlt = clamp(targetAlt, -89.9, 89.9);
+    const clampedDeltaAlt = clampedTargetAlt - baseRefAlt;
+    
+    setDeltaAzDeg(wrappedAz);
+    setDeltaAltDeg(clampedDeltaAlt);
+    
+    // Clear long pose accumulation during drag (like DirectionalKeypad does on each click)
+    handleLongPoseClear();
+  }, [viewport.w, viewport.h, fovXDeg, fovYDeg, baseRefAlt, refAlt, projectionMode, handleLongPoseClear]);
+
+  const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragStartRef.current) {
+      dragStartRef.current = null;
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+      
+      // Clear long pose accumulation when releasing the drag
+      handleLongPoseClear();
+    }
+  }, [handleLongPoseClear]);
+
+  // Pinch-to-zoom for touch devices
+  const pinchStateRef = useRef<{ 
+    distance: number; 
+    focalMm: number; 
+    startFovX: number; 
+    startFovY: number;
+    targetFovX: number;
+    targetFovY: number;
+  } | null>(null);
+  const pinchUpdateFrameRef = useRef<number | null>(null);
+
+  // Effective FOV: use targetFov from pinch ref during gesture, otherwise use state
+  const effectiveFovXDeg = useMemo(() => {
+    return pinchStateRef.current?.targetFovX ?? fovXDeg;
+  }, [fovXDeg, pinchRenderTrigger]); // pinchRenderTrigger forces update during pinch
+  
+  const effectiveFovYDeg = useMemo(() => {
+    return pinchStateRef.current?.targetFovY ?? fovYDeg;
+  }, [fovYDeg, pinchRenderTrigger]);
+
+  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    // Update active touch count
+    activeTouchCountRef.current = e.touches.length;
+    
+    if (e.touches.length === 2) {
+      // Two fingers detected: start pinch gesture
+      // Cancel any ongoing drag
+      dragStartRef.current = null;
+      
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dx = touch2.clientX - touch1.clientX;
+      const dy = touch2.clientY - touch1.clientY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Calculate current focal length from FOV
+      const rad = (Math.PI / 180) * fovXDeg;
+      const tanHalf = Math.tan(rad / 2);
+      const currentFocalMm = tanHalf > 0 ? FF_WIDTH_MM / (2 * tanHalf) : FOCAL_MAX_MM;
+      
+      pinchStateRef.current = {
+        distance,
+        focalMm: clamp(currentFocalMm, FOCAL_MIN_MM, FOCAL_MAX_MM),
+        startFovX: fovXDeg,
+        startFovY: fovYDeg,
+        targetFovX: fovXDeg,
+        targetFovY: fovYDeg,
+      };
+      
+      // Prevent default to avoid page zoom
+      e.preventDefault();
+    } else if (e.touches.length === 1) {
+      // Single touch: allow drag to start (will be handled by pointer events)
+      pinchStateRef.current = null;
+    }
+  }, [fovXDeg, fovYDeg]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2 && pinchStateRef.current) {
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const dx = touch2.clientX - touch1.clientX;
+      const dy = touch2.clientY - touch1.clientY;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Calculate zoom factor (distance ratio)
+      // Pinch in (distance decreases) -> zoom in (increase focal)
+      // Pinch out (distance increases) -> zoom out (decrease focal)
+      const scale = distance / pinchStateRef.current.distance;
+      
+      // Apply zoom to focal length (direct relationship)
+      const newFocalMm = clamp(
+        pinchStateRef.current.focalMm * scale,
+        FOCAL_MIN_MM,
+        FOCAL_MAX_MM
+      );
+      
+      // Convert focal length back to FOV (like TopBar's setFovFromFocal)
+      const newFovX = (2 * Math.atan(FF_WIDTH_MM / (2 * newFocalMm)) * 180) / Math.PI;
+      const newFovY = (2 * Math.atan(FF_HEIGHT_MM / (2 * newFocalMm)) * 180) / Math.PI;
+      
+      // Update pinch state for next move (incremental zoom)
+      // Store target FOV in ref but DON'T update state during gesture
+      pinchStateRef.current = {
+        distance,
+        focalMm: newFocalMm,
+        startFovX: pinchStateRef.current.startFovX,
+        startFovY: pinchStateRef.current.startFovY,
+        targetFovX: clamp(newFovX, FOV_DEG_MIN, FOV_DEG_MAX),
+        targetFovY: clamp(newFovY, FOV_DEG_MIN, FOV_DEG_MAX),
+      };
+      
+      // Force re-render to use updated targetFov from ref
+      setPinchRenderTrigger(t => t + 1);
+      
+      // Clear long pose accumulation
+      handleLongPoseClear();
+      
+      // Prevent default to avoid page zoom
+      e.preventDefault();
+    }
+  }, [handleLongPoseClear]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
+    // Update active touch count
+    activeTouchCountRef.current = e.touches.length;
+    
+    if (e.touches.length < 2 && pinchStateRef.current) {
+      // Less than 2 fingers: end pinch gesture
+      // NOW apply the final FOV to state
+      const finalFovX = pinchStateRef.current.targetFovX;
+      const finalFovY = pinchStateRef.current.targetFovY;
+      
+      pinchStateRef.current = null;
+      
+      // Cancel any pending frame update
+      if (pinchUpdateFrameRef.current !== null) {
+        cancelAnimationFrame(pinchUpdateFrameRef.current);
+        pinchUpdateFrameRef.current = null;
+      }
+      
+      // Apply final FOV
+      setFovXDeg(finalFovX);
+      setFovYDeg(finalFovY);
+      
+      // Switch to custom device
+      setDeviceId(CUSTOM_DEVICE_ID);
+      setZoomId('custom-theo');
+    }
+  }, [setFovXDeg, setFovYDeg, setDeviceId, setZoomId]);
     
   const moonOrientation = useMemo(
     () => getMoonOrientationAngles(date, location.lat, location.lng),
@@ -1215,6 +1506,7 @@ export default function App() {
       setTimeLapseStepUnit,
       setTimeLapseLoopAfter,
       timeLapseStartMsRef: tlStartWhenMsRef,
+      tlInitializedRef,
       setLongPoseEnabled,
       setLongPoseRetainFrames,
       setPreselectedCityIds,
@@ -1226,7 +1518,13 @@ export default function App() {
     if (isMobileScreen) {
       setShowPanels(false);
     }
-  }, [locationsLoading, locations, isMobileScreen]);
+    
+    // Mark URL as fully restored ONLY if in landscape (or not mobile)
+    // If in portrait, wait for landscape transition before allowing projection recalc
+    if (!isMobileScreen || !isPortraitMode) {
+      urlRestoredRef.current = true;
+    }
+  }, [locationsLoading, locations, isMobileScreen, isPortraitMode]);
   // Note: Other dependencies (allPlanetIds, devices, etc.) are intentionally omitted
   // as this effect should only run once for initial URL parsing after locations load
 
@@ -1549,8 +1847,8 @@ const handleFramePresented = React.useCallback(() => {
               zoomId={zoomId}
               setZoomId={setZoomId}
               CUSTOM_DEVICE_ID={CUSTOM_DEVICE_ID}
-              fovXDeg={fovXDeg}
-              fovYDeg={fovYDeg}
+              fovXDeg={effectiveFovXDeg}
+              fovYDeg={effectiveFovYDeg}
               setFovXDeg={setFovXDeg}
               setFovYDeg={setFovYDeg}
               linkFov={linkFov}
@@ -1634,6 +1932,9 @@ const handleFramePresented = React.useCallback(() => {
               setShowRefraction={setShowRefraction}
               isMobileScreen={isMobileScreen}
               isLandscapeMode={isLandscapeMode}
+              isPortraitMode={isPortraitMode}
+              urlRestoredRef={urlRestoredRef}
+              lastOrientationChangeRef={lastOrientationChangeRef}
               onClosePanels={() => setShowPanels(false)}
           />
           </div>
@@ -1652,7 +1953,16 @@ const handleFramePresented = React.useCallback(() => {
                   width: viewport.w,
                   height: viewport.h,
                   overflow: 'hidden',
+                  cursor: dragStartRef.current ? 'grabbing' : 'grab',
+                  touchAction: 'none', // Prevent default touch behaviors like scrolling
                 }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
               >
                 <div ref={renderStackRef} className="relative w-full h-full">
                 <SpaceView
@@ -1664,8 +1974,8 @@ const handleFramePresented = React.useCallback(() => {
                   viewport={{ x: 0, y: 0, w: viewport.w, h: viewport.h }}
                   refAzDeg={refAz}
                   refAltDeg={refAlt}
-                  fovXDeg={fovXDeg}
-                  fovYDeg={fovYDeg}
+                  fovXDeg={effectiveFovXDeg}
+                  fovYDeg={effectiveFovYDeg}
                   projectionMode={projectionMode}
                   showEarth={showEarth}
                   showGrid={showGrid}
@@ -1752,6 +2062,7 @@ const handleFramePresented = React.useCallback(() => {
               onLongPoseClear={handleLongPoseClear}
               isMobile={isMobileScreen}
               isLandscape={isLandscapeMode}
+              follow={follow}
             />
           )}
         </main>

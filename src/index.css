@@ -76,7 +76,6 @@
   margin-left: 5rem;
   margin-right: 5rem;
   border-left: 3px solid var(--pi-accent-2);
-  color: var(--pi-fg);
   background: linear-gradient(90deg, rgba(6,182,212,0.05), rgba(139,92,246,0.04));
   border-radius: 0.5rem;
 }
@@ -86,7 +85,6 @@
 .prose-info :where(p) {
   margin-left: 5rem;
   margin-right: 5rem;
-    color: var(--pi-fg); 
     text-align: justify;
 }
 

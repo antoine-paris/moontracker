@@ -252,10 +252,9 @@
     "southernCross": "Croix du Sud"
   },
   "orientation": {
-    "landscapeRecommended": "Orientation paysage recommandée",
-    "rotateDeviceMessage": "Pour une meilleure expérience de visualisation astronomique, veuillez tourner votre appareil en mode paysage.",
-    "continueAnyway": "Continuer en portrait",
-    "dismissHint": "Ce message disparaîtra en mode paysage"
+    "landscapeRequired": "Veuillez tourner votre appareil en mode paysage pour voir l'application",
+    "rotateDeviceMessage": "Pour utiliser SpaceView, l'orientation paysage est requise. Tournez votre appareil pour commencer.",
+    "waitingForLandscape": "En attente du mode paysage..."
   },
   "mobile": {
     "showControls": "Afficher les contrôles",

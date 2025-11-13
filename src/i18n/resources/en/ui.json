@@ -251,5 +251,22 @@
     "neptune": "Neptune",
     "pluto": "Pluto",
     "southernCross": "Southern Cross"
+  },
+  "orientation": {
+    "landscapeRequired": "Please rotate your device to landscape mode to view the application",
+    "rotateDeviceMessage": "To use SpaceView, landscape orientation is required. Rotate your device to start.",
+    "waitingForLandscape": "Waiting for landscape mode..."
+  },
+  "mobile": {
+    "showControls": "Show controls",
+    "hideControls": "Hide controls",
+    "compactMode": "Compact mode",
+    "fullMode": "Full mode",
+    "toggleSidebar": "Location",
+    "toggleTelemetry": "Telemetry",
+    "telemetry": "Telemetry",
+    "enableLandscapeMode": "Enable landscape mode (fullscreen)",
+    "orientationNotSupported": "Orientation lock not supported",
+    "exitFullscreen": "Exit fullscreen"
   }
 }
