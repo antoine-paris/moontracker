@@ -48,7 +48,8 @@ export default function MoonSprite(props: Props) {
   const darkMaskUrl = useMemo(() => `url(#${darkMaskId})`, [darkMaskId]);
   const litMaskUrl = useMemo(() => `url(#${litMaskId})`, [litMaskId]);
 
-  // Do not cull here; parent handles partial on-screen culling.
+  // Ne pas rendre si hors champ pour éviter un affichage en (0,0)
+  if (!visibleX || !visibleY) return null;
 
   return (
     <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`, zIndex: Z.moon, width: wPx, height: hPx, opacity: (visibleX && visibleY) ? 1 : 0 }}>

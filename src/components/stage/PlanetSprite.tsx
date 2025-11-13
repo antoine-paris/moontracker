@@ -37,8 +37,6 @@ export default function PlanetSprite({
   planetId,
   orientationDegX,                     // + add
 }: Props) {
-  // Do not cull here; parent handles partial on-screen culling.
-
   const R_SVG = 312;
 
   // LUT pour le terminateur (mêmes calculs que MoonSprite)
@@ -68,6 +66,9 @@ export default function PlanetSprite({
       night: base + '-night-grad',
     } as const;
   }, []);
+
+  // Ne pas rendre si hors champ pour éviter un affichage en (0,0)
+  if (!visibleX || !visibleY) return null;
 
   // Orientation du terminateur (même convention que MoonSprite)
   // (-90° car l’axe du masque est perpendiculaire à la direction « vers le Soleil »)
