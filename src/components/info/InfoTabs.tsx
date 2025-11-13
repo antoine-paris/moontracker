@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import LanguageSwitcher from '../LanguageSwitcher';
 import InfoLogo from './InfoLogo';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
 import SpaceViewTab from './tabs/SpaceViewTab/index';
 import HelpTab from './tabs/HelpTab/index';
 import SimulationsTab from './tabs/SimulationsTab/index';
@@ -28,6 +29,7 @@ interface InfoTabsProps {
 export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabsProps) {
   const { t } = useTranslation('info');
   const { t: tCommon } = useTranslation('common');
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
   const validInit = (['spaceview','help','simulations','flatearth','bug'].includes(initialTab) ? initialTab : 'spaceview') as TabId;
   const [active, setActive] = useState<TabId>(validInit);
   const tabPanelRef = useRef<HTMLDivElement>(null);
@@ -65,6 +67,30 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
         {/* Logo section */}
         <div className="flex flex-col items-center gap-2 p-3 border-b border-gray-200">
           <InfoLogo showBackground={false} size={48} />
+          
+          {/* PWA Install buttons */}
+          {isInstallable && (
+            <button
+              onClick={installApp}
+              className="w-full px-2 py-1 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 shadow-sm flex items-center justify-center gap-1"
+              aria-label={tCommon('navigation.installApp')}
+              title={tCommon('navigation.installApp')}
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              <span className="truncate">{tCommon('navigation.installApp')}</span>
+            </button>
+          )}
+          {isInstalled && (
+            <div className="w-full px-2 py-1 text-xs text-green-700 flex items-center justify-center gap-1">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+              <span className="truncate">{tCommon('navigation.appInstalled')}</span>
+            </div>
+          )}
+          
           {onClose && (
             <button
               onClick={onClose}
