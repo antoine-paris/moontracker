@@ -13,9 +13,9 @@ type Props = {
   hPx: number;
 };
 
-export default function SunSprite({ x, y, visibleX, visibleY, rotationDeg, showCard, wPx, hPx }: Props) {
+export default function SunSprite({ x, y, rotationDeg, showCard, wPx, hPx }: Props) {
   const { t } = useTranslation('common');
-  if (!visibleX || !visibleY) return null;
+  // Do not cull here; parent handles partial on-screen culling.
 
   // Force un carré pour conserver un cercle à l'écran
   const sizePx = Math.round(Math.min(wPx, hPx));

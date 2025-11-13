@@ -977,7 +977,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       )}
 
       {/* Moon 3D */}
-      {showMoon && !glbLoading && moonRenderModeEffective === '3d' && moonScreen.visibleX && moonScreen.visibleY && (
+      {showMoon && !glbLoading && moonRenderModeEffective === '3d' && (
          <div className="absolute inset-0" 
           data-longpose-exclude="1" // exclure du long pose
           style={{ zIndex: Z.horizon - 1 }} data-3d-layer="1"

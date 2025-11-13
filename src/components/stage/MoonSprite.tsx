@@ -21,7 +21,7 @@ type Props = {
 
 export default function MoonSprite(props: Props) {
   const { t } = useTranslation('common');
-  const { x, y, visibleX, visibleY, rotationDeg, showPhase, earthshine, debugMask, showCard, phaseFraction, brightLimbAngleDeg, maskAngleDeg, wPx, hPx } = props;
+  const { x, y, rotationDeg, showPhase, earthshine, debugMask, showCard, phaseFraction, brightLimbAngleDeg, maskAngleDeg, wPx, hPx } = props;
 
   const R_SVG = 312;
   const k = 2 * phaseFraction - 1;
@@ -48,7 +48,7 @@ export default function MoonSprite(props: Props) {
   const darkMaskUrl = useMemo(() => `url(#${darkMaskId})`, [darkMaskId]);
   const litMaskUrl = useMemo(() => `url(#${litMaskId})`, [litMaskId]);
 
-  if (!visibleX || !visibleY) return null;
+  // Do not cull here; parent handles partial on-screen culling.
 
   return (
     <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`, zIndex: Z.moon, width: wPx, height: hPx }}>
