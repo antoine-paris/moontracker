@@ -21,7 +21,7 @@ type Props = {
 
 export default function MoonSprite(props: Props) {
   const { t } = useTranslation('common');
-  const { x, y, rotationDeg, showPhase, earthshine, debugMask, showCard, phaseFraction, brightLimbAngleDeg, maskAngleDeg, wPx, hPx } = props;
+  const { x, y, visibleX, visibleY, rotationDeg, showPhase, earthshine, debugMask, showCard, phaseFraction, brightLimbAngleDeg, maskAngleDeg, wPx, hPx } = props;
 
   const R_SVG = 312;
   const k = 2 * phaseFraction - 1;
@@ -51,7 +51,7 @@ export default function MoonSprite(props: Props) {
   // Do not cull here; parent handles partial on-screen culling.
 
   return (
-    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`, zIndex: Z.moon, width: wPx, height: hPx }}>
+    <div style={{ position: "absolute", left: x, top: y, transform: `translate(-50%, -50%) rotate(${rotationDeg}deg)`, zIndex: Z.moon, width: wPx, height: hPx, opacity: (visibleX && visibleY) ? 1 : 0 }}>
       <svg width={wPx} height={hPx} viewBox="0 0 624 624" style={{ position: "absolute", inset: 0, margin: "auto", display: "block" }}>
         <defs>
           <clipPath id={ids.clip}>

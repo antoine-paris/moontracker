@@ -957,7 +957,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
       )}
 
       {/* Moon sprite */}
-      {showMoon && !glbLoading  && (
+      {showMoon && !glbLoading && moonRenderModeEffective === 'sprite' && (
         <div className="absolute inset-0" style={{ zIndex: Z.horizon - 2, pointerEvents: 'none' }}>
           <MoonSprite
             x={moonScreen.x} y={moonScreen.y}
