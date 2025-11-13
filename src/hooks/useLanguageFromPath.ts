@@ -28,6 +28,13 @@ export function useLanguageFromPath() {
     }
   }, [pathname, i18n]);
 
+  // Update the HTML lang attribute whenever the language changes
+  useEffect(() => {
+    if (i18n.language && i18n.language !== 'cimode') {
+      document.documentElement.lang = i18n.language;
+    }
+  }, [i18n.language]);
+
   // Return current language and path info
   return {
     currentLanguage: i18n.language,

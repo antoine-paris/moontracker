@@ -2062,6 +2062,7 @@ const handleFramePresented = React.useCallback(() => {
               onLongPoseClear={handleLongPoseClear}
               isMobile={isMobileScreen}
               isLandscape={isLandscapeMode}
+              follow={follow}
             />
           )}
         </main>
