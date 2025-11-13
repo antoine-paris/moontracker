@@ -731,15 +731,22 @@ export default function App() {
   const tlAccumRef = useRef<number>(0);
   const tlStartWhenMsRef = useRef<number>(whenMs);
   const tlFramesRef = useRef<number>(0);
+  const tlInitializedRef = useRef<boolean>(false); // Track if TL was initialized (e.g., from URL)
 
   // Reset TL counters when enabled (set start ONCE when enabling)
   useEffect(() => {
     if (timeLapseEnabled) {
       tlAccumRef.current = 0;
-      tlStartWhenMsRef.current = whenMs; // capture current time as TL start
+      // Only set tlStartWhenMsRef if not already initialized (e.g., from URL)
+      if (!tlInitializedRef.current) {
+        tlStartWhenMsRef.current = whenMs; // capture current time as TL start
+      }
+      tlInitializedRef.current = true;
       tlFramesRef.current = 0;
+    } else {
+      tlInitializedRef.current = false; // Reset flag when disabled
     }
-  }, [timeLapseEnabled]); // CHANGED: removed whenMs from deps
+  }, [timeLapseEnabled, whenMs]); // Added whenMs back to deps for proper initialization
 
   // Reset counters when loop size or step parameters change
   useEffect(() => {
@@ -1449,6 +1456,7 @@ export default function App() {
       setTimeLapseStepUnit,
       setTimeLapseLoopAfter,
       timeLapseStartMsRef: tlStartWhenMsRef,
+      tlInitializedRef,
       setLongPoseEnabled,
       setLongPoseRetainFrames,
       setPreselectedCityIds,
