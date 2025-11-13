@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import InfoTabs from './InfoTabs';
 import InfoLogo from './InfoLogo';
+import { usePWAInstall } from '../../hooks/usePWAInstall';
 
 type Props = {
   open: boolean;
@@ -13,6 +14,7 @@ type Props = {
 export default function InfoModal({ open, initialTab = 'spaceview', onClose }: Props) {
   const { t } = useTranslation('common');
   const overlayRef = useRef<HTMLDivElement | null>(null);
+  const { isInstallable, isInstalled, installApp } = usePWAInstall();
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +54,27 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
               </div>
             </div>
             <div className="flex items-center gap-2">
+              {isInstallable && (
+                <button
+                  onClick={installApp}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 shadow-sm"
+                  aria-label={t('navigation.installApp')}
+                  title={t('navigation.installApp')}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  {t('navigation.installApp')}
+                </button>
+              )}
+              {isInstalled && (
+                <span className="inline-flex items-center gap-2 px-3 py-1.5 text-sm text-green-700">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  {t('navigation.appInstalled')}
+                </span>
+              )}
               <button
                 onClick={onClose}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"

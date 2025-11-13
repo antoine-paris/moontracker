@@ -4,7 +4,9 @@
     "close": "Fermer",
     "expand": "Agrandir",
     "return": "Retour",
-    "goToApp": "Aller sur l'application"
+    "goToApp": "Aller sur l'application",
+    "installApp": "Installer l'app",
+    "appInstalled": "App installée"
   },
   "time": {
     "now": "Maintenant",
