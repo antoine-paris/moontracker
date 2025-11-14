@@ -770,11 +770,12 @@ export default function TopBar({
   const IconToggleButton: React.FC<{
     active: boolean;
     onClick: () => void;
+    onTouchEnd?: (e: React.TouchEvent) => void;
     title: string;
     disabled?: boolean;
     icon?: ToggleIconId;
     children?: React.ReactNode;
-  }> = ({ active, onClick, title, disabled, icon, children }) => {
+  }> = ({ active, onClick, onTouchEnd, title, disabled, icon, children }) => {
     const handleActivate = (e?: React.SyntheticEvent) => {
       if (e) {
         e.preventDefault();
@@ -797,7 +798,11 @@ export default function TopBar({
     return (
       <button
         type="button"
-        className={`px-2.5 py-1.5 rounded-lg border text-sm cursor-pointer ${active ? 'border-white/50 bg-white/10 text-white' : 'border-white/15 text-white/80 hover:border-white/30'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        className={`px-2.5 py-1.5 rounded-lg border text-sm ${active ? 'border-white/50 bg-white/10 text-white' : 'border-white/15 text-white/80 hover:border-white/30'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+        onTouchEnd={onTouchEnd || ((e) => {
+          e.preventDefault();
+          if (!disabled) handleActivate();
+        })}
         onPointerDown={handleActivate}
         onClick={handleActivate}
         title={title}
@@ -821,6 +826,10 @@ export default function TopBar({
         <div className="flex items-center justify-between p-4 border-b border-white/10 ">
           <h1 className="text-xl font-semibold text-white">{t('ui:settings.title')}</h1>
           <button
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              onClosePanels?.();
+            }}
             onClick={onClosePanels}
             className="p-2 rounded-lg border border-white/15 text-white/80 hover:border-white/30 hover:text-white"
             title={t('ui:settings.close')}
@@ -849,7 +858,12 @@ export default function TopBar({
               'O', 'N','S','E' 
             ] as FollowMode[]).map(opt => (
               <button key={opt}
-                className={`px-3 py-1.5 rounded-lg border text-sm cursor-pointer ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
+                className={`px-3 py-1.5 rounded-lg border text-sm ${follow === opt ? 'border-white/50 bg-white/10' : 'border-white/15 text-white/80 hover:border-white/30'}`}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  setFollow(opt);
+                  onLongPoseClear();
+                }}
                 onClick={() => { setFollow(opt); onLongPoseClear(); }}
                 title={
                   opt === 'SOLEIL' ? t('followModes.followSun')
@@ -889,6 +903,10 @@ export default function TopBar({
             {/* Horizons toggle */}
             <IconToggleButton
               active={lockHorizon}
+              onTouchEnd={(e: React.TouchEvent) => {
+                e.preventDefault();
+                setLockHorizon(!lockHorizon);
+              }}
               onClick={() => setLockHorizon(!lockHorizon)}
               title={t('alignment.horizon')}
               icon="horizon"
@@ -896,6 +914,10 @@ export default function TopBar({
             {/* Ecliptique */}
             <IconToggleButton
               active={!lockHorizon}
+              onTouchEnd={(e: React.TouchEvent) => {
+                e.preventDefault();
+                setLockHorizon(!lockHorizon);
+              }}
               onClick={() => setLockHorizon(!lockHorizon)}
               title={t('alignment.ecliptic')}
               icon="ecliptic"
@@ -918,6 +940,9 @@ export default function TopBar({
               </svg>
               <select
                 value={deviceId}
+                onTouchEnd={(e) => {
+                  e.stopPropagation();
+                }}
                 onChange={(e) => {
                   const id = e.target.value;
                   setDeviceId(id);
@@ -955,6 +980,9 @@ export default function TopBar({
               ) : (
                 <select
                   value={zoomId}
+                  onTouchEnd={(e) => {
+                    e.stopPropagation();
+                  }}
                   onChange={(e) => setZoomId(e.target.value)}
                   className="flex-1 basis-0 min-w-0 h-8 leading-none bg-black/60 border border-white/15 rounded-lg px-2 text-sm"
                   title={t('device.selectLens')}
@@ -1019,6 +1047,10 @@ export default function TopBar({
                               ? 'border-white/15 text-white/80 hover:border-white/30'
                               : 'border-white/10 text-white/40 opacity-50 cursor-not-allowed'
                         }`}
+                        onTouchEnd={(e) => {
+                          e.preventDefault();
+                          if (isAllowed) setProjectionMode(opt.id);
+                        }}
                         onClick={() => {
                           if (!isAllowed) return;
                           setProjectionMode(opt.id);
@@ -1082,23 +1114,34 @@ export default function TopBar({
                      />
                   {/* -1 heure */}
                   <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onCommitWhenMs(currentUtcMs - 3600000);
+                      setIsEditing(false);
+                    }}
                     onClick={() => {
                       onCommitWhenMs(currentUtcMs - 3600000);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title={t('time.goBackOneHour')}
                   >
                     &#x21B6;
                   </button>
                   {/* Maintenant */}
                   <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      const nowMs = Date.now();
+                      onCommitWhenMs(nowMs);
+                      setIsEditing(false);
+                    }}
                     onClick={() => {
                       const nowMs = Date.now();
                       onCommitWhenMs(nowMs);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title={t('time.setCurrentTime')}
                   >
                     {/*Maintenant*/}
@@ -1109,11 +1152,16 @@ export default function TopBar({
                   </button>
                   {/* +1 heure */}
                   <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onCommitWhenMs(currentUtcMs + 3600000);
+                      setIsEditing(false);
+                    }}
                     onClick={() => {
                       onCommitWhenMs(currentUtcMs + 3600000);
                       setIsEditing(false);
                     }}
-                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title={t('time.goForwardOneHour')}
                   >
                     &#x21B7;
@@ -1140,8 +1188,12 @@ export default function TopBar({
               
               <div className="flex items-center gap-2">
                 <button
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    setIsAnimating(!isAnimating);
+                  }}
                   onClick={() => setIsAnimating(!isAnimating)}
-                  className={`px-3 py-2 rounded-lg border text-sm cursor-pointer ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
+                  className={`px-3 py-2 rounded-lg border text-sm ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
                   title={isAnimating ? t('time.pauseAnimation') : t('time.startAnimation')}
                   aria-label={isAnimating ? t('controls.pause') : t('controls.play')}
                 >
@@ -1188,17 +1240,30 @@ export default function TopBar({
                   {/* -1 min/s */}
                   <button
                     title={t('time.stepBackward')}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setSpeedMinPerSec(clamp(speedMinPerSec - 1, -360, 360));
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
                     onClick={() => {
                       setSpeedMinPerSec(clamp(speedMinPerSec - 1, -360, 360));
                       onLongPoseClear(); 
                       setTimeLapseEnabled(false);
                     }}
-                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
                     -
                   </button>
                   {/* Temps réel */}
                   <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setSpeedMinPerSec(1/60); 
+                      setIsAnimating(true); 
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
                     onClick={() => { 
                       setSpeedMinPerSec(1/60); 
                       setIsAnimating(true); 
@@ -1206,7 +1271,7 @@ export default function TopBar({
                       setTimeLapseEnabled(false);
                     }}
                     title={t('time.animateRealTime')}
-                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
                         <circle cx="12" cy="12" r="9" stroke="currentColor" />
@@ -1216,12 +1281,18 @@ export default function TopBar({
                   {/* +1 min/s */}
                   <button
                     title={t('time.stepForward')}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setSpeedMinPerSec(clamp(speedMinPerSec + 1, -360, 360));
+                      onLongPoseClear(); 
+                      setTimeLapseEnabled(false);
+                    }}
                     onClick={() => {
                       setSpeedMinPerSec(clamp(speedMinPerSec + 1, -360, 360));
                       onLongPoseClear(); 
                       setTimeLapseEnabled(false);
                     }}
-                    className="px-3 py-1 rounded-lg cursor-pointer border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
                     +
                   </button>
@@ -1237,6 +1308,11 @@ export default function TopBar({
                   {/* Toggle button replaces checkbox (no label) */}
                   <IconToggleButton
                     active={timeLapseEnabled}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setTimeLapseEnabled(!timeLapseEnabled);
+                      onLongPoseClear();
+                    }}
                     onClick={() => { setTimeLapseEnabled(!timeLapseEnabled); onLongPoseClear(); }}
                     title={t('animation.enableTimeLapse', { startLabel: tlStartLabel })}
                     icon="timelapse"
@@ -1265,6 +1341,9 @@ export default function TopBar({
                   <select
                     className="flex-1 min-w-0 bg-black/60 border border-white/15 rounded-lg px-2 py-1.5 text-sm"
                     value={timeLapseStepUnit}
+                    onTouchEnd={(e) => {
+                      e.stopPropagation();
+                    }}
                     onChange={(e) => { setTimeLapseStepUnit(e.target.value as any); onLongPoseClear(); }}
                     title={t('animation.stepUnitUTC')}
                   >
@@ -1278,7 +1357,11 @@ export default function TopBar({
                   </select>
                   <button
                     type="button"
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 cursor-pointer hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onTimeLapsePrevFrame();
+                    }}
                     onClick={onTimeLapsePrevFrame}
                     title={t('animation.previousFrame')}
                   >
@@ -1286,7 +1369,11 @@ export default function TopBar({
                   </button>
                   <button
                     type="button"
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 cursor-pointer hover:border-white/30 text-sm"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onTimeLapseNextFrame();
+                    }}
                     onClick={onTimeLapseNextFrame}
                     title={t('animation.nextFrame')}
                   >
@@ -1345,6 +1432,10 @@ export default function TopBar({
                   {/* Toggle button replaces checkbox (no label) */}
                   <IconToggleButton
                     active={longPoseEnabled}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setLongPoseEnabled(!longPoseEnabled);
+                    }}
                     onClick={() => setLongPoseEnabled(!longPoseEnabled)}
                     title={t('animation.enableLongExposure')}
                     icon="longpose"
@@ -1355,6 +1446,10 @@ export default function TopBar({
                   {/* reset persistence button */}
                   <IconToggleButton
                     active={false}
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onLongPoseClear();
+                    }}
                     onClick={onLongPoseClear}
                     title={t('animation.clearPersistence')}
                     icon="clear"
@@ -1373,6 +1468,7 @@ export default function TopBar({
             {/* Enlarge objects */}
             <IconToggleButton
               active={enlargeObjects}
+              onTouchEnd={(e) => { e.preventDefault(); setEnlargeObjects(!enlargeObjects); }}
               onClick={() => setEnlargeObjects(!enlargeObjects)}
               title={t('visibility.increaseSize')}
               icon="enlarge"
@@ -1380,6 +1476,7 @@ export default function TopBar({
             {/* Horizons toggle */}
             <IconToggleButton
               active={showHorizon}
+              onTouchEnd={(e) => { e.preventDefault(); setShowHorizon(!showHorizon); }}
               onClick={() => setShowHorizon(!showHorizon)}
               title={t('visibility.showHorizon')}
               icon="horizon"
@@ -1387,6 +1484,7 @@ export default function TopBar({
             {/* Earth toggle */}
             <IconToggleButton
               active={showEarth}
+              onTouchEnd={(e) => { e.preventDefault(); setShowEarth(!showEarth); }}
               onClick={() => setShowEarth(!showEarth)}
               title={t('visibility.showGround')}
               icon="earth"
@@ -1394,6 +1492,7 @@ export default function TopBar({
             {/* Atmosphere toggle */}
             <IconToggleButton
               active={showAtmosphere}
+              onTouchEnd={(e) => { e.preventDefault(); setShowAtmosphere(!showAtmosphere); }}
               onClick={() => setShowAtmosphere(!showAtmosphere)}
               title={t('visibility.showAtmosphere')}
               icon="atmo"
@@ -1401,6 +1500,7 @@ export default function TopBar({
              {/* NEW: Refraction toggle */}
             <IconToggleButton
               active={showRefraction}
+              onTouchEnd={(e) => { e.preventDefault(); setShowRefraction(!showRefraction); }}
               onClick={() => setShowRefraction(!showRefraction)}
               title={t('visibility.applyRefraction')}
               icon="refraction"
@@ -1408,6 +1508,7 @@ export default function TopBar({
             {/* Moon phase */}
             <IconToggleButton
               active={showPhase}
+              onTouchEnd={(e) => { e.preventDefault(); setShowPhase(!showPhase); }}
               onClick={() => setShowPhase(!showPhase)}
               title={t('ui:phase.showPhase')}
               icon="phase"
@@ -1415,19 +1516,16 @@ export default function TopBar({
             {/* Earthshine */}
             <IconToggleButton
               active={earthshine}
+              onTouchEnd={(e) => { e.preventDefault(); setEarthshine(!earthshine); }}
               onClick={() => setEarthshine(!earthshine)}
               title={showPhase ? t('phase.enableEarthshine') : t('phase.enablePhaseFirst')}
               icon="earthshine"
               disabled={!showPhase}
             />
-          </div>
-
-          {/* Groupe: Espace */}
-          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:space.title')}</div>
-          <div className="mt-1 flex flex-wrap gap-3">
             {/* Sun toggle */}
             <IconToggleButton
               active={showSun}
+              onTouchEnd={(e) => { e.preventDefault(); setShowSun(!showSun); }}
               onClick={() => setShowSun(!showSun)}
               title={t('ui:space.showSun')}
               icon="sun"
@@ -1437,6 +1535,7 @@ export default function TopBar({
             {/* Moon toggle */}
             <IconToggleButton
               active={showMoon}
+              onTouchEnd={(e) => { e.preventDefault(); setShowMoon(!showMoon); }}
               onClick={() => setShowMoon(!showMoon)}
               title={t('ui:space.showMoon')}
               icon="moon"
@@ -1450,6 +1549,11 @@ export default function TopBar({
                 <IconToggleButton
                   key={id}
                   active={active}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    const next = !active;
+                    setShowPlanets(prev => ({ ...prev, [id]: next }));
+                  }}
                   onClick={() => {
                     const next = !active;
                     setShowPlanets(prev => ({ ...prev, [id]: next }));
@@ -1480,6 +1584,7 @@ export default function TopBar({
             {/* Stars toggle */}
             <IconToggleButton
               active={showStars}
+              onTouchEnd={(e) => { e.preventDefault(); setShowStars(!showStars); }}
               onClick={() => setShowStars(!showStars)}
               title={t('ui:space.showStars')}
               icon="stars"
@@ -1494,6 +1599,7 @@ export default function TopBar({
             {/* Grid toggle */}
             <IconToggleButton
               active={showGrid}
+              onTouchEnd={(e) => { e.preventDefault(); setShowGrid(!showGrid); }}
               onClick={() => setShowGrid(!showGrid)}
               title={t('ui:assistance.showGrid')}
               icon="grid"
@@ -1501,6 +1607,7 @@ export default function TopBar({
             {/* Markers toggle */}
             <IconToggleButton
               active={showMarkers}
+              onTouchEnd={(e) => { e.preventDefault(); setShowMarkers(!showMarkers); }}
               onClick={() => setShowMarkers(!showMarkers)}
               title={t('ui:assistance.showMarkers')}
               icon="markers"
@@ -1508,6 +1615,7 @@ export default function TopBar({
             {/* Sun cardinal helper */}
             <IconToggleButton
               active={showSunCard}
+              onTouchEnd={(e) => { e.preventDefault(); setShowSunCard(!showSunCard); }}
               onClick={() => setShowSunCard(!showSunCard)}
               title={t('ui:assistance.showSunCardinals')}
               icon="sunCard"
@@ -1515,6 +1623,7 @@ export default function TopBar({
             {/* Ecliptique */}
             <IconToggleButton
               active={showEcliptique}
+              onTouchEnd={(e) => { e.preventDefault(); setShowEcliptique(!showEcliptique); }}
               onClick={() => setShowEcliptique(!showEcliptique)}
               title={t('ui:assistance.showEcliptic')}
               icon="ecliptic"
@@ -1522,6 +1631,7 @@ export default function TopBar({
             {/* Local cardinal helper */}
             <IconToggleButton
               active={showMoonCard}
+              onTouchEnd={(e) => { e.preventDefault(); setShowMoonCard(!showMoonCard); }}
               onClick={() => setShowMoonCard(!showMoonCard)}
               title={t('ui:assistance.showMoonCardinals')}
               icon="moonCard"
@@ -1529,6 +1639,7 @@ export default function TopBar({
             {/* Debug helper */}
             <IconToggleButton
               active={debugMask}
+              onTouchEnd={(e) => { e.preventDefault(); setDebugMask(!debugMask); }}
               onClick={() => setDebugMask(!debugMask)}
               title={t('ui:assistance.enableDebug')}
               icon="debug"

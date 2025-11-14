@@ -71,6 +71,10 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
           {/* PWA Install buttons */}
           {isInstallable && (
             <button
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                installApp();
+              }}
               onClick={installApp}
               className="w-full px-2 py-1 rounded-md bg-green-600 text-white text-xs font-medium hover:bg-green-700 shadow-sm flex items-center justify-center gap-1"
               aria-label={tCommon('navigation.installApp')}
@@ -93,6 +97,10 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
           
           {onClose && (
             <button
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onClose();
+              }}
               onClick={onClose}
               className="w-full px-2 py-1 rounded-md bg-indigo-600 text-white text-xs font-medium hover:bg-indigo-700 shadow-sm"
               aria-label={tCommon('navigation.back')}
@@ -115,6 +123,10 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
               key={tab.id}
               role="tab"
               aria-selected={active === tab.id}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setActive(tab.id);
+              }}
               onClick={() => setActive(tab.id)}
               className={[
                 'px-2 py-2 rounded-md text-xs border transition-colors text-center leading-tight',
@@ -140,6 +152,10 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
                 key={tab.id}
                 role="tab"
                 aria-selected={active === tab.id}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  setActive(tab.id);
+                }}
                 onClick={() => setActive(tab.id)}
                 className={[
                   'px-3 py-1.5 rounded-md text-sm border transition-colors whitespace-nowrap',

@@ -348,41 +348,43 @@ export default function SidebarLocationsCoord({
         
       </div>
 
-      {/* Nearest city hint */}
-      <div style={{ ...styles.row, alignItems: 'flex-start', width: '100%' }}>
-        <div style={styles.nearCityWrap}>
-          {nearCityParts.line1 ? (
-            <span style={styles.nearCity}>{nearCityParts.line1}</span>
-          ) : null}
-          {nearCityParts.city ? (
-            <span style={styles.nearCityCity}>{nearCityParts.city}</span>
-          ) : (
-            !nearCityParts.line1 && <span style={styles.nearCity}>—</span>
-          )}
-        </div>
-      </div>
+      
 
       {/* Move pad (100 km steps) */}
       <div style={styles.padWrap} role="group" aria-label={tUi('coordinates.moveBy100km')}>
         <div style={styles.padSpacer} />
-        <button type="button" style={styles.padBtn} title={t('directions.toNorth')} onClick={() => move100(0)}>
-          <span style={{ transform: 'rotate(270deg)', display: 'inline-block' }}>&#x27A4;</span>
+        <button type="button" style={styles.padBtn} title={t('directions.toNorth')} onTouchEnd={(e) => { e.preventDefault(); move100(0); }} onClick={() => move100(0)}>
+          <span style={{ transform: 'rotate(270deg)', display: 'inline-block' }}>➤</span>
         </button>
         <div style={styles.padSpacer} />
 
-        <button type="button" style={styles.padBtn} title={t('directions.toWest')} onClick={() => move100(270)}>
-          <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>&#x27A4;</span>
+        <button type="button" style={styles.padBtn} title={t('directions.toWest')} onTouchEnd={(e) => { e.preventDefault(); move100(270); }} onClick={() => move100(270)}>
+          <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>➤</span>
         </button>
         <div style={styles.padSpacer} />
-        <button type="button" style={styles.padBtn} title={t('directions.toEast')} onClick={() => move100(90)}>
-          <span style={{ transform: 'rotate(0deg)', display: 'inline-block' }}>&#x27A4;</span>
+        <button type="button" style={styles.padBtn} title={t('directions.toEast')} onTouchEnd={(e) => { e.preventDefault(); move100(90); }} onClick={() => move100(90)}>
+          <span style={{ transform: 'rotate(0deg)', display: 'inline-block' }}>➤</span>
         </button>
 
         <div style={styles.padSpacer} />
-        <button type="button" style={styles.padBtn} title={t('directions.toSouth')} onClick={() => move100(180)}>
-          <span style={{ transform: 'rotate(90deg)', display: 'inline-block' }}>&#x27A4;</span>
+        <button type="button" style={styles.padBtn} title={t('directions.toSouth')} onTouchEnd={(e) => { e.preventDefault(); move100(180); }} onClick={() => move100(180)}>
+          <span style={{ transform: 'rotate(90deg)', display: 'inline-block' }}>➤</span>
         </button>
         <div style={styles.padSpacer} />
+      </div>
+
+      {/* Info sur la ville la plus proche */}
+      <div className="mt-4 p-3  rounded-md">
+        <div className="text-sm text-white">
+          {nearCityParts.line1 && (
+            <div className="text-xs text-gray-300">{nearCityParts.line1}</div>
+          )}
+          {nearCityParts.city ? (
+            <div className="font-medium">{nearCityParts.city}</div>
+          ) : (
+            <div>—</div>
+          )}
+        </div>
       </div>
 
       <div style={styles.footerNote}>

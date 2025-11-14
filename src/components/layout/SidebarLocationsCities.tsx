@@ -134,9 +134,9 @@ export default function SidebarLocationsCities({
       marginTop: 2,
     },
     miniIconBtn: {
-      fontSize: 11,
+      fontSize: 12,
       lineHeight: 1,
-      padding: '2px 6px',
+      padding: '0px 0px',
       borderRadius: 6,
       border: '1px solid rgba(255,255,255,0.25)',
       background: 'transparent',
@@ -144,10 +144,16 @@ export default function SidebarLocationsCities({
       cursor: 'pointer',
       flex: '0 0 auto',
       userSelect: 'none',
+      display: 'inline-flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minWidth: 24,
+      minHeight: 24,
     },
     navDir: {
-      fontSize: 16,
+      fontSize: 8,
       opacity: 0.9,
+      padding: '0px 0px',
     },
     navText: {
       flex: 1,
@@ -170,7 +176,7 @@ export default function SidebarLocationsCities({
       display: 'flex',
       alignItems: 'center',
       gap: 8,
-      padding: '8px 10px',
+      padding: '0px 0px',
       borderRadius: 10,
       border: '1px solid rgba(255,255,255,0.15)',
       background: 'rgba(255,255,255,0.03)',
@@ -382,6 +388,19 @@ export default function SidebarLocationsCities({
                   background: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                   borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
                 }}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  setActiveList('pre');
+                  const newLng = Math.round(normLng(loc.lng));
+                  setSelectedLng(newLng);
+                  onSelectLocation(loc);
+                  setSearch('');
+                  setTimeout(() => {
+                    const selectedButton = preListRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
+                    selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    selectedButton?.focus();
+                  }, 0);
+                }}
                 onClick={() => {
                   setActiveList('pre');
                   const newLng = Math.round(normLng(loc.lng));
@@ -421,6 +440,7 @@ export default function SidebarLocationsCities({
                     tabIndex={0}
                     title={tUi('locations.removeFromPreselection')}
                     style={styles.miniIconBtn}
+                    onTouchEnd={(e) => { e.preventDefault(); e.stopPropagation(); removePreselected(loc.id); }}
                     onClick={(e) => { e.stopPropagation(); removePreselected(loc.id); }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); removePreselected(loc.id); }
@@ -470,6 +490,17 @@ export default function SidebarLocationsCities({
                 background: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                 borderColor: selectedLocation.id === northPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
               }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onSelectLocation(northPole);
+                setSelectedLng(Math.round(normLng(northPole.lng)));
+                setSearch('');
+                setTimeout(() => {
+                  const selectedButton = listRef.current?.querySelector(`button[data-location-id="${northPole.id}"]`) as HTMLButtonElement;
+                  selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  selectedButton?.focus();
+                }, 0);
+              }}
               onClick={() => {
                 onSelectLocation(northPole);
                 setSelectedLng(Math.round(normLng(northPole.lng)));
@@ -498,6 +529,19 @@ export default function SidebarLocationsCities({
                 ...styles.itemBtn,
                 background: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                 borderColor: loc.id === selectedLocation.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
+              }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setActiveList('main');
+                const newLng = Math.round(normLng(loc.lng));
+                setSelectedLng(newLng);
+                onSelectLocation(loc);
+                setSearch('');
+                setTimeout(() => {
+                  const selectedButton = listRef.current?.querySelector(`button[data-location-id="${loc.id}"]`) as HTMLButtonElement;
+                  selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  selectedButton?.focus();
+                }, 0);
               }}
               onClick={() => {
                 setActiveList('main');
@@ -538,6 +582,15 @@ export default function SidebarLocationsCities({
                   tabIndex={0}
                   title={preselectedSet.has(loc.id) ? tUi('locations.removeFromPreselection') : tUi('locations.addToPreselection')}
                   style={styles.miniIconBtn}
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (preselectedSet.has(loc.id)) {
+                      removePreselected(loc.id);
+                    } else {
+                      addPreselected(loc);
+                    }
+                  }}
                   onClick={(e) => {
                     e.stopPropagation();
                     if (preselectedSet.has(loc.id)) {
@@ -574,6 +627,17 @@ export default function SidebarLocationsCities({
                 background: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.1)' : 'transparent',
                 borderColor: selectedLocation.id === southPole.id ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.10)',
               }}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onSelectLocation(southPole);
+                setSelectedLng(Math.round(normLng(southPole.lng)));
+                setSearch('');
+                setTimeout(() => {
+                  const selectedButton = listRef.current?.querySelector(`button[data-location-id="${southPole.id}"]`) as HTMLButtonElement;
+                  selectedButton?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                  selectedButton?.focus();
+                }, 0);
+              }}
               onClick={() => {
                 onSelectLocation(southPole);
                 setSelectedLng(Math.round(normLng(southPole.lng)));
@@ -606,6 +670,7 @@ export default function SidebarLocationsCities({
           }}
           disabled={westTarget.disabled}
           title={westTarget.loc ? tUi('locations.goWest', { city: westTarget.loc.label }) : tUi('locations.noOtherCityAtLatitude')}
+          onTouchEnd={(e) => { e.preventDefault(); westTarget.loc && moveToLocation(westTarget.loc); }}
           onClick={() => westTarget.loc && moveToLocation(westTarget.loc)}
         >
           <span
@@ -625,6 +690,7 @@ export default function SidebarLocationsCities({
           }}
           disabled={eastTarget.disabled}
           title={eastTarget.loc ? tUi('locations.goEast', { city: eastTarget.loc.label }) : tUi('locations.noOtherCityAtLatitude')}
+          onTouchEnd={(e) => { e.preventDefault(); eastTarget.loc && moveToLocation(eastTarget.loc); }}
           onClick={() => eastTarget.loc && moveToLocation(eastTarget.loc)}
         >
           <span style={styles.navText}>{eastTarget.loc ? eastTarget.loc.label : '—'}</span>

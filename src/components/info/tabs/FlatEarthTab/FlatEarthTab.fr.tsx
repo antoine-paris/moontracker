@@ -19,7 +19,7 @@ class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: Re
           height: '100%', color: '#fff', background: '#0b1020', flexDirection: 'column'
         }}>
           <div>Une erreur est survenue lors du chargement du simulateur.</div>
-          <button onClick={this.props.onRetry} style={{ marginTop: 10 }}>Réessayer</button>
+          <button onTouchEnd={(e) => { e.preventDefault(); this.props.onRetry?.(); }} onClick={this.props.onRetry} style={{ marginTop: 10 }}>Réessayer</button>
         </div>
       );
     }

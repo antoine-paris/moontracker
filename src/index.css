@@ -4,6 +4,105 @@
 /* Register Typography plugin (v4) */
 @plugin "@tailwindcss/typography";
 
+/* iOS Safari touch optimizations */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Optimize all interactive elements for iOS */
+button,
+[role="button"],
+a,
+input:not([type="range"]),
+textarea,
+label,
+[onclick] {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* Special handling for select on iOS */
+select {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
+  touch-action: manipulation;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Allow text selection in inputs */
+input:not([type="range"]),
+textarea {
+  -webkit-user-select: auto;
+  user-select: auto;
+}
+
+/* Ensure buttons are at least 44x44px for iOS touch targets */
+button,
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Remove iOS input styling (but preserve range sliders and select) */
+input:not([type="range"]),
+textarea,
+button {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+/* Preserve native select appearance for proper iOS interaction */
+select {
+  -webkit-appearance: menulist;
+  -moz-appearance: menulist;
+  appearance: auto;
+}
+
+/* Restore native slider appearance */
+input[type="range"] {
+  -webkit-appearance: slider-horizontal;
+  appearance: auto;
+}
+
+/* Prevent zoom on input focus (iOS) */
+input:not([type="range"]),
+textarea {
+  font-size: 16px;
+}
+
+/* Select needs proper font-size but can be smaller */
+select {
+  font-size: 16px;
+}
+
+/* Allow scrolling in overflow containers on iOS */
+.overflow-y-auto,
+[class*="overflow-y"],
+.mobile-sidebar-content,
+.cities-list,
+ul[style*="overflow"],
+div[style*="overflow"] {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  -webkit-user-select: auto !important;
+  user-select: auto !important;
+  cursor: auto !important;
+}
+
+/* Disable pointer-events manipulation on scrollable content children to allow proper scrolling */
+.overflow-y-auto *,
+.cities-list *,
+.mobile-sidebar-content * {
+  pointer-events: auto;
+}
+
 /* Scoped light prose for /info + modal */
 .prose-info {
   --tw-prose-body: #111827;

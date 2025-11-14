@@ -56,6 +56,10 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
             <div className="flex items-center gap-2">
               {isInstallable && (
                 <button
+                  onTouchEnd={(e) => {
+                    e.preventDefault();
+                    installApp();
+                  }}
                   onClick={installApp}
                   className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-green-600 text-white text-sm font-medium hover:bg-green-700 shadow-sm"
                   aria-label={t('navigation.installApp')}
@@ -76,6 +80,10 @@ export default function InfoModal({ open, initialTab = 'spaceview', onClose }: P
                 </span>
               )}
               <button
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  onClose();
+                }}
                 onClick={onClose}
                 className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 shadow-sm"
                 aria-label={t('navigation.back')}

@@ -84,6 +84,10 @@ export default function TopRightBar({
     settings: (
       <button
         key="settings"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onTogglePanels();
+        }}
         onClick={onTogglePanels}
         className={getButtonClass(isMobile ? showTopBar : showPanels)}
         title={t('controls.settings')}
@@ -112,6 +116,10 @@ export default function TopRightBar({
     playPause: (
       <button
         key="playPause"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onToggleAnimating();
+        }}
         onClick={onToggleAnimating}
         className={getButtonClass(isAnimating, 'emerald')}
         title={isAnimating ? t('controls.pause') : t('controls.play')}
@@ -133,6 +141,10 @@ export default function TopRightBar({
     record: (
       <button
         key="record"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onToggleRecording();
+        }}
         onClick={onToggleRecording}
         className={getButtonClass(isRecordingVideo, 'rose')}
         title={isRecordingVideo ? t('controls.stopRecording') : t('controls.startRecordingWithPlay')}
@@ -153,6 +165,10 @@ export default function TopRightBar({
     copyUrl: (
       <button
         key="copyUrl"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          copyUrl();
+        }}
         onClick={copyUrl}
         className={getButtonClass(copied)}
         title={copied ? t('controls.linkCopied') : t('controls.copyUrlWithParams')}
@@ -208,6 +224,10 @@ export default function TopRightBar({
     sidebar: isMobile && onToggleSidebar ? (
       <button
         key="sidebar"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onToggleSidebar();
+        }}
         onClick={onToggleSidebar}
         className={getButtonClass(showSidebar, 'blue')}
         title={t('mobile.toggleSidebar', 'Localisation')}
@@ -224,6 +244,10 @@ export default function TopRightBar({
     telemetry: isMobile && onToggleTelemetry ? (
       <button
         key="telemetry"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onToggleTelemetry();
+        }}
         onClick={onToggleTelemetry}
         className={getButtonClass(showTelemetry, 'amber')}
         title={t('mobile.toggleTelemetry', 'Télémétrie')}
@@ -239,6 +263,10 @@ export default function TopRightBar({
     info: (
       <button
         key="info"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          onOpenInfo();
+        }}
         onClick={onOpenInfo}
         className={getButtonClass()}
         title={t('controls.info')}

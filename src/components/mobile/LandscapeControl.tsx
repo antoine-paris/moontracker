@@ -47,6 +47,10 @@ export default function LandscapeControl({ className = '' }: LandscapeControlPro
     <div className={`landscape-control ${className}`}>
       {!orientation.isFullscreen ? (
         <button
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            if (!isProcessing && orientation.canLock) handleRequestLandscape();
+          }}
           onClick={handleRequestLandscape}
           disabled={isProcessing || !orientation.canLock}
           className="bg-blue-500 text-white px-3 py-2 rounded text-sm hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -59,6 +63,10 @@ export default function LandscapeControl({ className = '' }: LandscapeControlPro
         </button>
       ) : (
         <button
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            if (!isProcessing) handleExitFullscreen();
+          }}
           onClick={handleExitFullscreen}
           disabled={isProcessing}
           className="bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700 disabled:opacity-50"

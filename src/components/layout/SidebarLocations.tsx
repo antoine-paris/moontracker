@@ -507,7 +507,7 @@ export default function SidebarLocations({
       padding: '0 2px',
       borderBottom: '1px solid rgba(255,255,255,0.12)',
       background: 'transparent',
-      height: 28,
+      height: 44,
     },
     tabBtn: {
       appearance: 'none',
@@ -517,8 +517,9 @@ export default function SidebarLocations({
       cursor: 'pointer',
       fontSize: 13,
       lineHeight: 1,
-      padding: '6px 2px',                     // très compact
-      height: 28,
+      padding: '12px 8px',
+      height: 44,
+      minHeight: 44,
       outline: 'none',
     },
     tabBtnActive: {
@@ -552,6 +553,10 @@ export default function SidebarLocations({
           type="button"
           aria-label={collapsed ? tUi('sidebar.expandSidebar') : tUi('sidebar.collapseSidebar')}
           title={collapsed ? tUi('sidebar.expand') : tUi('sidebar.collapse')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setCollapsed(v => !v);
+          }}
           onClick={() => setCollapsed(v => !v)}
           style={styles.toggle}
         >
@@ -599,6 +604,10 @@ export default function SidebarLocations({
               type="button"
               role="tab"
               aria-selected={activeTab === 'cities'}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setActiveTab('cities');
+              }}
               onClick={() => setActiveTab('cities')}
               style={{ ...styles.tabBtn, ...(activeTab === 'cities' ? styles.tabBtnActive : {}) }}
             >
@@ -608,6 +617,10 @@ export default function SidebarLocations({
               type="button"
               role="tab"
               aria-selected={activeTab === 'coords'}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setActiveTab('coords');
+              }}
               onClick={() => setActiveTab('coords')}
               style={{ ...styles.tabBtn, ...(activeTab === 'coords' ? styles.tabBtnActive : {}) }}
             >

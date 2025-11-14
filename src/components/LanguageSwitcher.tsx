@@ -56,6 +56,10 @@ export default function LanguageSwitcher({
   return (
     <div className={`flex gap-1 ${className}`}>
       <button 
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          handleLanguageChange('fr');
+        }}
         onClick={() => handleLanguageChange('fr')}
         className={`${baseButtonClass} ${i18n.language === 'fr' ? activeClass : inactiveClass}`}
         title="Français"
@@ -63,6 +67,10 @@ export default function LanguageSwitcher({
         🇫🇷 {showLabels && 'FR'}
       </button>
       <button 
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          handleLanguageChange('en');
+        }}
         onClick={() => handleLanguageChange('en')}
         className={`${baseButtonClass} ${i18n.language === 'en' ? activeClass : inactiveClass}`}
         title="English"

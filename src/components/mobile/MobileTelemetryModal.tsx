@@ -66,6 +66,10 @@ export default function MobileTelemetryModal({
           {t('mobile.telemetry', 'Télémétrie')}
         </h2>
         <button
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            onClose();
+          }}
           onClick={onClose}
           className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
           aria-label={t('general.close', 'Fermer')}

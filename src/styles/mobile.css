@@ -106,13 +106,44 @@
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Boutons tactiles plus grands */
+/* Boutons tactiles plus grands et optimisés pour iOS */
 .mobile-layout.is-mobile button,
-.mobile-layout.is-mobile [role="button"] {
+.mobile-layout.is-mobile [role="button"],
+.mobile-layout.is-mobile a {
   min-height: 44px;
   min-width: 44px;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+  cursor: pointer;
+}
+
+/* Remove cursor-pointer on mobile as it can interfere */
+.mobile-layout.is-mobile .cursor-pointer {
+  cursor: default;
+}
+
+/* Allow scrolling in lists and overflow containers on mobile iOS */
+.mobile-layout.is-mobile .overflow-y-auto,
+.mobile-layout.is-mobile .cities-list,
+.mobile-layout.is-mobile .mobile-sidebar-content,
+.mobile-layout.is-mobile ul[style*="overflow"],
+.mobile-layout.is-mobile div[style*="overflow"] {
+  -webkit-overflow-scrolling: touch !important;
+  touch-action: pan-y !important;
+  cursor: auto !important;
+}
+
+/* Ensure active states work on iOS */
+.mobile-layout.is-mobile button:active,
+.mobile-layout.is-mobile [role="button"]:active {
+  opacity: 0.7;
+  transform: scale(0.98);
 }
 
 /* Sidebar adaptée mobile */

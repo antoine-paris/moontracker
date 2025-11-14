@@ -232,10 +232,7 @@ export default function SidebarLocationsCoordsLandscape({
           </div>
 
           {/* Info sur la ville la plus proche */}
-          <div className="mt-4 p-3 bg-gray-800 rounded-md">
-            <div className="text-xs font-medium text-gray-400 mb-1">
-              {t('ui:general.nearestCity')}
-            </div>
+          <div className="mt-4 p-3  rounded-md">
             <div className="text-sm text-white">
               {nearCityParts.line1 && (
                 <div className="text-xs text-gray-300">{nearCityParts.line1}</div>

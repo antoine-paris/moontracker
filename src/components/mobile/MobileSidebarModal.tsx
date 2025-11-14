@@ -52,6 +52,10 @@ export default function MobileSidebarModal({
           {t('sidebar.locationsSidebarLabel', 'Localisation')}
         </h2>
         <button
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            onClose();
+          }}
           onClick={onClose}
           className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
           aria-label={t('general.close', 'Fermer')}
@@ -69,6 +73,10 @@ export default function MobileSidebarModal({
             type="button"
             role="tab"
             aria-selected={activeTab === 'cities'}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setActiveTab('cities');
+            }}
             onClick={() => setActiveTab('cities')}
             className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'cities'
@@ -82,6 +90,10 @@ export default function MobileSidebarModal({
             type="button"
             role="tab"
             aria-selected={activeTab === 'coords'}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setActiveTab('coords');
+            }}
             onClick={() => setActiveTab('coords')}
             className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
               activeTab === 'coords'

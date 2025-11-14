@@ -30,6 +30,7 @@ export default function DirectionalKeypad({
 }: Props) {
   const { t: tUi } = useTranslation('ui');
 
+
   // Fonction pour obtenir l'icône correspondant au mode de suivi
   const getFollowIcon = (mode: FollowMode) => {
     const stroke = 'currentColor';
@@ -77,9 +78,17 @@ export default function DirectionalKeypad({
       >
         {/* Bouton Haut */}
         <button
-          className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+          className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
           title={tUi('directionalKeypad.moveUp', { degrees: stepAltDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.up')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAltDeg(prev => {
+              const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+              return tgt - baseRefAlt;
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAltDeg(prev => {
               const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
@@ -93,9 +102,17 @@ export default function DirectionalKeypad({
 
         {/* Bouton Gauche */}
         <button
-          className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+          className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
           title={tUi('directionalKeypad.moveLeft', { degrees: stepAzDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.left')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAzDeg(prev => {
+              const nd = prev - stepAzDeg;
+              return ((nd + 180) % 360 + 360) % 360 - 180;
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAzDeg(prev => {
               const nd = prev - stepAzDeg;
@@ -109,9 +126,15 @@ export default function DirectionalKeypad({
 
         {/* Bouton Centre (Recenter) */}
         <button
-          className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-xl font-bold transition-all duration-150 active:scale-95 flex items-center justify-center"
+          className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-xl font-bold transition-all duration-150 active:scale-95 flex items-center justify-center"
           title={tUi('directionalKeypad.recenter')}
           aria-label={tUi('directionalKeypad.recenter')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAzDeg(0);
+            setDeltaAltDeg(0);
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAzDeg(0);
             setDeltaAltDeg(0);
@@ -123,9 +146,17 @@ export default function DirectionalKeypad({
 
         {/* Bouton Droite */}
         <button
-          className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+          className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
           title={tUi('directionalKeypad.moveRight', { degrees: stepAzDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.right')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAzDeg(prev => {
+              const nd = prev + stepAzDeg;
+              return ((nd + 180) % 360 + 360) % 360 - 180;
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAzDeg(prev => {
               const nd = prev + stepAzDeg;
@@ -139,9 +170,17 @@ export default function DirectionalKeypad({
 
         {/* Bouton Bas */}
         <button
-          className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+          className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
           title={tUi('directionalKeypad.moveDown', { degrees: stepAltDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.down')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAltDeg(prev => {
+              const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+              return tgt - baseRefAlt;
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAltDeg(prev => {
               const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
@@ -165,9 +204,17 @@ export default function DirectionalKeypad({
       >
         {/* Bouton Haut */}
         <button
-          className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+          className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
           title={tUi('directionalKeypad.moveUp', { degrees: stepAltDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.up')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAltDeg(prev => {
+              const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+              return tgt - baseRefAlt;
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAltDeg(prev => {
               const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
@@ -182,9 +229,17 @@ export default function DirectionalKeypad({
         {/* Ligne du milieu : Gauche + Centre + Droite */}
         <div className="flex items-center gap-2">
           <button
-            className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+            className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
             title={tUi('directionalKeypad.moveLeft', { degrees: stepAzDeg.toFixed(1) })}
             aria-label={tUi('directionalKeypad.left')}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setDeltaAzDeg(prev => {
+                const nd = prev - stepAzDeg;
+                return ((nd + 180) % 360 + 360) % 360 - 180;
+              });
+              onLongPoseClear?.();
+            }}
             onClick={() => {
               setDeltaAzDeg(prev => {
                 const nd = prev - stepAzDeg;
@@ -196,9 +251,15 @@ export default function DirectionalKeypad({
             ←
           </button>
           <button
-            className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-xl font-bold transition-all duration-150 active:scale-95 flex items-center justify-center"
+            className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-xl font-bold transition-all duration-150 active:scale-95 flex items-center justify-center"
             title={tUi('directionalKeypad.recenter')}
             aria-label={tUi('directionalKeypad.recenter')}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setDeltaAzDeg(0);
+              setDeltaAltDeg(0);
+              onLongPoseClear?.();
+            }}
             onClick={() => {
               setDeltaAzDeg(0);
               setDeltaAltDeg(0);
@@ -208,9 +269,17 @@ export default function DirectionalKeypad({
             {getFollowIcon(follow)}
           </button>
           <button
-            className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+            className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
             title={tUi('directionalKeypad.moveRight', { degrees: stepAzDeg.toFixed(1) })}
             aria-label={tUi('directionalKeypad.right')}
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              setDeltaAzDeg(prev => {
+                const nd = prev + stepAzDeg;
+                return ((nd + 180) % 360 + 360) % 360 - 180;
+              });
+              onLongPoseClear?.();
+            }}
             onClick={() => {
               setDeltaAzDeg(prev => {
                 const nd = prev + stepAzDeg;
@@ -225,9 +294,17 @@ export default function DirectionalKeypad({
 
         {/* Bouton Bas */}
         <button
-          className="w-12 h-12 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
+          className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
           title={tUi('directionalKeypad.moveDown', { degrees: stepAltDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.down')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAltDeg(prev => {
+              const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+              return tgt - baseRefAlt;
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAltDeg(prev => {
               const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
@@ -249,9 +326,17 @@ export default function DirectionalKeypad({
       style={{ zIndex, marginTop: '3.5em', marginRight: '3px' }}
     >
       <button
-        className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
+        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
         title={tUi('directionalKeypad.moveUp', { degrees: stepAltDeg.toFixed(1) })}
         aria-label={tUi('directionalKeypad.up')}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          setDeltaAltDeg(prev => {
+            const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+            return tgt - baseRefAlt;
+          });
+          onLongPoseClear?.();
+        }}
         onClick={() => {
           setDeltaAltDeg(prev => {
             const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
@@ -264,9 +349,17 @@ export default function DirectionalKeypad({
       </button>
       <div className="flex items-center gap-2">
         <button
-          className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
+          className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
           title={tUi('directionalKeypad.moveLeft', { degrees: stepAzDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.left')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAzDeg(prev => {
+              const nd = prev - stepAzDeg;
+              return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAzDeg(prev => {
               const nd = prev - stepAzDeg;
@@ -278,9 +371,15 @@ export default function DirectionalKeypad({
           ←
         </button>
         <button
-          className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70 flex items-center justify-center"
+          className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 flex items-center justify-center"
           title={tUi('directionalKeypad.recenter')}
           aria-label={tUi('directionalKeypad.recenter')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAzDeg(0);
+            setDeltaAltDeg(0);
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAzDeg(0);
             setDeltaAltDeg(0);
@@ -290,9 +389,17 @@ export default function DirectionalKeypad({
           {getFollowIcon(follow)}
         </button>
         <button
-          className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
+          className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
           title={tUi('directionalKeypad.moveRight', { degrees: stepAzDeg.toFixed(1) })}
           aria-label={tUi('directionalKeypad.right')}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            setDeltaAzDeg(prev => {
+              const nd = prev + stepAzDeg;
+              return ((nd + 180) % 360 + 360) % 360 - 180; // wrap [-180,180]
+            });
+            onLongPoseClear?.();
+          }}
           onClick={() => {
             setDeltaAzDeg(prev => {
               const nd = prev + stepAzDeg;
@@ -305,9 +412,17 @@ export default function DirectionalKeypad({
         </button>
       </div>
       <button
-        className="w-10 h-10 rounded-md cursor-pointer border border-white/30 bg-black/50 hover:bg-black/70"
+        className="w-10 h-10 rounded-md border border-white/30 bg-black/50 hover:bg-black/70"
         title={tUi('directionalKeypad.moveDown', { degrees: stepAltDeg.toFixed(1) })}
         aria-label={tUi('directionalKeypad.down')}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          setDeltaAltDeg(prev => {
+            const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+            return tgt - baseRefAlt;
+          });
+          onLongPoseClear?.();
+        }}
         onClick={() => {
           setDeltaAltDeg(prev => {
             const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);

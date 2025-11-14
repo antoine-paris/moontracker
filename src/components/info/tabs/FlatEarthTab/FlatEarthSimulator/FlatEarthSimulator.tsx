@@ -661,6 +661,7 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
           </label>
 
           <button
+            onTouchEnd={(e) => { e.preventDefault(); onToggleExpand(); }}
             onClick={onToggleExpand}
             title={isExpanded ? t('controls.back') : t('controls.expand')}
             aria-label={isExpanded ? t('controls.back') : t('controls.expand')}
@@ -702,6 +703,13 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
               aria-label={isPlaying ? t('controls.pause') : t('controls.play')}
               title={isPlaying ? t('controls.pause') : t('controls.play')}
               aria-pressed={isPlaying}
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                setParams({
+                  ...params,
+                  daySpeed: isPlaying ? 0 : 10,
+                });
+              }}
               onClick={() =>
                 setParams({
                   ...params,
@@ -894,6 +902,40 @@ function ControlPanel({ params, setParams, onReset, isExpanded, onToggleExpand }
        </div>
          
       <button
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          setParams({
+            diskRadius: 50,
+            domeHeight: 50,
+            sunHeight: 12,
+            moonHeight: 8,
+            sunSize: 0.7,
+            moonSize: 0.6,
+            sunDistance: 25,
+            moonDistance: 25,
+            daySpeed: 10,
+            currentHour: 12,
+            latitude: 45,
+            showDome: true,
+            showGrid: false,
+            showLightCone: false,
+            showTrajectories: true,
+            cameraFov: 60,
+
+            sunLightMode: 'spot',
+            sunLightIntensity: 1000,
+            sunLightColor: '#ffffff',
+            sunCastShadows: true,
+            sunSpotAngleDeg: 60,
+
+            showMoon: true,
+            
+            mapLonOffsetDeg: -90,
+            mapLonClockwise: false,
+            showProjectionDebug: false,
+          });
+          onReset();
+        }}
         onClick={() => {
           setParams({
             diskRadius: 50,
@@ -1199,6 +1241,7 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
           >
             <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
               <button
+                onTouchEnd={(e) => { e.preventDefault(); resetCamera(); }}
                 onClick={resetCamera}
                 title="Réinitialiser la vue"
                 style={{
@@ -1222,6 +1265,7 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
               {sortedCities.map((c) => (
                 <button
                   key={c.id}
+                  onTouchEnd={(e) => { e.preventDefault(); focusCity(c); }}
                   onClick={() => focusCity(c)}
                   style={{
                     width: '100%',
