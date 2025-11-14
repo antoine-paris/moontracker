@@ -4,10 +4,11 @@
     "fov": "Champ de vision (FOV)",
     "expand": "Agrandir",
     "back": "Retour",
+    "expandSimulator": "Agrandir le simulateur de terre plate",
     "animation": "Animation (24h)",
     "play": "Lecture",
     "pause": "Pause",
-    "showTrajectories": "Afficher les Trajectoires",
+    "showTrajectories": "Afficher les trajectoires",
     "reset": "Réinitialiser"
   },
   "sun": {

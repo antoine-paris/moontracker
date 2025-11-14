@@ -1089,6 +1089,17 @@ export default function FlatEarthSimulator() {
 
   // NEW: état d’agrandissement
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Détecter la largeur de l'écran
+  const [isWideScreen, setIsWideScreen] = useState(window.innerWidth >= 1280);
+  
+  useEffect(() => {
+    const handleResize = () => {
+      setIsWideScreen(window.innerWidth >= 1280);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // --- sort cities alphabetically by label for UI ---
   const sortedCities = useMemo(
@@ -1184,6 +1195,7 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
   return (
     // NEW wrapper: bascule entre mode normal et plein navigateur
     <div
+      className="flat-earth-simulator-root"
       style={
         isExpanded
           ? {
@@ -1200,7 +1212,37 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
       }
     >
       {/* Contenu principal inchangé, juste déplacé dans un conteneur qui remplit 100% */}
-      <div style={{ width: '100%', height: '100%', display: 'flex' }}>
+      <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+        {/* Bouton d'agrandissement centré si écran étroit */}
+        {!isWideScreen && !isExpanded && (
+          <div style={{ 
+            padding: '12px', 
+            background: '#0d0f12', 
+            borderBottom: '1px solid #222',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <button
+              onTouchEnd={(e) => { e.preventDefault(); setIsExpanded(true); }}
+              onClick={() => setIsExpanded(true)}
+              style={{
+                padding: '10px 20px',
+                background: '#2563eb',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                fontSize: 14,
+                fontWeight: 500,
+                boxShadow: '0 2px 8px rgba(37, 99, 235, 0.4)',
+              }}
+            >
+              {t('controls.expandSimulator') || 'Agrandir le simulateur de terre plate'}
+            </button>
+          </div>
+        )}
+        
         {/* Global thin dark scrollbar styles */}
         <style>{`
           .thin-scroll {
@@ -1222,33 +1264,62 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
             background-color: #4b5563;
           }
         `}</style>
-        {/* Barre de villes (gauche) */}
+        
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'row', minHeight: 0, minWidth: 0, overflow: 'hidden' }}>
+        {/* Barre de villes (gauche) - masqué si écran étroit et non agrandi */}
+        {(isWideScreen || isExpanded) && (
         <div
           style={{
             width: 160,
-            minWidth: 140,
-            maxWidth: 220,
+            minWidth: 160,
+            maxWidth: 160,
+            flexShrink: 0,
+            flexGrow: 0,
+            flexBasis: 160,
             height: '100%',
             display: 'flex',
             flexDirection: 'column',
             background: '#0d0f12',
             borderRight: '1px solid #222',
+            overflow: 'hidden',
           }}
         >
           <div
             className="thin-scroll"
             style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}
           >
-            <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <button
+              onTouchEnd={(e) => { e.preventDefault(); resetCamera(); }}
+              onClick={resetCamera}
+              title="Réinitialiser la vue"
+              style={{
+                width: '100%',
+                minHeight: 24,
+                textAlign: 'left',
+                background: 'rgba(66, 38, 60, 1)',
+                border: '1px solid #2b3545',
+                color: '#e5e7eb',
+                padding: '2px 2px',
+                borderRadius: 6,
+                cursor: 'pointer',
+                fontSize: 12,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}
+            >
+              {t('cities.wholeEarth')}
+            </button>
+            {sortedCities.map((c) => (
               <button
-                onTouchEnd={(e) => { e.preventDefault(); resetCamera(); }}
-                onClick={resetCamera}
-                title="Réinitialiser la vue"
+                key={c.id}
+                onTouchEnd={(e) => { e.preventDefault(); focusCity(c); }}
+                onClick={() => focusCity(c)}
                 style={{
                   width: '100%',
                   minHeight: 24,
                   textAlign: 'left',
-                  background: 'rgba(66, 38, 60, 1)',
+                  background: '#1f2937',
                   border: '1px solid #2b3545',
                   color: '#e5e7eb',
                   padding: '2px 2px',
@@ -1260,35 +1331,12 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
                   textOverflow: 'ellipsis',
                 }}
               >
-                {t('cities.wholeEarth')}
+                {c.label}
               </button>
-              {sortedCities.map((c) => (
-                <button
-                  key={c.id}
-                  onTouchEnd={(e) => { e.preventDefault(); focusCity(c); }}
-                  onClick={() => focusCity(c)}
-                  style={{
-                    width: '100%',
-                    minHeight: 24,
-                    textAlign: 'left',
-                    background: '#1f2937',
-                    border: '1px solid #2b3545',
-                    color: '#e5e7eb',
-                    padding: '2px 2px',
-                    borderRadius: 6,
-                    cursor: 'pointer',
-                    fontSize: 12,
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                  }}
-                >
-                  {c.label}
-                </button>
-              ))}
-            </div>
+            ))}
           </div>
         </div>
+        )}
 
         {/* Vue 3D (centre) */}
         <div style={{ flex: 1, minWidth: 0, minHeight: 0, position: 'relative' }}>
@@ -1431,15 +1479,22 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
           </div>
         </div>
 
-        {/* Panneau droit */}
+        {/* Panneau droit - masqué si écran étroit et non agrandi */}
+        {(isWideScreen || isExpanded) && (
         <div
           style={{
             width: 340,
+            minWidth: 340,
+            maxWidth: 340,
+            flexShrink: 0,
+            flexGrow: 0,
+            flexBasis: 340,
             height: '100%',
             borderLeft: '1px solid #222',
             display: 'flex',
             flexDirection: 'column',
             background: '#0d0f12',
+            overflow: 'hidden',
           }}
         >
           {/* Contenu du panneau (scroll si nécessaire) */}
@@ -1452,6 +1507,8 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
               onToggleExpand={() => setIsExpanded((v) => !v)}
             />
           </div>
+        </div>
+        )}
         </div>
       </div>
     </div>

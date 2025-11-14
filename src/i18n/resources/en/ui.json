@@ -267,6 +267,7 @@
     "telemetry": "Telemetry",
     "enableLandscapeMode": "Enable landscape mode (fullscreen)",
     "orientationNotSupported": "Orientation lock not supported",
-    "exitFullscreen": "Exit fullscreen"
+    "exitFullscreen": "Exit fullscreen",
+    "toggleEarth3D": "3D Earth"
   }
 }

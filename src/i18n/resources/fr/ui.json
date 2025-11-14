@@ -266,6 +266,7 @@
     "telemetry": "Télémétrie",
     "enableLandscapeMode": "Activer le mode paysage (plein écran)",
     "orientationNotSupported": "Verrouillage d'orientation non supporté",
-    "exitFullscreen": "Sortir du plein écran"
+    "exitFullscreen": "Sortir du plein écran",
+    "toggleEarth3D": "Terre 3D"
   }
 }

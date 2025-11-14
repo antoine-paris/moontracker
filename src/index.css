@@ -362,7 +362,8 @@ div[style*="overflow"] {
   }
   
   /* Force all flex containers in FlatEarth tab to stack and constrain width */
-  .prose-info div[style*="flex"],
+  /* BUT: exclude the FlatEarthSimulator component which needs horizontal layout */
+  .prose-info div[style*="flex"]:not(.flat-earth-simulator-root):not(.flat-earth-simulator-root *),
   .prose-info figure[style*="flex"] {
     flex-direction: column !important;
     width: 100% !important;
