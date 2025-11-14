@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type LocationOption } from '../../data/locations';
+import { normLng } from '../../utils/geo';
 import SidebarLocationsCities from '../layout/SidebarLocationsCities';
 import SidebarLocationsCoord from '../layout/SidebarLocationsCoord';
 import SidebarLocationsCoordsLandscape from '../layout/SidebarLocationsCoordsLandscape';
@@ -31,8 +32,13 @@ export default function MobileSidebarModal({
 }: MobileSidebarModalProps) {
   const { t } = useTranslation('ui');
   const [activeTab, setActiveTab] = useState<'cities' | 'coords'>('cities');
-  const [selectedLng, setSelectedLng] = useState(selectedLocation.lng);
+  const [selectedLng, setSelectedLng] = useState(() => Math.round(normLng(selectedLocation.lng)));
   const coordinatesRef = useRef<HTMLDivElement>(null);
+
+  // Synchroniser selectedLng quand selectedLocation change
+  useEffect(() => {
+    setSelectedLng(Math.round(normLng(selectedLocation.lng)));
+  }, [selectedLocation.lng]);
   // Logique claire : W >= 1280 = desktop, sinon mobile avec détection orientation
   const screenWidth = window.innerWidth;
   const screenHeight = window.innerHeight;
@@ -138,6 +144,8 @@ export default function MobileSidebarModal({
                 <SidebarLocationsCoordsLandscape
                   selectedLocation={selectedLocation}
                   locations={locations}
+                  selectedLng={selectedLng}
+                  setSelectedLng={setSelectedLng}
                   onLocationChange={(location) => {
                     onSelectLocation(location);
                     // Ne pas fermer automatiquement pour permettre la navigation

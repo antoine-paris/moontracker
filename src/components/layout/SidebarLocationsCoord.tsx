@@ -223,7 +223,7 @@ export default function SidebarLocationsCoord({
       gridTemplateColumns: '36px 36px 36px',
       gridTemplateRows: '36px 36px 36px',
       justifyContent: 'center',
-      gap: 6,
+      gap: 12,
       marginTop: 4,
     },
     padBtn: {

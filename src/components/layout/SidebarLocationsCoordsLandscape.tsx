@@ -16,12 +16,16 @@ interface SidebarLocationsCoordsLandscapeProps {
   selectedLocation: LocationOption;
   onLocationChange: (location: LocationOption) => void;
   locations?: LocationOption[];
+  selectedLng: number;
+  setSelectedLng: (lng: number) => void;
 }
 
 export default function SidebarLocationsCoordsLandscape({
   selectedLocation,
   onLocationChange,
-  locations = []
+  locations = [],
+  selectedLng,
+  setSelectedLng
 }: SidebarLocationsCoordsLandscapeProps) {
   const { t } = useTranslation('common');
   const { t: tUi } = useTranslation('ui');
@@ -99,6 +103,10 @@ export default function SidebarLocationsCoordsLandscape({
   const handleLngChange = (value: number) => {
     const newLng = normLng(value);
     setLng(newLng);
+    const newLngRounded = Math.round(newLng);
+    if (newLngRounded !== selectedLng) {
+      setSelectedLng(newLngRounded);
+    }
     if (nearest) {
       onLocationChange({
         ...nearest.city,
