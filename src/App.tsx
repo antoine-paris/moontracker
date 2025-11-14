@@ -2117,7 +2117,7 @@ const handleFramePresented = React.useCallback(() => {
               className="fixed top-4 left-4 "
               style={{ 
                 zIndex: Z.ui + 60,
-                width: '150px',
+                width: '160px',
                 height: '150px',
                 border: '2px solid rgba(251, 191, 36, 0.6)',
                 boxShadow: '0 0 8px rgba(251, 191, 36, 0.3)',
