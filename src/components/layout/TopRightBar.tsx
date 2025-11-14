@@ -1,7 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
-
 type Props = {
   showPanels: boolean;
   onTogglePanels: () => void;
@@ -19,9 +18,10 @@ type Props = {
   isLandscape?: boolean;
   showSidebar?: boolean;
   onToggleSidebar?: () => void;
-  showTelemetry?: boolean;
-  onToggleTelemetry?: () => void;
   showTopBar?: boolean;
+  // EARTH 3D VIEWER (mobile only)
+  showEarth3D?: boolean;
+  onToggleEarth3D?: () => void;
 };
 
 export default function TopRightBar({
@@ -41,9 +41,10 @@ export default function TopRightBar({
   isLandscape = false,
   showSidebar = false,
   onToggleSidebar,
-  showTelemetry = false,
-  onToggleTelemetry,
   showTopBar = false,
+  // EARTH 3D VIEWER (mobile only)
+  showEarth3D = false,
+  onToggleEarth3D,
 }: Props) {
   const { t } = useTranslation('ui');
   const [copied, setCopied] = React.useState(false);
@@ -234,28 +235,28 @@ export default function TopRightBar({
         aria-label={t('mobile.toggleSidebar', 'Localisation')}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 2L22 7L12 12L2 7L12 2Z" fill="currentColor" />
-          <path d="M2 17L12 22L22 17" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M2 12L12 17L22 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" fill="currentColor" />
+          <circle cx="12" cy="9" r="2.5" fill="black" opacity="0.3" />
         </svg>
       </button>
     ) : null,
     
-    telemetry: isMobile && onToggleTelemetry ? (
+    earth3D: isMobile && onToggleEarth3D ? (
       <button
-        key="telemetry"
+        key="earth3D"
         onTouchEnd={(e) => {
           e.preventDefault();
-          onToggleTelemetry();
+          onToggleEarth3D();
         }}
-        onClick={onToggleTelemetry}
-        className={getButtonClass(showTelemetry, 'amber')}
-        title={t('mobile.toggleTelemetry', 'Télémétrie')}
-        aria-label={t('mobile.toggleTelemetry', 'Télémétrie')}
+        onClick={onToggleEarth3D}
+        className={getButtonClass(showEarth3D, 'amber')}
+        title={t('mobile.toggleEarth3D', 'Terre 3D')}
+        aria-label={t('mobile.toggleEarth3D', 'Terre 3D')}
       >
         <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M3 3v18h18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M9 9l1.5-1.5L16 13l4-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <ellipse cx="12" cy="12" rx="4" ry="9" fill="none" stroke="currentColor" strokeWidth="1.5" />
+          <path d="M4 12h16M12 3c-2.5 3-2.5 6 0 9 2.5 3 2.5 6 0 9" fill="none" stroke="currentColor" strokeWidth="1.5" />
         </svg>
       </button>
     ) : null,
@@ -289,7 +290,7 @@ export default function TopRightBar({
     buttons.copyUrl,
     buttons.capture,
     buttons.sidebar,
-    buttons.telemetry,
+    buttons.earth3D,
     buttons.info,
   ].filter(Boolean);
 

@@ -44,6 +44,7 @@ import BottomTelemetry from "./components/layout/BottomTelemetry";
 
 // Import du logo (Vite)
 import SidebarLocations from "./components/layout/SidebarLocations"; // + add
+import EarthViewer3D from "./components/layout/EarthViewer3D";
 import DirectionalKeypad from "./components/stage/DirectionalKeypad";
 import { PLANETS, getPlanetRegistry } from "./render/PlanetRegistry";
 import { getPlanetsEphemerides } from "./astro/planets";
@@ -159,6 +160,7 @@ export default function App() {
   // États pour les modals mobiles
   const [showMobileSidebar, setShowMobileSidebar] = useState(false);
   const [showMobileTelemetry, setShowMobileTelemetry] = useState(false);
+  const [showMobileEarth3D, setShowMobileEarth3D] = useState(false);
   
   const stageRef = useRef<HTMLDivElement | null>(null);
   const [stageSize, setStageSize] = useState({ w: 800, h: 500 });
@@ -1810,9 +1812,8 @@ const handleFramePresented = React.useCallback(() => {
               isLandscape={isLandscapeMode}
               showSidebar={showMobileSidebar}
               onToggleSidebar={() => setShowMobileSidebar(v => !v)}
-              showTelemetry={showMobileTelemetry}
-              onToggleTelemetry={() => setShowMobileTelemetry(v => !v)}
-              
+              showEarth3D={showMobileEarth3D}
+              onToggleEarth3D={() => setShowMobileEarth3D(v => !v)}
             />
           )}
 
@@ -2085,6 +2086,8 @@ const handleFramePresented = React.useCallback(() => {
             activeAltDeg={refAlt}
             preselectedCityIds={preselectedCityIds}
             setPreselectedCityIds={setPreselectedCityIds}
+            showEarth3D={showMobileEarth3D}
+            onToggleEarth3D={() => setShowMobileEarth3D(v => !v)}
           />
           
           <MobileTelemetryModal
@@ -2108,6 +2111,29 @@ const handleFramePresented = React.useCallback(() => {
             domainFromBrowser={typeof window !== 'undefined' ? window.location.hostname?.replace(/^www\./, '') || 'SpaceView' : 'SpaceView'}
           />
           
+          {/* Mobile Earth 3D Viewer */}
+          {showMobileEarth3D && (
+            <div
+              className="fixed top-4 left-4 "
+              style={{ 
+                zIndex: Z.ui + 60,
+                width: '150px',
+                height: '150px',
+                border: '2px solid rgba(251, 191, 36, 0.6)',
+                boxShadow: '0 0 8px rgba(251, 191, 36, 0.3)',
+                background: 'black',
+              }}
+            >
+              <EarthViewer3D
+                selectedLocation={location}
+                selectedLng={location.lng}
+                setSelectedLng={(lng) => setLocation({ ...location, lng })}
+                utcMs={whenMs}
+                activeAzDeg={refAz}
+                activeAltDeg={refAlt}
+              />
+            </div>
+          )}
         </>
       )}
     </div>

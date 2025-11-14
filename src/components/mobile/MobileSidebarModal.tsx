@@ -19,6 +19,8 @@ interface MobileSidebarModalProps {
   activeAltDeg: number;
   preselectedCityIds: string[];
   setPreselectedCityIds: React.Dispatch<React.SetStateAction<string[]>>;
+  showEarth3D?: boolean;
+  onToggleEarth3D?: () => void;
 }
 
 export default function MobileSidebarModal({
@@ -29,6 +31,8 @@ export default function MobileSidebarModal({
   onSelectLocation,
   preselectedCityIds,
   setPreselectedCityIds,
+  showEarth3D = false,
+  onToggleEarth3D,
 }: MobileSidebarModalProps) {
   const { t } = useTranslation('ui');
   const [activeTab, setActiveTab] = useState<'cities' | 'coords'>('cities');
@@ -57,19 +61,45 @@ export default function MobileSidebarModal({
         <h2 className="text-lg font-semibold text-white">
           {t('sidebar.locationsSidebarLabel', 'Localisation')}
         </h2>
-        <button
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            onClose();
-          }}
-          onClick={onClose}
-          className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
-          aria-label={t('general.close', 'Fermer')}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Earth 3D Toggle Button */}
+          {onToggleEarth3D && (
+            <button
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onToggleEarth3D();
+              }}
+              onClick={onToggleEarth3D}
+              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                showEarth3D
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-400/60'
+                  : 'bg-white/10 text-white/80 hover:bg-white/20'
+              }`}
+              aria-label={t('mobile.toggleEarth3D', 'Terre 3D')}
+              title={t('mobile.toggleEarth3D', 'Terre 3D')}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                <circle cx="12" cy="12" r="9" />
+                <ellipse cx="12" cy="12" rx="4" ry="9" />
+                <path d="M4 12h16M12 3c-2.5 3-2.5 6 0 9 2.5 3 2.5 6 0 9" />
+              </svg>
+            </button>
+          )}
+          {/* Close Button */}
+          <button
+            onTouchEnd={(e) => {
+              e.preventDefault();
+              onClose();
+            }}
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+            aria-label={t('general.close', 'Fermer')}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M18 6L6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Onglets */}
