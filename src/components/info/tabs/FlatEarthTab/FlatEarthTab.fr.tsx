@@ -179,7 +179,7 @@ export default function FlatEarthTab() {
           id="flat-earth-simulator"
           style={{ 
             width: '100%', 
-            height: '520px', 
+            height: '580px', 
             position: 'relative',
             border: '2px solid #333',
             borderRadius: '10px',

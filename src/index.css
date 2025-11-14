@@ -341,3 +341,39 @@ div[style*="overflow"] {
   }
 }
 
+/* Mobile landscape specific fixes for InfoTabs */
+@media screen and (max-width: 1023px) and (orientation: landscape) {
+  /* Make sidebar more compact in landscape */
+  .lg\:hidden.w-32 {
+    width: 7rem !important; /* 112px instead of 128px */
+  }
+  
+  /* Reduce padding and font size for tab buttons in landscape */
+  .lg\:hidden [role="tablist"] button {
+    padding: 0.375rem 0.25rem !important;
+    font-size: 0.7rem !important;
+    line-height: 1.2 !important;
+  }
+  
+  /* Ensure content area doesn't overflow in landscape */
+  .lg\:hidden ~ div.prose-info {
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  
+  /* Force all flex containers in FlatEarth tab to stack and constrain width */
+  .prose-info div[style*="flex"],
+  .prose-info figure[style*="flex"] {
+    flex-direction: column !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  /* Ensure all images and figures stay within bounds */
+  .prose-info figure {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    max-width: 100% !important;
+  }
+}
+

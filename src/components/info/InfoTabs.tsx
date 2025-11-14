@@ -63,7 +63,7 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
   return (
     <>
       {/* Mobile: Left sidebar with logo, language switcher, and menu items */}
-      <div className="lg:hidden w-32 h-full border-r border-gray-200 flex flex-col bg-white">
+      <div className="lg:hidden w-32 h-full border-r border-gray-200 flex flex-col bg-white shrink-0">
         {/* Logo section */}
         <div className="flex flex-col items-center gap-2 p-3 border-b border-gray-200">
           <InfoLogo showBackground={false} size={48} />
@@ -129,7 +129,7 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
               }}
               onClick={() => setActive(tab.id)}
               className={[
-                'px-2 py-2 rounded-md text-xs border transition-colors text-center leading-tight',
+                'px-1.5 py-2 rounded-md text-xs border transition-colors text-center leading-tight break-words',
                 active === tab.id
                   ? 'border-gray-400 bg-gray-100 text-gray-900 font-semibold'
                   : 'border-gray-200 text-gray-700 hover:border-gray-300 hover:bg-gray-50'
@@ -182,7 +182,7 @@ export default function InfoTabs({ initialTab = 'spaceview', onClose }: InfoTabs
       </div>
 
       {/* Mobile content panel */}
-      <div className="lg:hidden flex-1 overflow-y-auto p-4 prose prose-info max-w-none font-sans">
+      <div className="lg:hidden flex-1 overflow-y-auto overflow-x-hidden p-4 prose prose-info max-w-none font-sans">
         {renderActive}
       </div>
     </>
