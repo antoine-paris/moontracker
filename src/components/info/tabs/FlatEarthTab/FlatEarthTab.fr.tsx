@@ -30,14 +30,17 @@ class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: Re
 export default function FlatEarthTab() {
   const [reloadKey, setReloadKey] = useState(0);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
   const { currentLanguage } = useLanguageFromPath();
 
-  // Check for mobile portrait orientation
+  // Check for mobile portrait and landscape orientation
   useEffect(() => {
     const checkOrientation = () => {
-      const isMobile = window.innerWidth <= 768; // Mobile breakpoint
+      const isMobile = window.innerWidth <= 1239; // Mobile breakpoint
       const isPortrait = window.innerHeight > window.innerWidth;
+      const isLandscape = window.innerWidth > window.innerHeight;
       setIsMobilePortrait(isMobile && isPortrait);
+      setIsMobileLandscape(isMobile && isLandscape);
     };
 
     checkOrientation();
@@ -173,13 +176,13 @@ export default function FlatEarthTab() {
       <p>Pour vous permettre d'essayer toutes les hypothèses de Terre plate et les réglages possibles, nous vous proposons ce <strong>simulateur de Terre plate</strong> :</p>
 
       <p>Vous pouvez essayer toutes sortes de combinaisons de taille, de distance et d'éclairage, et aussi choisir la ville depuis laquelle vous observez le ciel.</p>
-       
+      
         {/* Container pour le simulateur avec hauteur fixe */}
         <div 
           id="flat-earth-simulator"
           style={{ 
             width: '100%', 
-            height: '580px', 
+            height: isMobileLandscape ? '300px' : '580px', 
             position: 'relative',
             border: '2px solid #333',
             borderRadius: '10px',

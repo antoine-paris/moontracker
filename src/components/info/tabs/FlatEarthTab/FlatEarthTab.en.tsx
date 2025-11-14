@@ -30,14 +30,17 @@ class ErrorBoundary extends React.Component<{ onRetry?: () => void; children: Re
 export default function FlatEarthTab() {
   const [reloadKey, setReloadKey] = useState(0);
   const [isMobilePortrait, setIsMobilePortrait] = useState(false);
+  const [isMobileLandscape, setIsMobileLandscape] = useState(false);
   const { currentLanguage } = useLanguageFromPath();
 
   // Check for mobile portrait orientation
   useEffect(() => {
     const checkOrientation = () => {
-      const isMobile = window.innerWidth <= 768; // Mobile breakpoint
+      const isMobile = window.innerWidth <= 1239; // Mobile breakpoint
       const isPortrait = window.innerHeight > window.innerWidth;
+      const isLandscape = window.innerWidth > window.innerHeight;
       setIsMobilePortrait(isMobile && isPortrait);
+      setIsMobileLandscape(isMobile && isLandscape);
     };
 
     checkOrientation();
@@ -179,13 +182,13 @@ export default function FlatEarthTab() {
           id="flat-earth-simulator"
           style={{ 
             width: '100%', 
-            height: '520px', 
+            height: isMobileLandscape ? '300px' : '580px', 
             position: 'relative',
             border: '2px solid #333',
             borderRadius: '10px',
             overflow: 'hidden',
             marginBottom: '20px',
-            backgroundColor: '#0b1020', // stable dark background
+            backgroundColor: '#0b1020', // fond sombre stable
           }}>
           {isMobilePortrait ? (
             <div style={{
@@ -221,7 +224,7 @@ export default function FlatEarthTab() {
                   color: '#fff',
                   background: '#0b1020',
                 }}>
-                  ⏳ Loading 3D simulator...
+                  ⏳ Chargement du simulateur 3D...
                 </div>
               }>
                 <FlatEarthSimulator key={reloadKey} />

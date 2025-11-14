@@ -1179,6 +1179,17 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
   return null;
 }
 
+  // Largeur du panneau de contrôle selon la taille de l'écran
+  const [controlPanelWidth, setControlPanelWidth] = useState(window.innerWidth > 1239 ? 360 : 240);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setControlPanelWidth(window.innerWidth > 1239 ? 360 : 240);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Animation du temps
   useEffect(() => {
     if (params.daySpeed > 0) {
@@ -1483,12 +1494,12 @@ function CameraPrincipalPointOffset({ bottomMarginPx = CITY_VIEW_BOTTOM_MARGIN }
         {(isWideScreen || isExpanded) && (
         <div
           style={{
-            width: 340,
-            minWidth: 340,
-            maxWidth: 340,
+            width: controlPanelWidth,
+            minWidth: controlPanelWidth,
+            maxWidth: controlPanelWidth,
             flexShrink: 0,
             flexGrow: 0,
-            flexBasis: 340,
+            flexBasis: controlPanelWidth,
             height: '100%',
             borderLeft: '1px solid #222',
             display: 'flex',
