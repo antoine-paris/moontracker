@@ -801,10 +801,11 @@ export default function TopBar({
         className={`px-2.5 py-1.5 rounded-lg border text-sm ${active ? 'border-white/50 bg-white/10 text-white' : 'border-white/15 text-white/80 hover:border-white/30'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         onTouchEnd={onTouchEnd || ((e) => {
           e.preventDefault();
-          if (!disabled) handleActivate();
+          if (!disabled) handleActivate(e);
         })}
-        onPointerDown={handleActivate}
-        onClick={handleActivate}
+        onClick={() => {
+          if (!disabled) handleActivate();
+        }}
         title={title}
         aria-label={title}
         aria-pressed={active}
