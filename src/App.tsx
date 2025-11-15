@@ -1068,88 +1068,103 @@ export default function App() {
     return pinchStateRef.current?.targetFovY ?? fovYDeg;
   }, [fovYDeg, pinchRenderTrigger]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    // Update active touch count
-    activeTouchCountRef.current = e.touches.length;
-    
-    if (e.touches.length === 2) {
-      // Two fingers detected: start pinch gesture
-      // Cancel any ongoing drag
-      dragStartRef.current = null;
-      
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const dx = touch2.clientX - touch1.clientX;
-      const dy = touch2.clientY - touch1.clientY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      
-      // Calculate current focal length from FOV
-      const rad = (Math.PI / 180) * fovXDeg;
-      const tanHalf = Math.tan(rad / 2);
-      const currentFocalMm = tanHalf > 0 ? FF_WIDTH_MM / (2 * tanHalf) : FOCAL_MAX_MM;
-      
-      pinchStateRef.current = {
-        distance,
-        focalMm: clamp(currentFocalMm, FOCAL_MIN_MM, FOCAL_MAX_MM),
-        startFovX: fovXDeg,
-        startFovY: fovYDeg,
-        targetFovX: fovXDeg,
-        targetFovY: fovYDeg,
-      };
-      
-      // Prevent default to avoid page zoom
-      e.preventDefault();
-    } else if (e.touches.length === 1) {
-      // Single touch: allow drag to start (will be handled by pointer events)
-      pinchStateRef.current = null;
-    }
-  }, [fovXDeg, fovYDeg]);
+  // Touch event handlers with proper passive: false to allow preventDefault
+  useEffect(() => {
+    const stageElement = stageRef.current;
+    if (!stageElement) return;
 
-  const handleTouchMove = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    if (e.touches.length === 2 && pinchStateRef.current) {
-      const touch1 = e.touches[0];
-      const touch2 = e.touches[1];
-      const dx = touch2.clientX - touch1.clientX;
-      const dy = touch2.clientY - touch1.clientY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
+    const handleTouchStart = (e: TouchEvent) => {
+      // Update active touch count
+      activeTouchCountRef.current = e.touches.length;
       
-      // Calculate zoom factor (distance ratio)
-      // Pinch in (distance decreases) -> zoom in (increase focal)
-      // Pinch out (distance increases) -> zoom out (decrease focal)
-      const scale = distance / pinchStateRef.current.distance;
-      
-      // Apply zoom to focal length (direct relationship)
-      const newFocalMm = clamp(
-        pinchStateRef.current.focalMm * scale,
-        FOCAL_MIN_MM,
-        FOCAL_MAX_MM
-      );
-      
-      // Convert focal length back to FOV (like TopBar's setFovFromFocal)
-      const newFovX = (2 * Math.atan(FF_WIDTH_MM / (2 * newFocalMm)) * 180) / Math.PI;
-      const newFovY = (2 * Math.atan(FF_HEIGHT_MM / (2 * newFocalMm)) * 180) / Math.PI;
-      
-      // Update pinch state for next move (incremental zoom)
-      // Store target FOV in ref but DON'T update state during gesture
-      pinchStateRef.current = {
-        distance,
-        focalMm: newFocalMm,
-        startFovX: pinchStateRef.current.startFovX,
-        startFovY: pinchStateRef.current.startFovY,
-        targetFovX: clamp(newFovX, FOV_DEG_MIN, FOV_DEG_MAX),
-        targetFovY: clamp(newFovY, FOV_DEG_MIN, FOV_DEG_MAX),
-      };
-      
-      // Force re-render to use updated targetFov from ref
-      setPinchRenderTrigger(t => t + 1);
-      
-      // Clear long pose accumulation
-      handleLongPoseClear();
-      
-      // Prevent default to avoid page zoom
-      e.preventDefault();
-    }
-  }, [handleLongPoseClear]);
+      if (e.touches.length === 2) {
+        // Two fingers detected: start pinch gesture
+        // Cancel any ongoing drag
+        dragStartRef.current = null;
+        
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculate current focal length from FOV
+        const rad = (Math.PI / 180) * fovXDeg;
+        const tanHalf = Math.tan(rad / 2);
+        const currentFocalMm = tanHalf > 0 ? FF_WIDTH_MM / (2 * tanHalf) : FOCAL_MAX_MM;
+        
+        pinchStateRef.current = {
+          distance,
+          focalMm: clamp(currentFocalMm, FOCAL_MIN_MM, FOCAL_MAX_MM),
+          startFovX: fovXDeg,
+          startFovY: fovYDeg,
+          targetFovX: fovXDeg,
+          targetFovY: fovYDeg,
+        };
+        
+        // Prevent default to avoid page zoom
+        e.preventDefault();
+      } else if (e.touches.length === 1) {
+        // Single touch: allow drag to start (will be handled by pointer events)
+        pinchStateRef.current = null;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && pinchStateRef.current) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const dx = touch2.clientX - touch1.clientX;
+        const dy = touch2.clientY - touch1.clientY;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculate zoom factor (distance ratio)
+        // Pinch in (distance decreases) -> zoom in (increase focal)
+        // Pinch out (distance increases) -> zoom out (decrease focal)
+        const scale = distance / pinchStateRef.current.distance;
+        
+        // Apply zoom to focal length (direct relationship)
+        const newFocalMm = clamp(
+          pinchStateRef.current.focalMm * scale,
+          FOCAL_MIN_MM,
+          FOCAL_MAX_MM
+        );
+        
+        // Convert focal length back to FOV (like TopBar's setFovFromFocal)
+        const newFovX = (2 * Math.atan(FF_WIDTH_MM / (2 * newFocalMm)) * 180) / Math.PI;
+        const newFovY = (2 * Math.atan(FF_HEIGHT_MM / (2 * newFocalMm)) * 180) / Math.PI;
+        
+        // Update pinch state for next move (incremental zoom)
+        // Store target FOV in ref but DON'T update state during gesture
+        pinchStateRef.current = {
+          distance,
+          focalMm: newFocalMm,
+          startFovX: pinchStateRef.current.startFovX,
+          startFovY: pinchStateRef.current.startFovY,
+          targetFovX: clamp(newFovX, FOV_DEG_MIN, FOV_DEG_MAX),
+          targetFovY: clamp(newFovY, FOV_DEG_MIN, FOV_DEG_MAX),
+        };
+        
+        // Force re-render to use updated targetFov from ref
+        setPinchRenderTrigger(t => t + 1);
+        
+        // Clear long pose accumulation
+        handleLongPoseClear();
+        
+        // Prevent default to avoid page zoom
+        e.preventDefault();
+      }
+    };
+
+    // Add listeners with passive: false to allow preventDefault
+    stageElement.addEventListener('touchstart', handleTouchStart, { passive: false });
+    stageElement.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      stageElement.removeEventListener('touchstart', handleTouchStart);
+      stageElement.removeEventListener('touchmove', handleTouchMove);
+    };
+  }, [fovXDeg, fovYDeg, handleLongPoseClear]);
 
   const handleTouchEnd = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
     // Update active touch count
@@ -1944,7 +1959,7 @@ const handleFramePresented = React.useCallback(() => {
           <div ref={stageRef} className="absolute inset-0">
 
             {/* All sky rendering moved to SpaceView */}
-            <div ref={stageRef} className="absolute inset-0">
+            <div ref={stageRef} className="absolute inset-0 space-view-stage">
               {/* SpaceView clipped to PhotoFrame viewport */}
               <div
                 className="absolute"
@@ -1961,8 +1976,6 @@ const handleFramePresented = React.useCallback(() => {
                 onPointerMove={handlePointerMove}
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerUp}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
               >
                 <div ref={renderStackRef} className="relative w-full h-full">

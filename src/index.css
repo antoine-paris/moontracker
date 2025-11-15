@@ -9,6 +9,38 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Prevent zoom/pinch gestures on mobile (let app handle FOV changes) */
+html,
+body {
+  touch-action: pan-x pan-y;
+  -ms-touch-action: pan-x pan-y;
+  overscroll-behavior: none;
+}
+
+/* Prevent zoom on double-tap */
+#root {
+  touch-action: manipulation;
+  -ms-touch-action: manipulation;
+}
+
+/* Prevent ALL touch gestures on 3D stage to avoid conflicts with FOV control */
+.space-view-stage {
+  touch-action: none !important;
+  -ms-touch-action: none !important;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Prevent ALL touch gestures on 3D stage to avoid conflicts with FOV control */
+.space-view-stage {
+  touch-action: none !important;
+  -ms-touch-action: none !important;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* Optimize all interactive elements for iOS */
 button,
 [role="button"],

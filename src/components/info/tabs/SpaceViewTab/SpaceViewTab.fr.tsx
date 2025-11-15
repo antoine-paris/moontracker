@@ -183,6 +183,16 @@ export default function SpaceViewTabFr() {
         licence <span itemProp="license">MIT</span>. Stack: React, TypeScript, Vite, Tailwind, three.js, @react-three/fiber,
         astronomy-engine, Natural Earth, etc.
       </p>
+      
+      <div className="text-xs text-gray-400 mt-8 pt-4 border-t border-gray-200 text-center">
+        Build: {new Date(__BUILD_DATE__).toLocaleDateString('fr-FR', { 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        })}
+      </div>
     </article>
   );
 }
