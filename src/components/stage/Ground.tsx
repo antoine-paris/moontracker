@@ -213,55 +213,115 @@ export default function Ground({
     let intersections: Pt[] = [];
     if (Math.abs(dx) < EPS) {
       // vertical line: x = xA
-      intersections.push({ x: xA, y: 0 });
-      intersections.push({ x: xA, y: h });
+      const xClamped = Math.max(0, Math.min(w, xA));
+      intersections.push({ x: xClamped, y: 0 });
+      intersections.push({ x: xClamped, y: h });
     } else {
       const m = dy / (dx || 1e-9);
       const lineY = (x: number) => yA + m * (x - xA);
       const lineX = (y: number) => xA + (y - yA) / (m || 1e-9);
 
       // Intersections with rectangle edges
-      const candidates: Pt[] = [
-        { x: 0, y: lineY(0) },       // left
-        { x: w, y: lineY(w) },       // right
-        { x: lineX(0), y: 0 },       // top
-        { x: lineX(h), y: h },       // bottom
-      ].filter(p => p.x >= -1 && p.x <= w + 1 && p.y >= -1 && p.y <= h + 1);
+      const candidates: Pt[] = [];
+      
+      // Left edge (x=0)
+      const yLeft = lineY(0);
+      if (yLeft >= 0 && yLeft <= h) {
+        candidates.push({ x: 0, y: yLeft });
+      }
+      
+      // Right edge (x=w)
+      const yRight = lineY(w);
+      if (yRight >= 0 && yRight <= h) {
+        candidates.push({ x: w, y: yRight });
+      }
+      
+      // Top edge (y=0)
+      const xTop = lineX(0);
+      if (xTop >= 0 && xTop <= w) {
+        candidates.push({ x: xTop, y: 0 });
+      }
+      
+      // Bottom edge (y=h)
+      const xBottom = lineX(h);
+      if (xBottom >= 0 && xBottom <= w) {
+        candidates.push({ x: xBottom, y: h });
+      }
 
-      // Keep the two most distant (should be the true border intersections)
-      candidates.sort((p1, p2) => p1.x - p2.x || p1.y - p2.y);
-      // pick two distinct points farthest apart
-      let bestI = -1, bestJ = -1, bestD2 = -1;
-      for (let i = 0; i < candidates.length; i++) {
-        for (let j = i + 1; j < candidates.length; j++) {
-          const dx = candidates[i].x - candidates[j].x;
-          const dy = candidates[i].y - candidates[j].y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 > bestD2) { bestD2 = d2; bestI = i; bestJ = j; }
+      // Remove duplicates (corners)
+      const unique: Pt[] = [];
+      for (const p of candidates) {
+        if (!unique.some(u => Math.abs(u.x - p.x) < 0.5 && Math.abs(u.y - p.y) < 0.5)) {
+          unique.push(p);
         }
       }
-      if (bestI >= 0 && bestJ >= 0) {
-        intersections.push(candidates[bestI], candidates[bestJ]);
+      
+      // If we have exactly 2 intersections, use them
+      if (unique.length === 2) {
+        intersections = unique;
+      } else if (unique.length > 2) {
+        // Pick the two most distant points
+        let bestI = -1, bestJ = -1, bestD2 = -1;
+        for (let i = 0; i < unique.length; i++) {
+          for (let j = i + 1; j < unique.length; j++) {
+            const dxi = unique[i].x - unique[j].x;
+            const dyi = unique[i].y - unique[j].y;
+            const d2 = dxi * dxi + dyi * dyi;
+            if (d2 > bestD2) { bestD2 = d2; bestI = i; bestJ = j; }
+          }
+        }
+        if (bestI >= 0 && bestJ >= 0) {
+          intersections.push(unique[bestI], unique[bestJ]);
+        }
       }
     }
-    if (intersections.length !== 2) return null;
+    
+    // If we don't have exactly 2 intersections, the horizon line might be entirely outside the viewport
+    // In this case, determine if the ground should fill the entire viewport or not at all
+    if (intersections.length !== 2) {
+      // Check if point P (below horizon) is inside the viewport
+      const orient = (px: number, py: number) => (dx) * (py - yA) - (dy) * (px - xA);
+      const sP = orient(P.x, P.y);
+      
+      // Check if all corners are on the ground side
+      const corners: Pt[] = [
+        { x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }
+      ];
+      const allCornersOnGroundSide = corners.every(c => {
+        const s = orient(c.x, c.y);
+        return (s >= 0) === (sP >= 0);
+      });
+      
+      if (allCornersOnGroundSide) {
+        // Fill the entire viewport with ground
+        return { path: `M 0 0 L ${w} 0 L ${w} ${h} L 0 ${h} Z` };
+      }
+      
+      // Otherwise, no ground visible (horizon is above or below viewport)
+      return null;
+    }
 
     const [I0, I1] = intersections;
 
     // Decide which side to fill (ground side) using oriented line A->B
+    // Orient computes the signed area/cross product: positive = left side, negative = right side
     const orient = (px: number, py: number) => (dx) * (py - yA) - (dy) * (px - xA);
     const sP = orient(P.x, P.y);
-    const fillLeft = sP > 0; // if true, we fill the "left" half-plane of A->B
 
-    // Pick the two rectangle corners on the desired side
+    // Pick the viewport corners that are on the same side as P (the ground side)
     const corners: Pt[] = [
       { x: 0, y: 0 }, { x: w, y: 0 }, { x: w, y: h }, { x: 0, y: h }
     ];
-    const sideCorners = corners.filter(c => (orient(c.x, c.y) >= 0) === fillLeft);
-    if (sideCorners.length !== 2) return null;
-
-    // Build convex quad from I0, I1 and the two chosen corners (order by angle around centroid)
-    const poly = [I0, I1, sideCorners[0], sideCorners[1]];
+    const sideCorners = corners.filter(c => {
+      const sc = orient(c.x, c.y);
+      // Check if corner and P have the same sign (are on the same side of the line)
+      return (sc * sP >= 0);
+    });
+    
+    // Build polygon from intersections and corners on the ground side
+    const poly = [I0, I1, ...sideCorners];
+    
+    // Sort by angle around centroid to create proper convex polygon
     const cx = poly.reduce((s, p) => s + p.x, 0) / poly.length;
     const cy = poly.reduce((s, p) => s + p.y, 0) / poly.length;
     poly.sort((p1, p2) => Math.atan2(p1.y - cy, p1.x - cx) - Math.atan2(p2.y - cy, p2.x - cx));
