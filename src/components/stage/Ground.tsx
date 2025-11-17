@@ -418,9 +418,9 @@ export default function Ground({
         {simplifyFlat && lockHorizon && flatHorizon && (
           <rect
             x={0}
-            y={flatHorizon.groundBelow ? flatHorizon.y : 0}
+            y={flatHorizon.groundBelow ? Math.max(0, flatHorizon.y) : 0}
             width={viewport.w}
-            height={flatHorizon.groundBelow ? (viewport.h - flatHorizon.y) : flatHorizon.y}
+            height={Math.max(0, flatHorizon.groundBelow ? (viewport.h - flatHorizon.y) : flatHorizon.y)}
             fill={debugMask ? COLOR_GROUND_FRONT : COLOR_GROUND}
           />
         )}

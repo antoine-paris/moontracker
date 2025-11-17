@@ -48,9 +48,9 @@ export default function PlanetSprite({
   const cGx = 312 + dR * R_SVG; // centre côté gibbeux
   const chordX = 312 - k * R_SVG;
   const chordXClamped = Math.max(0, Math.min(624, chordX));
-  const leftWidth = chordXClamped;
+  const leftWidth = Math.max(0, chordXClamped);
   const rightX = chordXClamped;
-  const rightWidth = 624 - chordXClamped;
+  const rightWidth = Math.max(0, 624 - chordXClamped);
 
   // Ids uniques
   const ids = useMemo(() => {

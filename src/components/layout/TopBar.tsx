@@ -777,6 +777,7 @@ export default function TopBar({
     children?: React.ReactNode;
   }> = ({ active, onClick, onTouchEnd, title, disabled, icon, children }) => {
     const handleActivate = (e?: React.SyntheticEvent) => {
+      console.log('IconToggleButton handleActivate', e);
       if (e) {
         e.preventDefault();
         e.stopPropagation();
@@ -800,10 +801,12 @@ export default function TopBar({
         type="button"
         className={`px-2.5 py-1.5 rounded-lg border text-sm ${active ? 'border-white/50 bg-white/10 text-white' : 'border-white/15 text-white/80 hover:border-white/30'} ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
         onTouchEnd={onTouchEnd || ((e) => {
+          console.log('onTouchEnd', e);
           e.preventDefault();
           if (!disabled) handleActivate(e);
         })}
         onClick={() => {
+          console.log('onClick');
           if (!disabled) handleActivate();
         }}
         title={title}

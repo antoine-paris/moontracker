@@ -32,9 +32,9 @@ export default function MoonSprite(props: Props) {
   const cGx = 312 + dR * R_SVG;
   const chordX = 312 - k * R_SVG;
   const chordXClamped = Math.max(0, Math.min(624, chordX));
-  const leftWidth = chordXClamped;
+  const leftWidth = Math.max(0, chordXClamped);
   const rightX = chordXClamped;
-  const rightWidth = 624 - chordXClamped;
+  const rightWidth = Math.max(0, 624 - chordXClamped);
 
   const ids = useMemo(() => {
     const base = "moon" + Math.random().toString(36).slice(2);
