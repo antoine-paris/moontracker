@@ -777,23 +777,12 @@ export default function TopBar({
     children?: React.ReactNode;
   }> = ({ active, onClick, onTouchEnd, title, disabled, icon, children }) => {
     const handleActivate = (e?: React.SyntheticEvent) => {
-      console.log('IconToggleButton handleActivate', e);
       if (e) {
         e.preventDefault();
         e.stopPropagation();
       }
       if (disabled) return;
-
-      const wasAnimating = isAnimating;
-      if (wasAnimating) setIsAnimating(false);
-
-      // Defer the toggle, then resume if it was running
-      requestAnimationFrame(() => {
-        onClick();
-        if (wasAnimating) {
-          requestAnimationFrame(() => setIsAnimating(true));
-        }
-      });
+      onClick();
     };
 
     return (
@@ -805,9 +794,12 @@ export default function TopBar({
           e.preventDefault();
           if (!disabled) handleActivate(e);
         })}
-        onClick={() => {
-          console.log('onClick');
-          if (!disabled) handleActivate();
+        onPointerDown={(e) => {
+          // Use onPointerDown instead of onClick for more reliable event handling during animation
+          // Only handle left mouse button (button 0) or touch (button -1)
+          if (e.button !== 0 && e.button !== -1) return;
+          e.preventDefault();
+          if (!disabled) handleActivate(e);
         }}
         title={title}
         aria-label={title}
