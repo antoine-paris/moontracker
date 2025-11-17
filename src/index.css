@@ -9,6 +9,16 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Prevent zoom/pinch gestures on mobile (let app handle FOV changes) */
 html,
 body {

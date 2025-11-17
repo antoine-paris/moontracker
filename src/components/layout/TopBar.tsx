@@ -184,6 +184,9 @@ export default function TopBar({
 }: Props) {
   const { t } = useTranslation('ui');
   
+  // Tab system state
+  const [activeTab, setActiveTab] = React.useState<'datetime' | 'tracking' | 'fov' | 'animation' | 'visibility' | 'assistance'>('datetime');
+  
   // Dynamic planet registry that updates with language changes
   const PLANET_REGISTRY = getPlanetRegistry();
   
@@ -817,35 +820,200 @@ export default function TopBar({
 
   return (
     <div className={isMobileScreen ? "fixed inset-0 bg-black/20 z-50 overflow-y-auto" : ""}>
-      {/* Mobile header with title and close button */}
-      {isMobileScreen && (
-        <div className="flex items-center justify-between p-4 border-b border-white/10 ">
-          <h1 className="text-xl font-semibold text-white">{t('ui:settings.title')}</h1>
-          <button
-            onTouchEnd={(e) => {
-              e.preventDefault();
-              onClosePanels?.();
-            }}
-            onClick={onClosePanels}
-            className="p-2 rounded-lg border border-white/15 text-white/80 hover:border-white/30 hover:text-white"
-            title={t('ui:settings.close')}
-            aria-label={t('ui:settings.close')}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
+      
+      {/* Tab Navigation */}
+      <div className={isMobileScreen ? "sticky top-0 z-10 bg-black/80 backdrop-blur border-b border-white/10" : "mx-2 sm:mx-4 mb-4"}>
+        <div className={isMobileScreen ? "flex items-start gap-2 p-2" : ""}>
+          <div className={isMobileScreen ? "flex flex-wrap flex-1 min-w-0" : "flex overflow-x-auto scrollbar-hide"}>
+            {[
+              { id: 'datetime', label: t('ui:tabs.datetime', 'Date & Heure') },
+              { id: 'tracking', label: t('ui:tabs.tracking', 'Objet suivi') },
+              { id: 'fov', label: t('ui:tabs.fov', 'Champ de vision') },
+              { id: 'animation', label: t('ui:tabs.animation', 'Animation') },
+              { id: 'visibility', label: t('ui:tabs.visibility', 'Visibilité') },
+              { id: 'assistance', label: t('ui:tabs.assistance', 'Assistance visuelle') },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as typeof activeTab)}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  setActiveTab(tab.id as typeof activeTab);
+                }}
+                className={`
+                  flex-shrink-0 px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
+                  ${activeTab === tab.id 
+                    ? 'border-white text-white' 
+                    : 'border-transparent text-white/60 hover:text-white/80 hover:border-white/30'
+                  }
+                `}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+          {isMobileScreen && (
+            <button
+              onTouchEnd={(e) => {
+                e.preventDefault();
+                onClosePanels?.();
+              }}
+              onClick={onClosePanels}
+              className="p-2 rounded-lg border border-white/15 text-white/80 hover:border-white/30 hover:text-white shrink-0"
+              title={t('ui:settings.close')}
+              aria-label={t('ui:settings.close')}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          )}
         </div>
-      )}
+      </div>
       
       <div className={isMobileScreen ? "p-4 space-y-4 bg-black/40 min-h-screen" : "mx-2 sm:mx-4"}>
-        {/* Empty div for desktop spacing that was there before */}
-        {!isMobileScreen && <div className="mx-2 sm:mx-4"></div>}
       
-      <div className={isMobileScreen ? "space-y-4" : "mx-2 sm:mx-4 grid grid-cols-1 gap-2 sm:grid-cols-3"}>
-        {/* SUIVI */}
-        <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
+      <div className={isMobileScreen ? "space-y-4" : "mx-2 sm:mx-4 flex justify-center"}>
+        
+        {/* TAB: Date & heure */}
+        {activeTab === 'datetime' && (
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+
+          <div className="grid grid-cols-1 gap-3">
+            <div>
+
+              <label className="text-xs uppercase tracking-wider text-white/60">{t('time.dateTime')}</label>
+              <div className="mt-1">
+                <div className="flex items-center gap-2">
+                  <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      setIsAnimating(!isAnimating);
+                    }}
+                    onClick={() => setIsAnimating(!isAnimating)}
+                    className={`px-3 py-2 rounded-lg border text-sm ${isAnimating ? "border-emerald-400/60 text-emerald-300" : "border-white/15 text-white/80 hover:border-white/30"}`}
+                    title={isAnimating ? t('time.pauseAnimation') : t('time.startAnimation')}
+                    aria-label={isAnimating ? t('controls.pause') : t('controls.play')}
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      {isAnimating ? (
+                        // Pause icon
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                          <rect x="7" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+                          <rect x="13" y="5" width="4" height="14" rx="1.5" fill="currentColor" />
+                        </svg>
+                      ) : (
+                        // Play icon
+                        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                          <path d="M8 5l12 7-12 7V5z" fill="currentColor" />
+                        </svg>
+                      )}
+                    </span>
+                  </button>
+                  <input
+                    type="datetime-local"
+                    step="1"
+                    value={localDateTimeInput}
+                    onChange={(e) => {
+                      setLocalDateTimeInput(e.target.value);
+                    }}
+                    onFocus={() => {
+                      setIsEditing(true);
+                    }}
+                    onBlur={(e) => {
+                      setIsEditing(false);
+                      const newDate = new Date(e.target.value);
+                      if (!isNaN(newDate.getTime())) {
+                        onCommitWhenMs(newDate.getTime());
+                      } else {
+                        // Reset to current value if invalid
+                        setLocalDateTimeInput(browserLocalTimeString);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const newDate = new Date(localDateTimeInput);
+                        if (!isNaN(newDate.getTime())) {
+                          onCommitWhenMs(newDate.getTime());
+                          e.currentTarget.blur();
+                        }
+                      } else if (e.key === 'Escape') {
+                        setLocalDateTimeInput(browserLocalTimeString);
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
+                     title={t('time.enterLocalDateTime')}
+                     />
+                  {/* -1 heure */}
+                  <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onCommitWhenMs(currentUtcMs - 3600000);
+                      setIsEditing(false);
+                    }}
+                    onClick={() => {
+                      onCommitWhenMs(currentUtcMs - 3600000);
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    title={t('time.goBackOneHour')}
+                  >
+                    &#x21B6;
+                  </button>
+                  {/* Maintenant */}
+                  <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      const nowMs = Date.now();
+                      onCommitWhenMs(nowMs);
+                      setIsEditing(false);
+                    }}
+                    onClick={() => {
+                      const nowMs = Date.now();
+                      onCommitWhenMs(nowMs);
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    title={t('time.setCurrentTime')}
+                  >
+                    {/*Maintenant*/}
+                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                      <circle cx="12" cy="12" r="9" stroke="currentColor" />
+                      <path d="M12 7v6l4 4" stroke="currentColor" />
+                    </svg>
+                  </button>
+                  {/* +1 heure */}
+                  <button
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onCommitWhenMs(currentUtcMs + 3600000);
+                      setIsEditing(false);
+                    }}
+                    onClick={() => {
+                      onCommitWhenMs(currentUtcMs + 3600000);
+                      setIsEditing(false);
+                    }}
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    title={t('time.goForwardOneHour')}
+                  >
+                    &#x21B7;
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3">
+                  <div title={timeZone}>{t('ui:time.cityTimeFormat', { cityTime: cityHM, cityName, utcTime: utcHM })}</div>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+        </div>
+        )}
+
+        {/* TAB: Objet suivi */}
+        {activeTab === 'tracking' && (
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:followModes.title')}</div>
           <div className="flex flex-wrap gap-2">
             {([
@@ -919,6 +1087,12 @@ export default function TopBar({
               icon="ecliptic"
             />
           </div>
+        </div>
+        )}
+
+        {/* TAB: Champ de vision - moved to separate fov tab above, here for tracking tab context */}
+        {activeTab === 'fov' && (
+          <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="mt-3">
             <div className="text-xs uppercase tracking-wider text-white/60">{t('optics.fieldOfView')}</div>
             {/* Sélection Appareil + Objectif */}
@@ -1065,108 +1239,18 @@ export default function TopBar({
               </div>
           </div>
         </div>
+        )}
 
-        {/* Date & heure + Animation (empilés) */}
-        <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
+        
+
+        
+
+        {/* TAB: Animation */}
+        {activeTab === 'animation' && (
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="grid grid-cols-1 gap-3">
             <div>
-              <label className="text-xs uppercase tracking-wider text-white/60">{t('time.dateTime')}</label>
-              <div className="mt-1">
-                <div className="flex items-center gap-2">
-                  <input
-                    type="datetime-local"
-                    step="1"
-                    value={localDateTimeInput}
-                    onChange={(e) => {
-                      setLocalDateTimeInput(e.target.value);
-                    }}
-                    onFocus={() => {
-                      setIsEditing(true);
-                    }}
-                    onBlur={(e) => {
-                      setIsEditing(false);
-                      const newDate = new Date(e.target.value);
-                      if (!isNaN(newDate.getTime())) {
-                        onCommitWhenMs(newDate.getTime());
-                      } else {
-                        // Reset to current value if invalid
-                        setLocalDateTimeInput(browserLocalTimeString);
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        const newDate = new Date(localDateTimeInput);
-                        if (!isNaN(newDate.getTime())) {
-                          onCommitWhenMs(newDate.getTime());
-                          e.currentTarget.blur();
-                        }
-                      } else if (e.key === 'Escape') {
-                        setLocalDateTimeInput(browserLocalTimeString);
-                        e.currentTarget.blur();
-                      }
-                    }}
-                    className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
-                     title={t('time.enterLocalDateTime')}
-                     />
-                  {/* -1 heure */}
-                  <button
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onCommitWhenMs(currentUtcMs - 3600000);
-                      setIsEditing(false);
-                    }}
-                    onClick={() => {
-                      onCommitWhenMs(currentUtcMs - 3600000);
-                      setIsEditing(false);
-                    }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title={t('time.goBackOneHour')}
-                  >
-                    &#x21B6;
-                  </button>
-                  {/* Maintenant */}
-                  <button
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      const nowMs = Date.now();
-                      onCommitWhenMs(nowMs);
-                      setIsEditing(false);
-                    }}
-                    onClick={() => {
-                      const nowMs = Date.now();
-                      onCommitWhenMs(nowMs);
-                      setIsEditing(false);
-                    }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title={t('time.setCurrentTime')}
-                  >
-                    {/*Maintenant*/}
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-                      <circle cx="12" cy="12" r="9" stroke="currentColor" />
-                      <path d="M12 7v6l4 4" stroke="currentColor" />
-                    </svg>
-                  </button>
-                  {/* +1 heure */}
-                  <button
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onCommitWhenMs(currentUtcMs + 3600000);
-                      setIsEditing(false);
-                    }}
-                    onClick={() => {
-                      onCommitWhenMs(currentUtcMs + 3600000);
-                      setIsEditing(false);
-                    }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title={t('time.goForwardOneHour')}
-                  >
-                    &#x21B7;
-                  </button>
-                </div>
-                <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3">
-                  <div title={timeZone}>{t('ui:time.cityTimeFormat', { cityTime: cityHM, cityName, utcTime: utcHM })}</div>
-                </div>
-              </div>
+              
               <div className="mt-2 mb-1 flex items-baseline justify-start gap-2">
                 <span className="text-xs uppercase tracking-wider text-white/50">{t('ui:animation.title')}  </span>
                 <span
@@ -1456,9 +1540,11 @@ export default function TopBar({
             </div>
           </div>
         </div>
+        )}
 
-        {/* Groupe: Visibilité */}
-        <div className="rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3">
+        {/* TAB: Visibilité */}
+        {activeTab === 'visibility' && (
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:visibility.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Enlarge objects */}
@@ -1588,9 +1674,13 @@ export default function TopBar({
               <span>{t('ui:space.stars')}</span>
             </IconToggleButton>
           </div>
+        </div>
+        )}
 
-          {/* Groupe: Assistance */}
-          <div className="mt-3 text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:assistance.title')}</div>
+        {/* TAB: Assistance visuelle */}
+        {activeTab === 'assistance' && (
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:assistance.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Grid toggle */}
             <IconToggleButton
@@ -1736,6 +1826,7 @@ export default function TopBar({
             </div>
           )}
         </div>
+        )}
       </div>
       </div>
      
