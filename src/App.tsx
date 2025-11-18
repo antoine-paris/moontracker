@@ -1470,7 +1470,47 @@ export default function App() {
     // Mark as initialized even if no query, so startup defaults stay untouched
     urlInitedRef.current = true;
     
-    if (!hasQuery) return;
+    // If no URL query, try auto-geolocation (if permission already granted)
+    if (!hasQuery) {
+      if ('permissions' in navigator && 'geolocation' in navigator) {
+        navigator.permissions.query({ name: 'geolocation' as PermissionName })
+          .then((permissionStatus) => {
+            if (permissionStatus.state === 'granted') {
+              // Permission already granted, use geolocation to set initial position
+              navigator.geolocation.getCurrentPosition(
+                (position) => {
+                  const newLat = position.coords.latitude;
+                  const newLng = position.coords.longitude;
+                  console.log('Auto-geolocation on startup:', { lat: newLat, lng: newLng });
+                  
+                  // Find nearest city
+                  if (locations.length > 0) {
+                    let best = locations[0];
+                    let bestD = Number.POSITIVE_INFINITY;
+                    for (const c of locations) {
+                      const d = haversineKm(newLat, newLng, c.lat, c.lng);
+                      if (d < bestD) { bestD = d; best = c; }
+                    }
+                    setLocation({ ...best, lat: newLat, lng: newLng });
+                  }
+                },
+                (error) => {
+                  console.log('Auto-geolocation failed:', error.message);
+                },
+                {
+                  enableHighAccuracy: false,
+                  timeout: 5000,
+                  maximumAge: 300000 // Accept cached position up to 5 minutes old
+                }
+              );
+            }
+          })
+          .catch((error) => {
+            console.log('Permissions API not supported:', error);
+          });
+      }
+      return;
+    }
 
     const q = new URLSearchParams(search);
 
@@ -1541,7 +1581,8 @@ export default function App() {
     if (!isMobileScreen || !isPortraitMode) {
       urlRestoredRef.current = true;
     }
-  }, [locationsLoading, locations, isMobileScreen, isPortraitMode]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [locationsLoading, locations]);
   // Note: Other dependencies (allPlanetIds, devices, etc.) are intentionally omitted
   // as this effect should only run once for initial URL parsing after locations load
 
