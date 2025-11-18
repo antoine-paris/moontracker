@@ -52,6 +52,7 @@ export default function DirectionalKeypad({
   // Local state for Earth3D mode
   const [lat, setLat] = useState<number>(location?.lat ?? 0);
   const [lng, setLng] = useState<number>(location?.lng ?? 0);
+  const [isGeolocating, setIsGeolocating] = useState<boolean>(false);
   const updateSrcRef = useRef<'idle' | 'user' | 'sync'>('idle');
   const suppressNextSyncRef = useRef<boolean>(false);
   
@@ -131,8 +132,10 @@ export default function DirectionalKeypad({
   
   // Function to get user's geolocation
   const handleGeolocation = () => {
-    if (!showMobileEarth3D || !onSelectLocation || !nearest) return;
+    if (!showMobileEarth3D) return;
+    if (isGeolocating) return; // Prevent multiple concurrent requests
     if ('geolocation' in navigator) {
+      setIsGeolocating(true);
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newLat = position.coords.latitude;
@@ -140,9 +143,20 @@ export default function DirectionalKeypad({
           updateSrcRef.current = 'user';
           setLat(newLat);
           setLng(newLng);
+          setIsGeolocating(false);
         },
         (error) => {
-          console.error('Geolocation error:', error);
+          console.error('Geolocation error:', error.code, error.message);
+          // On error, move to equator/prime meridian
+          updateSrcRef.current = 'user';
+          setLat(0);
+          setLng(0);
+          setIsGeolocating(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
         }
       );
     }
@@ -292,11 +306,17 @@ export default function DirectionalKeypad({
           }}
         >
           {showMobileEarth3D ? (
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="12" cy="12" r="10" />
-              <circle cx="12" cy="12" r="3" fill="currentColor" />
-              <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-            </svg>
+            isGeolocating ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="3" fill="currentColor" />
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+              </svg>
+            )
           ) : (
             getFollowIcon(follow)
           )}
@@ -481,11 +501,17 @@ export default function DirectionalKeypad({
             }}
           >
             {showMobileEarth3D ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <circle cx="12" cy="12" r="10" />
-                <circle cx="12" cy="12" r="3" fill="currentColor" />
-                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
-              </svg>
+              isGeolocating ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+                  <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <circle cx="12" cy="12" r="3" fill="currentColor" />
+                  <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                </svg>
+              )
             ) : (
               getFollowIcon(follow)
             )}
