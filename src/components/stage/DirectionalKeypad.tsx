@@ -1,7 +1,16 @@
-import React from "react";
+import React, { useMemo, useRef, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { clamp } from "../../utils/math";
 import type { FollowMode } from "../../types";
+import type { LocationOption } from "../../data/locations";
+import {
+  clampLat,
+  normLng,
+  haversineKm,
+  bearingDeg,
+  moveDest,
+  capNSDistanceKm,
+} from "../../utils/geo";
 
 type Props = {
   baseRefAlt: number;
@@ -14,6 +23,11 @@ type Props = {
   isMobile?: boolean;
   isLandscape?: boolean;
   follow: FollowMode;
+  // Props for Earth3D mode
+  showMobileEarth3D?: boolean;
+  location?: LocationOption;
+  onSelectLocation?: (loc: LocationOption) => void;
+  locations?: LocationOption[];
 };
 
 export default function DirectionalKeypad({
@@ -27,8 +41,112 @@ export default function DirectionalKeypad({
   isMobile = false,
   isLandscape = false,
   follow,
+  showMobileEarth3D = false,
+  location,
+  onSelectLocation,
+  locations,
 }: Props) {
+  const { t } = useTranslation('common');
   const { t: tUi } = useTranslation('ui');
+  
+  // Local state for Earth3D mode
+  const [lat, setLat] = useState<number>(location?.lat ?? 0);
+  const [lng, setLng] = useState<number>(location?.lng ?? 0);
+  const updateSrcRef = useRef<'idle' | 'user' | 'sync'>('idle');
+  const suppressNextSyncRef = useRef<boolean>(false);
+  
+  // Sync local state with location prop only when location ID changes (external city change)
+  useEffect(() => {
+    if (suppressNextSyncRef.current) {
+      suppressNextSyncRef.current = false;
+      return;
+    }
+    
+    if (location && showMobileEarth3D && location.id !== 'loading') {
+      updateSrcRef.current = 'sync';
+      setLat(location.lat);
+      setLng(location.lng);
+      updateSrcRef.current = 'idle';
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location?.id, location?.lat, location?.lng, showMobileEarth3D]);
+  
+  // Calculate nearest city
+  const nearest = useMemo(() => {
+    if (!showMobileEarth3D || !locations?.length) return null;
+    let best: LocationOption | null = null;
+    let bestD = Number.POSITIVE_INFINITY;
+    for (const c of locations) {
+      const d = haversineKm(lat, lng, c.lat, c.lng);
+      if (d < bestD) { bestD = d; best = c; }
+    }
+    if (!best) return null;
+    const b = bearingDeg(best.lat, best.lng, lat, lng);
+    return { city: best, km: bestD, bearingFromCity: b };
+  }, [showMobileEarth3D, locations, lat, lng]);
+  
+  // Auto-apply location change in Earth3D mode
+  useEffect(() => {
+    if (!showMobileEarth3D || !nearest || !location || !onSelectLocation) {
+      return;
+    }
+    if (updateSrcRef.current !== 'user') {
+      return;
+    }
+    
+    const newLat = clampLat(lat);
+    const newLng = normLng(lng);
+    
+    const sameLat = Math.abs(newLat - location.lat) <= 1e-9;
+    const sameLng = Math.abs(normLng(newLng) - normLng(location.lng)) <= 1e-9;
+    
+    if (sameLat && sameLng) {
+      return;
+    }
+    
+    onSelectLocation({
+      ...nearest.city,
+      lat: newLat,
+      lng: newLng,
+    });
+    
+    // Prevent the immediate prop→state sync from clobbering our lat/lng
+    suppressNextSyncRef.current = true;
+    
+    updateSrcRef.current = 'idle';
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lat, lng, nearest, showMobileEarth3D]);
+  
+  // Function to move 100km in a direction (Earth3D mode)
+  const move100 = (bearing: number) => {
+    if (!showMobileEarth3D) return;
+    const kmBase = 100;
+    const km = capNSDistanceKm(lat, kmBase, bearing);
+    if (km <= 0) return;
+    const p = moveDest(lat, lng, km, bearing);
+    updateSrcRef.current = 'user';
+    setLat(p.lat);
+    setLng(p.lng);
+  };
+  
+  // Function to get user's geolocation
+  const handleGeolocation = () => {
+    if (!showMobileEarth3D || !onSelectLocation || !nearest) return;
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLat = position.coords.latitude;
+          const newLng = position.coords.longitude;
+          updateSrcRef.current = 'user';
+          setLat(newLat);
+          setLng(newLng);
+        },
+        (error) => {
+          console.error('Geolocation error:', error);
+        }
+      );
+    }
+  };
 
 
   // Fonction pour obtenir l'icône correspondant au mode de suivi
@@ -79,117 +197,181 @@ export default function DirectionalKeypad({
         {/* Bouton Haut */}
         <button
           className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-          title={tUi('directionalKeypad.moveUp', { degrees: stepAltDeg.toFixed(1) })}
-          aria-label={tUi('directionalKeypad.up')}
+          title={showMobileEarth3D ? t('directions.toNorth') : tUi('directionalKeypad.moveUp', { degrees: stepAltDeg.toFixed(1) })}
+          aria-label={showMobileEarth3D ? t('directions.toNorth') : tUi('directionalKeypad.up')}
           onTouchEnd={(e) => {
             e.preventDefault();
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(0); // North
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
           onClick={() => {
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(0); // North
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
         >
-          ↑
+          {showMobileEarth3D ? (
+            <span style={{ transform: 'rotate(270deg)', display: 'inline-block' }}>➤</span>
+          ) : (
+            '↑'
+          )}
         </button>
 
         {/* Bouton Gauche */}
         <button
           className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-          title={tUi('directionalKeypad.moveLeft', { degrees: stepAzDeg.toFixed(1) })}
-          aria-label={tUi('directionalKeypad.left')}
+          title={showMobileEarth3D ? t('directions.toWest') : tUi('directionalKeypad.moveLeft', { degrees: stepAzDeg.toFixed(1) })}
+          aria-label={showMobileEarth3D ? t('directions.toWest') : tUi('directionalKeypad.left')}
           onTouchEnd={(e) => {
             e.preventDefault();
-            setDeltaAzDeg(prev => {
-              const nd = prev - stepAzDeg;
-              return ((nd + 180) % 360 + 360) % 360 - 180;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(270); // West
+            } else {
+              setDeltaAzDeg(prev => {
+                const nd = prev - stepAzDeg;
+                return ((nd + 180) % 360 + 360) % 360 - 180;
+              });
+              onLongPoseClear?.();
+            }
           }}
           onClick={() => {
-            setDeltaAzDeg(prev => {
-              const nd = prev - stepAzDeg;
-              return ((nd + 180) % 360 + 360) % 360 - 180;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(270); // West
+            } else {
+              setDeltaAzDeg(prev => {
+                const nd = prev - stepAzDeg;
+                return ((nd + 180) % 360 + 360) % 360 - 180;
+              });
+              onLongPoseClear?.();
+            }
           }}
         >
-          ←
+          {showMobileEarth3D ? (
+            <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>➤</span>
+          ) : (
+            '←'
+          )}
         </button>
 
-        {/* Bouton Centre (Recenter) */}
+        {/* Bouton Centre (Recenter or Geolocation) */}
         <button
           className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-xl font-bold transition-all duration-150 active:scale-95 flex items-center justify-center"
-          title={tUi('directionalKeypad.recenter')}
-          aria-label={tUi('directionalKeypad.recenter')}
+          title={showMobileEarth3D ? tUi('coordinates.geolocation', 'Géolocalisation') : tUi('directionalKeypad.recenter')}
+          aria-label={showMobileEarth3D ? tUi('coordinates.geolocation', 'Géolocalisation') : tUi('directionalKeypad.recenter')}
           onTouchEnd={(e) => {
             e.preventDefault();
-            setDeltaAzDeg(0);
-            setDeltaAltDeg(0);
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              handleGeolocation();
+            } else {
+              setDeltaAzDeg(0);
+              setDeltaAltDeg(0);
+              onLongPoseClear?.();
+            }
           }}
           onClick={() => {
-            setDeltaAzDeg(0);
-            setDeltaAltDeg(0);
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              handleGeolocation();
+            } else {
+              setDeltaAzDeg(0);
+              setDeltaAltDeg(0);
+              onLongPoseClear?.();
+            }
           }}
         >
-          {getFollowIcon(follow)}
+          {showMobileEarth3D ? (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="3" fill="currentColor" />
+              <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+            </svg>
+          ) : (
+            getFollowIcon(follow)
+          )}
         </button>
 
         {/* Bouton Droite */}
         <button
           className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-          title={tUi('directionalKeypad.moveRight', { degrees: stepAzDeg.toFixed(1) })}
-          aria-label={tUi('directionalKeypad.right')}
+          title={showMobileEarth3D ? t('directions.toEast') : tUi('directionalKeypad.moveRight', { degrees: stepAzDeg.toFixed(1) })}
+          aria-label={showMobileEarth3D ? t('directions.toEast') : tUi('directionalKeypad.right')}
           onTouchEnd={(e) => {
             e.preventDefault();
-            setDeltaAzDeg(prev => {
-              const nd = prev + stepAzDeg;
-              return ((nd + 180) % 360 + 360) % 360 - 180;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(90); // East
+            } else {
+              setDeltaAzDeg(prev => {
+                const nd = prev + stepAzDeg;
+                return ((nd + 180) % 360 + 360) % 360 - 180;
+              });
+              onLongPoseClear?.();
+            }
           }}
           onClick={() => {
-            setDeltaAzDeg(prev => {
-              const nd = prev + stepAzDeg;
-              return ((nd + 180) % 360 + 360) % 360 - 180;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(90); // East
+            } else {
+              setDeltaAzDeg(prev => {
+                const nd = prev + stepAzDeg;
+                return ((nd + 180) % 360 + 360) % 360 - 180;
+              });
+              onLongPoseClear?.();
+            }
           }}
         >
-          →
+          {showMobileEarth3D ? (
+            <span style={{ transform: 'rotate(0deg)', display: 'inline-block' }}>➤</span>
+          ) : (
+            '→'
+          )}
         </button>
 
         {/* Bouton Bas */}
         <button
           className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-          title={tUi('directionalKeypad.moveDown', { degrees: stepAltDeg.toFixed(1) })}
-          aria-label={tUi('directionalKeypad.down')}
+          title={showMobileEarth3D ? t('directions.toSouth') : tUi('directionalKeypad.moveDown', { degrees: stepAltDeg.toFixed(1) })}
+          aria-label={showMobileEarth3D ? t('directions.toSouth') : tUi('directionalKeypad.down')}
           onTouchEnd={(e) => {
             e.preventDefault();
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(180); // South
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
           onClick={() => {
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(180); // South
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
         >
-          ↓
+          {showMobileEarth3D ? (
+            <span style={{ transform: 'rotate(90deg)', display: 'inline-block' }}>➤</span>
+          ) : (
+            '↓'
+          )}
         </button>
       </div>
     );
@@ -205,115 +387,179 @@ export default function DirectionalKeypad({
         {/* Bouton Haut */}
         <button
           className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-          title={tUi('directionalKeypad.moveUp', { degrees: stepAltDeg.toFixed(1) })}
-          aria-label={tUi('directionalKeypad.up')}
+          title={showMobileEarth3D ? t('directions.toNorth') : tUi('directionalKeypad.moveUp', { degrees: stepAltDeg.toFixed(1) })}
+          aria-label={showMobileEarth3D ? t('directions.toNorth') : tUi('directionalKeypad.up')}
           onTouchEnd={(e) => {
             e.preventDefault();
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(0); // North
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
           onClick={() => {
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(0); // North
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev + stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
         >
-          ↑
+          {showMobileEarth3D ? (
+            <span style={{ transform: 'rotate(270deg)', display: 'inline-block' }}>➤</span>
+          ) : (
+            '↑'
+          )}
         </button>
 
         {/* Ligne du milieu : Gauche + Centre + Droite */}
         <div className="flex items-center gap-2">
           <button
             className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-            title={tUi('directionalKeypad.moveLeft', { degrees: stepAzDeg.toFixed(1) })}
-            aria-label={tUi('directionalKeypad.left')}
+            title={showMobileEarth3D ? t('directions.toWest') : tUi('directionalKeypad.moveLeft', { degrees: stepAzDeg.toFixed(1) })}
+            aria-label={showMobileEarth3D ? t('directions.toWest') : tUi('directionalKeypad.left')}
             onTouchEnd={(e) => {
               e.preventDefault();
-              setDeltaAzDeg(prev => {
-                const nd = prev - stepAzDeg;
-                return ((nd + 180) % 360 + 360) % 360 - 180;
-              });
-              onLongPoseClear?.();
+              if (showMobileEarth3D) {
+                move100(270); // West
+              } else {
+                setDeltaAzDeg(prev => {
+                  const nd = prev - stepAzDeg;
+                  return ((nd + 180) % 360 + 360) % 360 - 180;
+                });
+                onLongPoseClear?.();
+              }
             }}
             onClick={() => {
-              setDeltaAzDeg(prev => {
-                const nd = prev - stepAzDeg;
-                return ((nd + 180) % 360 + 360) % 360 - 180;
-              });
-              onLongPoseClear?.();
+              if (showMobileEarth3D) {
+                move100(270); // West
+              } else {
+                setDeltaAzDeg(prev => {
+                  const nd = prev - stepAzDeg;
+                  return ((nd + 180) % 360 + 360) % 360 - 180;
+                });
+                onLongPoseClear?.();
+              }
             }}
           >
-            ←
+            {showMobileEarth3D ? (
+              <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>➤</span>
+            ) : (
+              '←'
+            )}
           </button>
           <button
             className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-xl font-bold transition-all duration-150 active:scale-95 flex items-center justify-center"
-            title={tUi('directionalKeypad.recenter')}
-            aria-label={tUi('directionalKeypad.recenter')}
+            title={showMobileEarth3D ? tUi('coordinates.geolocation', 'Géolocalisation') : tUi('directionalKeypad.recenter')}
+            aria-label={showMobileEarth3D ? tUi('coordinates.geolocation', 'Géolocalisation') : tUi('directionalKeypad.recenter')}
             onTouchEnd={(e) => {
               e.preventDefault();
-              setDeltaAzDeg(0);
-              setDeltaAltDeg(0);
-              onLongPoseClear?.();
+              if (showMobileEarth3D) {
+                handleGeolocation();
+              } else {
+                setDeltaAzDeg(0);
+                setDeltaAltDeg(0);
+                onLongPoseClear?.();
+              }
             }}
             onClick={() => {
-              setDeltaAzDeg(0);
-              setDeltaAltDeg(0);
-              onLongPoseClear?.();
+              if (showMobileEarth3D) {
+                handleGeolocation();
+              } else {
+                setDeltaAzDeg(0);
+                setDeltaAltDeg(0);
+                onLongPoseClear?.();
+              }
             }}
           >
-            {getFollowIcon(follow)}
+            {showMobileEarth3D ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" />
+                <circle cx="12" cy="12" r="3" fill="currentColor" />
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+              </svg>
+            ) : (
+              getFollowIcon(follow)
+            )}
           </button>
           <button
             className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-            title={tUi('directionalKeypad.moveRight', { degrees: stepAzDeg.toFixed(1) })}
-            aria-label={tUi('directionalKeypad.right')}
+            title={showMobileEarth3D ? t('directions.toEast') : tUi('directionalKeypad.moveRight', { degrees: stepAzDeg.toFixed(1) })}
+            aria-label={showMobileEarth3D ? t('directions.toEast') : tUi('directionalKeypad.right')}
             onTouchEnd={(e) => {
               e.preventDefault();
-              setDeltaAzDeg(prev => {
-                const nd = prev + stepAzDeg;
-                return ((nd + 180) % 360 + 360) % 360 - 180;
-              });
-              onLongPoseClear?.();
+              if (showMobileEarth3D) {
+                move100(90); // East
+              } else {
+                setDeltaAzDeg(prev => {
+                  const nd = prev + stepAzDeg;
+                  return ((nd + 180) % 360 + 360) % 360 - 180;
+                });
+                onLongPoseClear?.();
+              }
             }}
             onClick={() => {
-              setDeltaAzDeg(prev => {
-                const nd = prev + stepAzDeg;
-                return ((nd + 180) % 360 + 360) % 360 - 180;
-              });
-              onLongPoseClear?.();
+              if (showMobileEarth3D) {
+                move100(90); // East
+              } else {
+                setDeltaAzDeg(prev => {
+                  const nd = prev + stepAzDeg;
+                  return ((nd + 180) % 360 + 360) % 360 - 180;
+                });
+                onLongPoseClear?.();
+              }
             }}
           >
-            →
+            {showMobileEarth3D ? (
+              <span style={{ transform: 'rotate(0deg)', display: 'inline-block' }}>➤</span>
+            ) : (
+              '→'
+            )}
           </button>
         </div>
 
         {/* Bouton Bas */}
         <button
           className="w-12 h-12 rounded-md border border-white/30 bg-black/50 hover:bg-black/70 active:bg-black/80 text-white text-lg font-bold transition-all duration-150 active:scale-95"
-          title={tUi('directionalKeypad.moveDown', { degrees: stepAltDeg.toFixed(1) })}
-          aria-label={tUi('directionalKeypad.down')}
+          title={showMobileEarth3D ? t('directions.toSouth') : tUi('directionalKeypad.moveDown', { degrees: stepAltDeg.toFixed(1) })}
+          aria-label={showMobileEarth3D ? t('directions.toSouth') : tUi('directionalKeypad.down')}
           onTouchEnd={(e) => {
             e.preventDefault();
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(180); // South
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
           onClick={() => {
-            setDeltaAltDeg(prev => {
-              const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
-              return tgt - baseRefAlt;
-            });
-            onLongPoseClear?.();
+            if (showMobileEarth3D) {
+              move100(180); // South
+            } else {
+              setDeltaAltDeg(prev => {
+                const tgt = clamp(baseRefAlt + prev - stepAltDeg, -89.9, 89.9);
+                return tgt - baseRefAlt;
+              });
+              onLongPoseClear?.();
+            }
           }}
         >
-          ↓
+          {showMobileEarth3D ? (
+            <span style={{ transform: 'rotate(90deg)', display: 'inline-block' }}>➤</span>
+          ) : (
+            '↓'
+          )}
         </button>
       </div>
     );

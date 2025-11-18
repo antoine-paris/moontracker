@@ -260,7 +260,8 @@
     "nearPole": "Near {{pole}}",
     "kmFromPole": "{{km}} km from {{pole}}",
     "distanceFromCity": "{{km}}km {{dir}} of ",
-    "cityWithAsterisk": "{{city}} (*)"
+    "cityWithAsterisk": "{{city}} (*)",
+    "geolocation": "Geolocation"
   },
   "hud": {
     "azimuth": "Azimuth:",

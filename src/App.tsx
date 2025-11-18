@@ -2077,6 +2077,10 @@ const handleFramePresented = React.useCallback(() => {
               isMobile={isMobileScreen}
               isLandscape={isLandscapeMode}
               follow={follow}
+              showMobileEarth3D={showMobileEarth3D}
+              location={location}
+              onSelectLocation={setLocation}
+              locations={locations}
             />
           )}
         </main>
@@ -2125,7 +2129,7 @@ const handleFramePresented = React.useCallback(() => {
           />
           
           {/* Mobile Earth 3D Viewer */}
-          {showMobileEarth3D && (
+          {showMobileEarth3D && !showPanels && (
             <div
               className="fixed top-4 left-4 "
               style={{ 

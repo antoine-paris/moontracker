@@ -259,7 +259,8 @@
     "nearPole": "Proche {{pole}}",
     "kmFromPole": "{{km}} km du {{pole}}",
     "distanceFromCity": "à {{km}}km {{dir}} de ",
-    "cityWithAsterisk": "{{city}} (*)"
+    "cityWithAsterisk": "{{city}} (*)",
+    "geolocation": "Géolocalisation"
   },
   "hud": {
     "azimuth": "Azimut :",
