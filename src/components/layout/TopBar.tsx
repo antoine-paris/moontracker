@@ -819,10 +819,10 @@ export default function TopBar({
 
 
   return (
-    <div className={isMobileScreen ? "fixed inset-0 bg-black/20 z-50 overflow-y-auto" : ""}>
+    <div className={isMobileScreen ? "fixed inset-0 bg-black/40 z-50 overflow-y-auto" : ""}>
       
       {/* Tab Navigation */}
-      <div className={isMobileScreen ? "sticky top-0 z-10 bg-black/80 backdrop-blur border-b border-white/10" : "mx-2 sm:mx-4 mb-4"}>
+      <div className={isMobileScreen ? "sticky top-0 z-10 bg-black/80 backdrop-blur border-b border-white/10" : "mx-2 sm:mx-4 mb-4 bg-black/40 backdrop-blur rounded-2xl"}>
         <div className={isMobileScreen ? "flex items-start gap-2 p-2" : ""}>
           <div className={isMobileScreen ? "flex flex-wrap flex-1 min-w-0" : "flex overflow-x-auto scrollbar-hide"}>
             {[
@@ -874,7 +874,7 @@ export default function TopBar({
       
       <div className={isMobileScreen ? "p-4 space-y-4 bg-black/40 min-h-screen" : "mx-2 sm:mx-4"}>
       
-      <div className={isMobileScreen ? "space-y-4" : "mx-2 sm:mx-4 flex justify-center"}>
+      <div className={isMobileScreen ? "space-y-4" : " flex justify-left"}>
         
         {/* TAB: Date & heure */}
         {activeTab === 'datetime' && (
@@ -946,22 +946,7 @@ export default function TopBar({
                     className="flex-1 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
                      title={t('time.enterLocalDateTime')}
                      />
-                  {/* -1 heure */}
-                  <button
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onCommitWhenMs(currentUtcMs - 3600000);
-                      setIsEditing(false);
-                    }}
-                    onClick={() => {
-                      onCommitWhenMs(currentUtcMs - 3600000);
-                      setIsEditing(false);
-                    }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title={t('time.goBackOneHour')}
-                  >
-                    &#x21B6;
-                  </button>
+                  
                   {/* Maintenant */}
                   <button
                     onTouchEnd={(e) => {
@@ -978,31 +963,93 @@ export default function TopBar({
                     className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                     title={t('time.setCurrentTime')}
                   >
-                    {/*Maintenant*/}
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
-                      <circle cx="12" cy="12" r="9" stroke="currentColor" />
-                      <path d="M12 7v6l4 4" stroke="currentColor" />
-                    </svg>
+                    <span className="inline-flex items-center gap-1.5">
+                      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                        <circle cx="12" cy="12" r="9" stroke="currentColor" />
+                        <path d="M12 7v6l4 4" stroke="currentColor" />
+                      </svg>
+                      {t('time.now')}
+                    </span>
                   </button>
-                  {/* +1 heure */}
-                  <button
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onCommitWhenMs(currentUtcMs + 3600000);
-                      setIsEditing(false);
-                    }}
-                    onClick={() => {
-                      onCommitWhenMs(currentUtcMs + 3600000);
-                      setIsEditing(false);
-                    }}
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    title={t('time.goForwardOneHour')}
-                  >
-                    &#x21B7;
-                  </button>
+                  
                 </div>
                 <div className="mt-1 text-xs text-white/50 flex flex-wrap gap-3">
                   <div title={timeZone}>{t('ui:time.cityTimeFormat', { cityTime: cityHM, cityName, utcTime: utcHM })}</div>
+                </div>
+                
+                {/* Time step controls */}
+                <div className="mt-3">
+                  <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:time.timeStep')}</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { unit: 'minute', label: t('ui:time.minute'), delta: 60000 },
+                      { unit: 'hour', label: t('ui:time.hour'), delta: 3600000 },
+                      { unit: 'day', label: t('ui:time.jour'), delta: 86400000 },
+                      { unit: 'sidereal-day', label: t('ui:time.sidereal.day'), delta: 86164000 },
+                      { unit: 'month', label: t('ui:time.mois'), delta: null },
+                      { unit: 'year', label: t('ui:time.year'), delta: 31557600000 },
+                      { unit: 'synodic-fraction', label: t('ui:time.lunar.day'), delta: 29.530588853 * 86400000 },
+                      { unit: 'lunar-fraction', label: t('ui:time.lunar.cycle'), delta: 27.321661 * 86400000 },
+                    ].map(({ unit, label, delta }) => (
+                      <div key={unit} className="flex items-center gap-1">
+                        <button
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            if (unit === 'month') {
+                              const d = new Date(currentUtcMs);
+                              d.setUTCMonth(d.getUTCMonth() - 1);
+                              onCommitWhenMs(d.getTime());
+                            } else {
+                              onCommitWhenMs(currentUtcMs - delta!);
+                            }
+                            setIsEditing(false);
+                          }}
+                          onClick={() => {
+                            if (unit === 'month') {
+                              const d = new Date(currentUtcMs);
+                              d.setUTCMonth(d.getUTCMonth() - 1);
+                              onCommitWhenMs(d.getTime());
+                            } else {
+                              onCommitWhenMs(currentUtcMs - delta!);
+                            }
+                            setIsEditing(false);
+                          }}
+                          className="px-2 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                          title={`-1 ${label}`}
+                        >
+                          &#x21B6;
+                        </button>
+                        <span className="text-xs text-white/70 flex-1 text-center truncate">{label}</span>
+                        <button
+                          onTouchEnd={(e) => {
+                            e.preventDefault();
+                            if (unit === 'month') {
+                              const d = new Date(currentUtcMs);
+                              d.setUTCMonth(d.getUTCMonth() + 1);
+                              onCommitWhenMs(d.getTime());
+                            } else {
+                              onCommitWhenMs(currentUtcMs + delta!);
+                            }
+                            setIsEditing(false);
+                          }}
+                          onClick={() => {
+                            if (unit === 'month') {
+                              const d = new Date(currentUtcMs);
+                              d.setUTCMonth(d.getUTCMonth() + 1);
+                              onCommitWhenMs(d.getTime());
+                            } else {
+                              onCommitWhenMs(currentUtcMs + delta!);
+                            }
+                            setIsEditing(false);
+                          }}
+                          className="px-2 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                          title={`+1 ${label}`}
+                        >
+                          &#x21B7;
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
               
@@ -1015,7 +1062,7 @@ export default function TopBar({
         {activeTab === 'tracking' && (
         <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:followModes.title')}</div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 mb-4">
             {([
               'SOLEIL','LUNE',
               'MERCURE','VENUS','MARS','JUPITER','SATURNE','URANUS','NEPTUNE',
@@ -1046,24 +1093,28 @@ export default function TopBar({
                   : `${t('time.follow')} ${opt}`
                 }
               >
-                {opt === 'SOLEIL' ? <ToggleIcon id='sun'  label={t('followModes.followSun')} />  
-                : opt === 'LUNE' ? <ToggleIcon id='moon'  label={t('followModes.followMoon')} />  
-                : opt === 'MERCURE' ? <span>&#9791;</span>
-                : opt === 'VENUS' ? <span>&#9792;</span>
-                : opt === 'MARS' ? <span>&#9794;</span>
-                : opt === 'JUPITER' ? <span>&#9795;</span>
-                : opt === 'SATURNE' ? <span>&#9796;</span>
-                : opt === 'URANUS' ? <span>&#9797;</span>
-                : opt === 'NEPTUNE' ? <span>&#9798;</span>
-                : opt === 'O' ? <span style={{ display: 'inline-block', transform: 'rotate(180deg)' }}>&#x27A4;</span>
-                : opt === 'N' ? <span style={{ display: 'inline-block', transform: 'rotate(270deg)' }}>&#x27A4;</span>
-                : opt === 'S' ? <span style={{ display: 'inline-block', transform: 'rotate(90deg)' }}>&#x27A4;</span>
-                : opt === 'E' ? <span >&#x27A4;</span>
-                : opt}
+                <span className="inline-flex items-center gap-1.5">
+                  {opt === 'SOLEIL' ? <><ToggleIcon id='sun' label={t('followModes.followSun')} /> {t('ui:space.sun')}</>
+                  : opt === 'LUNE' ? <><ToggleIcon id='moon' label={t('followModes.followMoon')} /> {t('ui:space.moon')}</>
+                  : opt === 'MERCURE' ? <><span>&#9791;</span> {t('ui:space.mercury')}</>
+                  : opt === 'VENUS' ? <><span>&#9792;</span> {t('ui:space.venus')}</>
+                  : opt === 'MARS' ? <><span>&#9794;</span> {t('ui:space.mars')}</>
+                  : opt === 'JUPITER' ? <><span>&#9795;</span> {t('ui:space.jupiter')}</>
+                  : opt === 'SATURNE' ? <><span>&#9796;</span> {t('ui:space.saturn')}</>
+                  : opt === 'URANUS' ? <><span>&#9797;</span> {t('ui:space.uranus')}</>
+                  : opt === 'NEPTUNE' ? <><span>&#9798;</span> {t('ui:space.neptune')}</>
+                  : opt === 'O' ? <><span style={{ display: 'inline-block', transform: 'rotate(180deg)' }}>&#x27A4;</span> {t('common:directions.west')}</>
+                  : opt === 'N' ? <><span style={{ display: 'inline-block', transform: 'rotate(270deg)' }}>&#x27A4;</span> {t('common:directions.north')}</>
+                  : opt === 'S' ? <><span style={{ display: 'inline-block', transform: 'rotate(90deg)' }}>&#x27A4;</span> {t('common:directions.south')}</>
+                  : opt === 'E' ? <><span>&#x27A4;</span> {t('common:directions.east')}</>
+                  : opt}
+                </span>
               </button>
             ))}
-            <div role="separator" aria-hidden="true" className="mx-1 w-px self-stretch bg-white/20" />
-            
+          </div>
+          
+          <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:alignment.title')}</div>
+          <div className="flex flex-wrap gap-2">
             {/* Horizons toggle */}
             <IconToggleButton
               active={lockHorizon}
@@ -1074,7 +1125,9 @@ export default function TopBar({
               onClick={() => setLockHorizon(!lockHorizon)}
               title={t('alignment.horizon')}
               icon="horizon"
-            />
+            >
+               <span>{t('alignment.horizontitle')}</span>
+            </IconToggleButton>
             {/* Ecliptique */}
             <IconToggleButton
               active={!lockHorizon}
@@ -1085,7 +1138,9 @@ export default function TopBar({
               onClick={() => setLockHorizon(!lockHorizon)}
               title={t('alignment.ecliptic')}
               icon="ecliptic"
-            />
+            >
+              <span>{t('alignment.ecliptictitle')}</span>
+            </IconToggleButton>
           </div>
         </div>
         )}

@@ -46,8 +46,11 @@
     "cylindricalHorizon": "Cylindrique (Horizon)"
   },
   "alignment": {
+    "title": "ALIGNEMENT DE L'ECRAN",
     "horizon": "Horizon terrestre aligné à l'écran",
-    "ecliptic": "Ecliptique aligné à l'écran"
+    "horizontitle": "Horizon terrestre",
+    "ecliptic": "Ecliptique aligné à l'écran",
+    "ecliptictitle": "Ecliptique"
   },
   "phase": {
     "showPhase": "Afficher la phase de la Lune et des planètes",
@@ -55,7 +58,7 @@
     "enablePhaseFirst": "Activez « Phase de la Lune » pour autoriser le clair de Terre"
   },
   "followModes": {
-    "title": "SUIVI",
+    "title": "OBJET SUIVI",
     "sun": "Soleil",
     "moon": "Lune",
     "north": "Nord",
@@ -188,6 +191,14 @@
   "settings": {
     "title": "Paramètres",
     "close": "Fermer"
+  },
+  "tabs": {
+    "datetime": "Date & Heure",
+    "tracking": "Objet suivi",
+    "fov": "Champ de vision",
+    "animation": "Animation",
+    "visibility": "Visibilité",
+    "assistance": "Assistance visuelle"
   },
   "general": {
     "help": "Aide",

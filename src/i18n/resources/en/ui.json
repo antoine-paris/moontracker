@@ -46,8 +46,11 @@
     "cylindricalHorizon": "Cylindrical (Horizon)"
   },
   "alignment": {
+    "title": "SCREEN ALIGNMENT",
     "horizon": "Terrestrial horizon aligned to screen",
-    "ecliptic": "Ecliptic aligned to screen"
+    "horizontitle": "Terrestrial horizon",
+    "ecliptic": "Ecliptic aligned to screen",
+    "ecliptictitle": "Ecliptic"
   },
   "phase": {
     "showPhase": "Show Moon and planet phases",
@@ -55,7 +58,7 @@
     "enablePhaseFirst": "Enable \"Moon Phase\" to allow earthshine"
   },
   "followModes": {
-    "title": "TRACKING",
+    "title": "OBJECT TRACKED",
     "sun": "Sun",
     "moon": "Moon",
     "north": "North",
@@ -189,6 +192,14 @@
   "settings": {
     "title": "Settings", 
     "close": "Close"
+  },
+  "tabs": {
+    "datetime": "Date & Time",
+    "tracking": "Tracked Object",
+    "fov": "Field of View",
+    "animation": "Animation",
+    "visibility": "Visibility",
+    "assistance": "Visual Assistance"
   },
   "general": {
     "help": "Help",
