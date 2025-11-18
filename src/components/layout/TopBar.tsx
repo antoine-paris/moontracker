@@ -145,7 +145,7 @@ export default function TopBar({
   rotOffsetDegX, setRotOffsetDegX, rotOffsetDegY, setRotOffsetDegY, rotOffsetDegZ, setRotOffsetDegZ,
   camRotDegX, setCamRotDegX, camRotDegY, setCamRotDegY, camRotDegZ, setCamRotDegZ,
   earthshine, setEarthshine,
-  showSunCard, setShowSunCard, showEcliptique, setShowEcliptique, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
+  showEcliptique, setShowEcliptique, showMoonCard, setShowMoonCard, debugMask, setDebugMask,
   timeZone,
   enlargeObjects, setEnlargeObjects,
   showHorizon, setShowHorizon,
@@ -872,7 +872,7 @@ export default function TopBar({
         </div>
       </div>
       
-      <div className={isMobileScreen ? "p-4 space-y-4 bg-black/40 min-h-screen" : "mx-2 sm:mx-4"}>
+      <div className={isMobileScreen ? "bg-black/40" : "mx-2 sm:mx-4"}>
       
       <div className={isMobileScreen ? "space-y-4" : " flex justify-left"}>
         
@@ -883,7 +883,6 @@ export default function TopBar({
           <div className="grid grid-cols-1 gap-3">
             <div>
 
-              <label className="text-xs uppercase tracking-wider text-white/60">{t('time.dateTime')}</label>
               <div className="mt-1">
                 <div className="flex items-center gap-2">
                   <button
@@ -979,14 +978,13 @@ export default function TopBar({
                 
                 {/* Time step controls */}
                 <div className="mt-3">
-                  <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:time.timeStep')}</div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-x-8 gap-y-2  pt-2">
                     {[
                       { unit: 'minute', label: t('ui:time.minute'), delta: 60000 },
                       { unit: 'hour', label: t('ui:time.hour'), delta: 3600000 },
-                      { unit: 'day', label: t('ui:time.jour'), delta: 86400000 },
+                      { unit: 'day', label: t('ui:time.day'), delta: 86400000 },
                       { unit: 'sidereal-day', label: t('ui:time.sidereal.day'), delta: 86164000 },
-                      { unit: 'month', label: t('ui:time.mois'), delta: null },
+                      { unit: 'month', label: t('ui:time.month'), delta: null },
                       { unit: 'year', label: t('ui:time.year'), delta: 31557600000 },
                       { unit: 'synodic-fraction', label: t('ui:time.lunar.day'), delta: 29.530588853 * 86400000 },
                       { unit: 'lunar-fraction', label: t('ui:time.lunar.cycle'), delta: 27.321661 * 86400000 },
@@ -1019,7 +1017,6 @@ export default function TopBar({
                         >
                           &#x21B6;
                         </button>
-                        <span className="text-xs text-white/70 flex-1 text-center truncate">{label}</span>
                         <button
                           onTouchEnd={(e) => {
                             e.preventDefault();
@@ -1047,6 +1044,8 @@ export default function TopBar({
                         >
                           &#x21B7;
                         </button>
+                        <span className="text-xs text-white/70 flex-1 text-left">{ ` ${label}`}</span>
+                        
                       </div>
                     ))}
                   </div>
@@ -1149,7 +1148,7 @@ export default function TopBar({
         {activeTab === 'fov' && (
           <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="mt-3">
-            <div className="text-xs uppercase tracking-wider text-white/60">{t('optics.fieldOfView')}</div>
+            <div className="text-xs uppercase tracking-wider text-white/60">{t('optics.device')}</div>
             {/* Sélection Appareil + Objectif */}
             <div className="mt-1 flex flex-wrap sm:flex-nowrap items-center gap-2 gap-y-2">
               <svg className="w-6 h-6 shrink-0 align-middle text-white/60" viewBox="0 0 24 24" aria-hidden="true">
@@ -1217,6 +1216,8 @@ export default function TopBar({
               )}
             </div>
 
+            <div className="text-xs uppercase tracking-wider text-white/60 mt-4">{t('optics.personalized')}</div>
+            
             {/*  FOV sliders + link with a single focal-length slider */}
             <div className="mt-2 flex items-center gap-2">
               <span className="text-sm">f</span>
@@ -1249,7 +1250,20 @@ export default function TopBar({
 
             {/* Projection selector */}
             <div className="mt-3">
-                <div className="text-xs uppercase tracking-wider text-white/60">{t('ui:projection.title')}</div>
+                <div className="text-xs uppercase tracking-wider text-white/60">{t('ui:projection.title')}:&nbsp;
+                  {projectionMode && (
+                    
+                      [
+                        {id: 'recti-panini' as const, label: t('ui:projection.rectiPanini') },
+                        { id: 'rectilinear' as const, label: t('ui:projection.rectiPerspective') },
+                        { id: 'stereo-centered' as const, label: t('ui:projection.stereocentered') },
+                        { id: 'ortho' as const, label: t('ui:projection.orthographic') },
+                        { id: 'cylindrical' as const, label: t('ui:projection.cylindrical') },
+                        { id: 'cylindrical-horizon' as const, label: t('ui:projection.cylindricalHorizon') },
+                      ].find(opt => opt.id === projectionMode)?.label
+                    
+                  )}
+                </div>
                 <div className="mt-1 flex flex-wrap gap-2">
                   {[ {id: 'recti-panini' as const, label: t('ui:projection.rectiPanini') },
                     { id: 'rectilinear' as const, label: t('ui:projection.rectiPerspective') },
@@ -1285,7 +1299,7 @@ export default function TopBar({
                         aria-disabled={!isAllowed}
                       >
                         <span className="inline-flex items-center">
-                          <ProjectionIcon id={opt.id} active={isActive} /* label removed to avoid duplicate title */ />
+                          <ProjectionIcon id={opt.id} active={isActive} />
                         </span>
                       </button>
                     );
@@ -1296,16 +1310,11 @@ export default function TopBar({
         </div>
         )}
 
-        
-
-        
-
         {/* TAB: Animation */}
         {activeTab === 'animation' && (
         <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="grid grid-cols-1 gap-3">
             <div>
-              
               <div className="mt-2 mb-1 flex items-baseline justify-start gap-2">
                 <span className="text-xs uppercase tracking-wider text-white/50">{t('ui:animation.title')}  </span>
                 <span
@@ -1408,10 +1417,13 @@ export default function TopBar({
                     title={t('time.animateRealTime')}
                     className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
                   >
-                    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
+                    <span className="inline-flex items-center gap-1.5">
+                      <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" className="shrink-0">
                         <circle cx="12" cy="12" r="9" stroke="currentColor" />
                         <path d="M12 7v6l4 4" stroke="currentColor" />
                       </svg>
+                      {t('time.realTime')}
+                    </span>
                   </button>
                   {/* +1 min/s */}
                   <button
@@ -1452,7 +1464,7 @@ export default function TopBar({
                     title={t('animation.enableTimeLapse', { startLabel: tlStartLabel })}
                     icon="timelapse"
                   >
-                    <span>Time-lapse</span>
+                    <span>{t('animation.timelapse')}</span>
                   </IconToggleButton>
                   
                   <input
@@ -1461,7 +1473,7 @@ export default function TopBar({
                     pattern="\d*"
                     min={1}
                     step={1}
-                    className="w-12 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
+                    className="w-16 bg-white/10 border border-white/20 rounded px-2 py-1 text-sm"
                     value={tlStepValueStr}
                     onChange={(e) => { setTlStepValueStr(e.target.value); onLongPoseClear(); }}
                     onFocus={() => { setEditingTlStep(true); onLongPoseClear(); }}
@@ -1490,34 +1502,6 @@ export default function TopBar({
                     <option value="synodic-fraction">{t('ui:time.lunar.day')}</option>
                     <option value="lunar-fraction">{t('ui:time.lunar.cycle')}</option>
                   </select>
-                  <button
-                    type="button"
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onTimeLapsePrevFrame();
-                    }}
-                    onClick={onTimeLapsePrevFrame}
-                    title={t('animation.previousFrame')}
-                  >
-                    ↶
-                  </button>
-                  <button
-                    type="button"
-                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
-                    onTouchEnd={(e) => {
-                      e.preventDefault();
-                      onTimeLapseNextFrame();
-                    }}
-                    onClick={onTimeLapseNextFrame}
-                    title={t('animation.nextFrame')}
-                  >
-                    ↷
-                  </button>
-                </div>
-
-                {/* Period per frame (integer, safe while editing) */}
-                <div className="mt-1 flex items-center gap-3 flex-wrap">
                   <span className="text-sm text-white/80">{t('time.every')}</span>
                   <input
                     type="number"
@@ -1537,7 +1521,13 @@ export default function TopBar({
                     }}
                     title={t('animation.periodBetweenFrames')}
                   />
-                  <span className="text-sm text-white/80">ms pendant</span>
+                  <span className="text-sm text-white/80">{t('animation.ms')} </span>
+                </div>
+
+                {/* Period per frame (integer, safe while editing) */}
+                <div className="mt-1 flex items-center gap-3 flex-wrap">
+                  
+                  <span className="text-sm text-white/80">{t('animation.during')}</span>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -1556,7 +1546,31 @@ export default function TopBar({
                     title={t('animation.numberOfFrames')}
                   />
                   <span className="text-sm text-white/80">{t('animation.images')}</span>
-                </div>
+                  <button
+                    type="button"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onTimeLapsePrevFrame();
+                    }}
+                    onClick={onTimeLapsePrevFrame}
+                    title={t('animation.previousFrame')}
+                  >
+                    ↶&nbsp;{t('animation.previousFrame')}
+                  </button>
+                  <button
+                    type="button"
+                    className="px-3 py-1 rounded-lg border border-white/15 text-white/80 hover:border-white/30 text-sm"
+                    onTouchEnd={(e) => {
+                      e.preventDefault();
+                      onTimeLapseNextFrame();
+                    }}
+                    onClick={onTimeLapseNextFrame}
+                    title={t('animation.nextFrame')}
+                  >
+                    {t('animation.nextFrame')}&nbsp;↷
+                  </button>
+                </div>                  
               </div>
               {/* --- /Time-lapse --- */}
               {/* --- Long Pose --- */}
@@ -1586,9 +1600,11 @@ export default function TopBar({
                       onLongPoseClear();
                     }}
                     onClick={onLongPoseClear}
-                    title={t('animation.clearPersistence')}
+                    title={' ⟲' + t('animation.clearPersistence') }
                     icon="clear"
-                  />
+                  >
+                    <span>{t('animation.clearPersistence')}</span>
+                  </IconToggleButton>
                   
                 </div>
               </div>
@@ -1602,22 +1618,6 @@ export default function TopBar({
         <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:visibility.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
-            {/* Enlarge objects */}
-            <IconToggleButton
-              active={enlargeObjects}
-              onTouchEnd={(e) => { e.preventDefault(); setEnlargeObjects(!enlargeObjects); }}
-              onClick={() => setEnlargeObjects(!enlargeObjects)}
-              title={t('visibility.increaseSize')}
-              icon="enlarge"
-            />
-            {/* Horizons toggle */}
-            <IconToggleButton
-              active={showHorizon}
-              onTouchEnd={(e) => { e.preventDefault(); setShowHorizon(!showHorizon); }}
-              onClick={() => setShowHorizon(!showHorizon)}
-              title={t('visibility.showHorizon')}
-              icon="horizon"
-            />
             {/* Earth toggle */}
             <IconToggleButton
               active={showEarth}
@@ -1625,7 +1625,9 @@ export default function TopBar({
               onClick={() => setShowEarth(!showEarth)}
               title={t('visibility.showGround')}
               icon="earth"
-            />
+            >
+              <span>{t('visibility.groundOpaque')}</span>
+            </IconToggleButton>
             {/* Atmosphere toggle */}
             <IconToggleButton
               active={showAtmosphere}
@@ -1633,7 +1635,9 @@ export default function TopBar({
               onClick={() => setShowAtmosphere(!showAtmosphere)}
               title={t('visibility.showAtmosphere')}
               icon="atmo"
-            />
+            >
+              <span>{t('visibility.atmosphereEffect')}</span>
+            </IconToggleButton>
              {/* NEW: Refraction toggle */}
             <IconToggleButton
               active={showRefraction}
@@ -1641,7 +1645,9 @@ export default function TopBar({
               onClick={() => setShowRefraction(!showRefraction)}
               title={t('visibility.applyRefraction')}
               icon="refraction"
-            />
+            >
+              <span>{t('visibility.refraction')}</span>
+            </IconToggleButton>
             {/* Moon phase */}
             <IconToggleButton
               active={showPhase}
@@ -1649,7 +1655,9 @@ export default function TopBar({
               onClick={() => setShowPhase(!showPhase)}
               title={t('ui:phase.showPhase')}
               icon="phase"
-            />
+            >
+              <span>{t('visibility.moonphase')}</span>
+            </IconToggleButton>
             {/* Earthshine */}
             <IconToggleButton
               active={earthshine}
@@ -1658,7 +1666,9 @@ export default function TopBar({
               title={showPhase ? t('phase.enableEarthshine') : t('phase.enablePhaseFirst')}
               icon="earthshine"
               disabled={!showPhase}
-            />
+            >
+              <span>{t('visibility.earthshine')}</span>
+            </IconToggleButton>
             {/* Sun toggle */}
             <IconToggleButton
               active={showSun}
@@ -1737,6 +1747,27 @@ export default function TopBar({
         <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:assistance.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
+            {/* Enlarge objects */}
+            <IconToggleButton
+              active={enlargeObjects}
+              onTouchEnd={(e) => { e.preventDefault(); setEnlargeObjects(!enlargeObjects); }}
+              onClick={() => setEnlargeObjects(!enlargeObjects)}
+              title={t('visibility.increaseSize')}
+              icon="enlarge"
+            >
+              <span>{t('ui:assistance.enlarge')}</span>
+            </IconToggleButton>
+            {/* Horizons toggle */}
+            <IconToggleButton
+              active={showHorizon}
+              onTouchEnd={(e) => { e.preventDefault(); setShowHorizon(!showHorizon); }}
+              onClick={() => setShowHorizon(!showHorizon)}
+              title={t('visibility.showHorizon')}
+              icon="horizon"
+            >
+              <span>{t('ui:assistance.horizon')}</span>
+            </IconToggleButton>
+            
             {/* Grid toggle */}
             <IconToggleButton
               active={showGrid}
@@ -1744,7 +1775,9 @@ export default function TopBar({
               onClick={() => setShowGrid(!showGrid)}
               title={t('ui:assistance.showGrid')}
               icon="grid"
-            />
+            >
+              <span>{t('ui:assistance.grid')}</span>
+            </IconToggleButton>
             {/* Markers toggle */}
             <IconToggleButton
               active={showMarkers}
@@ -1752,15 +1785,9 @@ export default function TopBar({
               onClick={() => setShowMarkers(!showMarkers)}
               title={t('ui:assistance.showMarkers')}
               icon="markers"
-            />
-            {/* Sun cardinal helper */}
-            <IconToggleButton
-              active={showSunCard}
-              onTouchEnd={(e) => { e.preventDefault(); setShowSunCard(!showSunCard); }}
-              onClick={() => setShowSunCard(!showSunCard)}
-              title={t('ui:assistance.showSunCardinals')}
-              icon="sunCard"
-            />
+            >
+              <span>{t('ui:assistance.markers')}</span>
+            </IconToggleButton>
             {/* Ecliptique */}
             <IconToggleButton
               active={showEcliptique}
@@ -1768,7 +1795,9 @@ export default function TopBar({
               onClick={() => setShowEcliptique(!showEcliptique)}
               title={t('ui:assistance.showEcliptic')}
               icon="ecliptic"
-            />
+            >
+              <span>{t('ui:assistance.ecliptic')}</span>
+            </IconToggleButton>
             {/* Local cardinal helper */}
             <IconToggleButton
               active={showMoonCard}
@@ -1776,7 +1805,9 @@ export default function TopBar({
               onClick={() => setShowMoonCard(!showMoonCard)}
               title={t('ui:assistance.showMoonCardinals')}
               icon="moonCard"
-            />
+            >
+              <span>{t('ui:assistance.moonCardinals')}</span>
+            </IconToggleButton>
             {/* Debug helper */}
             <IconToggleButton
               active={debugMask}
@@ -1784,7 +1815,9 @@ export default function TopBar({
               onClick={() => setDebugMask(!debugMask)}
               title={t('ui:assistance.enableDebug')}
               icon="debug"
-            />
+            >
+              <span>{t('ui:assistance.debug')}</span>
+            </IconToggleButton>
           </div>
 
 

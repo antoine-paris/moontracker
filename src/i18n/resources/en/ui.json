@@ -89,6 +89,8 @@
   "optics": {
     "fieldOfView": "Field of view",
     "focalLength": "Focal length",
+    "device": "Simulated device",
+    "personalized": "Personalized focal length",
     "sensor": "Sensor",
     "sensors": "Sensors",
     "objective": "Objective",
@@ -100,7 +102,7 @@
     "cityTimeFormat": "{{cityTime}} in {{cityName}} ({{utcTime}} UTC)",
     "overlayFormat": "{{place}}, {{localTime}} ({{utcTime}})",
     "speed": "Speed",
-    "hour": "Hour",
+    "hour": "hour",
     "date": "Date",
     "follow": "Follow",
     "realTime": "Real time",
@@ -129,8 +131,10 @@
     "minutes": "minutes",
     "hours": "hours",
     "days": "days",
+    "day": "day",
     "month": "month",
     "months": "months",
+    "year": "year",
     "perFrame": "per frame",
     "dateTime": "Date & time",
     "pauseAnimation": "Pause animation",
@@ -141,19 +145,23 @@
     "enterLocalDateTime": "Enter local date and time for your browser"
   },
   "animation": {
-    "title": "Animation:",
+    "title": "Animation :",
+    "animationjump": "Animation step by step",
     "animationSpeedMinPerSecond": "Animation speed (minutes per second)",
     "stepValueInteger": "Integer value of step per frame",
     "stepUnitUTC": "Unit of step (UTC) applied between frames",
-    "previousFrame": "Previous frame (↶)",
-    "nextFrame": "Next frame (↷)",
+    "previousFrame": "Previous frame",
+    "nextFrame": "Next frame",
     "periodBetweenFrames": "Period between frames (in milliseconds, 1 to 1000)",
     "numberOfFrames": "Number of frames before returning to start (0 = no loop)",
     "enableLongExposure": "Enable long exposure mode",
-    "longExposure": "Long exposure",
+    "longExposure": "Enable long exposure",
     "enableTimeLapse": "Enable time-lapse mode Since {{startLabel}}",
-    "clearPersistence": "Clear persistence (⟲)",
-    "images": "images"
+    "timelapse": "Enable Time-lapse",
+    "clearPersistence": "Clear persistence",
+    "images": "frames",
+    "ms": "ms",
+    "during": "for"
   },
   "visibility": {
     "title": "Visibility",
@@ -161,7 +169,12 @@
     "showHorizon": "Show horizon line and horizon markers",
     "showGround": "Show ground (Earth)",
     "showAtmosphere": "Show atmosphere effect",
-    "applyRefraction": "Apply atmospheric refraction"
+    "applyRefraction": "Apply atmospheric refraction",
+    "groundOpaque": "Make ground opaque",
+    "atmosphereEffect": "Atmosphere effect",
+    "refraction": "Atmospheric refraction",
+    "moonphase": "Moon & planet phases",
+    "earthshine": "Earthshine on Moon"
   },
   "space": {
     "title": "Space",
@@ -187,7 +200,15 @@
     "showSunCardinals": "Show cardinal points on the Sun",
     "showEcliptic": "Show ecliptic",
     "showMoonCardinals": "Show cardinal points of the Moon and planets",
-    "enableDebug": "Enable visual debugging elements"
+    "enableDebug": "Enable visual debugging elements",
+    "enlarge": "Artificially enlarge objects",
+    "grid": "Show reference grid",
+    "markers": "Show markers",
+    "debug": "Debugging",
+    "ecliptic": "Show ecliptic",
+    "sunCardinals": "Sun cardinal points",
+    "moonCardinals": "Moon & planets cardinal points",
+    "horizon": "Horizon line, markers & cardinals"
   },
   "settings": {
     "title": "Settings", 
