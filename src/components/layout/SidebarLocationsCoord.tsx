@@ -35,6 +35,7 @@ export default function SidebarLocationsCoord({
   const { t: tUi } = useTranslation('ui');
   const [lat, setLat] = useState<number>(selectedLocation.lat);
   const [lng, setLng] = useState<number>(selectedLocation.lng);
+  const [isGeolocating, setIsGeolocating] = useState<boolean>(false);
 
   // Track source of last lat/lng change to avoid ping-pong with App
   const updateSrcRef = useRef<'idle' | 'user' | 'sync'>('idle');
@@ -297,6 +298,37 @@ export default function SidebarLocationsCoord({
     setLng(p.lng);
   };
 
+  // Function to get user's geolocation
+  const handleGeolocation = () => {
+    if (isGeolocating) return; // Prevent multiple concurrent requests
+    if ('geolocation' in navigator) {
+      setIsGeolocating(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const newLat = position.coords.latitude;
+          const newLng = position.coords.longitude;
+          updateSrcRef.current = 'user';
+          setLat(newLat);
+          setLng(newLng);
+          setIsGeolocating(false);
+        },
+        (error) => {
+          console.error('Geolocation error:', error.code, error.message);
+          // On error, move to equator/prime meridian
+          updateSrcRef.current = 'user';
+          setLat(0);
+          setLng(0);
+          setIsGeolocating(false);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 0
+        }
+      );
+    }
+  };
+
   return (
     <div style={styles.wrap} aria-label={tUi('coordinates.enterCoordinates')}>
       {/* Inputs + NESO indicator at right */}
@@ -361,7 +393,25 @@ export default function SidebarLocationsCoord({
         <button type="button" style={styles.padBtn} title={t('directions.toWest')} onTouchEnd={(e) => { e.preventDefault(); move100(270); }} onClick={() => move100(270)}>
           <span style={{ transform: 'rotate(180deg)', display: 'inline-block' }}>➤</span>
         </button>
-        <div style={styles.padSpacer} />
+        <button 
+          type="button" 
+          style={styles.padBtn} 
+          title={tUi('coordinates.geolocation', 'Géolocalisation')} 
+          onTouchEnd={(e) => { e.preventDefault(); handleGeolocation(); }} 
+          onClick={() => handleGeolocation()}
+        >
+          {isGeolocating ? (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-spin">
+              <path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83" />
+            </svg>
+          ) : (
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="10" />
+              <circle cx="12" cy="12" r="3" fill="currentColor" />
+              <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+            </svg>
+          )}
+        </button>
         <button type="button" style={styles.padBtn} title={t('directions.toEast')} onTouchEnd={(e) => { e.preventDefault(); move100(90); }} onClick={() => move100(90)}>
           <span style={{ transform: 'rotate(0deg)', display: 'inline-block' }}>➤</span>
         </button>
