@@ -878,7 +878,7 @@ export default function TopBar({
         
         {/* TAB: Date & heure */}
         {activeTab === 'datetime' && (
-        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[800px]'}`}>
 
           <div className="grid grid-cols-1 gap-3">
             <div>
@@ -1059,7 +1059,7 @@ export default function TopBar({
 
         {/* TAB: Objet suivi */}
         {activeTab === 'tracking' && (
-        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[800px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:followModes.title')}</div>
           <div className="flex flex-wrap gap-2 mb-4">
             {([
@@ -1146,7 +1146,7 @@ export default function TopBar({
 
         {/* TAB: Champ de vision - moved to separate fov tab above, here for tracking tab context */}
         {activeTab === 'fov' && (
-          <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+          <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[800px]'}`}>
           <div className="mt-3">
             <div className="text-xs uppercase tracking-wider text-white/60">{t('optics.device')}</div>
             {/* Sélection Appareil + Objectif */}
@@ -1312,7 +1312,7 @@ export default function TopBar({
 
         {/* TAB: Animation */}
         {activeTab === 'animation' && (
-        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[800px]'}`}>
           <div className="grid grid-cols-1 gap-3">
             <div>
               <div className="mt-2 mb-1 flex items-baseline justify-start gap-2">
@@ -1615,7 +1615,7 @@ export default function TopBar({
 
         {/* TAB: Visibilité */}
         {activeTab === 'visibility' && (
-        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[800px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:visibility.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Earth toggle */}
@@ -1744,7 +1744,7 @@ export default function TopBar({
 
         {/* TAB: Assistance visuelle */}
         {activeTab === 'assistance' && (
-        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[600px]'}`}>
+        <div className={`rounded-2xl border border-white/10 bg-black/40 backdrop-blur px-3 py-3 w-full ${isMobileScreen ? '' : 'max-w-[800px]'}`}>
           <div className="text-xs uppercase tracking-wider text-white/60 mb-2">{t('ui:assistance.title')}</div>
           <div className="mt-1 flex flex-wrap gap-3">
             {/* Enlarge objects */}
