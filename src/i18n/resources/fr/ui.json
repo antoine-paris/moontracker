@@ -310,10 +310,11 @@
     "date": "Date",
     "tracking": "Suivi",
     "aligned": "Aligné",
-    "azimuth": "Azimut",
+    "azimut": "Azimut",
     "altitude": "Altitude",
     "fov": "Champ",
-    "camera": "Appareil",
-    "showing": "Affichage"
+    "camera": "Appareil simulé",
+    "showing": "Affichage",
+    "exaggerated": "Taille des objets exagérée à l'écran "
   }
 }

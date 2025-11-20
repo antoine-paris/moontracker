@@ -1402,11 +1402,12 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         show={showVideoIntro}
         location={overlaySplit.place}
         date={overlaySplit.date}
-        coordinates={`${formatDeg(latDeg, 0)} ${formatDeg(lngDeg, 0)}`}
+        coordinates={`${formatDeg(latDeg, 3)} ${formatDeg(lngDeg, 3)}`}
         azimuth={`${compass16(refAzDeg, t)} ${formatDeg(refAzDeg, 0)}`}
         altitude={formatDeg(refAltDeg, 0)}
         fov={`${fovXDeg.toFixed(1)}° × ${fovYDeg.toFixed(1)}°`}
         cameraLabel={cameraLabel}
+        enlargeObjects={enlargeObjects}
         viewport={viewport}
         onIntroComplete={onVideoIntroComplete}
         recordingFrames={recordingFrames}

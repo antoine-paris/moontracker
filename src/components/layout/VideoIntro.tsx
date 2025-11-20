@@ -13,6 +13,7 @@ export interface VideoIntroProps {
   altitude: string;
   fov: string;
   cameraLabel?: string;
+  enlargeObjects?: boolean;
   
   // Style du viewport
   viewport: { x: number; y: number; w: number; h: number };
@@ -42,6 +43,7 @@ export default function VideoIntro(props: VideoIntroProps) {
     altitude,
     fov,
     cameraLabel,
+    enlargeObjects,
     viewport,
     onIntroComplete,
     recordingFrames = 0,
@@ -118,9 +120,9 @@ export default function VideoIntro(props: VideoIntroProps) {
     <div
       className="absolute"
       style={{
-        left: viewport.x,
+        left: viewport.x+25,
         top: viewport.y,
-        width: viewport.w,
+        width: viewport.w-50,
         height: viewport.h,
         pointerEvents: 'none',
         zIndex: 9999,
@@ -182,7 +184,7 @@ export default function VideoIntro(props: VideoIntroProps) {
             {/* Colonne droite */}
             <div className="space-y-1">
               <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.azimuth')}:</span>
+                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.azimut')}:</span>
                 <span className="font-mono text-sm">{azimuth}</span>
               </div>
               <div className="flex items-baseline gap-2">
@@ -197,6 +199,12 @@ export default function VideoIntro(props: VideoIntroProps) {
                 <div className="flex items-baseline gap-2">
                   <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.camera')}:</span>
                   <span className="font-medium text-sm">{cameraLabel}</span>
+                </div>
+              )}
+              {enlargeObjects && (
+                <div className="flex items-baseline gap-2">
+                  <span className="text-white/60 min-w-[80px]"></span>
+                  <span className="font-medium text-sm">({tUi('videoIntro.exaggerated')})</span>
                 </div>
               )}
             </div>

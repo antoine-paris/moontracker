@@ -311,10 +311,11 @@
     "date": "Date",
     "tracking": "Tracking",
     "aligned": "Aligned",
-    "azimuth": "Azimuth",
+    "azimut": "Azimuth",
     "altitude": "Altitude",
     "fov": "FOV",
-    "camera": "Camera",
-    "showing": "Showing"
+    "camera": "Simulated cam",
+    "showing": "Showing",
+    "exaggerated": "Size of objects enlarged on screen"
   }
 }
