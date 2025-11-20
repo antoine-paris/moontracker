@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export interface VideoIntroProps {
   // Afficher l'intro ou non (contrôlé par l'enregistrement)
@@ -30,6 +31,8 @@ export interface VideoIntroProps {
 }
 
 export default function VideoIntro(props: VideoIntroProps) {
+  const { t: tUi } = useTranslation('ui');
+  
   const {
     show,
     location,
@@ -149,7 +152,7 @@ export default function VideoIntro(props: VideoIntroProps) {
             textShadow: '0 1px 4px rgba(0,0,0,0.8)',
           }}
         >
-          Astrophotography &amp; sky simulator
+          {tUi('videoIntro.subtitle')}
         </p>
 
         {/* Paramètres de simulation */}
@@ -163,15 +166,15 @@ export default function VideoIntro(props: VideoIntroProps) {
             {/* Colonne gauche */}
             <div className="space-y-1">
               <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">Location:</span>
+                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.location')}:</span>
                 <span className="font-medium">{location}</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">Coordinates:</span>
+                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.coordinates')}:</span>
                 <span className="font-mono text-sm">{coordinates}</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">Date:</span>
+                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.date')}:</span>
                 <span className="font-mono text-sm">{date}</span>
               </div>
             </div>
@@ -179,20 +182,20 @@ export default function VideoIntro(props: VideoIntroProps) {
             {/* Colonne droite */}
             <div className="space-y-1">
               <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">Azimuth:</span>
+                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.azimuth')}:</span>
                 <span className="font-mono text-sm">{azimuth}</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">Altitude:</span>
+                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.altitude')}:</span>
                 <span className="font-mono text-sm">{altitude}</span>
               </div>
               <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">FOV:</span>
+                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.fov')}:</span>
                 <span className="font-mono text-sm">{fov}</span>
               </div>
               {cameraLabel && (
                 <div className="flex items-baseline gap-2">
-                  <span className="text-white/60 min-w-[80px]">Camera:</span>
+                  <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.camera')}:</span>
                   <span className="font-medium text-sm">{cameraLabel}</span>
                 </div>
               )}

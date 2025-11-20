@@ -301,5 +301,19 @@
     "orientationNotSupported": "Verrouillage d'orientation non supporté",
     "exitFullscreen": "Sortir du plein écran",
     "toggleEarth3D": "Terre 3D"
+  },
+  "videoIntro": {
+    "title": "SpaceView.me",
+    "subtitle": "Simulateur astrophotographie & ciel",
+    "location": "Lieu",
+    "coordinates": "Coordonnées",
+    "date": "Date",
+    "tracking": "Suivi",
+    "aligned": "Aligné",
+    "azimuth": "Azimut",
+    "altitude": "Altitude",
+    "fov": "Champ",
+    "camera": "Appareil",
+    "showing": "Affichage"
   }
 }

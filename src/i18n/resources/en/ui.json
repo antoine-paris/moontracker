@@ -302,5 +302,19 @@
     "orientationNotSupported": "Orientation lock not supported",
     "exitFullscreen": "Exit fullscreen",
     "toggleEarth3D": "3D Earth"
+  },
+  "videoIntro": {
+    "title": "SpaceView.me",
+    "subtitle": "Astrophotography & sky simulator",
+    "location": "Location",
+    "coordinates": "Coordinates",
+    "date": "Date",
+    "tracking": "Tracking",
+    "aligned": "Aligned",
+    "azimuth": "Azimuth",
+    "altitude": "Altitude",
+    "fov": "FOV",
+    "camera": "Camera",
+    "showing": "Showing"
   }
 }
