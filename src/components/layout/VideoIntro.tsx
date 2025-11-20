@@ -159,7 +159,7 @@ export default function VideoIntro(props: VideoIntroProps) {
 
         {/* Paramètres de simulation */}
         <div
-          className="bg-black/40 backdrop-blur-sm rounded-lg px-6 py-4 border border-white/20"
+          className="bg-black/40 backdrop-blur-sm rounded-lg px-6 py-4 border border-white/20 absolute bottom-[25px]"
           style={{
             fontSize: Math.max(12, viewport.w / 80),
           }}
@@ -167,43 +167,43 @@ export default function VideoIntro(props: VideoIntroProps) {
           <div className="grid grid-cols-2 gap-x-8 gap-y-2 text-white/90">
             {/* Colonne gauche */}
             <div className="space-y-1">
-              <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.location')}:</span>
-                <span className="font-medium">{location}</span>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-white/60 min-w-[80px] flex-shrink-0">{tUi('videoIntro.location')}:</span>
+                <span className="font-medium text-sm min-w-[121px]">{location}</span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.coordinates')}:</span>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-white/60 min-w-[80px] flex-shrink-0">{tUi('videoIntro.coordinates')}:</span>
                 <span className="font-mono text-sm">{coordinates}</span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.date')}:</span>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-white/60 min-w-[80px] flex-shrink-0">{tUi('videoIntro.date')}:</span>
                 <span className="font-mono text-sm">{date}</span>
               </div>
             </div>
 
             {/* Colonne droite */}
             <div className="space-y-1">
-              <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.azimut')}:</span>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-white/60 min-w-[80px] flex-shrink-0">{tUi('videoIntro.azimut')}:</span>
                 <span className="font-mono text-sm">{azimuth}</span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.altitude')}:</span>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-white/60 min-w-[80px] flex-shrink-0">{tUi('videoIntro.altitude')}:</span>
                 <span className="font-mono text-sm">{altitude}</span>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.fov')}:</span>
+              <div className="flex flex-wrap items-baseline gap-x-2">
+                <span className="text-white/60 min-w-[80px] flex-shrink-0">{tUi('videoIntro.fov')}:</span>
                 <span className="font-mono text-sm">{fov}</span>
               </div>
               {cameraLabel && (
-                <div className="flex items-baseline gap-2">
-                  <span className="text-white/60 min-w-[80px]">{tUi('videoIntro.camera')}:</span>
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-white/60 min-w-[80px] flex-shrink-0">{tUi('videoIntro.camera')}:</span>
                   <span className="font-medium text-sm">{cameraLabel}</span>
                 </div>
               )}
               {enlargeObjects && (
-                <div className="flex items-baseline gap-2">
-                  <span className="text-white/60 min-w-[80px]"></span>
+                <div className="flex flex-wrap items-baseline gap-x-2">
+                  <span className="text-white/60 min-w-[80px] flex-shrink-0 invisible">{tUi('videoIntro.camera')}:</span>
                   <span className="font-medium text-sm">({tUi('videoIntro.exaggerated')})</span>
                 </div>
               )}

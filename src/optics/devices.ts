@@ -16,11 +16,11 @@ export const DEVICES: Device[] = [
   },
   {
     id: 'VM',
-    label: 'Vue carrée',
+    label: 'Fisheye',
     type: 'camera',
     aspect: 1/1, // champ binoculaire humain ~200°×130° ⇒ ~3:2
     zooms: [
-      { id: 'vm173', label: 'fisheye', kind: 'module', f35: 1 },    
+      { id: 'vm173', label: '172° / 1 mm', kind: 'module', f35: 1 },    
     ],
   },
   // Full Frame (24×36) with typical zoom ranges
@@ -62,6 +62,16 @@ export const DEVICES: Device[] = [
       { id: 'ff-200-600-200', label: 'Zoom 200–600 @ 200 mm', kind: 'zoom', focalMm: 200, projection: 'rectilinear' },
       { id: 'ff-200-600-400', label: 'Zoom 200–600 @ 400 mm', kind: 'zoom', focalMm: 400, projection: 'rectilinear' },
       { id: 'ff-200-600-600', label: 'Zoom 200–600 @ 600 mm', kind: 'zoom', focalMm: 600, projection: 'rectilinear' },
+    ],
+  },
+   // Generic phone
+  {
+    id: 'genphon',
+    label: 'Smartphone',
+    type: 'phone',
+    aspect: 9/16,
+    zooms: [
+      { id: 'main', label: 'x1', kind: 'module', f35: 50 },
     ],
   },
 
