@@ -33,6 +33,7 @@ import Planet3D from "../stage/Planet3D";
 import Markers from "../stage/Markers";
 import Ground from "../stage/Ground"; 
 import Ecliptique from "../stage/Ecliptique";
+import VideoIntro from "./VideoIntro";
 import { usePlanetsRender } from "./hooks/usePlanetsRender";
 import { useSunMoonModel } from "./hooks/useSunMoonModel";
 import { earthShadowAtMoon } from "../../astro/aeInterop";
@@ -121,6 +122,13 @@ export interface SpaceViewProps {
   // Mobile/Landscape props pour contrôler l'affichage HUD
   isMobile?: boolean;
   isLandscape?: boolean;
+
+  // Video intro props
+  showVideoIntro?: boolean;
+  onVideoIntroComplete?: () => void;
+  recordingFrames?: number;
+  recordingFps?: number;
+  isRecordingVideo?: boolean;
 }
 
 export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(props: SpaceViewProps, ref) {
@@ -156,6 +164,12 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
     // Mobile/Landscape props
     isMobile = false,
     isLandscape = false,
+    // Video intro
+    showVideoIntro = false,
+    onVideoIntroComplete,
+    recordingFrames = 0,
+    recordingFps = 24,
+    isRecordingVideo = false,
   } = props;
 
   React.useEffect(() => {
@@ -404,6 +418,34 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         };
       });
   }, [planetsRender, PLANET_REGISTRY]);
+
+  // Calculer l'opacité du HUD (inverse de l'intro vidéo)
+  const hudOpacity = useMemo(() => {
+    if (!showVideoIntro) return 1; // HUD pleinement visible si pas d'intro
+
+    const introDurationSec = 2;
+    const fadeOutDurationSec = 0.5;
+    const totalFrames = Math.round(introDurationSec * recordingFps);
+    const fadeStartFrame = Math.round((introDurationSec - fadeOutDurationSec) * recordingFps);
+
+    if (isRecordingVideo) {
+      // Mode enregistrement : basé sur les frames
+      if (recordingFrames >= totalFrames) {
+        return 1; // Intro terminée, HUD pleinement visible
+      } else if (recordingFrames >= fadeStartFrame) {
+        // Phase de fondu : HUD apparaît pendant que l'intro disparaît
+        const fadeFrames = totalFrames - fadeStartFrame;
+        const currentFadeFrame = recordingFrames - fadeStartFrame;
+        const fadeProgress = currentFadeFrame / Math.max(1, fadeFrames);
+        return fadeProgress; // Croissance linéaire 0 → 1
+      } else {
+        return 0; // Intro visible, HUD masqué
+      }
+    } else {
+      // Mode non-enregistrement : pour preview (optionnel)
+      return 0; // HUD masqué pendant l'intro en mode preview
+    }
+  }, [showVideoIntro, isRecordingVideo, recordingFrames, recordingFps]);
 
   useEffect(() => {
     if (!longPoseEnabled) return;
@@ -1190,7 +1232,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Top right: location/time */}
           <div
             className="absolute right-2 top-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             <div className="flex flex-col leading-tight items-end text-right">
               <div>{overlaySplit.place}</div>
@@ -1200,7 +1246,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Bas centré: Azimut observateur (refAzDeg) */}
           <div
             className="absolute left-1/2 bottom-2 -translate-x-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg, t)}`}
           </div>
@@ -1208,7 +1258,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Bas droite: Lune ou sous l'horizon (marge demi-diamètre) */}
           <div
             className="absolute right-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
               ? tUi('hud.moonBelowHorizon')
@@ -1218,7 +1272,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Bas gauche: Soleil ou sous l'horizon (marge demi-diamètre) */}
           <div
             className="absolute left-2 bottom-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
               ? tUi('hud.sunBelowHorizon')
@@ -1228,7 +1286,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Haut gauche: Appareil et zoom */}
           <div
             className="absolute top-2 left-2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             <div className="flex flex-col leading-tight">
               <div>{tUi('hud.simulation')} {domainFromBrowser}</div>
@@ -1240,7 +1302,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Gauche centrée: Altitude observateur (refAltDeg) */}
           <div
             className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-white/60 bg-black/30 px-2 py-1 rounded border border-white/10"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
              {tUi('hud.altitude')} <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
           </div>
@@ -1253,7 +1319,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Haut droite: Lieu + Heure locale */}
           <div
             className="absolute right-2 top-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             <div className="flex flex-col leading-tight items-end text-right">
               <div>{overlaySplit.place}</div>
@@ -1264,7 +1334,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Haut gauche: Simulation domaine */}
           <div
             className="absolute top-2 left-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             {tUi('hud.simulation')} {domainFromBrowser}
           </div>
@@ -1272,7 +1346,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Gauche centré: Altitude observateur */}
           <div
             className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
              {tUi('hud.altitude')} <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
           </div>
@@ -1280,7 +1358,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Bas centré: Azimut observateur + Direction */}
           <div
             className="absolute left-1/2 bottom-2 -translate-x-1/2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg, t)}`}
           </div>
@@ -1288,7 +1370,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Bas gauche: Soleil (Alt + Direction) */}
           <div
             className="absolute left-2 bottom-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
               ? tUi('hud.sunBelowHorizon')
@@ -1298,7 +1384,11 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
           {/* Bas droite: Lune (Alt + Direction) */}
           <div
             className="absolute right-2 bottom-2 text-xs text-white/70 bg-black/40 px-2 py-1 rounded border border-white/15"
-            style={{ zIndex: Z.ui }}
+            style={{ 
+              zIndex: Z.ui,
+              opacity: hudOpacity,
+              transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+            }}
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
               ? tUi('hud.moonBelowHorizon')
@@ -1307,6 +1397,22 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
         </>
       )}
 
+      {/* Video intro overlay */}
+      <VideoIntro
+        show={showVideoIntro}
+        location={overlaySplit.place}
+        date={overlaySplit.date}
+        coordinates={`${formatDeg(latDeg, 0)} ${formatDeg(lngDeg, 0)}`}
+        azimuth={`${compass16(refAzDeg, t)} ${formatDeg(refAzDeg, 0)}`}
+        altitude={formatDeg(refAltDeg, 0)}
+        fov={`${fovXDeg.toFixed(1)}° × ${fovYDeg.toFixed(1)}°`}
+        cameraLabel={cameraLabel}
+        viewport={viewport}
+        onIntroComplete={onVideoIntroComplete}
+        recordingFrames={recordingFrames}
+        recordingFps={recordingFps}
+        isRecording={isRecordingVideo}
+      />
 
     </div>
   );

@@ -729,6 +729,8 @@ export default function App() {
   const recorderRef = useRef<CanvasRecorderHandle | DomRecorderHandle | DomCfrRecorderHandle | null>(null);
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
   const [recordingFrames, setRecordingFrames] = useState(0);
+  // Video intro state
+  const [showVideoIntro, setShowVideoIntro] = useState(false);
   // format HH;MM;SS from frames and fps
   const formatTimecode = (frames: number, fps: number) => {
     const total = Math.floor(frames / Math.max(1, fps));
@@ -1779,12 +1781,15 @@ const handleFramePresented = React.useCallback(() => {
         quality: 0.95,
       });
       setIsRecordingVideo(true);
+      // Activer l'intro vidéo
+      setShowVideoIntro(true);
       recPendingRef.current = false;
     } else {
       try {
         const blob = await recorderRef.current?.stop();
         recorderRef.current = null;
         setIsRecordingVideo(false);
+        setShowVideoIntro(false);
         // Auto-pause on stop
         setIsAnimating(false);
         if (blob && blob.size) {
@@ -2072,6 +2077,11 @@ const handleFramePresented = React.useCallback(() => {
                   onFramePresented={handleFramePresented}
                   isMobile={isMobileScreen}
                   isLandscape={isLandscapeMode}
+                  showVideoIntro={showVideoIntro}
+                  onVideoIntroComplete={() => setShowVideoIntro(false)}
+                  recordingFrames={recordingFrames}
+                  recordingFps={recFpsRef.current}
+                  isRecordingVideo={isRecordingVideo}
                 />
                 </div>
               </div>
