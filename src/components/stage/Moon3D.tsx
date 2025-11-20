@@ -862,7 +862,9 @@ export default function Moon3D({
   eclipseOffsetRel,
   eclipseAxisPADeg,
 }: Props) {
+  // Early return check to prevent invalid calculations
   const tooSmall = !Number.isFinite(wPx) || !Number.isFinite(hPx) || wPx < 2 || hPx < 2;
+  if (tooSmall) return null;
 
   const vMoon = useMemo(() => altAzToVec(moonAltDeg, moonAzDeg), [moonAltDeg, moonAzDeg]);
   const vSun  = useMemo(() => altAzToVec(sunAltDeg,  sunAzDeg ), [sunAltDeg,  sunAzDeg ]);
@@ -1054,8 +1056,6 @@ export default function Moon3D({
           ? 'on fait tourner le globe pour amener l’Ouest vers nous'
           : 'sans biais est/ouest notable')
     : '—';
-  
-  if (tooSmall) return null;
 
   // Diamètre souhaité du disque lunaire (pixels)
   const moonPx = Math.floor(Math.min(wPx, hPx));
