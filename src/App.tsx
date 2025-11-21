@@ -836,6 +836,9 @@ export default function App() {
 
   // Resize (use ResizeObserver so stage fills space during sidebar animation)
   useEffect(() => {
+    // Don't auto-resize if stage size has been manually overridden (e.g., for recording)
+    if (originalStageSize !== null) return;
+    
     const update = () => {
       if (!stageRef.current) return;
       const rect = stageRef.current.getBoundingClientRect();
@@ -853,7 +856,7 @@ export default function App() {
       window.removeEventListener("resize", update);
       if (ro) ro.disconnect();
     };
-  }, []);
+  }, [originalStageSize]);
 
   // Synchroniser la ref hors animation et garder l'UI en phase avec whenMs
   useEffect(() => { if (!isAnimating) { whenMsRef.current = whenMs; } }, [whenMs, isAnimating]);
@@ -1866,7 +1869,7 @@ const handleFramePresented = React.useCallback(() => {
   // --- JSX -------------------------------------------------------------------
   return (
     <MobileLayout showOrientationPrompt={isMobileScreen}>
-      <div className="w-full h-screen bg-black text-white overflow-hidden">
+      <div className={`w-full h-screen bg-black text-white ${isRecordingVideo ? 'overflow-auto' : 'overflow-hidden'}`}>
       <div className="flex h-full">
         {/* Left column: locations (caché sur mobile) */}
         {!isMobileScreen && (
