@@ -731,6 +731,10 @@ export default function App() {
   const [recordingFrames, setRecordingFrames] = useState(0);
   // Video intro state
   const [showVideoIntro, setShowVideoIntro] = useState(false);
+  // Recording resolution override (save original to restore after recording)
+  const [originalStageSize, setOriginalStageSize] = useState<{ w: number; h: number } | null>(null);
+  // Store pixelRatio to use for recording (1 for fixed resolution, DPR for screen)
+  const recordingPixelRatioRef = useRef<number>(1);
   // format HH;MM;SS from frames and fps
   const formatTimecode = (frames: number, fps: number) => {
     const total = Math.floor(frames / Math.max(1, fps));
@@ -1776,7 +1780,7 @@ const handleFramePresented = React.useCallback(() => {
       // CFR encoder: constant playback speed, no frame drops
       recorderRef.current = await startDomCfrRecorder(node, {
         fps,
-        pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        pixelRatio: recordingPixelRatioRef.current,
         backgroundColor: '#000',
         quality: 0.95,
       });
@@ -1792,6 +1796,13 @@ const handleFramePresented = React.useCallback(() => {
         setShowVideoIntro(false);
         // Auto-pause on stop
         setIsAnimating(false);
+        
+        // Restore original stage size if it was overridden
+        if (originalStageSize) {
+          setStageSize(originalStageSize);
+          setOriginalStageSize(null);
+        }
+        
         if (blob && blob.size) {
           const url = URL.createObjectURL(blob);
           const stamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -1807,9 +1818,46 @@ const handleFramePresented = React.useCallback(() => {
         console.error('Recording stop failed:', e);
         setIsRecordingVideo(false);
         setIsAnimating(false);
+        // Restore original stage size on error too
+        if (originalStageSize) {
+          setStageSize(originalStageSize);
+          setOriginalStageSize(null);
+        }
       }
     }
-  }, [isRecordingVideo, isAnimating, timeLapseEnabled, timeLapsePeriodMs]);
+  }, [isRecordingVideo, isAnimating, timeLapseEnabled, timeLapsePeriodMs, originalStageSize]);
+
+  // Handle resolution selection for recording
+  const handleSelectResolution = useCallback((selectedWidth: number | 'screen') => {
+    if (selectedWidth === 'screen') {
+      // Use current screen size with device pixel ratio
+      recordingPixelRatioRef.current = Math.min(2, window.devicePixelRatio || 1);
+      handleToggleRecording();
+    } else {
+      // Use fixed resolution: set pixelRatio to 1 to get exact output size
+      recordingPixelRatioRef.current = 1;
+      
+      // Calculate height based on current viewport aspect ratio
+      const currentAspect = viewport.w / viewport.h;
+      const targetHeight = Math.round(selectedWidth / currentAspect);
+      
+      // Compensate for viewport margins (2 * minMargin subtracted by computeViewport)
+      const VIEWPORT_MARGIN = isMobileScreen ? 10 : 20;
+      const compensatedWidth = selectedWidth + (2 * VIEWPORT_MARGIN);
+      const compensatedHeight = targetHeight + (2 * VIEWPORT_MARGIN);
+      
+      // Save original stage size for restoration
+      setOriginalStageSize({ w: stageSize.w, h: stageSize.h });
+      
+      // Override stage size with compensated dimensions to get exact output resolution
+      setStageSize({ w: compensatedWidth, h: compensatedHeight });
+      
+      // Start recording after a short delay to let the viewport update
+      setTimeout(() => {
+        handleToggleRecording();
+      }, 100);
+    }
+  }, [viewport.w, viewport.h, stageSize.w, stageSize.h, isMobileScreen, handleToggleRecording]);
 
 
   
@@ -1869,6 +1917,7 @@ const handleFramePresented = React.useCallback(() => {
               onOpenInfo={() => setShowInfo(true)} 
               isRecordingVideo={isRecordingVideo}
               onToggleRecording={handleToggleRecording}
+              onSelectResolution={handleSelectResolution}
               isMobile={isMobileScreen}
               isLandscape={isLandscapeMode}
               showSidebar={showMobileSidebar}

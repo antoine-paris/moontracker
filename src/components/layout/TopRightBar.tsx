@@ -13,6 +13,7 @@ type Props = {
   // NEW
   isRecordingVideo: boolean;
   onToggleRecording: () => void;
+  onSelectResolution?: (width: number | 'screen') => void;
   // MOBILE
   isMobile?: boolean;
   isLandscape?: boolean;
@@ -36,6 +37,7 @@ export default function TopRightBar({
   // NEW
   isRecordingVideo,
   onToggleRecording,
+  onSelectResolution,
   // MOBILE
   isMobile = false,
   isLandscape = false,
@@ -50,6 +52,7 @@ export default function TopRightBar({
   const [copied, setCopied] = React.useState(false);
   const [captured, setCaptured] = React.useState(false);
   const [isCapturing, setIsCapturing] = React.useState(false);
+  const [showResolutionOptions, setShowResolutionOptions] = React.useState(false);
 
   const copyUrl = async () => {
     const url = shareUrl || window.location.href;
@@ -144,10 +147,20 @@ export default function TopRightBar({
         key="record"
         onTouchEnd={(e) => {
           e.preventDefault();
-          onToggleRecording();
+          if (isRecordingVideo) {
+            onToggleRecording();
+          } else {
+            setShowResolutionOptions(!showResolutionOptions);
+          }
         }}
-        onClick={onToggleRecording}
-        className={getButtonClass(isRecordingVideo, 'rose')}
+        onClick={() => {
+          if (isRecordingVideo) {
+            onToggleRecording();
+          } else {
+            setShowResolutionOptions(!showResolutionOptions);
+          }
+        }}
+        className={getButtonClass(isRecordingVideo || showResolutionOptions, 'rose')}
         title={isRecordingVideo ? t('controls.stopRecording') : t('controls.startRecordingWithPlay')}
         aria-label={isRecordingVideo ? t('controls.stopRecording') : t('controls.startRecording')}
       >
@@ -282,10 +295,42 @@ export default function TopRightBar({
     ),
   };
 
+  // Boutons de résolution vidéo
+  const resolutionButtons = showResolutionOptions && !isRecordingVideo ? [
+    { width: 'screen' as const, label: `↔ ${t('controls.screen', 'Ecran')}` },
+    { width: 1080, label: '↔ 1080p' },
+    { width: 1920, label: '↔ 1920p' },
+    { width: 1280, label: '↔ 1280' },
+    { width: 720, label: '↔ 720' },
+  ].map((res) => (
+    <button
+      key={res.width}
+      onTouchEnd={(e) => {
+        e.preventDefault();
+        if (onSelectResolution) {
+          onSelectResolution(res.width);
+          setShowResolutionOptions(false);
+        }
+      }}
+      onClick={() => {
+        if (onSelectResolution) {
+          onSelectResolution(res.width);
+          setShowResolutionOptions(false);
+        }
+      }}
+      className={getButtonClass(false)}
+      title={res.label}
+      aria-label={res.label}
+    >
+      <span className="text-[10px] font-medium whitespace-nowrap px-1">{res.label}</span>
+    </button>
+  )) : [];
+
   // Liste des boutons dans l'ordre
   const allButtons = [
     buttons.settings,
     buttons.playPause,
+    ...resolutionButtons,
     buttons.record,
     buttons.copyUrl,
     buttons.capture,

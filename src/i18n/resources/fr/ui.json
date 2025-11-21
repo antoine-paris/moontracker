@@ -14,7 +14,8 @@
     "copyUrl": "Copier l'URL actuelle",
     "copyUrlWithParams": "Copier l'URL actuelle (avec paramètres)",
     "linkCopied": "Lien copié !",
-    "toolbar": "Barre d'outils"
+    "toolbar": "Barre d'outils",
+    "screen": "Écran"
   },
   "directionalKeypad": {
     "moveUp": "Monter de {{degrees}}°",
