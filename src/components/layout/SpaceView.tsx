@@ -1272,6 +1272,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               maxWidth: '30%',
               wordWrap: 'break-word',
               overflowWrap: 'break-word',
+              textAlign: 'right',
             }}
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
@@ -1426,6 +1427,7 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               maxWidth: '30%',
               wordWrap: 'break-word',
               overflowWrap: 'break-word',
+              textAlign: 'right',
             }}
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
