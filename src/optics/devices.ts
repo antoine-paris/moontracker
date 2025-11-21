@@ -67,11 +67,18 @@ export const DEVICES: Device[] = [
    // Generic phone
   {
     id: 'genphon',
-    label: 'Smartphone',
+    label: 'Smartphone (portrait)',
     type: 'phone',
     aspect: 9/16,
     zooms: [
-      { id: 'main', label: 'x1', kind: 'module', f35: 50 },
+      { id: 'uwide', label: 'Hyper wide', kind: 'module', f35: 10 },
+      { id: 'wide', label: 'Wide', kind: 'module', f35: 12 },
+      { id: 'main', label: 'x1', kind: 'module', f35: 24 },
+      { id: 'tele3', label: 'x3', kind: 'module', f35: 72 },
+      { id: 'tele10', label: 'x10', kind: 'module', f35: 240 },
+      { id: 'tele30', label: 'x30', kind: 'module', f35: 720 },
+      { id: 'tele100', label: 'x100', kind: 'module', f35: 2400 },
+      
     ],
   },
 
