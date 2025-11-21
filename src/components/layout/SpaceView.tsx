@@ -1236,6 +1236,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '45%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             <div className="flex flex-col leading-tight items-end text-right">
@@ -1250,6 +1253,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '30%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              textAlign: 'center',
             }}
           >
             {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg, t)}`}
@@ -1262,6 +1269,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '30%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
@@ -1276,6 +1286,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '30%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
@@ -1290,6 +1303,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '45%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             <div className="flex flex-col leading-tight">
@@ -1306,6 +1322,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '45%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
              {tUi('hud.altitude')} <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
@@ -1323,6 +1342,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '45%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             <div className="flex flex-col leading-tight items-end text-right">
@@ -1338,6 +1360,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '45%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             {tUi('hud.simulation')} {domainFromBrowser}
@@ -1350,6 +1375,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '45%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
              {tUi('hud.altitude')} <span className={refAltDeg < 0 ? 'text-red-400' : undefined}>{formatDeg(refAltDeg, 0)}</span>
@@ -1362,6 +1390,10 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '30%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              textAlign: 'center',
             }}
           >
             {`${tUi('hud.azimuth')} ${Number(refAzDeg).toFixed(1)}° - ${compass16(refAzDeg, t)}`}
@@ -1374,6 +1406,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '30%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             {astro.sun.alt + astro.sun.appDiamDeg / 2 < 0
@@ -1388,6 +1423,9 @@ export default forwardRef<HTMLDivElement, SpaceViewProps>(function SpaceView(pro
               zIndex: Z.ui,
               opacity: hudOpacity,
               transition: isRecordingVideo ? 'none' : 'opacity 500ms ease-in',
+              maxWidth: '30%',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             {astro.moon.alt + astro.moon.appDiamDeg / 2 < 0
